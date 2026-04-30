@@ -11,8 +11,11 @@ use App\Filament\Resources\StockAdjustments\StockAdjustmentResource;
 use App\Filament\Resources\StockMovements\StockMovementResource;
 use App\Filament\Resources\StockTransfers\StockTransferResource;
 use App\Filament\Resources\Warehouses\WarehouseResource;
+use App\Filament\Warehouse\Widgets\LogisticsPulseChart;
 use App\Filament\Warehouse\Widgets\PendingPickListTable;
+use App\Filament\Warehouse\Widgets\ReceivingDiscrepancies;
 use App\Filament\Warehouse\Widgets\RecentStockMovementsTable;
+use App\Filament\Warehouse\Widgets\WarehouseHealthStats;
 use App\Filament\Warehouse\Widgets\WarehousePanelStats;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -56,6 +59,9 @@ class WarehousePanelProvider extends PanelProvider
             ])
             ->widgets([
                 WarehousePanelStats::class,
+                WarehouseHealthStats::class,
+                LogisticsPulseChart::class,
+                ReceivingDiscrepancies::class,
                 RecentStockMovementsTable::class,
                 PendingPickListTable::class,
             ])

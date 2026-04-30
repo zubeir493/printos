@@ -10,7 +10,9 @@ use Filament\Widgets\TableWidget as BaseWidget;
 class ReceivingDiscrepancies extends BaseWidget
 {
     protected static ?int $sort = 3;
-    protected int | string | array $columnSpan = 'full';
+
+    protected int|string|array $columnSpan = 'full';
+
     protected static ?string $heading = 'Receiving Discrepancies (PO vs Actual)';
 
     public function table(Table $table): Table
@@ -18,8 +20,8 @@ class ReceivingDiscrepancies extends BaseWidget
         return $table
             ->query(
                 GoodsReceipt::query()
-                    ->whereColumn('received_quantity', '!=', 'expected_quantity') // Pseudo-code if columns exist
-                    ->orWhere('status', 'partial') // Assuming partial means discrepancy
+                    ->with(['purchaseOrder', 'items.purchaseOrderItem'])
+                    ->where('status', 'draft')
                     ->latest()
                     ->limit(5)
             )
@@ -29,12 +31,15 @@ class ReceivingDiscrepancies extends BaseWidget
                     ->searchable(),
                 Tables\Columns\TextColumn::make('purchaseOrder.order_number')
                     ->label('PO #'),
+                Tables\Columns\TextColumn::make('items_count')
+                    ->label('Lines')
+                    ->state(fn (GoodsReceipt $record) => $record->items->count())
+                    ->alignEnd(),
                 Tables\Columns\TextColumn::make('status')
                     ->badge()
-                    ->color('danger')
-                    ->default('Mismatch'),
+                    ->color('warning'),
                 Tables\Columns\TextColumn::make('created_at')
-                    ->date()
+                    ->date(),
             ]);
     }
 }

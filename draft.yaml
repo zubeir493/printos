@@ -12,38 +12,41 @@ models:
       hasMany: JobOrder, SalesInvoice, PurchaseOrder, PurchaseInvoice, Payment
 
   JobOrder:
-    job_order_number: string
+    job_order_number: string unique
     partner_id: integer foreign
-    job_type: string
+    job_type: enum:books,packages
     production_mode: string nullable
-    services: json nullable
+    services: json
     submission_date: date
+    due_date: date nullable
     remarks: text nullable
     advance_paid: boolean default:false
-    cost_calc_file: string nullable
-    advance_amount: decimal:15,2
-    total_price: decimal:15,2
-    status: string
+    cost_calc_file: string
+    advance_amount: decimal:12,2
+    total_price: decimal:12,2
+    status: enum:draft,design,production,completed,cancelled
     timestamps: true
     relationships:
       belongsTo: Partner
-      hasMany: JobOrderTask, Dispatch, SalesInvoice, Artwork
+      hasMany: JobOrderTask, Dispatch, SalesInvoice
       morphMany: StockMovement (reference), PaymentAllocation (allocatable)
       hasManyThrough: MaterialRequest (JobOrderTask)
+      hasManyThrough: Artwork (JobOrderTask)
 
   JobOrderTask:
     job_order_id: integer foreign
+    designer_id: integer foreign nullable
     name: string
     quantity: integer
-    task_cost: decimal:15,2
-    unit_cost: decimal:15,2 nullable
+    task_cost: decimal:12,2
+    unit_cost: decimal:12,2
     paper: json nullable
     status: string nullable
     size: string nullable
     timestamps: true
     relationships:
-      belongsTo: JobOrder, Size (size)
-      hasMany: DispatchItem, MaterialRequest, Artwork
+      belongsTo: JobOrder, User (designer_id), Size (size)
+      hasMany: DispatchItem, MaterialRequest, Artwork, ProductionPlanItem
 
   Artwork:
     job_order_id: integer foreign
@@ -57,7 +60,7 @@ models:
 
   Dispatch:
     job_order_id: integer foreign
-    warehouse_id: integer foreign nullable
+    warehouse_id: integer foreign
     delivery_date: date
     remarks: text nullable
     timestamps: true
@@ -89,6 +92,7 @@ models:
     payment_method: string nullable
     bank_name: string nullable
     account_number: string nullable
+    softDeletes: true
     timestamps: true
     relationships:
       hasMany: EmployeeSalaryHistory
@@ -107,10 +111,9 @@ models:
   GoodsReceipt:
     receipt_number: string unique
     purchase_order_id: integer foreign
-    warehouse_id: integer foreign nullable
+    warehouse_id: integer foreign
     receipt_date: date
-    status: string
-    posted_at: datetime nullable
+    status: enum:draft,posted default:draft
     timestamps: true
     relationships:
       belongsTo: PurchaseOrder, Warehouse
@@ -134,6 +137,7 @@ models:
     type: string nullable
     is_sellable: boolean default:false
     price: decimal:15,2 nullable
+    average_cost: decimal:15,2 default:0
     timestamps: true
     relationships:
       hasMany: InventoryBalance, StockMovement
@@ -163,14 +167,12 @@ models:
     narration: text nullable
     total_debit: decimal:15,2
     total_credit: decimal:15,2
-    status: string
+    status: enum:draft,posted,void
     posted_at: datetime nullable
     voided_at: datetime nullable
-    reversal_of_journal_entry_id: integer nullable
     timestamps: true
     relationships:
-      hasMany: JournalItem, JournalEntry (reversal_of_journal_entry_id)
-      belongsTo: JournalEntry (reversal_of_journal_entry_id)
+      hasMany: JournalItem
 
   JournalItem:
     journal_entry_id: integer foreign
@@ -183,7 +185,8 @@ models:
 
   Machine:
     name: string
-    code: string
+    code: string nullable
+    baseline_rounds_per_week: integer nullable
     timestamps: true
     relationships:
       hasMany: ProductionPlanItem
@@ -191,32 +194,49 @@ models:
   MaterialRequest:
     job_order_task_id: integer foreign
     inventory_item_id: integer foreign
-    required_quantity: decimal:15,2
-    requested_quantity: decimal:15,2
-    issued_quantity: decimal:15,2 default:0
+    required_quantity: decimal:10,2 default:0
+    requested_quantity: decimal:10,2 default:0
+    issued_quantity: decimal:10,2 default:0
+    reason: text nullable
     timestamps: true
     relationships:
       belongsTo: JobOrderTask, InventoryItem
+      hasMany: MaterialIssueApproval
+
+  MaterialIssueApproval:
+    material_request_id: integer foreign
+    warehouse_id: integer foreign
+    requested_by: integer foreign
+    processed_by: integer foreign nullable
+    quantity: decimal:15,2
+    status: string
+    reason: text nullable
+    decision_notes: text nullable
+    approved_at: datetime nullable
+    rejected_at: datetime nullable
+    timestamps: true
+    relationships:
+      belongsTo: MaterialRequest, Warehouse, User (requested_by), User (processed_by)
 
   Payment:
     payment_number: string unique
     partner_id: integer foreign
+    job_order_id: integer foreign nullable
+    bank_id: integer foreign nullable
     payment_date: date
     amount: decimal:15,2
     transaction_type: string nullable
-    direction: string
-    method: string
+    direction: enum:inbound,outbound
+    method: enum:cash,bank,cheque
     reference: string nullable
     voided_at: datetime nullable
-    voided_by: integer nullable
-    void_reason: text nullable
     payment_type: string nullable
-    account_id: integer nullable
-    expense_account_id: integer nullable
-    petty_cash_account_id: integer nullable
+    account_id: integer foreign nullable
+    expense_account_id: integer foreign nullable
+    petty_cash_account_id: integer foreign nullable
     timestamps: true
     relationships:
-      belongsTo: Partner, Account, Account (expense_account_id), Account (petty_cash_account_id), User (voided_by)
+      belongsTo: Partner, Account, Account (expense_account_id), Account (petty_cash_account_id), Bank, JobOrder
       hasMany: PaymentAllocation
 
   PaymentAllocation:
@@ -232,23 +252,20 @@ models:
   ProductionPlan:
     week_start: date
     week_end: date
-    status: string
+    status: string default:draft
     timestamps: true
     relationships:
       hasMany: ProductionPlanMachine, ProductionReport
-      hasManyThrough: ProductionPlanItem (ProductionPlanMachine)
 
   ProductionPlanItem:
     production_plan_machine_id: integer foreign
-    production_plan_id: integer foreign
-    machine_id: integer foreign
     job_order_task_id: integer foreign
-    planned_quantity: integer
-    planned_plates: integer nullable
-    planned_rounds: integer nullable
+    planned_quantity: decimal:15,2
+    planned_plates: integer default:0
+    planned_rounds: integer default:0
     timestamps: true
     relationships:
-      belongsTo: ProductionPlanMachine, ProductionPlan, JobOrderTask
+      belongsTo: ProductionPlanMachine, JobOrderTask
       hasMany: ProductionReportItem
 
   ProductionPlanMachine:
@@ -261,21 +278,19 @@ models:
 
   ProductionReport:
     production_plan_id: integer foreign
-    status: string
+    status: string default:draft
     timestamps: true
     relationships:
       belongsTo: ProductionPlan
       hasMany: ProductionReportMachine
-      hasManyThrough: ProductionReportItem (ProductionReportMachine)
 
   ProductionReportItem:
     production_report_machine_id: integer foreign
-    production_report_id: integer foreign
     production_plan_item_id: integer foreign
     date: date
-    actual_quantity: integer
-    plates_used: integer nullable
-    rounds: integer nullable
+    actual_quantity: decimal:15,2
+    plates_used: integer default:0
+    rounds: integer default:0
     timestamps: true
     relationships:
       belongsTo: ProductionReportMachine, ProductionPlanItem
@@ -292,7 +307,8 @@ models:
     po_number: string unique
     partner_id: integer foreign
     order_date: date
-    status: string
+    due_date: date nullable
+    status: enum:draft,approved,received,cancelled
     subtotal: decimal:15,2 nullable
     timestamps: true
     relationships:
@@ -303,23 +319,25 @@ models:
   PurchaseOrderItem:
     purchase_order_id: integer foreign
     inventory_item_id: integer foreign
-    quantity: decimal:15,2
-    received_quantity: decimal:15,2 default:0
-    unit_price: decimal:15,2
+    quantity: decimal:12,2
+    unit_price: decimal:12,2
     total: decimal:15,2
-    status: string nullable
     timestamps: true
     relationships:
       belongsTo: PurchaseOrder, InventoryItem
 
   SalesOrder:
-    order_number: string
-    warehouse_id: integer foreign nullable
-    partner_id: integer foreign
+    order_number: string unique
+    warehouse_id: integer foreign
+    partner_id: integer foreign nullable
     order_date: date
-    subtotal: decimal:15,2
-    total: decimal:15,2
-    status: string
+    due_date: date nullable
+    payment_mode: string nullable
+    payment_method: string nullable
+    payment_reference: string nullable
+    subtotal: decimal:15,2 default:0
+    total: decimal:15,2 default:0
+    status: enum:draft,completed,void default:draft
     timestamps: true
     relationships:
       belongsTo: Warehouse, Partner
@@ -329,20 +347,20 @@ models:
   SalesOrderItem:
     sales_order_id: integer foreign
     inventory_item_id: integer foreign
-    quantity: decimal:15,2
-    unit_price: decimal:15,2
-    total: decimal:15,2
+    quantity: decimal:15,2 default:1
+    unit_price: decimal:15,2 default:0
+    total: decimal:15,2 default:0
     timestamps: true
     relationships:
       belongsTo: SalesOrder, InventoryItem
 
   StockAdjustment:
-    adjustment_number: string
+    adjustment_number: string unique
     warehouse_id: integer foreign
     adjustment_date: date
-    status: string
+    status: string default:draft
     reason: text nullable
-    created_by: integer foreign
+    created_by: integer foreign nullable
     posted_at: datetime nullable
     timestamps: true
     relationships:
@@ -353,8 +371,7 @@ models:
     stock_adjustment_id: integer foreign
     inventory_item_id: integer foreign
     system_quantity: decimal:15,2
-    adjustment_quantity: decimal:15,2
-    new_quantity: decimal:15,2
+    counted_quantity: decimal:15,2
     difference: decimal:15,2
     timestamps: true
     relationships:
@@ -363,13 +380,13 @@ models:
   StockMovement:
     inventory_item_id: integer foreign
     warehouse_id: integer foreign
-    type: string
+    type: enum:purchase,consumption,transfer_in,transfer_out,adjustment
     reference_type: string nullable
     reference_id: integer nullable
     quantity: decimal:15,2
     unit_cost: decimal:15,2 nullable
     total_cost: decimal:15,2 nullable
-    movement_date: datetime
+    movement_date: date
     timestamps: true
     relationships:
       belongsTo: InventoryItem, Warehouse
@@ -379,7 +396,7 @@ models:
     from_warehouse_id: integer foreign
     to_warehouse_id: integer foreign
     transfer_date: date
-    status: string
+    status: enum:draft,completed,cancelled
     timestamps: true
     relationships:
       belongsTo: Warehouse (from_warehouse_id), Warehouse (to_warehouse_id)
@@ -401,6 +418,7 @@ models:
     timestamps: true
     relationships:
       hasMany: InventoryBalance, StockMovement
+      belongsToMany: User
 
   User:
     name: string
@@ -409,7 +427,9 @@ models:
     role: string
     email_verified_at: datetime nullable
     timestamps: true
-    relationships: {}
+    relationships:
+      hasMany: JobOrderTask (designer_id), Artwork (uploaded_by), MaterialIssueApproval (requested_by), MaterialIssueApproval (processed_by), StockAdjustment (created_by), BankTransfer (created_by), BankTransfer (completed_by), Import, Export
+      belongsToMany: Warehouse
 
   Size:
     size: string
@@ -427,11 +447,12 @@ models:
     subtotal: decimal:15,2
     tax_amount: decimal:15,2 default:0
     total_amount: decimal:15,2
-    status: string
+    status: enum:draft,issued,partially_paid,paid,void
     timestamps: true
     relationships:
       belongsTo: Partner, JobOrder
-      hasMany: SalesInvoiceItem, PaymentAllocation
+      hasMany: SalesInvoiceItem
+      morphMany: PaymentAllocation (allocatable)
 
   SalesInvoiceItem:
     sales_invoice_id: integer foreign
@@ -454,11 +475,12 @@ models:
     subtotal: decimal:15,2
     tax_amount: decimal:15,2 default:0
     total_amount: decimal:15,2
-    status: string
+    status: enum:draft,posted,partially_paid,paid,void
     timestamps: true
     relationships:
       belongsTo: Partner, PurchaseOrder
-      hasMany: PurchaseInvoiceItem, PaymentAllocation
+      hasMany: PurchaseInvoiceItem
+      morphMany: PaymentAllocation (allocatable)
 
   PurchaseInvoiceItem:
     purchase_invoice_id: integer foreign
@@ -475,10 +497,79 @@ models:
   Account:
     name: string
     code: string unique
-    type: string
+    type: enum:Asset,Liability,Equity,Revenue,Expense
     timestamps: true
     relationships:
       hasMany: JournalItem
+
+  # BANKING
+
+  Bank:
+    name: string
+    code: string nullable
+    account_number: string nullable
+    account_holder_name: string nullable
+    bank_name: string nullable
+    branch: string nullable
+    current_balance: decimal:15,2
+    status: string nullable
+    notes: text nullable
+    timestamps: true
+    relationships:
+      hasMany: Payment, BankTransfer (from_bank_id), BankTransfer (to_bank_id)
+
+  BankTransfer:
+    transfer_number: string unique
+    from_bank_id: integer foreign
+    to_bank_id: integer foreign
+    amount: decimal:15,2
+    transfer_date: date
+    reference: string nullable
+    description: text nullable
+    status: string
+    created_by: integer foreign nullable
+    completed_by: integer foreign nullable
+    completed_at: datetime nullable
+    timestamps: true
+    relationships:
+      belongsTo: Bank (from_bank_id), Bank (to_bank_id), User (created_by), User (completed_by)
+
+  # IMPORT/EXPORT
+
+  Import:
+    completed_at: timestamp nullable
+    file_name: string
+    file_path: string
+    importer: string
+    processed_rows: unsignedInteger default:0
+    total_rows: unsignedInteger
+    successful_rows: unsignedInteger default:0
+    user_id: integer foreign
+    timestamps: true
+    relationships:
+      belongsTo: User
+      hasMany: FailedImportRow
+
+  FailedImportRow:
+    data: json
+    import_id: integer foreign
+    validation_error: text nullable
+    timestamps: true
+    relationships:
+      belongsTo: Import
+
+  Export:
+    completed_at: timestamp nullable
+    file_disk: string
+    file_name: string nullable
+    exporter: string
+    processed_rows: unsignedInteger default:0
+    total_rows: unsignedInteger
+    successful_rows: unsignedInteger default:0
+    user_id: integer foreign
+    timestamps: true
+    relationships:
+      belongsTo: User
 
   # System Models
 

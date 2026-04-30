@@ -2,8 +2,10 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Hr\Widgets\EmployeeSalaryTrendChart;
 use App\Filament\Hr\Widgets\HrPanelStats;
 use App\Filament\Hr\Widgets\SalaryRevisionHistoryTable;
+use App\Filament\Hr\Widgets\WorkforceCompositionChart;
 use App\Filament\Resources\Employees\EmployeeResource;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -39,6 +41,8 @@ class HrPanelProvider extends PanelProvider
             ])
             ->widgets([
                 HrPanelStats::class,
+                WorkforceCompositionChart::class,
+                EmployeeSalaryTrendChart::class,
                 SalaryRevisionHistoryTable::class,
             ])
             ->middleware([

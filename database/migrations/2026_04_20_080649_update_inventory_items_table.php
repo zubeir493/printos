@@ -24,8 +24,7 @@ return new class extends Migration
     {
         Schema::table('inventory_items', function (Blueprint $table) {
             $table->dropColumn('image');
-            // Reverting change() to enum is not supported well in SQLite, 
-            // but we can try to at least keep it as string.
+            $table->enum('type', ['raw_material', 'finished_good'])->change();
         });
     }
 };

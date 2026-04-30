@@ -2,8 +2,10 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Design\Widgets\ArtworkPipelineChart;
 use App\Filament\Design\Widgets\AwaitingYourUploadTable;
 use App\Filament\Design\Widgets\DesignPanelStats;
+use App\Filament\Design\Widgets\DesignSLAStats;
 use App\Filament\Design\Widgets\JobOrderTaskStatusChart;
 use App\Filament\Design\Widgets\MyActiveTasksTable;
 use App\Filament\Resources\Artworks\ArtworkResource;
@@ -42,7 +44,7 @@ class DesignPanelProvider extends PanelProvider
                 JobOrderResource::class,
                 JobOrderTaskResource::class,
                 EmailLogResource::class,
-                PartnerResource::class
+                PartnerResource::class,
 
             ])
             ->discoverPages(in: app_path('Filament/Design/Pages'), for: 'App\Filament\Design\Pages')
@@ -51,6 +53,8 @@ class DesignPanelProvider extends PanelProvider
             ])
             ->widgets([
                 DesignPanelStats::class,
+                DesignSLAStats::class,
+                ArtworkPipelineChart::class,
                 JobOrderTaskStatusChart::class,
                 AwaitingYourUploadTable::class,
                 MyActiveTasksTable::class,

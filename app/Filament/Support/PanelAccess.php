@@ -53,6 +53,6 @@ class PanelAccess
 
     public static function canManageSalesOrders(): bool
     {
-        return in_array(self::panelId(), ['admin', 'finance'], true);
+        return in_array(self::panelId(), ['admin', 'finance', 'sales', 'retail'], true);
     }
 }

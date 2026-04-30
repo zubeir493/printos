@@ -19,7 +19,7 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        // Recreate production_plan_items to avoid SQLite foreign key issues with dropping columns
+        // Recreate production_plan_items to avoid foreign key issues when dropping and recreating tables
         Schema::dropIfExists('production_plan_items');
         
         Schema::create('production_plan_items', function (Blueprint $table) {

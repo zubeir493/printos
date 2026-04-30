@@ -2,9 +2,6 @@
 
 namespace App\Providers\Filament;
 
-use App\Filament\Finance\Widgets\FinancePanelStats;
-use App\Filament\Finance\Widgets\OverdueInvoicesTable;
-use App\Filament\Finance\Widgets\UnallocatedPaymentsTable;
 use App\Filament\Finance\Pages\AccountStatementReport;
 use App\Filament\Finance\Pages\BalanceSheetReport;
 use App\Filament\Finance\Pages\GeneralLedgerReport;
@@ -13,6 +10,12 @@ use App\Filament\Finance\Pages\PayablesAgingReport;
 use App\Filament\Finance\Pages\ProfitLossStatementReport;
 use App\Filament\Finance\Pages\ReceivablesAgingReport;
 use App\Filament\Finance\Pages\TrialBalanceReport;
+use App\Filament\Finance\Widgets\AllocationHealthStats;
+use App\Filament\Finance\Widgets\ExpectedCashflowChart;
+use App\Filament\Finance\Widgets\FinancePanelStats;
+use App\Filament\Finance\Widgets\HighRiskReceivables;
+use App\Filament\Finance\Widgets\OverdueInvoicesTable;
+use App\Filament\Finance\Widgets\UnallocatedPaymentsTable;
 use App\Filament\Resources\Accounts\AccountResource;
 use App\Filament\Resources\Banks\BankResource;
 use App\Filament\Resources\BankTransfers\BankTransferResource;
@@ -26,7 +29,7 @@ use App\Filament\Resources\Payments\PaymentResource;
 use App\Filament\Resources\PurchaseOrderItems\PurchaseOrderItemResource;
 use App\Filament\Resources\PurchaseOrders\PurchaseOrderResource;
 use App\Filament\Resources\SalesOrders\SalesOrderResource;
-use App\Models\JobOrderTask;
+use App\Filament\Widgets\BankBalancesChart;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -82,6 +85,10 @@ class FinancePanelProvider extends PanelProvider
             ])
             ->widgets([
                 FinancePanelStats::class,
+                AllocationHealthStats::class,
+                BankBalancesChart::class,
+                ExpectedCashflowChart::class,
+                HighRiskReceivables::class,
                 UnallocatedPaymentsTable::class,
                 OverdueInvoicesTable::class,
             ])

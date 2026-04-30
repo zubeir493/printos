@@ -3,6 +3,10 @@
 namespace App\Providers\Filament;
 
 use App\Filament\Resources\SalesOrders\SalesOrderResource;
+use App\Filament\Sales\Widgets\SalesConversionStats;
+use App\Filament\Sales\Widgets\SalesOrdersFocusTable;
+use App\Filament\Sales\Widgets\SalesPanelStats;
+use App\Filament\Sales\Widgets\SalesPipelineChart;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -11,8 +15,6 @@ use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
-use Filament\Widgets\AccountWidget;
-use Filament\Widgets\FilamentInfoWidget;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
@@ -37,10 +39,11 @@ class SalesPanelProvider extends PanelProvider
             ->pages([
                 Dashboard::class,
             ])
-            ->discoverWidgets(in: app_path('Filament/Sales/Widgets'), for: 'App\Filament\Sales\Widgets')
             ->widgets([
-                AccountWidget::class,
-                FilamentInfoWidget::class,
+                SalesPanelStats::class,
+                SalesPipelineChart::class,
+                SalesConversionStats::class,
+                SalesOrdersFocusTable::class,
             ])
             ->middleware([
                 EncryptCookies::class,

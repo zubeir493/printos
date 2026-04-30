@@ -3,6 +3,8 @@
 namespace App\Providers\Filament;
 
 use App\Filament\Operations\Widgets\HighPriorityJobsTable;
+use App\Filament\Operations\Widgets\OperationsHealthStats;
+use App\Filament\Operations\Widgets\OperationsJobStatusChart;
 use App\Filament\Operations\Widgets\OperationsPanelStats;
 use App\Filament\Resources\Artworks\ArtworkResource;
 use App\Filament\Resources\Dispatches\DispatchResource;
@@ -15,8 +17,8 @@ use App\Filament\Resources\MaterialRequests\MaterialRequestResource;
 use App\Filament\Resources\Partners\PartnerResource;
 use App\Filament\Resources\ProductionPlans\ProductionPlanResource;
 use App\Filament\Resources\ProductionReports\ProductionReportResource;
-use App\Filament\Resources\PurchaseOrders\PurchaseOrderResource;
 use App\Filament\Resources\PurchaseOrderItems\PurchaseOrderItemResource;
+use App\Filament\Resources\PurchaseOrders\PurchaseOrderResource;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -64,6 +66,8 @@ class OperationsPanelProvider extends PanelProvider
             ])
             ->widgets([
                 OperationsPanelStats::class,
+                OperationsHealthStats::class,
+                OperationsJobStatusChart::class,
                 HighPriorityJobsTable::class,
             ])
             ->middleware([

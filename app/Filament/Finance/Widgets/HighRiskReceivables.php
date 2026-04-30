@@ -3,15 +3,19 @@
 namespace App\Filament\Finance\Widgets;
 
 use App\Models\Partner;
+use App\Models\SalesOrder;
+use Filament\Actions\Action;
+use Filament\Notifications\Notification;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget as BaseWidget;
-use Illuminate\Database\Eloquent\Builder;
 
 class HighRiskReceivables extends BaseWidget
 {
     protected static ?int $sort = 3;
-    protected int | string | array $columnSpan = 'full';
+
+    protected int|string|array $columnSpan = 'full';
+
     protected static ?string $heading = 'High-Risk Receivables (Aging > 45 Days)';
 
     public function table(Table $table): Table
@@ -22,7 +26,7 @@ class HighRiskReceivables extends BaseWidget
                     ->where('is_customer', true)
                     ->join('sales_orders', 'partners.id', '=', 'sales_orders.partner_id')
                     ->select('partners.*')
-                    ->selectRaw('SUM(sales_orders.total) - COALESCE((SELECT SUM(pa.allocated_amount) FROM payment_allocations pa WHERE pa.allocatable_id = sales_orders.id AND pa.allocatable_type = ?), 0) as total_balance', [\App\Models\SalesOrder::class])
+                    ->selectRaw('SUM(sales_orders.total) - COALESCE((SELECT SUM(pa.allocated_amount) FROM payment_allocations pa WHERE pa.allocatable_id = sales_orders.id AND pa.allocatable_type = ?), 0) as total_balance', [SalesOrder::class])
                     ->groupBy('partners.id')
                     ->having('total_balance', '>', 0)
                     ->orderByDesc('total_balance')
@@ -32,7 +36,7 @@ class HighRiskReceivables extends BaseWidget
                 Tables\Columns\TextColumn::make('name')
                     ->label('Customer')
                     ->searchable(),
-                Tables\Columns\TextColumn::make('email')
+                Tables\Columns\TextColumn::make('phone')
                     ->label('Contact'),
                 Tables\Columns\TextColumn::make('total_balance')
                     ->label('Outstanding Balance')
@@ -41,11 +45,11 @@ class HighRiskReceivables extends BaseWidget
                     ->sortable(),
             ])
             ->actions([
-                \Filament\Actions\Action::make('remind')
+                Action::make('remind')
                     ->label('Send Reminder')
                     ->icon('heroicon-m-envelope')
                     ->color('warning')
-                    ->action(fn (Partner $record) => \Filament\Notifications\Notification::make()->title('Reminder Sent')->success()->send()),
+                    ->action(fn (Partner $record) => Notification::make()->title('Reminder Sent')->success()->send()),
             ]);
     }
 }

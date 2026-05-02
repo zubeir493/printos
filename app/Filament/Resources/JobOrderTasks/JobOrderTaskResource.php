@@ -59,16 +59,11 @@ class JobOrderTaskResource extends Resource
 
     public static function getPages(): array
     {
-        $pages = [
+        return [
             'index' => ListJobOrderTasks::route('/'),
+            'create' => CreateJobOrderTask::route('/create'),
             'view' => \App\Filament\Resources\JobOrderTasks\Pages\ViewJobOrderTask::route('/{record}'),
+            'edit' => EditJobOrderTask::route('/{record}/edit'),
         ];
-
-        if (PanelAccess::canManageJobOrderTasks()) {
-            $pages['create'] = CreateJobOrderTask::route('/create');
-            $pages['edit'] = EditJobOrderTask::route('/{record}/edit');
-        }
-
-        return $pages;
     }
 }

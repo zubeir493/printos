@@ -17,12 +17,14 @@ class StockMovementForm
                     ->relationship('inventoryItem', 'name')
                     ->required()
                     ->searchable()
+                    ->preload()
                     ->reactive(),
                 Select::make('warehouse_id')
                     ->relationship('warehouse', 'name')
                     ->default(fn () => \App\Models\Warehouse::where('is_default', true)->value('id'))
                     ->required()
                     ->searchable()
+                    ->preload()
                     ->reactive(),
                 TextInput::make('type')
                     ->required()

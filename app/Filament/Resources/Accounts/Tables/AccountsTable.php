@@ -31,9 +31,7 @@ class AccountsTable
                         'expense' => 'Expense',
                     ]),
             ])
-            ->recordActions([
-                EditAction::make(),
-            ])
+            ->recordActions([])
             ->toolbarActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make(),

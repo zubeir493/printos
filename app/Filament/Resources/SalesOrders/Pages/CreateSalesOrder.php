@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\SalesOrders\Pages;
 
 use App\Filament\Resources\SalesOrders\SalesOrderResource;
+use App\Filament\Support\PanelAccess;
 use App\Services\SalesOrderPaymentService;
 use Filament\Resources\Pages\CreateRecord;
 use Filament\Notifications\Notification;
@@ -10,6 +11,11 @@ use Filament\Notifications\Notification;
 class CreateSalesOrder extends CreateRecord
 {
     protected static string $resource = SalesOrderResource::class;
+
+    public static function canAccess($record = null): bool
+    {
+        return PanelAccess::canManageSalesOrders();
+    }
 
     protected function afterCreate(): void
     {

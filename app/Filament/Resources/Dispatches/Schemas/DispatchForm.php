@@ -36,6 +36,7 @@ class DispatchForm
                                     ->pluck('display_name', 'id');
                             })
                             ->searchable()
+                            ->preload()
                             ->live()
                             ->required()
                             ->helperText('Only active client jobs are shown'),
@@ -48,6 +49,7 @@ class DispatchForm
                             ->default(fn () => \App\Models\Warehouse::where('is_default', true)->value('id'))
                             ->required()
                             ->searchable()
+                            ->preload()
                             ->live()
                             ->afterStateUpdated(fn ($state, callable $set) => $set('warehouse_id', $state)),
                         Textarea::make('remarks')

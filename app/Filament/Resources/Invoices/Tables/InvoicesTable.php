@@ -6,12 +6,8 @@ use Filament\Actions\Action as ActionsAction;
 use Filament\Actions\BulkActionGroup as ActionsBulkActionGroup;
 use Filament\Actions\DeleteBulkAction as ActionsDeleteBulkAction;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\BadgeColumn;
 use Filament\Tables\Table;
-use Filament\Tables\Actions\Action;
-use Filament\Tables\Actions\BulkActionGroup;
-use Filament\Tables\Actions\DeleteBulkAction;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\Filter;
 
@@ -114,6 +110,12 @@ class InvoicesTable
                     ->toggle(),
             ])
             ->actions([
+                ActionsAction::make('edit')
+                    ->label('Edit')
+                    ->url(fn ($record): string => \App\Filament\Resources\Invoices\InvoiceResource::getUrl('edit', ['record' => $record]))
+                    ->icon('heroicon-o-pencil-square')
+                    ->color('primary'),
+                    
                 ActionsAction::make('download')
                     ->label('Download')
                     ->icon('heroicon-o-arrow-down-tray')

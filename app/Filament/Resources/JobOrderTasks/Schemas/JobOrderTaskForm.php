@@ -10,7 +10,7 @@ use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Repeater\TableColumn;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Textarea;
+
 use Filament\Schemas\Schema;
 
 class JobOrderTaskForm
@@ -65,6 +65,7 @@ class JobOrderTaskForm
                             ->label('Material')
                             ->options(\App\Models\InventoryItem::pluck('name', 'id'))
                             ->searchable()
+                            ->preload()
                             ->required()
                             ->live()
                             ->afterStateUpdated(function ($state, callable $set) {

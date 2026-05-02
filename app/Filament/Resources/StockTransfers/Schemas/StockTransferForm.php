@@ -69,6 +69,7 @@ class StockTransferForm
                             ->relationship('inventoryItem', 'name')
                             ->required()
                             ->searchable()
+                            ->preload()
                             ->reactive(),
                         TextInput::make('quantity')
                             ->numeric()

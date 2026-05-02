@@ -19,6 +19,7 @@ class PaymentAllocationForm
                 Select::make('payment_id')
                     ->relationship('payment', 'payment_number')
                     ->searchable()
+                    ->preload()
                     ->required(),
 
                 TextInput::make('allocated_amount')
@@ -40,6 +41,7 @@ class PaymentAllocationForm
                     ->label('Document #')
                     ->required()
                     ->searchable()
+                    ->preload()
                     ->options(function (Get $get) {
                         $type = $get('allocatable_type');
 

@@ -46,6 +46,7 @@ class JobOrderForm
                                         TextInput::make('address'),
                                         Hidden::make('is_customer')->default(true),
                                     ])
+                                    ->preload()
                                     ->searchable()
                                     ->required(),
                                 TextInput::make('job_order_number')
@@ -98,6 +99,7 @@ class JobOrderForm
 
                                 Select::make('size')
                                     ->label('Size')
+                                    ->preload()
                                     ->relationship('sizeItem', 'size')
                                     ->createOptionForm([
                                         TextInput::make('size')
@@ -129,6 +131,7 @@ class JobOrderForm
                                             ->options(\App\Models\InventoryItem::pluck('name', 'id'))
                                             ->searchable()
                                             ->required()
+                                            ->preload()
                                             ->live()
                                             ->afterStateUpdated(function ($state, callable $set) {
                                                 $item = \App\Models\InventoryItem::find($state);

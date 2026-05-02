@@ -46,6 +46,7 @@ class PurchaseOrderForm
                                     ->label('Supplier')
                                     ->relationship('partner', 'name', modifyQueryUsing: fn($query) => $query->where('is_supplier', true))
                                     ->searchable()
+                                    ->preload()
                                     ->createOptionForm([
                                         TextInput::make('name')
                                             ->required(),
@@ -77,6 +78,7 @@ class PurchaseOrderForm
                                     ->relationship('inventoryItem', 'name', fn($query) =>
                                     $query->select('id', 'name', 'purchase_unit'))
                                     ->searchable()
+                                    ->preload()
                                     ->required()
                                     ->live()
                                     ->afterStateUpdated(function ($state, callable $set) {

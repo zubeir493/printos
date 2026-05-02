@@ -43,8 +43,8 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->widgets([
                 AdminHealthStats::class,
-                BankBalancesChart::class,
                 ProfitabilityMarginChart::class,
+                BankBalancesChart::class,
                 SystemBottlenecksChart::class,
                 AdminExceptionsTable::class,
             ])

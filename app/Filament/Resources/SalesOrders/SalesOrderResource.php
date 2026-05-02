@@ -55,16 +55,11 @@ class SalesOrderResource extends Resource
 
     public static function getPages(): array
     {
-        $pages = [
+        return [
             'index' => ListSalesOrders::route('/'),
+            'create' => CreateSalesOrder::route('/create'),
             'view' => \App\Filament\Resources\SalesOrders\Pages\ViewSalesOrder::route('/{record}'),
+            'edit' => EditSalesOrder::route('/{record}/edit'),
         ];
-
-        if (PanelAccess::canManageSalesOrders()) {
-            $pages['create'] = CreateSalesOrder::route('/create');
-            $pages['edit'] = EditSalesOrder::route('/{record}/edit');
-        }
-
-        return $pages;
     }
 }

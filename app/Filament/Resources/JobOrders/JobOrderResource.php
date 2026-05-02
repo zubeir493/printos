@@ -15,7 +15,6 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
 
 class JobOrderResource extends Resource
 {
@@ -68,16 +67,11 @@ class JobOrderResource extends Resource
 
     public static function getPages(): array
     {
-        $pages = [
+        return [
             'index' => ListJobOrders::route('/'),
+            'create' => CreateJobOrder::route('/create'),
             'view' => Pages\ViewJobOrder::route('/{record}'),
+            'edit' => EditJobOrder::route('/{record}/edit'),
         ];
-
-        if (PanelAccess::canManageJobOrders()) {
-            $pages['create'] = CreateJobOrder::route('/create');
-            $pages['edit'] = EditJobOrder::route('/{record}/edit');
-        }
-
-        return $pages;
     }
 }

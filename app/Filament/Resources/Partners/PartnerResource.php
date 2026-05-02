@@ -54,16 +54,11 @@ class PartnerResource extends Resource
 
     public static function getPages(): array
     {
-        $pages = [
+        return [
             'index' => ListPartners::route('/'),
+            'create' => CreatePartner::route('/create'),
             'view' => \App\Filament\Resources\Partners\Pages\ViewPartner::route('/{record}'),
+            'edit' => EditPartner::route('/{record}/edit'),
         ];
-
-        if (PanelAccess::canManagePartners()) {
-            $pages['create'] = CreatePartner::route('/create');
-            $pages['edit'] = EditPartner::route('/{record}/edit');
-        }
-
-        return $pages;
     }
 }

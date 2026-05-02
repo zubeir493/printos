@@ -13,7 +13,11 @@ class ListInvoices extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            Actions\CreateAction::make(),
+            Actions\Action::make('create')
+                ->label('Create Invoice')
+                ->url(fn() => static::getResource()::getUrl('create'))
+                ->icon('heroicon-o-plus')
+                ->color('primary'),
         ];
     }
 }

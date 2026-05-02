@@ -67,6 +67,7 @@ class StockAdjustmentForm
                             ->relationship('inventoryItem', 'name')
                             ->required()
                             ->searchable()
+                            ->preload()
                             ->reactive()
                             ->afterStateUpdated(function ($state, $set, $get) {
                                 $warehouseId = $get('../../warehouse_id');

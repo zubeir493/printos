@@ -9,8 +9,6 @@ class BankBalancesChart extends ChartWidget
 {
     protected static ?int $sort = 2;
 
-    protected int|string|array $columnSpan = 'full';
-
     public function getHeading(): string
     {
         $totalBalance = Bank::query()

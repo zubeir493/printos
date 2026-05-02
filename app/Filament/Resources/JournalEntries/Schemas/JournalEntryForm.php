@@ -41,6 +41,7 @@ class JournalEntryForm
                                         });
                                 })
                                 ->searchable()
+                                ->preload()
                                 ->required(),
                             TextInput::make('debit')->numeric()->default(0)->suffix('Birr')->live(),
                             TextInput::make('credit')->numeric()->default(0)->suffix('Birr')->live(),
@@ -54,7 +55,8 @@ class JournalEntryForm
                                         ->mapWithKeys(fn($n, $id) => ["JobOrder:{$id}" => "#{$n}"])
                                         ->toArray(),
                                 ])
-                                ->searchable(),
+                                ->searchable()
+                                ->preload(),
 
                         ])
                         ->minItems(2)->defaultItems(2)->columnSpanFull()->compact()->addActionLabel('Add line')

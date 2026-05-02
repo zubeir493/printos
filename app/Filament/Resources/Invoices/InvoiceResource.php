@@ -45,6 +45,8 @@ class InvoiceResource extends Resource
     {
         return [
             'index' => \App\Filament\Resources\Invoices\Pages\ListInvoices::route('/'),
+            'create' => \App\Filament\Resources\Invoices\Pages\CreateInvoice::route('/create'),
+            'edit' => \App\Filament\Resources\Invoices\Pages\EditInvoice::route('/{record}/edit'),
             'view' => \App\Filament\Resources\Invoices\Pages\ViewInvoice::route('/{record}'),
         ];
     }

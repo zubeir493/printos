@@ -65,17 +65,12 @@ class PurchaseOrderResource extends Resource
 
     public static function getPages(): array
     {
-        $pages = [
+        return [
             'index' => ListPurchaseOrders::route('/'),
+            'create' => CreatePurchaseOrder::route('/create'),
             'view' => \App\Filament\Resources\PurchaseOrders\Pages\ViewPurchaseOrder::route('/{record}'),
+            'edit' => EditPurchaseOrder::route('/{record}/edit'),
         ];
-
-        if (PanelAccess::canManagePurchaseOrders()) {
-            $pages['create'] = CreatePurchaseOrder::route('/create');
-            $pages['edit'] = EditPurchaseOrder::route('/{record}/edit');
-        }
-
-        return $pages;
     }
 
     public static function updateSubtotal($get, $set)

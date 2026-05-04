@@ -6,6 +6,7 @@ use App\Models\Payment;
 use App\Models\PaymentAllocation;
 use App\Policies\PaymentPolicy;
 use App\Policies\PaymentAllocationPolicy;
+use Filament\Actions\CreateAction;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
@@ -24,6 +25,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        CreateAction::configureUsing(fn (CreateAction $action) => $action->createAnother(false));
+
         Gate::policy(Payment::class, PaymentPolicy::class);
         Gate::policy(PaymentAllocation::class, PaymentAllocationPolicy::class);
 

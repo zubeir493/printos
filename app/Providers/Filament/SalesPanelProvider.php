@@ -30,9 +30,11 @@ class SalesPanelProvider extends PanelProvider
             ->id('sales')
             ->path('sales')
             ->viteTheme('resources/css/filament/admin/theme.css')
+            ->darkMode(false)
+            ->defaultThemeMode(\Filament\Enums\ThemeMode::Light)
             ->databaseNotifications()
             ->colors([
-                'primary' => Color::Amber,
+                'primary' => Color::Indigo,
             ])
             ->resources([
                 SalesOrderResource::class,

@@ -32,6 +32,8 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('/')
             ->viteTheme('resources/css/filament/admin/theme.css')
+            ->darkMode(false)
+            ->defaultThemeMode(\Filament\Enums\ThemeMode::Light)
             ->login()
             ->databaseNotifications()
             ->colors([

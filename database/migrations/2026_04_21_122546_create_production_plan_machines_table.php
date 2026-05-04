@@ -11,6 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
+        Schema::disableForeignKeyConstraints();
+
         Schema::dropIfExists('production_plan_machines');
         Schema::create('production_plan_machines', function (Blueprint $table) {
             $table->id();
@@ -31,6 +33,8 @@ return new class extends Migration
             $table->integer('planned_rounds')->default(0);
             $table->timestamps();
         });
+
+        Schema::enableForeignKeyConstraints();
     }
 
     /**
@@ -38,6 +42,8 @@ return new class extends Migration
      */
     public function down(): void
     {
+        Schema::disableForeignKeyConstraints();
+
         Schema::dropIfExists('production_plan_items');
         Schema::dropIfExists('production_plan_machines');
         
@@ -52,5 +58,7 @@ return new class extends Migration
             $table->integer('planned_rounds')->default(0);
             $table->timestamps();
         });
+
+        Schema::enableForeignKeyConstraints();
     }
 };

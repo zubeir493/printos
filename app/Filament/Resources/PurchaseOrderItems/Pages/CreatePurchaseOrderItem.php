@@ -3,7 +3,7 @@
 namespace App\Filament\Resources\PurchaseOrderItems\Pages;
 
 use App\Filament\Resources\PurchaseOrderItems\PurchaseOrderItemResource;
-use Filament\Resources\Pages\CreateRecord;
+use App\Filament\Resources\Pages\CreateRecord;
 
 class CreatePurchaseOrderItem extends CreateRecord
 {

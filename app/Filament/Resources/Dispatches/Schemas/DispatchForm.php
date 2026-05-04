@@ -43,6 +43,14 @@ class DispatchForm
                         DatePicker::make('delivery_date')
                             ->default(now())
                             ->required(),
+                        Select::make('status')
+                            ->options([
+                                'pending' => 'Pending',
+                                'completed' => 'Completed',
+                                'cancelled' => 'Cancelled',
+                            ])
+                            ->default('pending')
+                            ->required(),
                         Select::make('warehouse_id')
                             ->label('Dispatch From Warehouse')
                             ->options(\App\Models\Warehouse::pluck('name', 'id'))

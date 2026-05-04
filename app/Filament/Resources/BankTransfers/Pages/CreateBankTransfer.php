@@ -3,7 +3,7 @@
 namespace App\Filament\Resources\BankTransfers\Pages;
 
 use App\Filament\Resources\BankTransfers\BankTransferResource;
-use Filament\Resources\Pages\CreateRecord;
+use App\Filament\Resources\Pages\CreateRecord;
 
 class CreateBankTransfer extends CreateRecord
 {

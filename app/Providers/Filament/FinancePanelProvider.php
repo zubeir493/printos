@@ -53,9 +53,11 @@ class FinancePanelProvider extends PanelProvider
             ->id('finance')
             ->path('finance')
             ->viteTheme('resources/css/filament/admin/theme.css')
+            ->darkMode(false)
+            ->defaultThemeMode(\Filament\Enums\ThemeMode::Light)
             ->databaseNotifications()
             ->colors([
-                'primary' => Color::Emerald,
+                'primary' => Color::Indigo,
             ])
             ->resources([
                 AccountResource::class,

@@ -4,7 +4,7 @@ namespace App\Filament\Resources\Partners\Pages;
 
 use App\Filament\Resources\Partners\PartnerResource;
 use App\Filament\Support\PanelAccess;
-use Filament\Resources\Pages\CreateRecord;
+use App\Filament\Resources\Pages\CreateRecord;
 
 class CreatePartner extends CreateRecord
 {

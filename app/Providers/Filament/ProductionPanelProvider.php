@@ -37,9 +37,11 @@ class ProductionPanelProvider extends PanelProvider
             ->id('production')
             ->path('production')
             ->viteTheme('resources/css/filament/admin/theme.css')
+            ->darkMode(false)
+            ->defaultThemeMode(\Filament\Enums\ThemeMode::Light)
             ->databaseNotifications()
             ->colors([
-                'primary' => Color::Orange,
+                'primary' => Color::Indigo,
             ])
             ->resources([
                 JobOrderTaskResource::class,

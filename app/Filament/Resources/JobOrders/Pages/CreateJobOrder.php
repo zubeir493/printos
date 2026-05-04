@@ -4,7 +4,7 @@ namespace App\Filament\Resources\JobOrders\Pages;
 
 use App\Filament\Resources\JobOrders\JobOrderResource;
 use App\Filament\Support\PanelAccess;
-use Filament\Resources\Pages\CreateRecord;
+use App\Filament\Resources\Pages\CreateRecord;
 
 class CreateJobOrder extends CreateRecord
 {

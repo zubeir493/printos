@@ -30,9 +30,11 @@ class HrPanelProvider extends PanelProvider
             ->id('hr')
             ->path('hr')
             ->viteTheme('resources/css/filament/admin/theme.css')
+            ->darkMode(false)
+            ->defaultThemeMode(\Filament\Enums\ThemeMode::Light)
             ->databaseNotifications()
             ->colors([
-                'primary' => Color::Pink,
+                'primary' => Color::Indigo,
             ])
             ->resources([
                 EmployeeResource::class,

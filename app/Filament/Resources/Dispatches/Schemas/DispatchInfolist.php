@@ -24,6 +24,14 @@ class DispatchInfolist
                         TextEntry::make('delivery_date')
                             ->label('Delivery Date')
                             ->date(),
+                        TextEntry::make('status')
+                            ->badge()
+                            ->color(fn (string $state): string => match ($state) {
+                                'pending' => 'warning',
+                                'completed' => 'success',
+                                'cancelled' => 'danger',
+                                default => 'gray',
+                            }),
                         TextEntry::make('created_at')
                             ->label('Created')
                             ->dateTime()

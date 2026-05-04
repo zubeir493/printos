@@ -26,11 +26,26 @@ class DispatchesTable
                     ->label('Date')
                     ->date('d M, Y')
                     ->sortable(),
+                TextColumn::make('status')
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'pending' => 'warning',
+                        'completed' => 'success',
+                        'cancelled' => 'danger',
+                        default => 'gray',
+                    })
+                    ->searchable(),
             ])
             ->filters([
                 \Filament\Tables\Filters\SelectFilter::make('job_order_id')
                     ->label('Job Order')
                     ->options(\App\Models\JobOrder::pluck('job_order_number', 'id')->toArray()),
+                \Filament\Tables\Filters\SelectFilter::make('status')
+                    ->options([
+                        'pending' => 'Pending',
+                        'completed' => 'Completed',
+                        'cancelled' => 'Cancelled',
+                    ]),
             ])
             ->recordActions([
                 EditAction::make(),

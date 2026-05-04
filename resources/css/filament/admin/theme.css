@@ -15,7 +15,7 @@
     position: fixed;
     right: 0;
     width: calc(100vw - 15rem);    
-    z-index: 100;
+    z-index: 20;
 }
 
 .fi-sidebar {

@@ -42,9 +42,11 @@ class OperationsPanelProvider extends PanelProvider
             ->id('operations')
             ->path('operations')
             ->viteTheme('resources/css/filament/admin/theme.css')
+            ->darkMode(false)
+            ->defaultThemeMode(\Filament\Enums\ThemeMode::Light)
             ->databaseNotifications()
             ->colors([
-                'primary' => Color::Cyan,
+                'primary' => Color::Indigo,
             ])
             ->resources([
                 ArtworkResource::class,

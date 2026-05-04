@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('stock_movements', function (Blueprint $table) {
-            $table->index(['inventory_item_id', 'warehouse_id', 'movement_date']);
+            $table->index(['inventory_item_id', 'warehouse_id', 'movement_date'], 'stock_movements_item_wh_date_idx');
         });
     }
 
@@ -22,7 +22,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('stock_movements', function (Blueprint $table) {
-            $table->dropIndex(['inventory_item_id', 'warehouse_id', 'movement_date']);
+            $table->dropIndex('stock_movements_item_wh_date_idx');
         });
     }
 };

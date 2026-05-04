@@ -20,6 +20,7 @@ class Dispatch extends Model
         'job_order_id',
         'warehouse_id',
         'delivery_date',
+        'status',
         'remarks',
     ];
 
@@ -35,6 +36,7 @@ class Dispatch extends Model
             'job_order_id' => 'integer',
             'warehouse_id' => 'integer',
             'delivery_date' => 'date',
+            'status' => 'string',
         ];
     }
 

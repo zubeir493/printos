@@ -40,9 +40,11 @@ class WarehousePanelProvider extends PanelProvider
             ->id('warehouse')
             ->path('warehouse')
             ->viteTheme('resources/css/filament/admin/theme.css')
+            ->darkMode(false)
+            ->defaultThemeMode(\Filament\Enums\ThemeMode::Light)
             ->databaseNotifications()
             ->colors([
-                'primary' => Color::Teal,
+                'primary' => Color::Indigo,
             ])
             ->resources([
                 InventoryItemResource::class,

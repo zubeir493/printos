@@ -3,7 +3,7 @@
 namespace App\Filament\Resources\PaymentAllocations\Pages;
 
 use App\Filament\Resources\PaymentAllocations\PaymentAllocationResource;
-use Filament\Resources\Pages\CreateRecord;
+use App\Filament\Resources\Pages\CreateRecord;
 
 class CreatePaymentAllocation extends CreateRecord
 {

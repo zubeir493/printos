@@ -36,6 +36,8 @@ class DesignPanelProvider extends PanelProvider
             ->id('design')
             ->path('design')
             ->viteTheme('resources/css/filament/admin/theme.css')
+            ->darkMode(false)
+            ->defaultThemeMode(\Filament\Enums\ThemeMode::Light)
             ->databaseNotifications()
             ->colors([
                 'primary' => Color::Indigo,

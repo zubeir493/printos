@@ -3,7 +3,7 @@
 namespace App\Filament\Resources\ProductionReports\Pages;
 
 use App\Filament\Resources\ProductionReports\ProductionReportResource;
-use Filament\Resources\Pages\CreateRecord;
+use App\Filament\Resources\Pages\CreateRecord;
 
 class CreateProductionReport extends CreateRecord
 {

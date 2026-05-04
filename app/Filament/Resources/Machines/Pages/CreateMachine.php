@@ -3,7 +3,7 @@
 namespace App\Filament\Resources\Machines\Pages;
 
 use App\Filament\Resources\Machines\MachineResource;
-use Filament\Resources\Pages\CreateRecord;
+use App\Filament\Resources\Pages\CreateRecord;
 
 class CreateMachine extends CreateRecord
 {

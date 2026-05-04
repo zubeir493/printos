@@ -3,7 +3,7 @@
 namespace App\Filament\Resources\JournalEntries\Pages;
 
 use App\Filament\Resources\JournalEntries\JournalEntryResource;
-use Filament\Resources\Pages\CreateRecord;
+use App\Filament\Resources\Pages\CreateRecord;
 
 class CreateJournalEntry extends CreateRecord
 {

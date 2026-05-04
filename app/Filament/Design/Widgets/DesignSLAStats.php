@@ -5,6 +5,7 @@ namespace App\Filament\Design\Widgets;
 use App\Models\Artwork;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
+use Illuminate\Support\Facades\DB;
 
 class DesignSLAStats extends BaseWidget
 {
@@ -12,9 +13,15 @@ class DesignSLAStats extends BaseWidget
 
     protected function getStats(): array
     {
+        $approvalTimeExpression = match (DB::connection()->getDriverName()) {
+            'mysql', 'mariadb' => 'AVG(TIMESTAMPDIFF(DAY, created_at, updated_at)) as avg_days',
+            'pgsql' => 'AVG(EXTRACT(DAY FROM updated_at - created_at)) as avg_days',
+            default => 'AVG(JULIANDAY(updated_at) - JULIANDAY(created_at)) as avg_days',
+        };
+
         // 1. Avg Approval Time (days)
         $avgApprovalDays = \App\Models\Artwork::where('is_approved', true)
-            ->selectRaw('AVG(JULIANDAY(updated_at) - JULIANDAY(created_at)) as avg_days')
+            ->selectRaw($approvalTimeExpression)
             ->value('avg_days') ?? 0;
         
         // 2. Count of Job Orders that are in 'design' status

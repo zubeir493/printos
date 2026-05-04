@@ -5,7 +5,7 @@ namespace App\Filament\Resources\SalesOrders\Pages;
 use App\Filament\Resources\SalesOrders\SalesOrderResource;
 use App\Filament\Support\PanelAccess;
 use App\Services\SalesOrderPaymentService;
-use Filament\Resources\Pages\CreateRecord;
+use App\Filament\Resources\Pages\CreateRecord;
 use Filament\Notifications\Notification;
 
 class CreateSalesOrder extends CreateRecord

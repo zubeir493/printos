@@ -7,6 +7,7 @@ use App\Models\StockAdjustment;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class AdminHealthStats extends BaseWidget
 {
@@ -15,6 +16,12 @@ class AdminHealthStats extends BaseWidget
 
     protected function getStats(): array
     {
+        $cashConversionExpression = match (DB::connection()->getDriverName()) {
+            'mysql', 'mariadb' => 'AVG(TIMESTAMPDIFF(DAY, sales_orders.created_at, payment_allocations.created_at)) as avg_days',
+            'pgsql' => 'AVG(EXTRACT(DAY FROM payment_allocations.created_at - sales_orders.created_at)) as avg_days',
+            default => 'AVG(JULIANDAY(payment_allocations.created_at) - JULIANDAY(sales_orders.created_at)) as avg_days',
+        };
+
         // 1. Avg Cash Conversion Cycle (Approx: Order Date to Payment Date)
         // Calculating average days between SalesOrder created_at and its latest PaymentAllocation
         $cashConversionDays = \App\Models\SalesOrder::where('status', 'completed')
@@ -22,7 +29,7 @@ class AdminHealthStats extends BaseWidget
                 $join->on('sales_orders.id', '=', 'payment_allocations.allocatable_id')
                     ->where('payment_allocations.allocatable_type', '=', \App\Models\SalesOrder::class);
             })
-            ->selectRaw('AVG(JULIANDAY(payment_allocations.created_at) - JULIANDAY(sales_orders.created_at)) as avg_days')
+            ->selectRaw($cashConversionExpression)
             ->value('avg_days') ?? 0;
 
         // 2. Dispatch Health: Count of Pending Dispatches older than 3 days

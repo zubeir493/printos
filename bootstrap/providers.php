@@ -2,6 +2,7 @@
 
 return [
     App\Providers\AppServiceProvider::class,
+    App\Providers\MailtrapServiceProvider::class,
     App\Providers\Filament\AdminPanelProvider::class,
     App\Providers\Filament\DesignPanelProvider::class,
     App\Providers\Filament\FinancePanelProvider::class,

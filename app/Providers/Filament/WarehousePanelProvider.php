@@ -39,6 +39,7 @@ class WarehousePanelProvider extends PanelProvider
         return $panel
             ->id('warehouse')
             ->path('warehouse')
+            ->viteTheme('resources/css/filament/admin/theme.css')
             ->databaseNotifications()
             ->colors([
                 'primary' => Color::Teal,

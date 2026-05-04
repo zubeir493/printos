@@ -1,0 +1,111 @@
+@import '../../../../vendor/filament/filament/resources/css/theme.css';
+
+@source '../../../../app/Filament/**/*';
+@source '../../../../resources/views/filament/**/*';
+
+.fi-layout{
+    background: #1a1a1a;
+}
+
+.fi-main-ctn{
+    background: var(--color-gray-50);
+    border-top-right-radius: .75rem;
+    height: calc(100vh - 64px);
+    overflow-y: scroll;
+    position: fixed;
+    right: 0;
+    width: calc(100vw - 15rem);    
+    z-index: 100;
+}
+
+.fi-sidebar {
+    width: 15rem !important;
+    background: var(--color-gray-100);
+    border-top-left-radius: .75rem;
+}
+
+nav.fi-sidebar-nav{
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+nav.fi-sidebar-nav::-webkit-scrollbar {
+    display: none;
+}
+
+.fi-sidebar-nav{
+    padding: calc(var(--spacing) * 4);
+}
+
+.fi-sidebar-group-items {
+    row-gap: calc(var(--spacing) * 1.5);
+}
+
+.fi-sidebar-item-label{
+    font-size: 0.8rem !important;
+    font-weight: 600;
+}
+
+.fi-sidebar-item.fi-active .fi-sidebar-item-label{
+    color: #1a1a1a;
+    font-weight: 700;
+}
+
+.fi-sidebar-item-icon{
+    width: 1.25rem !important;
+    height: 1.25rem !important;
+    color: var(--color-gray-700);
+}
+
+.fi-topbar{
+    background-color: var(--gray-900);
+}
+
+.fi-logo{
+    color: var(--color-white);
+}
+
+.fi-sidebar-item-btn{
+    column-gap: calc(var(--spacing) * 2);    
+    padding-block: calc(var(--spacing)*1.5);
+    padding-inline: calc(var(--spacing)*3);
+}
+
+.fi-sidebar-item-btn:hover{
+    background: var(--color-gray-50);
+}
+
+.fi-sidebar-item.fi-active>.fi-sidebar-item-btn{
+    background: var(--color-white);
+    transition: all .2s ease;
+}
+
+/* Sidebar nested item */
+.fi-sidebar-item-grouped-border{
+    opacity: 0;
+}
+
+.fi-sidebar-item>ul .fi-sidebar-item-btn, .fi-sidebar-item>ul .fi-sidebar-item-btn:hover{
+    padding-block: 2.5px;
+    padding-inline: 7.5px;
+}
+
+/* Buttons */
+
+.fi-ac-btn-action.fi-color-primary{
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    padding: 10px 24px;
+    gap: 3.75px;
+    font-size: .8rem;
+    font-weight: 600;
+    text-transform: capitalize;
+    background: linear-gradient(180deg, #3E3D3E 0%, #403E40 79.91%, #5E5D5E 100%);
+    box-shadow: inset 0px -2px 2px 0.5px #000000, inset 0px 0px 2px 1.5px rgba(255, 255, 255, 0.5);
+    border-radius: 12px;
+    flex: none;
+    order: 2;
+    flex-grow: 0;
+}

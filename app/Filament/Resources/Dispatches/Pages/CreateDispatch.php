@@ -3,12 +3,13 @@
 namespace App\Filament\Resources\Dispatches\Pages;
 
 use App\Filament\Resources\Dispatches\DispatchResource;
-use App\Models\DispatchItem;
 use Filament\Resources\Pages\CreateRecord;
 
 class CreateDispatch extends CreateRecord
 {
     protected static string $resource = DispatchResource::class;
+
+    protected static bool $canCreateAnother = false;
 
     /**
      * Temporarily hold quantities from the form so we can create DispatchItem records.

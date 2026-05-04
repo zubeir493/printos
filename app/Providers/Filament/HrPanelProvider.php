@@ -29,6 +29,7 @@ class HrPanelProvider extends PanelProvider
         return $panel
             ->id('hr')
             ->path('hr')
+            ->viteTheme('resources/css/filament/admin/theme.css')
             ->databaseNotifications()
             ->colors([
                 'primary' => Color::Pink,

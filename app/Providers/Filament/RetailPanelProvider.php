@@ -29,6 +29,7 @@ class RetailPanelProvider extends PanelProvider
         return $panel
             ->id('retail')
             ->path('retail')
+            ->viteTheme('resources/css/filament/admin/theme.css')
             ->databaseNotifications()
             ->colors([
                 'primary' => Color::Rose,

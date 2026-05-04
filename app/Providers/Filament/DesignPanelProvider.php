@@ -35,6 +35,7 @@ class DesignPanelProvider extends PanelProvider
         return $panel
             ->id('design')
             ->path('design')
+            ->viteTheme('resources/css/filament/admin/theme.css')
             ->databaseNotifications()
             ->colors([
                 'primary' => Color::Indigo,

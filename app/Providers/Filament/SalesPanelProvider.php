@@ -29,6 +29,7 @@ class SalesPanelProvider extends PanelProvider
         return $panel
             ->id('sales')
             ->path('sales')
+            ->viteTheme('resources/css/filament/admin/theme.css')
             ->databaseNotifications()
             ->colors([
                 'primary' => Color::Amber,

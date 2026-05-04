@@ -68,7 +68,7 @@ return [
             'bucket' => env('B2_BUCKET'),
             'endpoint' => env('B2_ENDPOINT', 'https://s3.us-west-002.backblazeb2.com'),
             'use_path_style_endpoint' => true,
-            'visibility' => 'public',
+            'visibility' => 'private',
             'throw' => false,
         ],
 

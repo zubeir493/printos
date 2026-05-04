@@ -52,6 +52,7 @@ class FinancePanelProvider extends PanelProvider
         return $panel
             ->id('finance')
             ->path('finance')
+            ->viteTheme('resources/css/filament/admin/theme.css')
             ->databaseNotifications()
             ->colors([
                 'primary' => Color::Emerald,

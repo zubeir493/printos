@@ -31,17 +31,16 @@ class GoodsReceiptResource extends Resource
     {
         return $table
             ->columns([
+                Tables\Columns\TextColumn::make('purchaseOrder.po_number')
+                    ->label('Purchase Order')
+                    ->searchable()
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('receipt_number')
                     ->label('Receipt')
                     ->searchable()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('purchaseOrder.po_number')
-                    ->label('PO')
-                    ->searchable()
-                    ->sortable(),
                 Tables\Columns\TextColumn::make('warehouse.name')
-                    ->label('Warehouse')
-                    ->toggleable(),
+                    ->label('Warehouse'),
                 Tables\Columns\TextColumn::make('receipt_date')
                     ->date()
                     ->sortable(),

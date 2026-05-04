@@ -20,6 +20,8 @@ class JobOrderResource extends Resource
 {
     protected static ?string $model = JobOrder::class;
 
+    protected static bool $canCreateAnother = false;
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBriefcase;
 
     public static function canCreate(): bool

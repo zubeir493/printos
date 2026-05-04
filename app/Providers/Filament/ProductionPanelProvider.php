@@ -36,6 +36,7 @@ class ProductionPanelProvider extends PanelProvider
         return $panel
             ->id('production')
             ->path('production')
+            ->viteTheme('resources/css/filament/admin/theme.css')
             ->databaseNotifications()
             ->colors([
                 'primary' => Color::Orange,

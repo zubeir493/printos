@@ -474,9 +474,15 @@ class InvoiceGeneratorService
      */
     private function getNextSequence(string $prefix, string $year): int
     {
+        // Validate inputs to prevent SQL injection
+        if (!preg_match('/^[a-zA-Z0-9_-]+$/', $prefix) || !preg_match('/^\d{4}$/', $year)) {
+            throw new \InvalidArgumentException('Invalid prefix or year format');
+        }
+
         // Get the highest sequence number for this prefix and year
-        $lastInvoice = Invoice::where('invoice_number', 'like', "{$prefix}-{$year}-%")
-            ->orderByRaw("CAST(SUBSTR(invoice_number, LENGTH('{$prefix}-{$year}-') + 1) AS INTEGER) DESC")
+        $pattern = "{$prefix}-{$year}-%";
+        $lastInvoice = Invoice::where('invoice_number', 'like', $pattern)
+            ->orderByRaw("CAST(SUBSTR(invoice_number, LENGTH(?) + 1) AS INTEGER) DESC", [$pattern])
             ->first();
 
         if ($lastInvoice) {

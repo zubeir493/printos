@@ -8,4 +8,6 @@ use Filament\Resources\Pages\CreateRecord;
 class CreateBankTransfer extends CreateRecord
 {
     protected static string $resource = BankTransferResource::class;
+
+    protected static bool $canCreateAnother = false;
 }

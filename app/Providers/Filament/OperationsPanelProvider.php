@@ -41,6 +41,7 @@ class OperationsPanelProvider extends PanelProvider
         return $panel
             ->id('operations')
             ->path('operations')
+            ->viteTheme('resources/css/filament/admin/theme.css')
             ->databaseNotifications()
             ->colors([
                 'primary' => Color::Cyan,

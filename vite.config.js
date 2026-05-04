@@ -5,11 +5,22 @@ import tailwindcss from '@tailwindcss/vite';
 export default defineConfig({
     plugins: [
         laravel({
-            input: ['resources/css/app.css', 'resources/js/app.js'],
+            input: [
+                'resources/css/app.css', 
+                'resources/js/app.js', 
+                'resources/css/filament/admin/theme.css'
+            ],
             refresh: true,
         }),
         tailwindcss(),
     ],
+    build: {
+        rollupOptions: {
+            output: {
+                manualChunks: undefined,
+            }
+        }
+    },
     server: {
         watch: {
             ignored: ['**/storage/framework/views/**'],

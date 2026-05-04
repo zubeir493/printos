@@ -1,0 +1,22 @@
+<?php
+
+namespace App\Providers;
+
+use Illuminate\Support\ServiceProvider;
+use Illuminate\Mail\MailManager;
+use App\Mail\MailtrapTransport;
+
+class MailtrapServiceProvider extends ServiceProvider
+{
+    public function register(): void
+    {
+        //
+    }
+
+    public function boot(): void
+    {
+        $this->app->make(MailManager::class)->extend('mailtrap', function ($config) {
+            return new MailtrapTransport($config);
+        });
+    }
+}

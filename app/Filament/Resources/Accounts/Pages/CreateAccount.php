@@ -8,4 +8,6 @@ use Filament\Resources\Pages\CreateRecord;
 class CreateAccount extends CreateRecord
 {
     protected static string $resource = AccountResource::class;
+
+    protected static bool $canCreateAnother = false;
 }

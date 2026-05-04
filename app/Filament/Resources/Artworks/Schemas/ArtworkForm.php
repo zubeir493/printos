@@ -35,7 +35,8 @@ class ArtworkForm
                             ->disk('s3')
                             ->directory('artworks')
                             ->preserveFilenames()
-                            ->maxSize(51200)
+                            ->maxSize(10240)
+                            ->acceptedFileTypes(['application/pdf', 'image/jpeg', 'image/png', 'image/tiff', 'image/webp'])
                             ->previewable(false)
                             ->required()
                             ->columnSpanFull(),

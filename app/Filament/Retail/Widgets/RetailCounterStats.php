@@ -22,10 +22,15 @@ class RetailCounterStats extends BaseWidget
             ->whereDate('order_date', today())
             ->count();
 
-        $sellableSkus = InventoryBalance::query()
+        $lowSellable = InventoryBalance::query()
             ->where('quantity_on_hand', '>', 0)
+            ->where('quantity_on_hand', '<', 10)
             ->whereHas('inventoryItem', fn ($query) => $query->where('is_sellable', true))
             ->count();
+        $averageTicket = (float) SalesOrder::query()
+            ->where('payment_mode', 'cash')
+            ->where('order_date', '>=', now()->subDays(30))
+            ->avg('total');
 
         return [
             Stat::make('Counter Sales Today', number_format($cashSales, 2))
@@ -37,10 +42,14 @@ class RetailCounterStats extends BaseWidget
                 ->description('Retail orders processed')
                 ->descriptionIcon('heroicon-m-receipt-percent')
                 ->color('info'),
-            Stat::make('Sellable Stock Lines', $sellableSkus)
-                ->description('Available stock for counter sale')
-                ->descriptionIcon('heroicon-m-shopping-bag')
-                ->color($sellableSkus > 0 ? 'success' : 'danger'),
+            Stat::make('Low Counter Stock', $lowSellable)
+                ->description('Sellable items below 10 units')
+                ->descriptionIcon('heroicon-m-exclamation-triangle')
+                ->color($lowSellable > 0 ? 'warning' : 'success'),
+            Stat::make('Avg Ticket Size', number_format($averageTicket, 2))
+                ->description('Cash sales, last 30 days')
+                ->descriptionIcon('heroicon-m-chart-bar')
+                ->color('primary'),
         ];
     }
 

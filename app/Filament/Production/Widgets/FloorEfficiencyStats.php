@@ -3,6 +3,7 @@
 namespace App\Filament\Production\Widgets;
 
 use App\Models\JobOrderTask;
+use App\Models\MaterialRequest;
 use App\Models\ProductionPlanItem;
 use App\Models\ProductionReportItem;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
@@ -36,6 +37,9 @@ class FloorEfficiencyStats extends BaseWidget
 
         // 3. Job Tasks in Queue
         $pendingTasks = JobOrderTask::where('status', 'pending')->count();
+        $openMaterialRequests = MaterialRequest::query()
+            ->whereColumn('issued_quantity', '<', 'requested_quantity')
+            ->count();
 
         return [
             Stat::make('7D Production Yield', round($yieldPercentage, 1).'%')
@@ -50,6 +54,11 @@ class FloorEfficiencyStats extends BaseWidget
             Stat::make('Tasks in Queue', $pendingTasks)
                 ->description('Job tasks awaiting start')
                 ->color('info'),
+
+            Stat::make('Open Material Requests', $openMaterialRequests)
+                ->description('Requested quantity not fully issued')
+                ->descriptionIcon('heroicon-m-archive-box-arrow-down')
+                ->color($openMaterialRequests > 0 ? 'warning' : 'success'),
         ];
     }
 }

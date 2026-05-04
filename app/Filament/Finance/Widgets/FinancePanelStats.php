@@ -30,6 +30,7 @@ class FinancePanelStats extends StatsOverviewWidget
         $allocated = (float) PaymentAllocation::query()
             ->where('allocatable_type', SalesInvoice::class)
             ->sum('allocated_amount');
+        $unallocatedFunds = max(0, (float) Payment::query()->sum('amount') - (float) PaymentAllocation::query()->sum('allocated_amount'));
 
         return [
             Stat::make('Net Cash Flow', number_format($incoming - $outgoing, 2))
@@ -40,6 +41,10 @@ class FinancePanelStats extends StatsOverviewWidget
                 ->description('Sales invoices less allocations')
                 ->descriptionIcon('heroicon-m-credit-card')
                 ->color('warning'),
+            Stat::make('Unallocated Funds', number_format($unallocatedFunds, 2))
+                ->description('Payments not linked to orders')
+                ->descriptionIcon('heroicon-m-scale')
+                ->color($unallocatedFunds > 0 ? 'warning' : 'success'),
         ];
     }
 }

@@ -3,10 +3,7 @@
 namespace App\Providers\Filament;
 
 use App\Filament\Design\Widgets\ArtworkPipelineChart;
-use App\Filament\Design\Widgets\AwaitingYourUploadTable;
-use App\Filament\Design\Widgets\DesignPanelStats;
 use App\Filament\Design\Widgets\DesignSLAStats;
-use App\Filament\Design\Widgets\JobOrderTaskStatusChart;
 use App\Filament\Design\Widgets\MyActiveTasksTable;
 use App\Filament\Resources\Artworks\ArtworkResource;
 use App\Filament\Resources\EmailLogs\EmailLogResource;
@@ -55,11 +52,8 @@ class DesignPanelProvider extends PanelProvider
                 Dashboard::class,
             ])
             ->widgets([
-                DesignPanelStats::class,
                 DesignSLAStats::class,
                 ArtworkPipelineChart::class,
-                JobOrderTaskStatusChart::class,
-                AwaitingYourUploadTable::class,
                 MyActiveTasksTable::class,
             ])
             ->middleware([

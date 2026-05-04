@@ -11,7 +11,7 @@ class MyActiveTasksTable extends BaseWidget
 {
     protected static ?int $sort = 4;
 
-    protected int | string | array $columnSpan = 'full';
+    protected int | string | array $columnSpan = 1;
 
     protected static ?string $heading = 'My Active Tasks';
 
@@ -25,18 +25,16 @@ class MyActiveTasksTable extends BaseWidget
                     ->whereNotIn('status', ['completed', 'cancelled'])
                     ->orderBy('created_at')
             )
+            ->searchable(false)
             ->columns([
                 Tables\Columns\TextColumn::make('jobOrder.job_order_number')
                     ->label('Job Order')
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('jobOrder.partner.name')
-                    ->label('Customer')
+                    ->weight('bold')
+                    ->description(fn(JobOrderTask $record) => $record->jobOrder->partner->name)
                     ->searchable(),
                 Tables\Columns\TextColumn::make('name')
                     ->label('Task')
                     ->searchable(),
-                Tables\Columns\TextColumn::make('status')
-                    ->badge(),
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Queued')
                     ->since(),

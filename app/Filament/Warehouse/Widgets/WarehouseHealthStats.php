@@ -5,6 +5,7 @@ namespace App\Filament\Warehouse\Widgets;
 use App\Models\Dispatch;
 use App\Models\InventoryBalance;
 use App\Models\InventoryItem;
+use App\Models\PurchaseOrder;
 use Carbon\Carbon;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
@@ -34,6 +35,10 @@ class WarehouseHealthStats extends BaseWidget
             ->groupBy('inventory_item_id')
             ->havingRaw('SUM(quantity_on_hand) < 10')
             ->count();
+        $pendingReceipts = PurchaseOrder::query()
+            ->where('status', 'approved')
+            ->whereDoesntHave('goodsReceipts')
+            ->count();
 
         return [
             Stat::make('Dead Stock Risk', $deadStockCount.' Items')
@@ -49,6 +54,11 @@ class WarehouseHealthStats extends BaseWidget
             Stat::make('Low Stock Alerts', $lowStockCount)
                 ->description('Items nearing depletion')
                 ->color($lowStockCount > 0 ? 'warning' : 'success'),
+
+            Stat::make('Pending Receipts', $pendingReceipts)
+                ->description('Approved POs without receipts')
+                ->descriptionIcon('heroicon-m-inbox-arrow-down')
+                ->color($pendingReceipts > 0 ? 'warning' : 'success'),
         ];
     }
 }

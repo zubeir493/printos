@@ -6,7 +6,6 @@ use App\Filament\Resources\SalesOrders\SalesOrderResource;
 use App\Filament\Retail\Widgets\RetailCounterStats;
 use App\Filament\Retail\Widgets\RetailDemandChart;
 use App\Filament\Retail\Widgets\RetailReorderTable;
-use App\Filament\Retail\Widgets\RetailStockHealthStats;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -45,7 +44,6 @@ class RetailPanelProvider extends PanelProvider
             ->widgets([
                 RetailCounterStats::class,
                 RetailDemandChart::class,
-                RetailStockHealthStats::class,
                 RetailReorderTable::class,
             ])
             ->middleware([

@@ -4,6 +4,8 @@ namespace App\Filament\Operations\Widgets;
 
 use App\Models\JobOrder;
 use App\Models\JobOrderTask;
+use App\Models\PurchaseOrder;
+use App\Models\Dispatch;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 
@@ -20,6 +22,12 @@ class OperationsPanelStats extends StatsOverviewWidget
         $unplannedTasks = JobOrderTask::query()
             ->whereDoesntHave('productionPlanItems')
             ->count();
+        $pendingPurchases = PurchaseOrder::query()
+            ->whereIn('status', ['draft', 'approved'])
+            ->count();
+        $dispatchesToday = Dispatch::query()
+            ->whereDate('created_at', today())
+            ->count();
 
         return [
             Stat::make('Active Job Orders', $activeJobOrders)
@@ -29,6 +37,14 @@ class OperationsPanelStats extends StatsOverviewWidget
                 ->description('Tasks still missing a production plan')
                 ->descriptionIcon('heroicon-m-clipboard-document-list')
                 ->color($unplannedTasks > 0 ? 'warning' : 'success'),
+            Stat::make('Pending Purchases', $pendingPurchases)
+                ->description('Draft or approved purchase orders')
+                ->descriptionIcon('heroicon-m-shopping-cart')
+                ->color($pendingPurchases > 0 ? 'warning' : 'success'),
+            Stat::make('Dispatches Today', $dispatchesToday)
+                ->description('Outbound records created today')
+                ->descriptionIcon('heroicon-m-truck')
+                ->color('success'),
         ];
     }
 }

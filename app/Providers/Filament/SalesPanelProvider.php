@@ -3,7 +3,6 @@
 namespace App\Providers\Filament;
 
 use App\Filament\Resources\SalesOrders\SalesOrderResource;
-use App\Filament\Sales\Widgets\SalesConversionStats;
 use App\Filament\Sales\Widgets\SalesOrdersFocusTable;
 use App\Filament\Sales\Widgets\SalesPanelStats;
 use App\Filament\Sales\Widgets\SalesPipelineChart;
@@ -45,7 +44,6 @@ class SalesPanelProvider extends PanelProvider
             ->widgets([
                 SalesPanelStats::class,
                 SalesPipelineChart::class,
-                SalesConversionStats::class,
                 SalesOrdersFocusTable::class,
             ])
             ->middleware([

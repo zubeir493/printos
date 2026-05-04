@@ -46,7 +46,7 @@ nav.fi-sidebar-nav::-webkit-scrollbar {
     font-weight: 600;
 }
 
-.fi-sidebar-item.fi-active .fi-sidebar-item-label{
+.fi-sidebar-item.fi-active>a.fi-sidebar-item-btn>.fi-sidebar-item-label{
     color: #1a1a1a;
     font-weight: 700;
 }

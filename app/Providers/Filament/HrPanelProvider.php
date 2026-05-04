@@ -2,7 +2,6 @@
 
 namespace App\Providers\Filament;
 
-use App\Filament\Hr\Widgets\EmployeeSalaryTrendChart;
 use App\Filament\Hr\Widgets\HrPanelStats;
 use App\Filament\Hr\Widgets\SalaryRevisionHistoryTable;
 use App\Filament\Hr\Widgets\WorkforceCompositionChart;
@@ -45,7 +44,6 @@ class HrPanelProvider extends PanelProvider
             ->widgets([
                 HrPanelStats::class,
                 WorkforceCompositionChart::class,
-                EmployeeSalaryTrendChart::class,
                 SalaryRevisionHistoryTable::class,
             ])
             ->middleware([

@@ -3,10 +3,8 @@
 namespace App\Providers\Filament;
 
 use App\Filament\Production\Widgets\FloorEfficiencyStats;
-use App\Filament\Production\Widgets\LiveMachineStatusGrid;
 use App\Filament\Production\Widgets\MachineEfficiencyChart;
 use App\Filament\Production\Widgets\MaterialShortageWarnings;
-use App\Filament\Production\Widgets\ProductionPanelStats;
 use App\Filament\Production\Widgets\TodaysProductionScheduleTable;
 use App\Filament\Resources\JobOrders\JobOrderResource;
 use App\Filament\Resources\JobOrderTasks\JobOrderTaskResource;
@@ -56,10 +54,8 @@ class ProductionPanelProvider extends PanelProvider
                 Dashboard::class,
             ])
             ->widgets([
-                ProductionPanelStats::class,
                 FloorEfficiencyStats::class,
                 MachineEfficiencyChart::class,
-                LiveMachineStatusGrid::class,
                 MaterialShortageWarnings::class,
                 TodaysProductionScheduleTable::class,
             ])

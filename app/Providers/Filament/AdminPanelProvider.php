@@ -4,7 +4,6 @@ namespace App\Providers\Filament;
 
 use App\Filament\Widgets\AdminExceptionsTable;
 use App\Filament\Widgets\AdminHealthStats;
-use App\Filament\Widgets\BankBalancesChart;
 use App\Filament\Widgets\ProfitabilityMarginChart;
 use App\Filament\Widgets\SystemBottlenecksChart;
 use App\Http\Middleware\RedirectToCorrectPanel;
@@ -47,7 +46,6 @@ class AdminPanelProvider extends PanelProvider
             ->widgets([
                 AdminHealthStats::class,
                 ProfitabilityMarginChart::class,
-                BankBalancesChart::class,
                 SystemBottlenecksChart::class,
                 AdminExceptionsTable::class,
             ])

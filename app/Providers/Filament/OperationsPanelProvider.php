@@ -3,7 +3,6 @@
 namespace App\Providers\Filament;
 
 use App\Filament\Operations\Widgets\HighPriorityJobsTable;
-use App\Filament\Operations\Widgets\OperationsHealthStats;
 use App\Filament\Operations\Widgets\OperationsJobStatusChart;
 use App\Filament\Operations\Widgets\OperationsPanelStats;
 use App\Filament\Resources\Artworks\ArtworkResource;
@@ -69,7 +68,6 @@ class OperationsPanelProvider extends PanelProvider
             ])
             ->widgets([
                 OperationsPanelStats::class,
-                OperationsHealthStats::class,
                 OperationsJobStatusChart::class,
                 HighPriorityJobsTable::class,
             ])

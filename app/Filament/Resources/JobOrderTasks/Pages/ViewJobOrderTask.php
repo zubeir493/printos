@@ -23,7 +23,8 @@ class ViewJobOrderTask extends ViewRecord
                 ->label('Cancel Task')
                 ->icon('heroicon-o-x-mark')
                 ->color('danger')
-                ->visible(fn ($record) => !in_array($record->status, ['cancelled', 'completed']))
+                ->visible(fn ($record) => !in_array($record->status, ['cancelled', 'completed'])
+                    && PanelAccess::canManageJobOrderTasks())
                 ->requiresConfirmation()
                 ->modalDescription('Are you sure you want to cancel this task? This action cannot be undone.')
                 ->action(function ($record) {

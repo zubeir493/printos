@@ -36,7 +36,8 @@ class JobOrderResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        $count = static::getModel()::whereNotIn('status', ['completed', 'cancelled'])->count();
+        // Count active jobOrderTasks (not completed or cancelled)
+        $count = \App\Models\JobOrderTask::whereNotIn('status', ['completed', 'cancelled', 'pending'])->count();
         return $count > 0 ? (string) $count : null;
     }
 

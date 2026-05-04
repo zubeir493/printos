@@ -33,7 +33,8 @@ class PurchaseOrderResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        $count = static::getModel()::whereNotIn('status', ['completed', 'cancelled'])->count();
+        // Count only active purchase orders (exclude received and cancelled)
+        $count = static::getModel()::whereNotIn('status', ['received', 'cancelled'])->count();
         return $count > 0 ? (string) $count : null;
     }
 

@@ -482,7 +482,7 @@ class InvoiceGeneratorService
         // Get the highest sequence number for this prefix and year
         $pattern = "{$prefix}-{$year}-%";
         $lastInvoice = Invoice::where('invoice_number', 'like', $pattern)
-            ->orderByRaw("CAST(SUBSTR(invoice_number, LENGTH(?) + 1) AS INTEGER) DESC", [$pattern])
+            ->orderByRaw("CAST(SUBSTR(invoice_number, LENGTH(?) + 1) AS UNSIGNED) DESC", [$pattern])
             ->first();
 
         if ($lastInvoice) {

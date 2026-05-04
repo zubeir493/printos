@@ -18,7 +18,8 @@ class GoodsReceiptResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        $count = static::getModel()::whereNotIn('status', ['completed', 'cancelled'])->count();
+        // Count only draft goods receipts (exclude posted)
+        $count = static::getModel()::where('status', 'draft')->count();
         return $count > 0 ? (string) $count : null;
     }
 

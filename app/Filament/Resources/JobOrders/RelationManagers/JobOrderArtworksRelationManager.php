@@ -9,6 +9,7 @@ use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
@@ -37,10 +38,11 @@ class JobOrderArtworksRelationManager extends RelationManager
                             ->disk('s3')
                             ->directory('artworks')
                             ->preserveFilenames()
-                            ->maxSize(51200)
                             ->image()
                             ->imageEditor()
                             ->required(),
+                        Hidden::make('uploaded_by')
+                            ->default(fn () => Auth::id()),
                         \Filament\Forms\Components\Toggle::make('is_approved')
                             ->label('Approved'),
                     ])

@@ -51,10 +51,16 @@ class JobOrderTaskResource extends Resource
 
     public static function getRelations(): array
     {
-        return [
-            RelationManagers\MaterialRequestsRelationManager::class,
+        $relations = [
             RelationManagers\ArtworksRelationManager::class,
         ];
+
+        // Only show material requests to non-design panels
+        if (\Filament\Facades\Filament::getCurrentPanel()?->getId() !== 'design') {
+            $relations[] = RelationManagers\MaterialRequestsRelationManager::class;
+        }
+
+        return $relations;
     }
 
     public static function getPages(): array

@@ -33,7 +33,6 @@ class ArtworksRelationManager extends RelationManager
                             ->disk('s3')
                             ->directory('artworks')
                             ->preserveFilenames()
-                            ->maxSize(51200)
                             ->image()
                             ->imageEditor()
                             ->previewable(false)

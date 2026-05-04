@@ -35,6 +35,8 @@ class AdminPanelProvider extends PanelProvider
             ->defaultThemeMode(\Filament\Enums\ThemeMode::Light)
             ->login()
             ->databaseNotifications()
+            ->brandLogo(asset('images/logo.svg')) // TODO: Place logo in public/images/logo.svg
+            ->brandLogoHeight('2rem')
             ->colors([
                 'primary' => Color::Indigo,
             ])

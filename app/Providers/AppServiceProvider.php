@@ -44,5 +44,6 @@ class AppServiceProvider extends ServiceProvider
         
         \App\Models\Employee::observe(\App\Observers\EmployeeObserver::class);
         \App\Models\InventoryItem::observe(\App\Observers\InventoryItemObserver::class);
+        \App\Models\Artwork::observe(\App\Observers\ArtworkObserver::class);
     }
 }

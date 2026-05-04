@@ -57,8 +57,8 @@ class StockAdjustmentForm
                     ->relationship()
                     ->table([
                         TableColumn::make('Inventory Item')->width('300px')->alignLeft(),
-                        TableColumn::make('Available')->alignLeft(),
                         TableColumn::make('Adjustment')->alignLeft(),
+                        TableColumn::make('Available')->alignLeft(),
                         TableColumn::make('Result')->alignLeft(),
                     ])
                     ->compact()

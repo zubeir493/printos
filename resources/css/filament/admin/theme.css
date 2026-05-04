@@ -90,6 +90,30 @@ nav.fi-sidebar-nav::-webkit-scrollbar {
     padding-inline: 7.5px;
 }
 
+/* Sidebar badges */
+.fi-sidebar-item-badge-ctn>span{
+    color: #1a1a1a;
+    border: none !important;
+    display: flex;
+    align-items: center;
+    padding: 3px;
+    box-shadow: none;
+    background: var(--gray-200);
+}
+.fi-sidebar-item-badge-ctn>span .fi-badge-label{
+    font-size: .65rem;
+}
+
+/* TopBar customization */
+.fi-topbar-database-notifications-btn svg, .fi-topbar-database-notifications-btn svg:hover{
+    color: var(--gray-50);
+}
+
+.fi-user-menu-trigger>img{
+    border-radius: 7.5px;
+    border: 2px solid var(--color-gray-500);
+}
+
 /* Buttons */
 
 .fi-ac-btn-action.fi-color-primary{

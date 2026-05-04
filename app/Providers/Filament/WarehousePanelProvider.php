@@ -40,6 +40,8 @@ class WarehousePanelProvider extends PanelProvider
             ->darkMode(false)
             ->defaultThemeMode(\Filament\Enums\ThemeMode::Light)
             ->databaseNotifications()
+            ->brandLogo(asset('images/logo.svg')) // TODO: Place logo in public/images/logo.svg
+            ->brandLogoHeight('2rem')
             ->colors([
                 'primary' => Color::Indigo,
             ])

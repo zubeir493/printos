@@ -2,6 +2,7 @@
 
 namespace App\Mail;
 
+use App\Support\PrivateStorage;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Attachment;
@@ -17,6 +18,7 @@ class InvoiceGenerated extends Mailable
     use Queueable, SerializesModels;
 
     public array $invoiceData;
+
     public array $options;
 
     public function __construct(array $invoiceData, array $options = [])
@@ -30,11 +32,11 @@ class InvoiceGenerated extends Mailable
 
     public function envelope(): Envelope
     {
-        $invoiceNumber = $this->invoiceData['invoice_data']['invoice_number'] ?? 
-                        $this->invoiceData['receipt_data']['receipt_number'] ?? 
+        $invoiceNumber = $this->invoiceData['invoice_data']['invoice_number'] ??
+                        $this->invoiceData['receipt_data']['receipt_number'] ??
                         'Document';
-        
-        $subject = $this->options['subject_prefix'] . " #{$invoiceNumber} from " . config('app.name');
+
+        $subject = $this->options['subject_prefix']." #{$invoiceNumber} from ".config('app.name');
 
         return new Envelope(
             subject: $subject,
@@ -43,12 +45,20 @@ class InvoiceGenerated extends Mailable
 
     public function content(): Content
     {
+        $companyInfo = array_merge([
+            'name' => config('app.name', 'PrintOS'),
+            'address' => '',
+            'phone' => '',
+            'email' => '',
+            'website' => '',
+        ], $this->invoiceData['invoice_data']['company_info'] ??
+            $this->invoiceData['receipt_data']['company_info'] ?? []);
+
         return new Content(
             view: 'emails.invoice-generated',
             with: [
                 'invoiceData' => $this->invoiceData,
-                'companyInfo' => $this->invoiceData['invoice_data']['company_info'] ?? 
-                               $this->invoiceData['receipt_data']['company_info'] ?? [],
+                'companyInfo' => $companyInfo,
                 'options' => $this->options,
             ]
         );
@@ -71,7 +81,7 @@ class InvoiceGenerated extends Mailable
             return [
                 Attachment::fromData(function () use ($path) {
                     try {
-                        return Storage::disk('s3')->get($path);
+                        return Storage::disk(PrivateStorage::diskName())->get($path);
                     } catch (Throwable $e) {
                         throw new RuntimeException('Invoice PDF could not be read from private storage: '.$e->getMessage(), 0, $e);
                     }

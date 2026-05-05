@@ -13,7 +13,12 @@ class PrivateStorageController extends Controller
 {
     public function show(Request $request, string $disk, string $path): StreamedResponse
     {
-        abort_unless(in_array($disk, ['s3', 'b2'], true), 404);
+        $allowedDisks = array_unique(array_filter([
+            config('filesystems.private_disk'),
+            's3',
+            'b2',
+        ]));
+        abort_unless(in_array($disk, $allowedDisks, true), 404);
 
         $storage = Storage::disk($disk);
         $path = ltrim($path, '/');

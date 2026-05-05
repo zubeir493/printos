@@ -8,16 +8,23 @@ use Illuminate\Support\Facades\URL;
 
 class PrivateStorage
 {
+    public static function diskName(?string $disk = null): string
+    {
+        return $disk ?: config('filesystems.private_disk', 's3');
+    }
+
     public static function url(
         ?string $path,
-        DateTimeInterface | null $expiresAt = null,
-        string $disk = 's3',
+        ?DateTimeInterface $expiresAt = null,
+        ?string $disk = null,
         string $disposition = 'inline',
         ?string $name = null,
     ): ?string {
         if (blank($path)) {
             return null;
         }
+
+        $disk = self::diskName($disk);
 
         return URL::temporarySignedRoute(
             'private-storage.show',
@@ -31,12 +38,12 @@ class PrivateStorage
         );
     }
 
-    public static function downloadUrl(?string $path, DateTimeInterface | null $expiresAt = null, string $disk = 's3'): ?string
+    public static function downloadUrl(?string $path, ?DateTimeInterface $expiresAt = null, ?string $disk = null): ?string
     {
-        return self::url($path, $expiresAt, $disk, 'attachment');
+        return self::url($path, $expiresAt, self::diskName($disk), 'attachment');
     }
 
-    public static function uploadedFileInfo(BaseFileUpload $component, string $file, string | array | null $storedFileNames): ?array
+    public static function uploadedFileInfo(BaseFileUpload $component, string $file, string|array|null $storedFileNames): ?array
     {
         return [
             'name' => ($component->isMultiple() ? ($storedFileNames[$file] ?? null) : $storedFileNames) ?? basename($file),

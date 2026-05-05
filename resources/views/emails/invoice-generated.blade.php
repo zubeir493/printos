@@ -64,10 +64,23 @@
     </style>
 </head>
 <body>
+    @php
+        $companyName = $companyInfo['name'] ?? config('app.name');
+        $companyAddress = $companyInfo['address'] ?? '';
+        $companyPhone = $companyInfo['phone'] ?? '';
+        $companyEmail = $companyInfo['email'] ?? '';
+        $companyWebsite = $companyInfo['website'] ?? '';
+        $contactLine = trim(implode(' | ', array_filter([$companyPhone, $companyEmail])));
+    @endphp
+
     <div class="header">
-        <h1>{{ $companyInfo['name'] }}</h1>
-        <p>{{ $companyInfo['address'] }}</p>
-        <p>{{ $companyInfo['phone'] }} | {{ $companyInfo['email'] }}</p>
+        <h1>{{ $companyName }}</h1>
+        @if($companyAddress !== '')
+            <p>{{ $companyAddress }}</p>
+        @endif
+        @if($contactLine !== '')
+            <p>{{ $contactLine }}</p>
+        @endif
     </div>
 
     <div class="content">
@@ -152,11 +165,11 @@
         <p>Thank you for your business!</p>
         
         <p>Best regards,<br>
-        The {{ $companyInfo['name'] }} Team</p>
+        The {{ $companyName }} Team</p>
     </div>
 
     <div class="footer">
-        <p>{{ $companyInfo['name'] }} | {{ $companyInfo['website'] ?? '' }}</p>
+        <p>{{ trim(implode(' | ', array_filter([$companyName, $companyWebsite]))) }}</p>
         <p>This email was sent automatically. Please do not reply to this email.</p>
     </div>
 </body>

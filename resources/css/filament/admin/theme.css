@@ -157,8 +157,13 @@ nav.fi-sidebar-nav::-webkit-scrollbar {
     text-transform: capitalize;
     background: linear-gradient(180deg, #3E3D3E 0%, #403E40 79.91%, #5E5D5E 100%);
     box-shadow: inset 0px -2px 2px 0.5px #000000, inset 0px 0px 2px 1.5px rgba(255, 255, 255, 0.5);
-    border-radius: 12px;
+    border-radius: .5rem;
     flex: none;
     order: 2;
     flex-grow: 0;
+}
+
+.fi-ac-btn-action.fi-color-primary>.fi-loading-indicator{
+    height: 18px;
+    order: 2;
 }

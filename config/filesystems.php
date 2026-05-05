@@ -1,5 +1,9 @@
 <?php
 
+$s3Key = trim((string) env('AWS_ACCESS_KEY_ID', env('B2_KEY_ID', env('B2_APPLICATION_KEY_ID', ''))));
+$s3Secret = trim((string) env('AWS_SECRET_ACCESS_KEY', env('B2_APPLICATION_KEY', '')));
+$privateDisk = env('PRIVATE_FILESYSTEM_DISK', env('FILESYSTEM_CLOUD', 's3'));
+
 return [
 
     /*
@@ -14,6 +18,8 @@ return [
     */
 
     'default' => env('FILESYSTEM_DISK', 'local'),
+
+    'private_disk' => $privateDisk,
 
     /*
     |--------------------------------------------------------------------------
@@ -49,11 +55,11 @@ return [
 
         's3' => [
             'driver' => 's3',
-            'key' => env('AWS_ACCESS_KEY_ID', env('B2_KEY_ID')),
-            'secret' => env('AWS_SECRET_ACCESS_KEY', env('B2_APPLICATION_KEY')),
+            'key' => $s3Key,
+            'secret' => $s3Secret,
             'region' => env('AWS_DEFAULT_REGION', env('B2_REGION', 'us-west-002')),
             'bucket' => env('AWS_BUCKET', env('B2_BUCKET')),
-            'url' => env('AWS_URL'),
+            'url' => env('AWS_URL', env('B2_URL')),
             'endpoint' => env('AWS_ENDPOINT', env('B2_ENDPOINT')),
             'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', true),
             'visibility' => 'private',

@@ -2,27 +2,34 @@
 
 namespace App\Services;
 
-use App\Support\PrivateStorage;
-use App\Models\Payment;
-use App\Models\SalesOrder;
-use App\Models\JobOrder;
-use App\Models\PurchaseOrder;
+use App\Mail\InvoiceGenerated;
+use App\Models\EmailLog;
 use App\Models\Invoice;
+use App\Models\JobOrder;
+use App\Models\Payment;
+use App\Models\PurchaseOrder;
+use App\Models\SalesOrder;
+use App\Support\PrivateStorage;
 use Barryvdh\DomPDF\Facade\Pdf;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 
 class InvoiceGeneratorService
 {
     private array $taxConfig;
+
     private array $companyInfo;
+
+    private string $storageDisk;
 
     public function __construct()
     {
         $this->taxConfig = $this->loadTaxConfiguration();
         $this->companyInfo = $this->loadCompanyInformation();
+        $this->storageDisk = PrivateStorage::diskName();
     }
 
     /**
@@ -32,7 +39,7 @@ class InvoiceGeneratorService
     {
         $invoiceNumber = $this->generateInvoiceNumber('SALES');
         $taxCalculations = $this->calculateTaxes($order->salesOrderItems);
-        
+
         $invoiceData = [
             'invoice_number' => $invoiceNumber,
             'invoice_date' => Carbon::now()->format('Y-m-d'),
@@ -51,20 +58,20 @@ class InvoiceGeneratorService
                 'show_tax_breakdown' => true,
                 'show_payment_status' => true,
                 'show_terms' => true,
-            ], $options)
+            ], $options),
         ];
 
         $pdf = Pdf::loadView('invoices.sales-order', ['invoiceData' => $invoiceData])
-                ->setPaper('a4')
-                ->setOption('defaultFont', 'Arial')
-                ->setOption('fontDir', public_path('fonts'))
-                ->setOption('fontCache', public_path('fonts'))
-                ->setOption('isRemoteEnabled', true);
-        
+            ->setPaper('a4')
+            ->setOption('defaultFont', 'Arial')
+            ->setOption('fontDir', public_path('fonts'))
+            ->setOption('fontCache', public_path('fonts'))
+            ->setOption('isRemoteEnabled', true);
+
         $filename = "invoice-{$invoiceNumber}.pdf";
         $path = "invoices/{$filename}";
-        
-        Storage::disk('s3')->put($path, $pdf->output());
+
+        Storage::disk($this->storageDisk)->put($path, $pdf->output());
 
         // Save invoice to database
         $invoice = Invoice::create([
@@ -101,7 +108,7 @@ class InvoiceGeneratorService
     public function generateFromPayment(Payment $payment, array $options = []): array
     {
         $receiptNumber = $this->generateInvoiceNumber('RECEIPT');
-        
+
         $receiptData = [
             'receipt_number' => $receiptNumber,
             'receipt_date' => $payment->payment_date->format('Y-m-d'),
@@ -111,26 +118,26 @@ class InvoiceGeneratorService
             'options' => array_merge([
                 'show_payment_method' => true,
                 'show_allocated_orders' => true,
-            ], $options)
+            ], $options),
         ];
 
         $pdf = Pdf::loadView('invoices.payment-receipt', $receiptData)
-                ->setPaper('a4')
-                ->setOption('defaultFont', 'Arial')
-                ->setOption('fontDir', public_path('fonts'))
-                ->setOption('fontCache', public_path('fonts'))
-                ->setOption('isRemoteEnabled', true);
-        
+            ->setPaper('a4')
+            ->setOption('defaultFont', 'Arial')
+            ->setOption('fontDir', public_path('fonts'))
+            ->setOption('fontCache', public_path('fonts'))
+            ->setOption('isRemoteEnabled', true);
+
         $filename = "receipt-{$receiptNumber}.pdf";
         $path = "receipts/{$filename}";
-        
-        Storage::disk('s3')->put($path, $pdf->output());
+
+        Storage::disk($this->storageDisk)->put($path, $pdf->output());
 
         return [
             'filename' => $filename,
             'path' => $path,
             'receipt_data' => $receiptData,
-            'pdf' => $pdf
+            'pdf' => $pdf,
         ];
     }
 
@@ -141,7 +148,7 @@ class InvoiceGeneratorService
     {
         $invoiceNumber = $this->generateInvoiceNumber('PURCHASE');
         $taxCalculations = $this->calculateTaxes($order->purchaseOrderItems);
-        
+
         $invoiceData = [
             'invoice_number' => $invoiceNumber,
             'invoice_date' => Carbon::now()->format('Y-m-d'),
@@ -160,20 +167,20 @@ class InvoiceGeneratorService
                 'show_tax_breakdown' => true,
                 'show_payment_status' => true,
                 'show_terms' => true,
-            ], $options)
+            ], $options),
         ];
 
         $pdf = Pdf::loadView('invoices.purchase-order', ['invoiceData' => $invoiceData])
-                ->setPaper('a4')
-                ->setOption('defaultFont', 'Arial')
-                ->setOption('fontDir', public_path('fonts'))
-                ->setOption('fontCache', public_path('fonts'))
-                ->setOption('isRemoteEnabled', true);
-        
+            ->setPaper('a4')
+            ->setOption('defaultFont', 'Arial')
+            ->setOption('fontDir', public_path('fonts'))
+            ->setOption('fontCache', public_path('fonts'))
+            ->setOption('isRemoteEnabled', true);
+
         $filename = "purchase-invoice-{$invoiceNumber}.pdf";
         $path = "invoices/{$filename}";
-        
-        Storage::disk('s3')->put($path, $pdf->output());
+
+        Storage::disk($this->storageDisk)->put($path, $pdf->output());
 
         // Save invoice to database
         $invoice = Invoice::create([
@@ -212,7 +219,7 @@ class InvoiceGeneratorService
         $invoiceNumber = $this->generateInvoiceNumber('SERVICE');
         $jobOrderItems = $order->jobOrderTasks()->get();
         $taxCalculations = $this->calculateServiceTaxes($order);
-        
+
         $items = $jobOrderItems->map(function ($task) use ($order) {
             $quantity = $task->quantity ?: 1;
             $taskCost = $task->task_cost ?: 0;
@@ -225,10 +232,10 @@ class InvoiceGeneratorService
                 'total' => (float) $taskCost, // task_cost is already the total, not unit price
             ];
         })->all();
-        
+
         // Calculate actual subtotal from tasks
         $actualSubtotal = collect($items)->sum('total');
-        
+
         $invoiceData = [
             'invoice_number' => $invoiceNumber,
             'invoice_date' => Carbon::now()->format('Y-m-d'),
@@ -253,20 +260,20 @@ class InvoiceGeneratorService
             'options' => array_merge([
                 'show_service_details' => true,
                 'show_tax_breakdown' => true,
-            ], $options)
+            ], $options),
         ];
 
         $pdf = Pdf::loadView('invoices.job-order', ['invoiceData' => $invoiceData])
-                ->setPaper('a4')
-                ->setOption('defaultFont', 'Arial')
-                ->setOption('fontDir', public_path('fonts'))
-                ->setOption('fontCache', public_path('fonts'))
-                ->setOption('isRemoteEnabled', true);
-        
+            ->setPaper('a4')
+            ->setOption('defaultFont', 'Arial')
+            ->setOption('fontDir', public_path('fonts'))
+            ->setOption('fontCache', public_path('fonts'))
+            ->setOption('isRemoteEnabled', true);
+
         $filename = "service-invoice-{$invoiceNumber}.pdf";
         $path = "invoices/{$filename}";
-        
-        Storage::disk('s3')->put($path, $pdf->output());
+
+        Storage::disk($this->storageDisk)->put($path, $pdf->output());
 
         // Save invoice to database
         $invoice = Invoice::create([
@@ -303,18 +310,18 @@ class InvoiceGeneratorService
     public function generateBatchInvoice(array $orders, array $options = []): array
     {
         $invoiceNumber = $this->generateInvoiceNumber('BATCH');
-        
+
         $allItems = collect();
         $totalSubtotal = 0;
         $taxCalculations = ['total_tax' => 0, 'breakdown' => []];
-        
+
         foreach ($orders as $order) {
             $allItems = $allItems->merge($order->salesOrderItems);
             $totalSubtotal += $order->subtotal;
-            
+
             $orderTaxes = $this->calculateTaxes($order->salesOrderItems);
             $taxCalculations['total_tax'] += $orderTaxes['total_tax'];
-            
+
             foreach ($orderTaxes['breakdown'] as $type => $amount) {
                 $taxCalculations['breakdown'][$type] = ($taxCalculations['breakdown'][$type] ?? 0) + $amount;
             }
@@ -334,26 +341,26 @@ class InvoiceGeneratorService
             'options' => array_merge([
                 'show_order_breakdown' => true,
                 'show_tax_breakdown' => true,
-            ], $options)
+            ], $options),
         ];
 
         $pdf = Pdf::loadView('invoices.batch', $invoiceData)
-                ->setPaper('a4')
-                ->setOption('defaultFont', 'Arial')
-                ->setOption('fontDir', public_path('fonts'))
-                ->setOption('fontCache', public_path('fonts'))
-                ->setOption('isRemoteEnabled', true);
-        
+            ->setPaper('a4')
+            ->setOption('defaultFont', 'Arial')
+            ->setOption('fontDir', public_path('fonts'))
+            ->setOption('fontCache', public_path('fonts'))
+            ->setOption('isRemoteEnabled', true);
+
         $filename = "batch-invoice-{$invoiceNumber}.pdf";
         $path = "invoices/{$filename}";
-        
-        Storage::disk('s3')->put($path, $pdf->output());
+
+        Storage::disk($this->storageDisk)->put($path, $pdf->output());
 
         return [
             'filename' => $filename,
             'path' => $path,
             'invoice_data' => $invoiceData,
-            'pdf' => $pdf
+            'pdf' => $pdf,
         ];
     }
 
@@ -364,21 +371,34 @@ class InvoiceGeneratorService
     {
         try {
             Mail::to($recipientEmail)
-                ->send(new \App\Mail\InvoiceGenerated($invoiceData, $options));
-            
-            Log::info('Invoice sent successfully', [
-                'invoice_number' => $invoiceData['invoice_data']['invoice_number'] ?? 'Unknown',
-                'recipient' => $recipientEmail
+                ->send(new InvoiceGenerated($invoiceData, $options));
+
+            $invoiceNumber = $invoiceData['invoice_data']['invoice_number']
+                ?? $invoiceData['receipt_data']['receipt_number']
+                ?? 'Document';
+            $subjectPrefix = $options['subject_prefix'] ?? 'Document';
+
+            EmailLog::create([
+                'recipient_email' => $recipientEmail,
+                'subject' => "{$subjectPrefix} #{$invoiceNumber}",
+                'message' => $invoiceData['invoice_data']['message'] ?? null,
+                'sent_by' => Auth::id(),
+                'sent_at' => now(),
             ]);
-            
+
+            Log::info('Invoice sent successfully', [
+                'invoice_number' => $invoiceNumber,
+                'recipient' => $recipientEmail,
+            ]);
+
             return true;
         } catch (\Throwable $e) {
             Log::error('Failed to send invoice', [
                 'invoice_number' => $invoiceData['invoice_data']['invoice_number'] ?? 'Unknown',
                 'recipient' => $recipientEmail,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
-            
+
             throw $e;
         }
     }
@@ -394,14 +414,14 @@ class InvoiceGeneratorService
         if (empty($items)) {
             return [
                 'total_tax' => 0,
-                'breakdown' => $taxBreakdown
+                'breakdown' => $taxBreakdown,
             ];
         }
 
         foreach ($items as $item) {
             $itemTax = $this->calculateItemTax($item);
             $totalTax += $itemTax['tax_amount'];
-            
+
             foreach ($itemTax['breakdown'] as $type => $amount) {
                 $taxBreakdown[$type] = ($taxBreakdown[$type] ?? 0) + $amount;
             }
@@ -409,7 +429,7 @@ class InvoiceGeneratorService
 
         return [
             'total_tax' => $totalTax,
-            'breakdown' => $taxBreakdown
+            'breakdown' => $taxBreakdown,
         ];
     }
 
@@ -444,7 +464,7 @@ class InvoiceGeneratorService
 
         return [
             'tax_amount' => $taxAmount,
-            'breakdown' => $breakdown
+            'breakdown' => $breakdown,
         ];
     }
 
@@ -465,8 +485,8 @@ class InvoiceGeneratorService
     {
         $year = Carbon::now()->format('Y');
         $sequence = $this->getNextSequence($prefix, $year);
-        
-        return "{$prefix}-{$year}-" . str_pad($sequence, 6, '0', STR_PAD_LEFT);
+
+        return "{$prefix}-{$year}-".str_pad($sequence, 6, '0', STR_PAD_LEFT);
     }
 
     /**
@@ -475,20 +495,21 @@ class InvoiceGeneratorService
     private function getNextSequence(string $prefix, string $year): int
     {
         // Validate inputs to prevent SQL injection
-        if (!preg_match('/^[a-zA-Z0-9_-]+$/', $prefix) || !preg_match('/^\d{4}$/', $year)) {
+        if (! preg_match('/^[a-zA-Z0-9_-]+$/', $prefix) || ! preg_match('/^\d{4}$/', $year)) {
             throw new \InvalidArgumentException('Invalid prefix or year format');
         }
 
         // Get the highest sequence number for this prefix and year
         $pattern = "{$prefix}-{$year}-%";
         $lastInvoice = Invoice::where('invoice_number', 'like', $pattern)
-            ->orderByRaw("CAST(SUBSTR(invoice_number, LENGTH(?) + 1) AS UNSIGNED) DESC", [$pattern])
+            ->orderByRaw('CAST(SUBSTR(invoice_number, LENGTH(?) + 1) AS UNSIGNED) DESC', [$pattern])
             ->first();
 
         if ($lastInvoice) {
             // Extract the sequence number from the invoice number
             $parts = explode('-', $lastInvoice->invoice_number);
             $sequence = (int) end($parts);
+
             return $sequence + 1;
         }
 
@@ -516,11 +537,11 @@ class InvoiceGeneratorService
     {
         $taxes = config('invoice.taxes', []);
         $taxConfig = [];
-        
+
         foreach ($taxes as $key => $tax) {
             $taxConfig[strtoupper($tax['name'])] = $tax['rate'];
         }
-        
+
         return $taxConfig;
     }
 
@@ -545,7 +566,7 @@ class InvoiceGeneratorService
     public function getInvoicePath(string $filename): string
     {
         $path = "invoices/{$filename}";
-        
+
         return PrivateStorage::downloadUrl($path, now()->addMinutes(60));
     }
 
@@ -554,6 +575,6 @@ class InvoiceGeneratorService
      */
     public function deleteInvoice(string $filename): bool
     {
-        return Storage::disk('s3')->delete("invoices/{$filename}");
+        return Storage::disk($this->storageDisk)->delete("invoices/{$filename}");
     }
 }

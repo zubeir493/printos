@@ -86,10 +86,6 @@ class EmailLogResource extends Resource
                 TextColumn::make('subject')
                     ->limit(50)
                     ->searchable(),
-                TextColumn::make('artwork.jobOrderTask.name')
-                    ->label('Task')
-                    ->searchable()
-                    ->sortable(),
                 TextColumn::make('sender.name')
                     ->label('Sent By')
                     ->searchable()

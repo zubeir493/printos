@@ -3,17 +3,17 @@
 namespace App\Filament\Resources\Artworks\Schemas;
 
 use App\Support\PrivateStorage;
+use Filament\Forms\Components\BaseFileUpload;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Flex;
 use Filament\Schemas\Components\Grid;
-use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\HtmlString;
 
 class ArtworkForm
 {
@@ -33,9 +33,9 @@ class ArtworkForm
                             ->columnSpan(1),
                         FileUpload::make('filename')
                             ->label('Artwork File')
-                            ->disk('s3')
+                            ->disk(config('filesystems.private_disk', 's3'))
                             ->visibility('private')
-                            ->getUploadedFileUsing(fn (\Filament\Forms\Components\BaseFileUpload $component, string $file, string | array | null $storedFileNames): ?array => PrivateStorage::uploadedFileInfo($component, $file, $storedFileNames))
+                            ->getUploadedFileUsing(fn (BaseFileUpload $component, string $file, string|array|null $storedFileNames): ?array => PrivateStorage::uploadedFileInfo($component, $file, $storedFileNames))
                             ->getOpenableFileUrlUsing(fn (string $file): ?string => PrivateStorage::url($file))
                             ->getDownloadableFileUrlUsing(fn (string $file): ?string => PrivateStorage::downloadUrl($file))
                             ->directory('artworks')
@@ -46,35 +46,38 @@ class ArtworkForm
                             ->columnSpanFull(),
                     ])->columnSpanFull(),
                 Flex::make([
-                        Toggle::make('is_approved')
-                            ->label('Production Ready')
-                            ->onColor('success')
-                            ->offColor('danger')
-                            ->required()
-                            ->columnSpan(1)
-                            ->live()
-                            ->afterStateUpdated(function ($state, callable $get, callable $set, $record) {
-                                if ($record && $record->jobOrderTask) {
-                                    $record->jobOrderTask->updateStatus();
-                                }
-                            }),
-                        Placeholder::make('download_link')
-                            ->label('')
-                            ->hidden(fn ($record) => empty($record?->filename))
-                            ->content(function ($record) {
-                                if (!$record || empty($record->filename)) return null;
-                                $url = PrivateStorage::downloadUrl($record->filename, now()->addMinutes(60));
-                                return new \Illuminate\Support\HtmlString(
-                                    '<div class="p-4 bg-gray-50 rounded-xl border border-dashed border-gray-300 flex items-center justify-center">' .
-                                    '<a href="' . $url . '" target="_blank" class="text-primary-600 hover:text-primary-800 font-medium flex items-center gap-2">' .
-                                    'Click to Download' .
-                                    '</a>' .
-                                    '</div>'
-                                );
-                            })
-                    ])->columnSpanFull(),
+                    Toggle::make('is_approved')
+                        ->label('Production Ready')
+                        ->onColor('success')
+                        ->offColor('danger')
+                        ->required()
+                        ->columnSpan(1)
+                        ->live()
+                        ->afterStateUpdated(function ($state, callable $get, callable $set, $record) {
+                            if ($record && $record->jobOrderTask) {
+                                $record->jobOrderTask->updateStatus();
+                            }
+                        }),
+                    Placeholder::make('download_link')
+                        ->label('')
+                        ->hidden(fn ($record) => empty($record?->filename))
+                        ->content(function ($record) {
+                            if (! $record || empty($record->filename)) {
+                                return null;
+                            }
+                            $url = PrivateStorage::downloadUrl($record->filename, now()->addMinutes(60));
+
+                            return new HtmlString(
+                                '<div class="p-4 bg-gray-50 rounded-xl border border-dashed border-gray-300 flex items-center justify-center">'.
+                                '<a href="'.$url.'" target="_blank" class="text-primary-600 hover:text-primary-800 font-medium flex items-center gap-2">'.
+                                'Click to Download'.
+                                '</a>'.
+                                '</div>'
+                            );
+                        }),
+                ])->columnSpanFull(),
                 Hidden::make('uploaded_by')
-                    ->default(fn() => Auth::id()),
+                    ->default(fn () => Auth::id()),
             ]);
     }
 }

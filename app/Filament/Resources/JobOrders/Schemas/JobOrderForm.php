@@ -2,9 +2,14 @@
 
 namespace App\Filament\Resources\JobOrders\Schemas;
 
+use App\Filament\Support\Calculations;
 use App\Filament\Support\PanelAccess;
+use App\Models\InventoryItem;
+use App\Models\JobOrder;
 use App\Support\PrivateStorage;
 use Filament\Actions\Action;
+use Filament\Facades\Filament;
+use Filament\Forms\Components\BaseFileUpload;
 use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\DatePicker;
@@ -13,18 +18,14 @@ use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Repeater\TableColumn;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\Toggle;
-use Filament\Infolists\Components\TextEntry;
-use Filament\Schemas\Schema;
+use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get as UtilitiesGet;
 use Filament\Schemas\Components\Utilities\Set as UtilitiesSet;
-use Filament\Support\Enums\FontWeight;
-use Filament\Support\Enums\TextSize;
+use Filament\Schemas\Schema;
 
 class JobOrderForm
 {
@@ -38,7 +39,7 @@ class JobOrderForm
                             ->schema([
                                 Select::make('partner_id')
                                     ->label('Customer')
-                                    ->relationship('partner', 'name', modifyQueryUsing: fn($query) => $query->where('is_customer', true))
+                                    ->relationship('partner', 'name', modifyQueryUsing: fn ($query) => $query->where('is_customer', true))
                                     ->createOptionForm([
                                         TextInput::make('name')
                                             ->required(),
@@ -53,15 +54,16 @@ class JobOrderForm
                                 TextInput::make('job_order_number')
                                     ->label('Job Order #')
                                     ->default(function () {
-                                        $lastJobOrder = \App\Models\JobOrder::orderBy('id', 'desc')->first();
+                                        $lastJobOrder = JobOrder::orderBy('id', 'desc')->first();
                                         $lastNumber = 0;
                                         if ($lastJobOrder && preg_match('/JO-(\d+)/', $lastJobOrder->job_order_number, $matches)) {
                                             $lastNumber = (int) $matches[1];
                                         }
-                                        return 'JO-' . str_pad($lastNumber + 1, 4, '0', STR_PAD_LEFT);
+
+                                        return 'JO-'.str_pad($lastNumber + 1, 4, '0', STR_PAD_LEFT);
                                     })
                                     ->readOnly()
-                                    ->required()
+                                    ->required(),
                             ]),
                         Grid::make()
                             ->schema([
@@ -70,7 +72,7 @@ class JobOrderForm
                                         'books' => 'Books',
                                         'packages' => 'Packages',
                                         'vouchers' => 'Vouchers',
-                                        'labels' => 'Labels'
+                                        'labels' => 'Labels',
                                     ])
                                     ->reactive()
                                     ->default('packages')
@@ -129,13 +131,13 @@ class JobOrderForm
                                     ->schema([
                                         Select::make('inventory_item_id')
                                             ->label('Material')
-                                            ->options(\App\Models\InventoryItem::pluck('name', 'id'))
+                                            ->options(InventoryItem::pluck('name', 'id'))
                                             ->searchable()
                                             ->required()
                                             ->preload()
                                             ->live()
                                             ->afterStateUpdated(function ($state, callable $set) {
-                                                $item = \App\Models\InventoryItem::find($state);
+                                                $item = InventoryItem::find($state);
                                                 $set('base_unit', $item?->unit);
                                             }),
                                         TextInput::make('required_quantity')
@@ -192,7 +194,7 @@ class JobOrderForm
                                                     'required_quantity' => 0,
                                                     'reserve_quantity' => 0,
                                                     'base_unit' => null,
-                                                ]
+                                                ],
                                             ],
                                         ];
                                         $component->state($state);
@@ -201,11 +203,11 @@ class JobOrderForm
                             ->minItems(1)
                             ->live() // Required for live total recalculation
                             ->afterStateUpdated(function (UtilitiesGet $get, UtilitiesSet $set) {
-                                \App\Filament\Support\Calculations::sumRepeater($get, $set, 'jobOrderTasks', 'total_price', 'task_cost');
+                                Calculations::sumRepeater($get, $set, 'jobOrderTasks', 'total_price', 'task_cost');
                             })
                             ->deleteAction(
-                                fn($action) => $action->after(function (UtilitiesGet $get, UtilitiesSet $set) {
-                                    \App\Filament\Support\Calculations::sumRepeater($get, $set, 'jobOrderTasks', 'total_price', 'task_cost');
+                                fn ($action) => $action->after(function (UtilitiesGet $get, UtilitiesSet $set) {
+                                    Calculations::sumRepeater($get, $set, 'jobOrderTasks', 'total_price', 'task_cost');
                                 })
                             ),
                         Grid::make(2)
@@ -213,7 +215,7 @@ class JobOrderForm
                                 Section::make('Additional Services')
                                     ->schema([
                                         Grid::make(3)
-                                            ->visible(fn(UtilitiesGet $get) => $get('job_type') === 'books')
+                                            ->visible(fn (UtilitiesGet $get) => $get('job_type') === 'books')
                                             ->schema([
                                                 Group::make([
                                                     Checkbox::make('services.typing')->label('Typing'),
@@ -223,17 +225,17 @@ class JobOrderForm
                                                     Checkbox::make('services.spine_has_text')->label('Spine has text'),
                                                     Checkbox::make('services.cover_inner_printing')->label('Cover inner printing'),
                                                     Checkbox::make('services.dont_insert_printer_name')->label("Don't insert printer name"),
-                                                    Checkbox::make('services.cover_proof')->label("Cover Proof"),
-                                                    Checkbox::make('services.lamination')->label("Lamination"),
+                                                    Checkbox::make('services.cover_proof')->label('Cover Proof'),
+                                                    Checkbox::make('services.lamination')->label('Lamination'),
                                                 ])->columns(1)->columnSpan(1),
                                                 Group::make([
-                                                    TextInput::make('services.page_no')->label("Number of Pages"),
-                                                    TextInput::make('services.text_color_no')->label("Number of Colors (Text)"),
-                                                    TextInput::make('services.cover_color_no')->label("Number of Colors (Cover)"),
-                                                    TextInput::make('services.cover_ups')->label("Cover Ups"),
-                                                    TextInput::make('services.books_per_package')->label("Books per Package"),
+                                                    TextInput::make('services.page_no')->label('Number of Pages'),
+                                                    TextInput::make('services.text_color_no')->label('Number of Colors (Text)'),
+                                                    TextInput::make('services.cover_color_no')->label('Number of Colors (Cover)'),
+                                                    TextInput::make('services.cover_ups')->label('Cover Ups'),
+                                                    TextInput::make('services.books_per_package')->label('Books per Package'),
                                                     Select::make('services.binding_type')
-                                                        ->label("Binding Type")
+                                                        ->label('Binding Type')
                                                         ->options([
                                                             'saddle' => 'Saddle stitch',
                                                             'perfect' => 'Perfect Binding',
@@ -244,7 +246,7 @@ class JobOrderForm
 
                                             ]),
                                         Grid::make(3)
-                                            ->visible(fn(UtilitiesGet $get) => $get('job_type') === 'packages')
+                                            ->visible(fn (UtilitiesGet $get) => $get('job_type') === 'packages')
                                             ->schema([
                                                 Group::make([
                                                     Checkbox::make('services.new_design')->label('New Design'),
@@ -276,7 +278,7 @@ class JobOrderForm
                                                 ])->columnSpan(2)->columns(2),
                                             ]),
                                         Grid::make(3)
-                                            ->visible(fn(UtilitiesGet $get) => $get('job_type') === 'labels')
+                                            ->visible(fn (UtilitiesGet $get) => $get('job_type') === 'labels')
                                             ->schema([
                                                 Group::make([
                                                     Checkbox::make('services.new_design')->label('New Design'),
@@ -308,7 +310,7 @@ class JobOrderForm
                                                 ])->columnSpan(2)->columns(2),
                                             ]),
                                         Grid::make(3)
-                                            ->visible(fn(UtilitiesGet $get) => $get('job_type') === 'vouchers')
+                                            ->visible(fn (UtilitiesGet $get) => $get('job_type') === 'vouchers')
                                             ->schema([
                                                 Group::make([
                                                     Checkbox::make('services.new_design')->label('New Design'),
@@ -357,25 +359,25 @@ class JobOrderForm
                             ->default('draft')
                             ->helperText('Status of the overall job order.')
                             ->required(),
-                            
+
                         FileUpload::make('cost_calc_file')
                             ->label('Cost Calculation File')
-                            ->disk('s3')
+                            ->disk(config('filesystems.private_disk', 's3'))
                             ->visibility('private')
-                            ->getUploadedFileUsing(fn (\Filament\Forms\Components\BaseFileUpload $component, string $file, string | array | null $storedFileNames): ?array => PrivateStorage::uploadedFileInfo($component, $file, $storedFileNames))
+                            ->getUploadedFileUsing(fn (BaseFileUpload $component, string $file, string|array|null $storedFileNames): ?array => PrivateStorage::uploadedFileInfo($component, $file, $storedFileNames))
                             ->getOpenableFileUrlUsing(fn (string $file): ?string => PrivateStorage::url($file))
                             ->getDownloadableFileUrlUsing(fn (string $file): ?string => PrivateStorage::downloadUrl($file))
                             ->directory('job-orders/cost-calculations')
                             ->acceptedFileTypes(['application/csv', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel'])
                             ->maxSize(1024)
                             ->panelAspectRatio('3:1')
-                            ->downloadable(fn ($record) => in_array(\Filament\Facades\Filament::getCurrentPanel()?->getId(), ['admin', 'finance', 'operations']))
+                            ->downloadable(fn ($record) => in_array(Filament::getCurrentPanel()?->getId(), ['admin', 'finance', 'operations']))
                             ->dehydrated() // Add this line to make the file uploader work on edit pages
                             ->required(),
-                        
+
                         DatePicker::make('due_date')
                             ->label('Payment Due Date')
-                            ->default(fn() => now()->addDays(30))
+                            ->default(fn () => now()->addDays(30))
                             ->helperText('Set the payment due date for this job order')
                             ->required(),
                         TextInput::make('total_price')

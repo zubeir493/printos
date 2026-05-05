@@ -34,7 +34,7 @@
 
                 <li><strong>Filename:</strong> {{ basename($artwork->filename ?? '') }}</li>
 
-            <a href="{{ \Illuminate\Support\Facades\Storage::disk('s3')->temporaryUrl($artwork->filename, now()->addDays(7)) }}" class="download-btn" target="_blank">
+            <a href="{{ \App\Support\PrivateStorage::downloadUrl($artwork->filename, now()->addDays(7)) }}" class="download-btn" target="_blank">
                 📥 Download Artwork
             </a>
 

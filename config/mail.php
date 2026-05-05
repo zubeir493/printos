@@ -108,6 +108,7 @@ return [
         'mailtrap' => [
             'transport' => 'mailtrap',
             'api_key' => env('MAILTRAP_API_KEY'),
+            'endpoint' => env('MAILTRAP_ENDPOINT', 'https://send.api.mailtrap.io/api/send'),
         ],
 
     ],

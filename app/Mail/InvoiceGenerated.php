@@ -8,6 +8,9 @@ use Illuminate\Mail\Mailables\Attachment;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Storage;
+use RuntimeException;
+use Throwable;
 
 class InvoiceGenerated extends Mailable
 {
@@ -53,13 +56,42 @@ class InvoiceGenerated extends Mailable
 
     public function attachments(): array
     {
-        $filename = $this->invoiceData['filename'];
-        $path = storage_path("app/public/{$this->invoiceData['path']}");
+        $filename = $this->invoiceData['filename'] ?? 'invoice.pdf';
 
-        return [
-            Attachment::fromPath($path)
-                ->as($filename)
-                ->withMime('application/pdf'),
-        ];
+        if (isset($this->invoiceData['pdf']) && method_exists($this->invoiceData['pdf'], 'output')) {
+            return [
+                Attachment::fromData(fn () => $this->invoiceData['pdf']->output(), $filename)
+                    ->withMime('application/pdf'),
+            ];
+        }
+
+        $path = $this->invoiceData['path'] ?? $this->invoiceData['file_path'] ?? null;
+
+        if ($path) {
+            return [
+                Attachment::fromData(function () use ($path) {
+                    try {
+                        return Storage::disk('s3')->get($path);
+                    } catch (Throwable $e) {
+                        throw new RuntimeException('Invoice PDF could not be read from private storage: '.$e->getMessage(), 0, $e);
+                    }
+                }, $filename)->withMime('application/pdf'),
+            ];
+        }
+
+        foreach (array_filter([
+            $path ? storage_path("app/public/{$path}") : null,
+            $path ? storage_path("app/{$path}") : null,
+        ]) as $localPath) {
+            if (is_file($localPath)) {
+                return [
+                    Attachment::fromPath($localPath)
+                        ->as($filename)
+                        ->withMime('application/pdf'),
+                ];
+            }
+        }
+
+        throw new RuntimeException("Invoice PDF could not be found for attachment: {$filename}");
     }
 }

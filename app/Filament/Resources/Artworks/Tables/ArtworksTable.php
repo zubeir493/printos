@@ -109,7 +109,7 @@ class ArtworksTable
                         try {
                             // Send the actual email
                             \Illuminate\Support\Facades\Mail::to($data['recipient_email'])
-                                ->send(new \App\Mail\ShareArtwork($record, $data));
+                                ->send(new \App\Mail\ShareArtwork($record, $data['recipient_email'], $data['message'] ?? null));
 
                             \App\Models\EmailLog::create([
                                 'recipient_email' => $data['recipient_email'],

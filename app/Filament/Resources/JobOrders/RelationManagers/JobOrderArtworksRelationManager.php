@@ -4,6 +4,7 @@ namespace App\Filament\Resources\JobOrders\RelationManagers;
 
 use App\Models\Artwork;
 use App\Models\JobOrderTask;
+use App\Support\PrivateStorage;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
@@ -36,6 +37,10 @@ class JobOrderArtworksRelationManager extends RelationManager
                         FileUpload::make('filename')
                             ->label('Artwork File')
                             ->disk('s3')
+                            ->visibility('private')
+                            ->getUploadedFileUsing(fn (\Filament\Forms\Components\BaseFileUpload $component, string $file, string | array | null $storedFileNames): ?array => PrivateStorage::uploadedFileInfo($component, $file, $storedFileNames))
+                            ->getOpenableFileUrlUsing(fn (string $file): ?string => PrivateStorage::url($file))
+                            ->getDownloadableFileUrlUsing(fn (string $file): ?string => PrivateStorage::downloadUrl($file))
                             ->directory('artworks')
                             ->preserveFilenames()
                             ->image()

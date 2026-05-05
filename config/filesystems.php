@@ -34,8 +34,8 @@ return [
             'driver' => 'local',
             'root' => storage_path('app/private'),
             'serve' => true,
-            'throw' => false,
-            'report' => false,
+            'throw' => true,
+            'report' => true,
         ],
 
         'public' => [
@@ -56,8 +56,12 @@ return [
             'url' => env('AWS_URL'),
             'endpoint' => env('AWS_ENDPOINT', env('B2_ENDPOINT')),
             'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', true),
-            'throw' => false,
-            'report' => false,
+            'visibility' => 'private',
+            'http' => [
+                'verify' => filter_var(env('AWS_VERIFY_SSL', true), FILTER_VALIDATE_BOOL),
+            ],
+            'throw' => true,
+            'report' => true,
         ],
 
         'b2' => [
@@ -69,7 +73,11 @@ return [
             'endpoint' => env('B2_ENDPOINT', 'https://s3.us-west-002.backblazeb2.com'),
             'use_path_style_endpoint' => true,
             'visibility' => 'private',
-            'throw' => false,
+            'http' => [
+                'verify' => filter_var(env('B2_VERIFY_SSL', env('AWS_VERIFY_SSL', true)), FILTER_VALIDATE_BOOL),
+            ],
+            'throw' => true,
+            'report' => true,
         ],
 
     ],

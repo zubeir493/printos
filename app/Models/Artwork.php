@@ -2,10 +2,10 @@
 
 namespace App\Models;
 
+use App\Support\PrivateStorage;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Facades\Storage;
 
 class Artwork extends Model
 {
@@ -46,6 +46,6 @@ class Artwork extends Model
 
     public function getUrlAttribute(): ?string
     {
-        return $this->filename ? Storage::disk('s3')->url($this->filename) : null;
+        return PrivateStorage::url($this->filename);
     }
 }

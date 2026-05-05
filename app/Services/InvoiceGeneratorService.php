@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Support\PrivateStorage;
 use App\Models\Payment;
 use App\Models\SalesOrder;
 use App\Models\JobOrder;
@@ -11,7 +12,6 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\URL;
 use Carbon\Carbon;
 
 class InvoiceGeneratorService
@@ -372,14 +372,14 @@ class InvoiceGeneratorService
             ]);
             
             return true;
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::error('Failed to send invoice', [
                 'invoice_number' => $invoiceData['invoice_data']['invoice_number'] ?? 'Unknown',
                 'recipient' => $recipientEmail,
                 'error' => $e->getMessage()
             ]);
             
-            return false;
+            throw $e;
         }
     }
 
@@ -546,8 +546,7 @@ class InvoiceGeneratorService
     {
         $path = "invoices/{$filename}";
         
-        // Use temporary URL for private S3 bucket (valid for 60 minutes)
-        return \Illuminate\Support\Facades\Storage::disk('s3')->temporaryUrl($path, now()->addMinutes(60));
+        return PrivateStorage::downloadUrl($path, now()->addMinutes(60));
     }
 
     /**

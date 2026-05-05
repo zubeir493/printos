@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\JobOrders\Schemas;
 
 use App\Filament\Support\PanelAccess;
+use App\Support\PrivateStorage;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\CheckboxList;
@@ -360,6 +361,10 @@ class JobOrderForm
                         FileUpload::make('cost_calc_file')
                             ->label('Cost Calculation File')
                             ->disk('s3')
+                            ->visibility('private')
+                            ->getUploadedFileUsing(fn (\Filament\Forms\Components\BaseFileUpload $component, string $file, string | array | null $storedFileNames): ?array => PrivateStorage::uploadedFileInfo($component, $file, $storedFileNames))
+                            ->getOpenableFileUrlUsing(fn (string $file): ?string => PrivateStorage::url($file))
+                            ->getDownloadableFileUrlUsing(fn (string $file): ?string => PrivateStorage::downloadUrl($file))
                             ->directory('job-orders/cost-calculations')
                             ->acceptedFileTypes(['application/csv', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel'])
                             ->maxSize(1024)

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\JournalEntries\Schemas;
 
+use App\Support\PrivateStorage;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Repeater;
@@ -92,13 +93,17 @@ class JournalEntryForm
                         FileUpload::make('attachment')
                             ->maxSize(5120)
                             ->disk('s3')
+                            ->visibility('private')
+                            ->getUploadedFileUsing(fn (\Filament\Forms\Components\BaseFileUpload $component, string $file, string | array | null $storedFileNames): ?array => PrivateStorage::uploadedFileInfo($component, $file, $storedFileNames))
+                            ->getOpenableFileUrlUsing(fn (string $file): ?string => PrivateStorage::url($file))
+                            ->getDownloadableFileUrlUsing(fn (string $file): ?string => PrivateStorage::downloadUrl($file))
                             ->directory('accounting/attachments'),
                         \Filament\Forms\Components\Placeholder::make('download_attachment')
                             ->label('')
                             ->hidden(fn ($record) => empty($record?->attachment))
                             ->content(function ($record) {
                                 if (!$record || empty($record->attachment)) return null;
-                                $url = \Illuminate\Support\Facades\Storage::disk('s3')->temporaryUrl($record->attachment, now()->addMinutes(60));
+                                $url = PrivateStorage::downloadUrl($record->attachment, now()->addMinutes(60));
                                 return new \Illuminate\Support\HtmlString(
                                     '<div class="p-4 bg-gray-50 rounded-xl border border-dashed border-gray-300 flex items-center justify-center">' .
                                     '<a href="' . $url . '" target="_blank" class="text-primary-600 hover:text-primary-800 font-medium flex items-center gap-2">' .

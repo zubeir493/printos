@@ -139,9 +139,15 @@ class InvoicesTable
                                     'path' => $record->file_path,
                                     'invoice_data' => [
                                         'invoice_number' => $record->invoice_number,
+                                        'invoice_date' => $record->invoice_date?->format('Y-m-d'),
                                         'partner' => $record->partner,
-                                        'total' => $record->total_amount,
-                                        'due_date' => $record->due_date,
+                                        'order' => (object) ['partner' => $record->partner],
+                                        'due_date' => $record->due_date?->format('Y-m-d'),
+                                        'total_amount' => $record->total_amount,
+                                        'balance_due' => $record->balance_due,
+                                        'company_info' => config('invoice.company', [
+                                            'name' => config('app.name', 'PrintOS'),
+                                        ]),
                                     ]
                                 ],
                                 $record->email_recipient
@@ -195,8 +201,16 @@ class InvoicesTable
                                     'path' => $record->file_path,
                                     'invoice_data' => [
                                         'invoice_number' => $record->invoice_number,
+                                        'invoice_date' => $record->invoice_date?->format('Y-m-d'),
                                         'partner' => $record->partner,
+                                        'order' => (object) ['partner' => $record->partner],
+                                        'due_date' => $record->due_date?->format('Y-m-d'),
+                                        'total_amount' => $record->total_amount,
+                                        'balance_due' => $record->balance_due,
                                         'message' => $data['message'] ?? null,
+                                        'company_info' => config('invoice.company', [
+                                            'name' => config('app.name', 'PrintOS'),
+                                        ]),
                                     ]
                                 ],
                                 $data['email']

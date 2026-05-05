@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Employees\Schemas;
 
+use App\Support\PrivateStorage;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\FileUpload;
@@ -79,7 +80,7 @@ class EmployeeForm
                                         if (! $record || ! $record->image) {
                                             return new \Illuminate\Support\HtmlString('<img src="https://ui-avatars.com/api/?name=' . urlencode($name) . '&color=FFFFFF&background=020617" class="w-full aspect-square rounded-xl object-cover shadow-sm" />');
                                         }
-                                        $url = \Illuminate\Support\Facades\Storage::disk('s3')->temporaryUrl($record->image, now()->addMinutes(10));
+                                        $url = PrivateStorage::url($record->image, now()->addMinutes(10));
                                         return new \Illuminate\Support\HtmlString('<img src="' . $url . '" class="w-full aspect-square rounded-xl object-cover shadow-sm" />');
                                     })
                                     ->columnSpan(5),
@@ -91,6 +92,10 @@ class EmployeeForm
                                     ->maxSize(512)
                                     ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
                                     ->disk('s3')
+                                    ->visibility('private')
+                                    ->getUploadedFileUsing(fn (\Filament\Forms\Components\BaseFileUpload $component, string $file, string | array | null $storedFileNames): ?array => PrivateStorage::uploadedFileInfo($component, $file, $storedFileNames))
+                                    ->getOpenableFileUrlUsing(fn (string $file): ?string => PrivateStorage::url($file))
+                                    ->getDownloadableFileUrlUsing(fn (string $file): ?string => PrivateStorage::downloadUrl($file))
                                     ->directory('employees/photos')
                                     ->label('Photo')
                                     ->previewable(false)

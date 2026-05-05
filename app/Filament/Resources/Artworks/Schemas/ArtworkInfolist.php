@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Artworks\Schemas;
 
+use App\Support\PrivateStorage;
 use Filament\Infolists\Components\IconEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Schema;
@@ -32,7 +33,7 @@ class ArtworkInfolist
                         \Filament\Infolists\Components\TextEntry::make('filename')
                             ->label('Download Artwork')
                             ->formatStateUsing(fn ($state) => '📥 Download Artwork')
-                            ->url(fn ($record) => \Illuminate\Support\Facades\Storage::disk('s3')->temporaryUrl($record->filename, now()->addMinutes(60)))
+                            ->url(fn ($record) => PrivateStorage::downloadUrl($record->filename, now()->addMinutes(60)))
                             ->openUrlInNewTab()
                             ->color('primary')
                             ->icon('heroicon-m-arrow-down-tray')

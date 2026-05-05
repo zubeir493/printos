@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\InventoryItems\Schemas;
 
 use App\Filament\Support\PanelAccess;
+use App\Support\PrivateStorage;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
@@ -71,20 +72,16 @@ class InventoryItemForm
                         ->default(false),
                 ])->columnSpan(4)->columns(2),
                 Group::make([
-                    Placeholder::make('image_view')
-                        ->label('')
-                        ->visibleOn('view')
-                        ->content(function ($record) {
-                            if (!$record || !$record->image) return null;
-                            $url = \Illuminate\Support\Facades\Storage::disk('s3')->temporaryUrl($record->image, now()->addMinutes(10));
-                            return new \Illuminate\Support\HtmlString('<img src="' . $url . '" class="w-full aspect-square rounded-xl object-cover shadow-sm border" />');
-                        }),
                     FileUpload::make('image')
                         ->image()
                         ->imageEditor()
                         ->imageAspectRatio('1:1')
                         ->maxSize(1024)
                         ->disk('s3')
+                        ->visibility('private')
+                        ->getUploadedFileUsing(fn (\Filament\Forms\Components\BaseFileUpload $component, string $file, string | array | null $storedFileNames): ?array => PrivateStorage::uploadedFileInfo($component, $file, $storedFileNames))
+                        ->getOpenableFileUrlUsing(fn (string $file): ?string => PrivateStorage::url($file))
+                        ->getDownloadableFileUrlUsing(fn (string $file): ?string => PrivateStorage::downloadUrl($file))
                         ->directory('inventory/items')
                         ->previewable(false)
                         ->hiddenOn('view')

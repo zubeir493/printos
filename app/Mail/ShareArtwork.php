@@ -16,15 +16,28 @@ class ShareArtwork extends Mailable
     public $artwork;
     public $recipientEmail;
     public $customMessage;
+    public $subjectLine;
 
     /**
      * Create a new message instance.
      */
     public function __construct($artwork, $recipientEmail, $customMessage = null)
     {
-        $this->artwork = $artwork->load(['jobOrder', 'uploader']);
+        $this->artwork = method_exists($artwork, 'load')
+            ? $artwork->load(['jobOrder', 'uploader'])
+            : $artwork;
+
+        if (is_array($recipientEmail)) {
+            $this->recipientEmail = $recipientEmail['recipient_email'] ?? null;
+            $this->customMessage = $recipientEmail['message'] ?? null;
+            $this->subjectLine = $recipientEmail['subject'] ?? null;
+
+            return;
+        }
+
         $this->recipientEmail = $recipientEmail;
         $this->customMessage = $customMessage;
+        $this->subjectLine = null;
     }
 
     /**
@@ -33,7 +46,7 @@ class ShareArtwork extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Artwork Shared: ' . basename($this->artwork->filename),
+            subject: $this->subjectLine ?: 'Artwork Shared: ' . basename($this->artwork->filename),
         );
     }
 

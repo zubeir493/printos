@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Artworks\Schemas;
 
+use App\Support\PrivateStorage;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
@@ -33,6 +34,10 @@ class ArtworkForm
                         FileUpload::make('filename')
                             ->label('Artwork File')
                             ->disk('s3')
+                            ->visibility('private')
+                            ->getUploadedFileUsing(fn (\Filament\Forms\Components\BaseFileUpload $component, string $file, string | array | null $storedFileNames): ?array => PrivateStorage::uploadedFileInfo($component, $file, $storedFileNames))
+                            ->getOpenableFileUrlUsing(fn (string $file): ?string => PrivateStorage::url($file))
+                            ->getDownloadableFileUrlUsing(fn (string $file): ?string => PrivateStorage::downloadUrl($file))
                             ->directory('artworks')
                             ->preserveFilenames()
                             ->acceptedFileTypes(['application/pdf', 'image/jpeg', 'image/png', 'image/tiff', 'image/webp'])
@@ -58,7 +63,7 @@ class ArtworkForm
                             ->hidden(fn ($record) => empty($record?->filename))
                             ->content(function ($record) {
                                 if (!$record || empty($record->filename)) return null;
-                                $url = \Illuminate\Support\Facades\Storage::disk('s3')->temporaryUrl($record->filename, now()->addMinutes(60));
+                                $url = PrivateStorage::downloadUrl($record->filename, now()->addMinutes(60));
                                 return new \Illuminate\Support\HtmlString(
                                     '<div class="p-4 bg-gray-50 rounded-xl border border-dashed border-gray-300 flex items-center justify-center">' .
                                     '<a href="' . $url . '" target="_blank" class="text-primary-600 hover:text-primary-800 font-medium flex items-center gap-2">' .

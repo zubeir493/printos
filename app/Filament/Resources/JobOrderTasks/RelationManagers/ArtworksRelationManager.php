@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\JobOrderTasks\RelationManagers;
 
+use App\Support\PrivateStorage;
 use Filament\Actions\AssociateAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
@@ -31,6 +32,10 @@ class ArtworksRelationManager extends RelationManager
                         FileUpload::make('filename')
                             ->label('Artwork File')
                             ->disk('s3')
+                            ->visibility('private')
+                            ->getUploadedFileUsing(fn (\Filament\Forms\Components\BaseFileUpload $component, string $file, string | array | null $storedFileNames): ?array => PrivateStorage::uploadedFileInfo($component, $file, $storedFileNames))
+                            ->getOpenableFileUrlUsing(fn (string $file): ?string => PrivateStorage::url($file))
+                            ->getDownloadableFileUrlUsing(fn (string $file): ?string => PrivateStorage::downloadUrl($file))
                             ->directory('artworks')
                             ->preserveFilenames()
                             ->image()

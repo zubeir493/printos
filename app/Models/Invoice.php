@@ -60,6 +60,31 @@ class Invoice extends Model
     }
 
     /**
+     * The "booted" method of the model.
+     */
+    protected static function booted()
+    {
+        static::creating(function ($invoice) {
+            if (empty($invoice->invoice_number)) {
+                $lastInvoice = self::orderBy('id', 'desc')->first();
+                $nextId = $lastInvoice ? $lastInvoice->id + 1 : 1;
+                $prefix = match ($invoice->invoice_type) {
+                    'purchase' => 'PI-',
+                    'service' => 'SI-',
+                    'receipt' => 'RCP-',
+                    default => 'INV-',
+                };
+                $invoice->invoice_number = $prefix.str_pad($nextId, 6, '0', STR_PAD_LEFT);
+            }
+
+            // Set initial balance_due if not set
+            if (is_null($invoice->balance_due)) {
+                $invoice->balance_due = $invoice->total_amount ?? 0;
+            }
+        });
+    }
+
+    /**
      * Get the partner that owns the invoice.
      */
     public function partner(): BelongsTo
@@ -72,7 +97,7 @@ class Invoice extends Model
      */
     public function order()
     {
-        return match($this->order_type) {
+        return match ($this->order_type) {
             'sales_order' => $this->belongsTo(SalesOrder::class, 'order_id'),
             'purchase_order' => $this->belongsTo(PurchaseOrder::class, 'order_id'),
             'job_order' => $this->belongsTo(JobOrder::class, 'order_id'),
@@ -103,7 +128,7 @@ class Invoice extends Model
     public function scopeOverdue($query)
     {
         return $query->where('due_date', '<', now())
-                    ->where('status', '!=', 'paid');
+            ->where('status', '!=', 'paid');
     }
 
     /**
@@ -119,7 +144,7 @@ class Invoice extends Model
      */
     public function isOverdue(): bool
     {
-        return $this->due_date->isPast() && !$this->isPaid();
+        return $this->due_date->isPast() && ! $this->isPaid();
     }
 
     /**
@@ -127,7 +152,7 @@ class Invoice extends Model
      */
     public function getFormattedTotalAttribute(): string
     {
-        return number_format($this->total_amount, 2) . ' ETB';
+        return number_format($this->total_amount, 2).' ETB';
     }
 
     /**
@@ -135,6 +160,6 @@ class Invoice extends Model
      */
     public function getFormattedBalanceAttribute(): string
     {
-        return number_format($this->balance_due, 2) . ' ETB';
+        return number_format($this->balance_due, 2).' ETB';
     }
 }

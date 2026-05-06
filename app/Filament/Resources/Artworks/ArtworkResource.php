@@ -2,10 +2,7 @@
 
 namespace App\Filament\Resources\Artworks;
 
-use App\Filament\Resources\Artworks\Pages\CreateArtwork;
-use App\Filament\Resources\Artworks\Pages\EditArtwork;
 use App\Filament\Resources\Artworks\Pages\ListArtworks;
-use App\Filament\Resources\Artworks\Pages\ViewArtwork;
 use App\Filament\Resources\Artworks\Schemas\ArtworkForm;
 use App\Filament\Resources\Artworks\Tables\ArtworksTable;
 use App\Models\Artwork;
@@ -20,6 +17,8 @@ class ArtworkResource extends Resource
     protected static ?string $model = Artwork::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedFolderArrowDown;
+
+    protected static ?int $navigationSort = 3;
 
     public static function form(Schema $schema): Schema
     {

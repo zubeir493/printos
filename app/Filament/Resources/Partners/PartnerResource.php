@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Partners;
 use App\Filament\Resources\Partners\Pages\CreatePartner;
 use App\Filament\Resources\Partners\Pages\EditPartner;
 use App\Filament\Resources\Partners\Pages\ListPartners;
+use App\Filament\Resources\Partners\Pages\ViewPartner;
 use App\Filament\Resources\Partners\RelationManagers\JobOrdersRelationManager;
 use App\Filament\Resources\Partners\Schemas\PartnerForm;
 use App\Filament\Resources\Partners\Tables\PartnersTable;
@@ -22,6 +23,8 @@ class PartnerResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedUserGroup;
 
+    protected static ?int $navigationSort = 2;
+
     public static function canCreate(): bool
     {
         return PanelAccess::canManagePartners();
@@ -37,18 +40,16 @@ class PartnerResource extends Resource
         return PartnerForm::configure($schema);
     }
 
-
-
     public static function table(Table $table): Table
     {
         return PartnersTable::configure($table)
-            ->recordUrl(fn($record) => static::getUrl('view', ['record' => $record]));
+            ->recordUrl(fn ($record) => static::getUrl('view', ['record' => $record]));
     }
 
     public static function getRelations(): array
     {
         return [
-            JobOrdersRelationManager::class
+            JobOrdersRelationManager::class,
         ];
     }
 
@@ -57,7 +58,7 @@ class PartnerResource extends Resource
         return [
             'index' => ListPartners::route('/'),
             'create' => CreatePartner::route('/create'),
-            'view' => \App\Filament\Resources\Partners\Pages\ViewPartner::route('/{record}'),
+            'view' => ViewPartner::route('/{record}'),
             'edit' => EditPartner::route('/{record}/edit'),
         ];
     }

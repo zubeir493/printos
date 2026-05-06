@@ -1,6 +1,6 @@
 {
     "agents": [
-        "cursor"
+        "gemini"
     ],
     "cloud": false,
     "guidelines": true,

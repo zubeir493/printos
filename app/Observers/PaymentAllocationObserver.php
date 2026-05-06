@@ -2,10 +2,11 @@
 
 namespace App\Observers;
 
+use App\Models\JobOrder;
 use App\Models\JournalEntry;
 use App\Models\Payment;
 use App\Models\PaymentAllocation;
-use App\Models\JobOrder;
+use App\Services\InvoiceGeneratorService;
 
 class PaymentAllocationObserver
 {
@@ -62,16 +63,32 @@ class PaymentAllocationObserver
      */
     protected function updateAllocatable(PaymentAllocation $paymentAllocation): void
     {
+        $allocatable = $paymentAllocation->allocatable;
+        if (! $allocatable) {
+            return;
+        }
+
+        // Update JobOrder advance payment info
         if ($paymentAllocation->allocatable_type === JobOrder::class) {
-            $jobOrder = $paymentAllocation->allocatable;
-            if ($jobOrder) {
-                $firstAllocation = $jobOrder->paymentAllocations()->orderBy('id')->first();
-                
-                $jobOrder->updateQuietly([
-                    'advance_paid' => $firstAllocation !== null,
-                    'advance_amount' => $firstAllocation ? $firstAllocation->allocated_amount : 0,
+            $firstAllocation = $allocatable->paymentAllocations()->orderBy('id')->first();
+
+            $allocatable->updateQuietly([
+                'advance_paid' => $firstAllocation !== null,
+                'advance_amount' => $firstAllocation ? $firstAllocation->allocated_amount : 0,
+            ]);
+        }
+
+        // Synchronize related invoices if they exist
+        if (method_exists($allocatable, 'invoices')) {
+            $allocatable->invoices()->each(function ($invoice) {
+                $invoice->update([
+                    'balance_due' => $invoice->order->balance ?? 0,
+                    'status' => app(InvoiceGeneratorService::class)->getInvoiceStatus($invoice->order),
                 ]);
-            }
+
+                // Regenerate the PDF file to reflect the new balance
+                app(InvoiceGeneratorService::class)->regeneratePdf($invoice);
+            });
         }
     }
 }

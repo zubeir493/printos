@@ -2,11 +2,17 @@
 
 namespace App\Filament\Resources\SalesOrders\Tables;
 
+use App\Filament\Exports\SalesOrderExporter;
+use App\Filament\Support\PanelAccess;
+use App\Models\Warehouse;
+use App\Services\InvoiceGeneratorService;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
-use App\Filament\Support\PanelAccess;
+use Filament\Actions\ExportAction;
+use Filament\Actions\ExportBulkAction;
+use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -26,10 +32,10 @@ class SalesOrdersTable
                     ->color('primary'),
                 TextColumn::make('paid_amount')
                     ->label('Payment Status')
-                    ->state(fn ($record) => number_format($record->paid_amount, 2) . '/' . number_format($record->total, 2) . ' Birr')
+                    ->state(fn ($record) => number_format($record->paid_amount, 2).'/'.number_format($record->total, 2).' Birr')
                     ->color(fn ($record) => $record->balance > 0 ? 'warning' : 'success')
-                    ->description(fn ($record) => $record->paymentAllocations()->count() > 0 
-                        ? $record->paymentAllocations()->count() . ' payment(s)' 
+                    ->description(fn ($record) => $record->paymentAllocations()->count() > 0
+                        ? $record->paymentAllocations()->count().' payment(s)'
                         : 'No payments'),
                 TextColumn::make('status')
                     ->badge()
@@ -57,7 +63,7 @@ class SalesOrdersTable
                     ]),
                 SelectFilter::make('warehouse_id')
                     ->label('Warehouse')
-                    ->options(\App\Models\Warehouse::orderBy('name')->pluck('name', 'id')->all()),
+                    ->options(Warehouse::orderBy('name')->pluck('name', 'id')->all()),
             ])
             ->recordActions([
                 EditAction::make()
@@ -66,11 +72,12 @@ class SalesOrdersTable
                     ->label('Invoice')
                     ->icon('heroicon-o-document-text')
                     ->color('primary')
+                    ->hidden(fn ($record) => $record->invoices()->exists())
                     ->action(function ($record) {
                         try {
-                            $invoiceService = app(\App\Services\InvoiceGeneratorService::class);
+                            $invoiceService = app(InvoiceGeneratorService::class);
                             $result = $invoiceService->generateFromSalesOrder($record);
-                            
+
                             $actions = [
                                 Action::make('download')
                                     ->label('Download')
@@ -85,10 +92,10 @@ class SalesOrdersTable
                                     ->icon('heroicon-o-envelope')
                                     ->action(function () use ($record, $result, $invoiceService) {
                                         $sent = $invoiceService->sendInvoiceEmail(
-                                            $result, 
+                                            $result,
                                             $record->partner->email
                                         );
-                                        
+
                                         if ($sent) {
                                             // Update invoice record with email info
                                             $result['invoice']->update([
@@ -96,13 +103,13 @@ class SalesOrdersTable
                                                 'email_recipient' => $record->partner->email,
                                             ]);
 
-                                            \Filament\Notifications\Notification::make()
+                                            Notification::make()
                                                 ->title('Invoice Sent')
-                                                ->body('Invoice emailed to ' . $record->partner->email)
+                                                ->body('Invoice emailed to '.$record->partner->email)
                                                 ->success()
                                                 ->send();
                                         } else {
-                                            \Filament\Notifications\Notification::make()
+                                            Notification::make()
                                                 ->title('Email Failed')
                                                 ->body('Failed to send invoice. Please check email configuration.')
                                                 ->danger()
@@ -111,21 +118,21 @@ class SalesOrdersTable
                                     });
                             }
 
-                            \Filament\Notifications\Notification::make()
+                            Notification::make()
                                 ->title('Invoice Generated')
-                                ->body('Invoice ' . $result['invoice_data']['invoice_number'] . ' created successfully.')
+                                ->body('Invoice '.$result['invoice_data']['invoice_number'].' created successfully.')
                                 ->success()
                                 ->actions($actions)
                                 ->send();
                         } catch (\Exception $e) {
-                            \Filament\Notifications\Notification::make()
+                            Notification::make()
                                 ->title('Invoice Action Failed')
                                 ->body($e->getMessage())
                                 ->danger()
                                 ->send();
                         }
                     }),
-                \Filament\Actions\Action::make('void')
+                Action::make('void')
                     ->label('Void')
                     ->icon('heroicon-o-x-circle')
                     ->color('danger')
@@ -136,23 +143,23 @@ class SalesOrdersTable
                     ->modalSubmitActionLabel('Void Order')
                     ->action(function ($record) {
                         $record->update(['status' => 'void']);
-                        \Filament\Notifications\Notification::make()
+                        Notification::make()
                             ->title('Sales Order Voided')
-                            ->body($record->order_number . ' has been voided.')
+                            ->body($record->order_number.' has been voided.')
                             ->danger()
                             ->send();
                     }),
             ])
             ->headerActions([
-                \Filament\Actions\ExportAction::make()
-                    ->exporter(\App\Filament\Exports\SalesOrderExporter::class),
+                ExportAction::make()
+                    ->exporter(SalesOrderExporter::class),
             ])
             ->bulkActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make()
                         ->visible(fn () => PanelAccess::canManageSalesOrders()),
-                    \Filament\Actions\ExportBulkAction::make()
-                        ->exporter(\App\Filament\Exports\SalesOrderExporter::class)
+                    ExportBulkAction::make()
+                        ->exporter(SalesOrderExporter::class)
                         ->visible(fn () => PanelAccess::canManageSalesOrders()),
                 ]),
             ]);

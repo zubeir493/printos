@@ -5,6 +5,8 @@ namespace App\Filament\Resources\SalesOrders;
 use App\Filament\Resources\SalesOrders\Pages\CreateSalesOrder;
 use App\Filament\Resources\SalesOrders\Pages\EditSalesOrder;
 use App\Filament\Resources\SalesOrders\Pages\ListSalesOrders;
+use App\Filament\Resources\SalesOrders\Pages\ViewSalesOrder;
+use App\Filament\Resources\SalesOrders\RelationManagers\PaymentsRelationManager;
 use App\Filament\Resources\SalesOrders\Schemas\SalesOrderForm;
 use App\Filament\Resources\SalesOrders\Tables\SalesOrdersTable;
 use App\Filament\Support\PanelAccess;
@@ -20,6 +22,8 @@ class SalesOrderResource extends Resource
     protected static ?string $model = SalesOrder::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedShoppingCart;
+
+    protected static ?int $navigationSort = 1;
 
     public static function canCreate(): bool
     {
@@ -47,7 +51,7 @@ class SalesOrderResource extends Resource
         $relations = [];
 
         if (PanelAccess::canAccessFinanceSection()) {
-            $relations[] = \App\Filament\Resources\SalesOrders\RelationManagers\PaymentsRelationManager::class;
+            $relations[] = PaymentsRelationManager::class;
         }
 
         return $relations;
@@ -58,7 +62,7 @@ class SalesOrderResource extends Resource
         return [
             'index' => ListSalesOrders::route('/'),
             'create' => CreateSalesOrder::route('/create'),
-            'view' => \App\Filament\Resources\SalesOrders\Pages\ViewSalesOrder::route('/{record}'),
+            'view' => ViewSalesOrder::route('/{record}'),
             'edit' => EditSalesOrder::route('/{record}/edit'),
         ];
     }

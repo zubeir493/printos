@@ -2,32 +2,42 @@
 
 namespace App\Filament\Resources\Invoices;
 
-use App\Filament\Resources\Invoices\Tables\InvoicesTable;
-use App\Filament\Resources\Invoices\Schemas\InvoiceForm;
-use Filament\Resources\Resource;
-use Filament\Tables\Table;
+use App\Filament\Resources\Invoices\Pages\CreateInvoice;
+use App\Filament\Resources\Invoices\Pages\EditInvoice;
+use App\Filament\Resources\Invoices\Pages\ListInvoices;
+use App\Filament\Resources\Invoices\Pages\ViewInvoice;
 // use Filament\Forms\Form;
+use App\Filament\Resources\Invoices\Schemas\InvoiceForm;
+use App\Filament\Resources\Invoices\Tables\InvoicesTable;
 use App\Models\Invoice;
 use BackedEnum;
+use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
+use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class InvoiceResource extends Resource
 {
     protected static ?string $model = Invoice::class;
 
-    
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedReceiptPercent;
 
     protected static ?string $navigationLabel = 'Invoices';
 
     protected static ?int $navigationSort = 4;
 
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()->with(['partner']);
+    }
+
     public static function getNavigationBadge(): ?string
     {
         $count = static::getModel()::where('due_date', '<', now())
-                    ->where('status', '!=', 'paid')
-                    ->count();
+            ->where('status', '!=', 'paid')
+            ->count();
+
         return $count > 0 ? (string) $count : null;
     }
 
@@ -44,10 +54,10 @@ class InvoiceResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => \App\Filament\Resources\Invoices\Pages\ListInvoices::route('/'),
-            'create' => \App\Filament\Resources\Invoices\Pages\CreateInvoice::route('/create'),
-            'edit' => \App\Filament\Resources\Invoices\Pages\EditInvoice::route('/{record}/edit'),
-            'view' => \App\Filament\Resources\Invoices\Pages\ViewInvoice::route('/{record}'),
+            'index' => ListInvoices::route('/'),
+            'create' => CreateInvoice::route('/create'),
+            'edit' => EditInvoice::route('/{record}/edit'),
+            'view' => ViewInvoice::route('/{record}'),
         ];
     }
 }

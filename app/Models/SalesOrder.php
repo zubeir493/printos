@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
@@ -57,6 +56,12 @@ class SalesOrder extends Model
         return $this->morphMany(PaymentAllocation::class, 'allocatable');
     }
 
+    public function invoices(): HasMany
+    {
+        return $this->hasMany(Invoice::class, 'order_id')
+            ->where('order_type', 'sales_order');
+    }
+
     public function getPaidAmountAttribute(): float
     {
         return (float) $this->paymentAllocations()->sum('allocated_amount');
@@ -86,7 +91,7 @@ class SalesOrder extends Model
             if (empty($salesOrder->order_number)) {
                 $lastOrder = self::orderBy('id', 'desc')->first();
                 $nextId = $lastOrder ? $lastOrder->id + 1 : 1;
-                $salesOrder->order_number = 'SO-' . str_pad($nextId, 5, '0', STR_PAD_LEFT);
+                $salesOrder->order_number = 'SO-'.str_pad($nextId, 5, '0', STR_PAD_LEFT);
             }
         });
 
@@ -94,11 +99,11 @@ class SalesOrder extends Model
             if ($salesOrder->isDirty('status') && $salesOrder->status === 'completed') {
                 // Validate sufficient stock
                 foreach ($salesOrder->salesOrderItems as $item) {
-                    $balance = \App\Models\InventoryBalance::where('inventory_item_id', $item->inventory_item_id)
+                    $balance = InventoryBalance::where('inventory_item_id', $item->inventory_item_id)
                         ->where('warehouse_id', $salesOrder->warehouse_id)
                         ->first();
-                    $qty = $balance ? (float)$balance->quantity_on_hand : 0;
-                    if ($qty < (float)$item->quantity) {
+                    $qty = $balance ? (float) $balance->quantity_on_hand : 0;
+                    if ($qty < (float) $item->quantity) {
                         $itemName = $item->inventoryItem ? $item->inventoryItem->name : 'Unknown Item';
                         throw new \Exception("Insufficient stock for item {$itemName}. Available: {$qty}, Required: {$item->quantity}");
                     }
@@ -115,8 +120,8 @@ class SalesOrder extends Model
                         ->where('inventory_item_id', $item->inventory_item_id)
                         ->exists();
 
-                    if (!$exists) {
-                        \App\Models\StockMovement::create([
+                    if (! $exists) {
+                        StockMovement::create([
                             'inventory_item_id' => $item->inventory_item_id,
                             'warehouse_id' => $salesOrder->warehouse_id,
                             'type' => 'sale',

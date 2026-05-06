@@ -2,17 +2,16 @@
 
 namespace App\Models;
 
+use App\Observers\JobOrderObserver;
 use Carbon\CarbonInterface;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-
-use App\Observers\JobOrderObserver;
-use Illuminate\Database\Eloquent\Attributes\ObservedBy;
+use Illuminate\Support\Collection;
 
 #[ObservedBy(JobOrderObserver::class)]
 class JobOrder extends Model
@@ -79,18 +78,17 @@ class JobOrder extends Model
         return $this->hasMany(SalesInvoice::class);
     }
 
-
     public function materialMovements(): MorphMany
     {
         return $this->morphMany(StockMovement::class, 'reference');
     }
 
-    public function materialRequests(): \Illuminate\Database\Eloquent\Relations\HasManyThrough
+    public function materialRequests(): HasManyThrough
     {
         return $this->hasManyThrough(MaterialRequest::class, JobOrderTask::class);
     }
 
-    public function artworks(): \Illuminate\Database\Eloquent\Relations\HasManyThrough
+    public function artworks(): HasManyThrough
     {
         return $this->hasManyThrough(Artwork::class, JobOrderTask::class);
     }
@@ -98,6 +96,12 @@ class JobOrder extends Model
     public function paymentAllocations(): MorphMany
     {
         return $this->morphMany(PaymentAllocation::class, 'allocatable');
+    }
+
+    public function invoices(): HasMany
+    {
+        return $this->hasMany(Invoice::class, 'order_id')
+            ->where('order_type', 'job_order');
     }
 
     public function getPaidAmountAttribute(): float
@@ -142,7 +146,7 @@ class JobOrder extends Model
             return false;
         }
 
-        return !$this->artworks()
+        return ! $this->artworks()
             ->where('is_approved', false)
             ->exists();
     }
@@ -160,12 +164,12 @@ class JobOrder extends Model
         return round(abs($sum), 4);
     }
 
-    public function issuedBalanceByWarehouse(): \Illuminate\Support\Collection
+    public function issuedBalanceByWarehouse(): Collection
     {
         return StockMovement::where(function ($query) {
-                $query->where('type', 'consumption')
-                    ->orWhere('type', 'material_return');
-            })
+            $query->where('type', 'consumption')
+                ->orWhere('type', 'material_return');
+        })
             ->where('reference_id', $this->id)
             ->select('warehouse_id', 'inventory_item_id')
             ->selectRaw('SUM(quantity) as net_quantity')
@@ -194,20 +198,24 @@ class JobOrder extends Model
     public function materialsCompletionPercentage(): float
     {
         $summary = $this->materials_summary;
-        
-        if (empty($summary)) return 0;
+
+        if (empty($summary)) {
+            return 0;
+        }
 
         $totalRequired = collect($summary)->sum('required');
         $totalIssued = collect($summary)->sum('issued');
 
-        if ($totalRequired == 0) return 0;
+        if ($totalRequired == 0) {
+            return 0;
+        }
 
         return ($totalIssued / $totalRequired) * 100;
     }
 
     public function getMaterialsSummaryAttribute(): array
     {
-        if (!$this->relationLoaded('jobOrderTasks')) {
+        if (! $this->relationLoaded('jobOrderTasks')) {
             $this->load('jobOrderTasks');
         }
 
@@ -219,13 +227,13 @@ class JobOrder extends Model
         }
 
         // 1. Bulk fetch all relevant Inventory Items
-        $items = \App\Models\InventoryItem::whereIn('id', $uniqueMaterialIds)->get()->keyBy('id');
+        $items = InventoryItem::whereIn('id', $uniqueMaterialIds)->get()->keyBy('id');
 
         // 2. Bulk fetch all relevant Stock Movements for this JO
         $movements = StockMovement::where(function ($query) {
-                $query->where('type', 'consumption')
-                    ->orWhere('type', 'material_return');
-            })
+            $query->where('type', 'consumption')
+                ->orWhere('type', 'material_return');
+        })
             ->where('reference_id', $this->id)
             ->whereIn('inventory_item_id', $uniqueMaterialIds)
             ->get()
@@ -235,10 +243,12 @@ class JobOrder extends Model
 
         foreach ($uniqueMaterialIds as $itemId) {
             $item = $items->get($itemId);
-            if (!$item) continue;
+            if (! $item) {
+                continue;
+            }
 
             $required = (float) $allPaper->where('inventory_item_id', $itemId)
-                ->sum(fn($p) => ($p['required_quantity'] ?? 0) + ($p['reserve_quantity'] ?? 0));
+                ->sum(fn ($p) => ($p['required_quantity'] ?? 0) + ($p['reserve_quantity'] ?? 0));
 
             // Calculate issued quantity from bulk movements
             $itemMovements = $movements->get($itemId, collect());
@@ -260,5 +270,4 @@ class JobOrder extends Model
 
         return $summary;
     }
-
 }

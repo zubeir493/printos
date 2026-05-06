@@ -53,21 +53,59 @@
         .invoice-box table tr.item td {
             border-bottom: 1px solid #eee;
         }
-        .invoice-box table tr.total td:nth-child(2) {
-            text-align: right;
+        .invoice-box table tr.item.last td {
+            border-bottom: none;
         }
-        .invoice-box table tr.total td:last-child {
-            text-align: right;
+        .invoice-box table tr.total td:nth-child(2) {
+            border-top: 2px solid #eee;
             font-weight: bold;
+        }
+        .invoice-box .status-paid {
+            background: #d4edda;
+            color: #155724;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-weight: bold;
+            text-align: center;
+        }
+        .invoice-box .status-partial {
+            background: #fff3cd;
+            color: #856404;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-weight: bold;
+            text-align: center;
+        }
+        .invoice-box .status-unpaid {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-weight: bold;
+            text-align: center;
+        }
+        .invoice-box .tax-breakdown {
+            margin-top: 20px;
+            font-size: 14px;
+        }
+        .invoice-box .terms {
+            margin-top: 30px;
+            font-size: 12px;
+            color: #777;
+            border-top: 1px solid #eee;
+            padding-top: 20px;
+        }
+        @media only screen and (max-width: 600px) {
+            .invoice-box {
+                width: 100%;
+                margin: 0;
+                padding: 20px;
+                box-shadow: none;
+                border: 1px solid #ddd;
+            }
         }
         .text-right {
             text-align: right;
-        }
-        .text-center {
-            text-align: center;
-        }
-        .mt-20 {
-            margin-top: 20px;
         }
     </style>
 </head>
@@ -79,12 +117,18 @@
                     <table>
                         <tr>
                             <td class="title">
-                                <h1>INVOICE</h1>
+                                <img src="https://via.placeholder.com/100x50" style="width:100%; max-width:100px;">
                             </td>
                             <td class="text-right">
-                                Invoice #: {{ $invoiceData['invoice_number'] }}<br>
-                                Date: {{ $invoiceData['invoice_date'] }}<br>
-                                Due: {{ $invoiceData['due_date'] }}
+                                <strong>Invoice #:</strong> {{ $invoiceData['invoice_number'] }}<br>
+                                <strong>Invoice Date:</strong> {{ $invoiceData['invoice_date'] }}<br>
+                                <strong>Due Date:</strong> {{ $invoiceData['due_date'] }}<br>
+                                @if(isset($invoiceData['status']))
+                                    <strong>Status:</strong> 
+                                    <span class="status-{{ strtolower($invoiceData['status']) }}">
+                                        {{ strtoupper($invoiceData['status']) }}
+                                    </span>
+                                @endif
                             </td>
                         </tr>
                     </table>
@@ -96,18 +140,18 @@
                     <table>
                         <tr>
                             <td>
-                                <strong>From:</strong><br>
-                                {{ $invoiceData['company_info']['name'] ?? 'Printos Company' }}<br>
-                                {{ $invoiceData['company_info']['address'] ?? '123 Business Street, Addis Ababa, Ethiopia' }}<br>
-                                {{ $invoiceData['company_info']['phone'] ?? '+251 911 000 000' }}<br>
-                                {{ $invoiceData['company_info']['email'] ?? 'info@printos.com' }}
+                                <strong>{{ $invoiceData['company_info']['name'] ?? config('app.name') }}</strong><br>
+                                {{ $invoiceData['company_info']['address'] ?? '' }}<br>
+                                {{ $invoiceData['company_info']['phone'] ?? '' }}<br>
+                                {{ $invoiceData['company_info']['email'] ?? '' }}<br>
+                                Tax ID: {{ $invoiceData['company_info']['tax_id'] ?? '' }}
                             </td>
                             <td class="text-right">
-                                <strong>To:</strong><br>
-                                {{ $invoiceData['customer_info']['name'] ?? 'Valued Customer' }}<br>
-                                {{ $invoiceData['customer_info']['address'] ?? '' }}<br>
-                                {{ $invoiceData['customer_info']['phone'] ?? '' }}<br>
-                                {{ $invoiceData['customer_info']['email'] ?? '' }}
+                                <strong>Bill To:</strong><br>
+                                {{ $invoiceData['order']->partner->name }}<br>
+                                {{ $invoiceData['order']->partner->address ?? '' }}<br>
+                                {{ $invoiceData['order']->partner->phone ?? '' }}<br>
+                                {{ $invoiceData['order']->partner->email ?? '' }}
                             </td>
                         </tr>
                     </table>
@@ -115,63 +159,86 @@
             </tr>
             
             <tr class="heading">
-                <td>Job Order #</td>
-                <td>Service</td>
+                <td>Service / Job Details</td>
+                <td class="text-right">Unit Price</td>
                 <td class="text-right">Quantity</td>
-                <td class="text-right">Price</td>
                 <td class="text-right">Total</td>
             </tr>
             
             @foreach($invoiceData['items'] as $item)
-            <tr class="item">
-                <td>{{ $item['job_order_number'] ?? $invoiceData['order']->job_order_number ?? '' }}</td>
-                <td>{{ $item['service_name'] ?? $item['task_name'] ?? 'Service' }}</td>
+            <tr class="item {{ $loop->last ? 'last' : '' }}">
+                <td>
+                    <strong>{{ $item['service_name'] ?? $item['task_name'] ?? 'Service' }}</strong><br>
+                    <small>Job Order: {{ $item['job_order_number'] ?? $invoiceData['order']->job_order_number ?? '' }}</small>
+                </td>
+                <td class="text-right">{{ number_format($item['unit_price'] ?? $item['cost'] ?? 0, 2) }}</td>
                 <td class="text-right">{{ $item['quantity'] ?? 1 }}</td>
-                <td class="text-right">{{ number_format($item['unit_price'] ?? $item['cost'] ?? 0, 2) }} Birr</td>
-                <td class="text-right">{{ number_format($item['total'] ?? $item['cost'] ?? 0, 2) }} Birr</td>
+                <td class="text-right">{{ number_format($item['total'] ?? $item['cost'] ?? 0, 2) }}</td>
             </tr>
             @endforeach
             
-            <tr class="total">
-                <td colspan="4">Subtotal:</td>
-                <td class="text-right">{{ number_format($invoiceData['subtotal'], 2) }} Birr</td>
+            <tr>
+                <td colspan="4">
+                    <table style="width: 300px; float: right;">
+                        <tr class="total">
+                            <td>Subtotal:</td>
+                            <td class="text-right">{{ number_format($invoiceData['subtotal'], 2) }}</td>
+                        </tr>
+                        
+                        @if(!empty($invoiceData['tax_calculations']['breakdown']))
+                            @foreach($invoiceData['tax_calculations']['breakdown'] as $taxType => $amount)
+                            <tr class="total">
+                                <td>{{ $taxType }}:</td>
+                                <td class="text-right">{{ number_format($amount, 2) }}</td>
+                            </tr>
+                            @endforeach
+                        @endif
+                        
+                        @if($invoiceData['tax_amount'] > 0 && empty($invoiceData['tax_calculations']['breakdown']))
+                        <tr class="total">
+                            <td>Tax:</td>
+                            <td class="text-right">{{ number_format($invoiceData['tax_amount'], 2) }}</td>
+                        </tr>
+                        @endif
+                        
+                        <tr class="total">
+                            <td><strong>Total Amount:</strong></td>
+                            <td class="text-right"><strong>{{ number_format($invoiceData['total_amount'], 2) }}</strong></td>
+                        </tr>
+                        
+                        <tr class="total">
+                            <td>Paid Amount:</td>
+                            <td class="text-right">{{ number_format($invoiceData['order']->paid_amount ?? 0, 2) }}</td>
+                        </tr>
+                        
+                        <tr class="total">
+                            <td><strong>Balance Due:</strong></td>
+                            <td class="text-right"><strong>{{ number_format($invoiceData['balance_due'], 2) }}</strong></td>
+                        </tr>
+                    </table>
+                </td>
             </tr>
             
-            @if($invoiceData['tax_amount'] > 0)
-            <tr class="total">
-                <td colspan="4">Tax ({{ $invoiceData['tax_calculations']['tax_rate'] ?? 15 }}%):</td>
-                <td class="text-right">{{ number_format($invoiceData['tax_amount'], 2) }} Birr</td>
+            @if(isset($invoiceData['notes']))
+            <tr>
+                <td colspan="4" class="terms">
+                    <strong>Notes:</strong><br>
+                    {{ $invoiceData['notes'] }}
+                </td>
             </tr>
             @endif
-            
-            <tr class="total">
-                <td colspan="4"><strong>Total:</strong></td>
-                <td class="text-right"><strong>{{ number_format($invoiceData['total_amount'], 2) }} Birr</strong></td>
-            </tr>
-            
-            @if($invoiceData['balance_due'] > 0)
-            <tr class="total">
-                <td colspan="4">Paid:</td>
-                <td class="text-right">-{{ number_format($invoiceData['order']->paid_amount ?? 0, 2) }} Birr</td>
-            </tr>
-            
-            <tr class="total">
-                <td colspan="4"><strong>Balance Due:</strong></td>
-                <td class="text-right"><strong>{{ number_format($invoiceData['balance_due'], 2) }} Birr</strong></td>
+
+            @if(isset($invoiceData['options']['show_terms']) && $invoiceData['options']['show_terms'])
+            <tr>
+                <td colspan="4" class="terms">
+                    <strong>Terms & Conditions:</strong><br>
+                    1. Payment is due within 15 days of invoice date.<br>
+                    2. All prices are inclusive of applicable taxes unless otherwise stated.<br>
+                    3. Goods remain the property of {{ $invoiceData['company_info']['name'] ?? config('app.name') }} until paid in full.
+                </td>
             </tr>
             @endif
         </table>
-        
-        @if(isset($invoiceData['notes']))
-        <div class="mt-20">
-            <h3>Notes</h3>
-            <p>{{ $invoiceData['notes'] }}</p>
-        </div>
-        @endif
-        
-        <div class="mt-20 text-center">
-            <p><strong>Thank you for your business!</strong></p>
-        </div>
     </div>
 </body>
 </html>

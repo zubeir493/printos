@@ -2,12 +2,16 @@
 
 namespace App\Filament\Resources\JobOrders\Tables;
 
+use App\Filament\Exports\JobOrderExporter;
 use App\Filament\Support\PanelAccess;
+use App\Services\InvoiceGeneratorService;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
-use Filament\Actions\ViewAction;
+use Filament\Actions\ExportAction;
+use Filament\Actions\ExportBulkAction;
+use Filament\Notifications\Notification;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
@@ -23,7 +27,7 @@ class JobOrdersTable
             ->columns([
                 TextColumn::make('job_order_number')
                     ->label('Job Order')
-                    ->description(fn($record) => $record->partner?->name)
+                    ->description(fn ($record) => $record->partner?->name)
                     ->weight('bold')
                     ->color('primary')
                     ->searchable()
@@ -38,20 +42,20 @@ class JobOrdersTable
                         default => 'gray',
                     })
                     ->formatStateUsing(fn ($state) => ucfirst($state))
-                    ->description(fn($record) => $record->jobOrderTasks()->where('status', 'completed')->count() . ' / ' . $record->jobOrderTasks()->count() . ' tasks done.'),
+                    ->description(fn ($record) => $record->jobOrderTasks()->where('status', 'completed')->count().' / '.$record->jobOrderTasks()->count().' tasks done.'),
                 TextColumn::make('submission_date')
                     ->label('Submission Date')
                     ->date()
                     ->sortable()
-                    ->color(fn ($record) => $record->submission_date && $record->submission_date->isBefore(today()) && !in_array($record->status, ['completed', 'cancelled']) ? 'danger' : null)
-                    ->description(fn ($record) => $record->submission_date && $record->submission_date->isBefore(today()) && !in_array($record->status, ['completed', 'cancelled']) ? 'Late' : null),
+                    ->color(fn ($record) => $record->submission_date && $record->submission_date->isBefore(today()) && ! in_array($record->status, ['completed', 'cancelled']) ? 'danger' : null)
+                    ->description(fn ($record) => $record->submission_date && $record->submission_date->isBefore(today()) && ! in_array($record->status, ['completed', 'cancelled']) ? 'Late' : null),
                 TextColumn::make('materials_completion')
                     ->label('Materials Issued')
-                    ->state(fn($record) => round($record->materialsCompletionPercentage(), 0) . '%')
+                    ->state(fn ($record) => round($record->materialsCompletionPercentage(), 0).'%')
                     ->badge()
-                    ->color(fn($state) => match (true) {
-                        (int)$state >= 100 => 'success',
-                        (int)$state >= 50 => 'warning',
+                    ->color(fn ($state) => match (true) {
+                        (int) $state >= 100 => 'success',
+                        (int) $state >= 50 => 'warning',
                         default => 'danger',
                     }),
                 TextColumn::make('total_price')
@@ -60,12 +64,12 @@ class JobOrdersTable
                     ->sortable(),
                 IconColumn::make('advance_paid')
                     ->boolean()
-                    ->getStateUsing(fn($record) => $record->paymentAllocations()->exists())
+                    ->getStateUsing(fn ($record) => $record->paymentAllocations()->exists())
                     ->label('Adv. Paid'),
             ])
             ->headerActions([
-                \Filament\Actions\ExportAction::make()
-                    ->exporter(\App\Filament\Exports\JobOrderExporter::class)
+                ExportAction::make()
+                    ->exporter(JobOrderExporter::class),
             ])
             ->filters([
                 TernaryFilter::make('payment_status')
@@ -74,8 +78,8 @@ class JobOrdersTable
                     ->trueLabel('Pending Payments')
                     ->falseLabel('Fully Paid')
                     ->queries(
-                        true: fn($query) => $query->pendingPayment(),
-                        false: fn($query) => $query->fullyPaid(),
+                        true: fn ($query) => $query->pendingPayment(),
+                        false: fn ($query) => $query->fullyPaid(),
                     ),
                 SelectFilter::make('status')
                     ->options([
@@ -95,15 +99,16 @@ class JobOrdersTable
                     ->visible(fn () => PanelAccess::canManageJobOrders()),
             ])
             ->recordActions([
-                \Filament\Actions\Action::make('invoice')
+                Action::make('invoice')
                     ->label('Invoice')
                     ->icon('heroicon-o-document-text')
                     ->color('primary')
+                    ->hidden(fn ($record) => $record->invoices()->exists())
                     ->action(function ($record) {
                         try {
-                            $invoiceService = app(\App\Services\InvoiceGeneratorService::class);
+                            $invoiceService = app(InvoiceGeneratorService::class);
                             $result = $invoiceService->generateFromJobOrder($record);
-                            
+
                             $actions = [
                                 Action::make('download')
                                     ->label('Download')
@@ -118,10 +123,10 @@ class JobOrdersTable
                                     ->icon('heroicon-o-envelope')
                                     ->action(function () use ($record, $result, $invoiceService) {
                                         $sent = $invoiceService->sendInvoiceEmail(
-                                            $result, 
+                                            $result,
                                             $record->partner->email
                                         );
-                                        
+
                                         if ($sent) {
                                             // Update invoice record with email info
                                             $result['invoice']->update([
@@ -129,13 +134,13 @@ class JobOrdersTable
                                                 'email_recipient' => $record->partner->email,
                                             ]);
 
-                                            \Filament\Notifications\Notification::make()
+                                            Notification::make()
                                                 ->title('Invoice Sent')
-                                                ->body('Invoice emailed to ' . $record->partner->email)
+                                                ->body('Invoice emailed to '.$record->partner->email)
                                                 ->success()
                                                 ->send();
                                         } else {
-                                            \Filament\Notifications\Notification::make()
+                                            Notification::make()
                                                 ->title('Email Failed')
                                                 ->body('Failed to send invoice. Please check email configuration.')
                                                 ->danger()
@@ -144,9 +149,9 @@ class JobOrdersTable
                                     });
                             }
 
-                            \Filament\Notifications\Notification::make()
+                            Notification::make()
                                 ->title('Invoice Generated')
-                                ->body('Invoice ' . $result['invoice_data']['invoice_number'] . ' created successfully.')
+                                ->body('Invoice '.$result['invoice_data']['invoice_number'].' created successfully.')
                                 ->success()
                                 ->actions($actions)
                                 ->send();
@@ -158,10 +163,10 @@ class JobOrdersTable
                                     ->icon('heroicon-o-envelope')
                                     ->action(function () use ($record, $result, $invoiceService) {
                                         $sent = $invoiceService->sendInvoiceEmail(
-                                            $result, 
+                                            $result,
                                             $record->partner->email
                                         );
-                                        
+
                                         if ($sent) {
                                             // Update invoice record with email info
                                             $result['invoice']->update([
@@ -169,13 +174,13 @@ class JobOrdersTable
                                                 'email_recipient' => $record->partner->email,
                                             ]);
 
-                                            \Filament\Notifications\Notification::make()
+                                            Notification::make()
                                                 ->title('Invoice Sent')
-                                                ->body('Invoice emailed to ' . $record->partner->email)
+                                                ->body('Invoice emailed to '.$record->partner->email)
                                                 ->success()
                                                 ->send();
                                         } else {
-                                            \Filament\Notifications\Notification::make()
+                                            Notification::make()
                                                 ->title('Email Failed')
                                                 ->body('Failed to send invoice. Please check email configuration.')
                                                 ->danger()
@@ -184,14 +189,14 @@ class JobOrdersTable
                                     });
                             }
 
-                            \Filament\Notifications\Notification::make()
+                            Notification::make()
                                 ->title('Invoice Generated')
-                                ->body('Invoice ' . $result['invoice_data']['invoice_number'] . ' created successfully.')
+                                ->body('Invoice '.$result['invoice_data']['invoice_number'].' created successfully.')
                                 ->success()
                                 ->actions($actions)
                                 ->send();
                         } catch (\Exception $e) {
-                            \Filament\Notifications\Notification::make()
+                            Notification::make()
                                 ->title('Invoice Action Failed')
                                 ->body($e->getMessage())
                                 ->danger()
@@ -203,9 +208,9 @@ class JobOrdersTable
                 BulkActionGroup::make([
                     DeleteBulkAction::make()
                         ->visible(fn () => PanelAccess::canManageJobOrders()),
-                    \Filament\Actions\ExportBulkAction::make()
-                        ->exporter(\App\Filament\Exports\JobOrderExporter::class)
-                        ->visible(fn () => PanelAccess::canManageJobOrders())
+                    ExportBulkAction::make()
+                        ->exporter(JobOrderExporter::class)
+                        ->visible(fn () => PanelAccess::canManageJobOrders()),
                 ]),
             ]);
     }

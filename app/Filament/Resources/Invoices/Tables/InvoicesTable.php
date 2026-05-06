@@ -2,14 +2,17 @@
 
 namespace App\Filament\Resources\Invoices\Tables;
 
+use App\Services\InvoiceGeneratorService;
 use Filament\Actions\Action as ActionsAction;
 use Filament\Actions\BulkActionGroup as ActionsBulkActionGroup;
 use Filament\Actions\DeleteBulkAction as ActionsDeleteBulkAction;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
+use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Columns\BadgeColumn;
-use Filament\Tables\Table;
-use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\Filter;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Table;
 
 class InvoicesTable
 {
@@ -21,47 +24,43 @@ class InvoicesTable
                     ->label('Invoice #')
                     ->searchable()
                     ->sortable()
-                    ->description(fn ($record) => 'Generated for ' . $record->partner->name)
+                    ->description(fn ($record) => 'Generated for '.$record->partner->name)
                     ->weight('bold')
                     ->color('primary'),
-                
+
                 TextColumn::make('due_date')
                     ->label('Due Date')
                     ->date()
                     ->sortable()
                     ->since()
-                    ->color(fn($record) => $record->due_date->isPast() && $record->status !== 'paid' ? 'danger' : null)
-                    ->description(fn($record) => $record->due_date->isPast() && $record->status !== 'paid' ? 'Overdue' : null),
-                
-                BadgeColumn::make('status')
+                    ->color(fn ($record) => $record->due_date->isPast() && $record->status !== 'paid' ? 'danger' : null)
+                    ->description(fn ($record) => $record->due_date->isPast() && $record->status !== 'paid' ? 'Overdue' : null),
+
+                TextColumn::make('status')
                     ->label('Status')
-                    ->color(fn($state) => match ($state) {
+                    ->badge()
+                    ->color(fn ($state) => match ($state) {
                         'draft' => 'gray',
                         'sent' => 'info',
                         'paid' => 'success',
+                        'unpaid' => 'danger',
+                        'partial' => 'warning',
                         'overdue' => 'danger',
                         'cancelled' => 'warning',
                         default => 'gray',
                     })
-                    ->formatStateUsing(fn($state) => ucfirst($state)),
-                
+                    ->formatStateUsing(fn ($state) => ucfirst($state)),
+
                 TextColumn::make('payment_progress')
-                    ->label('Payment Progress')
+                    ->label('Progress')
                     ->getStateUsing(function ($record) {
-                        $total = $record->total_amount;
-                        $paid = $total - $record->balance_due;
-                        $percentage = $total > 0 ? round(($paid / $total) * 100, 1) : 0;
-                        
-                        return "{$paid} / {$total} Birr ({$percentage}%)";
+                        $total = (float) $record->total_amount;
+                        $paid = $total - (float) $record->balance_due;
+
+                        return $total > 0 ? round(($paid / $total) * 100, 1) : 0;
                     })
-                    ->description(function ($record) {
-                        return $record->balance_due > 0 ? 'Balance: ' . $record->balance_due . ' Birr' : 'Fully Paid';
-                    })
-                    ->color(function ($record) {
-                        return $record->balance_due > 0 ? 'warning' : 'success';
-                    })
-                    ->sortable()
-                    ->alignEnd(),
+                    ->formatStateUsing(fn ($state) => view('filament.tables.columns.progress-bar', ['state' => $state]))
+                    ->alignCenter(),
             ])
             ->filters([
                 SelectFilter::make('invoice_type')
@@ -72,57 +71,59 @@ class InvoicesTable
                         'service' => 'Service Invoices',
                         'receipt' => 'Receipts',
                     ]),
-                
+
                 SelectFilter::make('status')
                     ->label('Status')
                     ->options([
                         'draft' => 'Draft',
                         'sent' => 'Sent',
                         'paid' => 'Paid',
+                        'partial' => 'Partial',
                         'overdue' => 'Overdue',
                         'cancelled' => 'Cancelled',
                     ]),
-                
+
                 Filter::make('overdue')
                     ->label('Overdue Only')
-                    ->query(fn($query) => $query->overdue())
+                    ->query(fn ($query) => $query->overdue())
                     ->toggle(),
-                
+
                 Filter::make('unpaid')
                     ->label('Unpaid Only')
-                    ->query(fn($query) => $query->where('balance_due', '>', 0))
+                    ->query(fn ($query) => $query->where('status', '!=', 'paid'))
                     ->toggle(),
             ])
             ->actions([
-                    
+
                 ActionsAction::make('download')
                     ->label('Download')
                     ->icon('heroicon-o-arrow-down-tray')
                     ->url(function ($record) {
-                        $invoiceService = app(\App\Services\InvoiceGeneratorService::class);
+                        $invoiceService = app(InvoiceGeneratorService::class);
+
                         return $invoiceService->getInvoicePath($record->filename);
                     })
                     ->openUrlInNewTab(),
-                
+
                 ActionsAction::make('email')
                     ->label('Email Invoice')
                     ->icon('heroicon-o-envelope')
                     ->color('primary')
                     ->form([
-                        \Filament\Forms\Components\TextInput::make('email')
+                        TextInput::make('email')
                             ->label('Email Address')
                             ->email()
                             ->required()
-                            ->default(fn($record) => $record->partner?->email ?? $record->email_recipient)
+                            ->default(fn ($record) => $record->partner?->email ?? $record->email_recipient)
                             ->placeholder('Enter email address'),
-                        \Filament\Forms\Components\Textarea::make('message')
+                        Textarea::make('message')
                             ->label('Message (Optional)')
                             ->placeholder('Add a custom message...')
                             ->rows(3),
                     ])
                     ->action(function (array $data, $record) {
                         try {
-                            $invoiceService = app(\App\Services\InvoiceGeneratorService::class);
+                            $invoiceService = app(InvoiceGeneratorService::class);
                             $sent = $invoiceService->sendInvoiceEmail(
                                 [
                                     'filename' => $record->filename,
@@ -139,30 +140,30 @@ class InvoicesTable
                                         'company_info' => config('invoice.company', [
                                             'name' => config('app.name', 'PrintOS'),
                                         ]),
-                                    ]
+                                    ],
                                 ],
                                 $data['email']
                             );
-                            
+
                             if ($sent) {
                                 $record->update([
                                     'emailed_at' => now(),
                                     'email_recipient' => $data['email'],
                                 ]);
-                                \Filament\Notifications\Notification::make()
+                                Notification::make()
                                     ->title('Invoice Sent')
-                                    ->body('Invoice sent to ' . $data['email'])
+                                    ->body('Invoice sent to '.$data['email'])
                                     ->success()
                                     ->send();
                             } else {
-                                \Filament\Notifications\Notification::make()
+                                Notification::make()
                                     ->title('Email Failed')
                                     ->body('Failed to send invoice')
                                     ->danger()
                                     ->send();
                             }
                         } catch (\Exception $e) {
-                            \Filament\Notifications\Notification::make()
+                            Notification::make()
                                 ->title('Email Failed')
                                 ->body($e->getMessage())
                                 ->danger()

@@ -86,7 +86,7 @@ class InvoiceGeneratorService
             'tax_amount' => $taxCalculations['total_tax'],
             'total_amount' => $order->subtotal + $taxCalculations['total_tax'],
             'balance_due' => $order->balance,
-            'status' => 'sent',
+            'status' => $this->getInvoiceStatus($order),
             'filename' => $filename,
             'file_path' => $path,
             'tax_calculations' => $taxCalculations,
@@ -195,7 +195,7 @@ class InvoiceGeneratorService
             'tax_amount' => $taxCalculations['total_tax'],
             'total_amount' => $order->subtotal + $taxCalculations['total_tax'],
             'balance_due' => $order->balance,
-            'status' => 'sent',
+            'status' => $this->getInvoiceStatus($order),
             'filename' => $filename,
             'file_path' => $path,
             'tax_calculations' => $taxCalculations,
@@ -288,7 +288,7 @@ class InvoiceGeneratorService
             'tax_amount' => $taxCalculations['total_tax'],
             'total_amount' => $order->total_price + $taxCalculations['total_tax'],
             'balance_due' => $order->balance,
-            'status' => 'sent',
+            'status' => $this->getInvoiceStatus($order),
             'filename' => $filename,
             'file_path' => $path,
             'tax_calculations' => $taxCalculations,
@@ -519,14 +519,14 @@ class InvoiceGeneratorService
     /**
      * Get invoice status based on order/payment status
      */
-    private function getInvoiceStatus($order): string
+    public function getInvoiceStatus($order): string
     {
         if ($order->balance <= 0) {
-            return 'PAID';
+            return 'paid';
         } elseif ($order->paid_amount > 0) {
-            return 'PARTIAL';
+            return 'partial';
         } else {
-            return 'UNPAID';
+            return 'unpaid';
         }
     }
 
@@ -568,6 +568,83 @@ class InvoiceGeneratorService
         $path = "invoices/{$filename}";
 
         return PrivateStorage::downloadUrl($path, now()->addMinutes(60));
+    }
+
+    /**
+     * Regenerate PDF for an existing invoice
+     */
+    public function regeneratePdf(Invoice $invoice): bool
+    {
+        $order = $invoice->order;
+        if (! $order) {
+            return false;
+        }
+
+        $invoiceData = $this->prepareInvoiceData($invoice, $order);
+        $view = $this->getInvoiceView($invoice->order_type);
+
+        $pdf = Pdf::loadView($view, ['invoiceData' => $invoiceData])
+            ->setPaper('a4')
+            ->setOption('defaultFont', 'Arial')
+            ->setOption('isRemoteEnabled', true);
+
+        return Storage::disk($this->storageDisk)->put($invoice->file_path, $pdf->output());
+    }
+
+    /**
+     * Prepare invoice data for view
+     */
+    private function prepareInvoiceData(Invoice $invoice, $order): array
+    {
+        $items = [];
+        if ($invoice->order_type === 'sales_order') {
+            $items = $order->salesOrderItems;
+        } elseif ($invoice->order_type === 'job_order') {
+            $items = $order->jobOrderTasks->map(function ($task) use ($order) {
+                return [
+                    'job_order_number' => $order->job_order_number,
+                    'service_name' => $task->name,
+                    'quantity' => $task->quantity ?: 1,
+                    'unit_price' => (float) $task->task_cost,
+                    'total' => (float) $task->task_cost,
+                ];
+            });
+        }
+
+        return [
+            'invoice_number' => $invoice->invoice_number,
+            'invoice_date' => $invoice->invoice_date->format('Y-m-d'),
+            'due_date' => $invoice->due_date->format('Y-m-d'),
+            'order' => $order,
+            'items' => $items,
+            'payments' => $order->paymentAllocations,
+            'company_info' => $this->companyInfo,
+            'tax_calculations' => $invoice->tax_calculations,
+            'subtotal' => $invoice->subtotal,
+            'tax_amount' => $invoice->tax_amount,
+            'total_amount' => $invoice->total_amount,
+            'balance_due' => $order->balance,
+            'status' => $this->getInvoiceStatus($order),
+            'notes' => $order->remarks ?? null,
+            'options' => array_merge([
+                'show_tax_breakdown' => true,
+                'show_payment_status' => true,
+                'show_terms' => true,
+            ], $invoice->options ?? []),
+        ];
+    }
+
+    /**
+     * Get invoice view based on order type
+     */
+    private function getInvoiceView(string $orderType): string
+    {
+        return match ($orderType) {
+            'sales_order' => 'invoices.sales-order',
+            'purchase_order' => 'invoices.purchase-order',
+            'job_order' => 'invoices.job-order',
+            default => 'invoices.sales-order',
+        };
     }
 
     /**

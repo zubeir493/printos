@@ -14,6 +14,7 @@ use App\Filament\Resources\Warehouses\WarehouseResource;
 use App\Filament\Warehouse\Widgets\LogisticsPulseChart;
 use App\Filament\Warehouse\Widgets\PendingPickListTable;
 use App\Filament\Warehouse\Widgets\WarehouseHealthStats;
+use Filament\Enums\ThemeMode;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -38,7 +39,7 @@ class WarehousePanelProvider extends PanelProvider
             ->path('warehouse')
             ->viteTheme('resources/css/filament/admin/theme.css')
             ->darkMode(false)
-            ->defaultThemeMode(\Filament\Enums\ThemeMode::Light)
+            ->defaultThemeMode(ThemeMode::Light)
             ->databaseNotifications()
             ->brandLogo(asset('images/logo.svg')) // TODO: Place logo in public/images/logo.svg
             ->brandLogoHeight('2rem')
@@ -77,6 +78,9 @@ class WarehousePanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
+            ])
+            ->plugins([
+                //
             ]);
     }
 }

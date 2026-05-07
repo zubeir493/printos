@@ -12,6 +12,7 @@ use App\Filament\Resources\Machines\MachineResource;
 use App\Filament\Resources\MaterialRequests\MaterialRequestResource;
 use App\Filament\Resources\ProductionPlans\ProductionPlanResource;
 use App\Filament\Resources\ProductionReports\ProductionReportResource;
+use Filament\Enums\ThemeMode;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -36,7 +37,7 @@ class ProductionPanelProvider extends PanelProvider
             ->path('production')
             ->viteTheme('resources/css/filament/admin/theme.css')
             ->darkMode(false)
-            ->defaultThemeMode(\Filament\Enums\ThemeMode::Light)
+            ->defaultThemeMode(ThemeMode::Light)
             ->databaseNotifications()
             ->brandLogo(asset('images/logo.svg')) // TODO: Place logo in public/images/logo.svg
             ->brandLogoHeight('2rem')
@@ -74,6 +75,9 @@ class ProductionPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
+            ])
+            ->plugins([
+                //
             ]);
     }
 }

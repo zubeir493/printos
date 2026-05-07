@@ -26,6 +26,7 @@ use App\Filament\Resources\Payments\PaymentResource;
 use App\Filament\Resources\PurchaseOrderItems\PurchaseOrderItemResource;
 use App\Filament\Resources\PurchaseOrders\PurchaseOrderResource;
 use App\Filament\Resources\SalesOrders\SalesOrderResource;
+use Filament\Enums\ThemeMode;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -50,7 +51,7 @@ class FinancePanelProvider extends PanelProvider
             ->path('finance')
             ->viteTheme('resources/css/filament/admin/theme.css')
             ->darkMode(false)
-            ->defaultThemeMode(\Filament\Enums\ThemeMode::Light)
+            ->defaultThemeMode(ThemeMode::Light)
             ->databaseNotifications()
             ->brandLogo(asset('images/logo.svg')) // TODO: Place logo in public/images/logo.svg
             ->brandLogoHeight('2rem')
@@ -102,6 +103,9 @@ class FinancePanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
+            ])
+            ->plugins([
+                //
             ]);
     }
 }

@@ -2,14 +2,18 @@
 
 namespace App\Filament\Resources\SalesOrders\Schemas;
 
+use App\Filament\Support\Calculations;
+use App\Models\Partner;
+use App\Models\SalesOrder;
+use App\Models\Warehouse;
 use App\Services\SalesOrderItemImportService;
+use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Repeater\TableColumn;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Switch;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
@@ -34,24 +38,24 @@ class SalesOrderForm
                                 TextInput::make('order_number')
                                     ->label('Sales Order #')
                                     ->default(function () {
-                                        $lastOrder = \App\Models\SalesOrder::orderBy('id', 'desc')->first();
+                                        $lastOrder = SalesOrder::orderBy('id', 'desc')->first();
                                         $lastNumber = 0;
 
                                         if ($lastOrder && preg_match('/SO-(\d+)/', $lastOrder->order_number, $matches)) {
                                             $lastNumber = (int) $matches[1];
                                         }
 
-                                        return 'SO-' . str_pad($lastNumber + 1, 4, '0', STR_PAD_LEFT);
+                                        return 'SO-'.str_pad($lastNumber + 1, 4, '0', STR_PAD_LEFT);
                                     })
                                     ->readOnly()
                                     ->required()
                                     ->unique(ignoreRecord: true),
                                 Select::make('partner_id')
                                     ->label('Customer')
-                                    ->relationship('partner', 'name', modifyQueryUsing: fn($query) => $query->where('is_customer', true))
+                                    ->relationship('partner', 'name', modifyQueryUsing: fn ($query) => $query->where('is_customer', true))
                                     ->searchable()
                                     ->preload()
-                                    ->default(fn() => \App\Models\Partner::where('id', 1)->first()?->id)
+                                    ->default(fn () => Partner::where('id', 1)->first()?->id)
                                     ->required()
                                     ->createOptionForm([
                                         TextInput::make('name')->required(),
@@ -63,7 +67,7 @@ class SalesOrderForm
                                     ->label('Warehouse')
                                     ->relationship('warehouse', 'name')
                                     ->searchable()
-                                    ->default(fn() => \App\Models\Warehouse::where('is_default', true)->value('id'))
+                                    ->default(fn () => Warehouse::where('is_default', true)->value('id'))
                                     ->preload()
                                     ->required(),
                             ]),
@@ -93,10 +97,10 @@ class SalesOrderForm
                                         'application/vnd.ms-excel',
                                         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                                     ])
-                                    ->visible(fn(Get $get) => $get('use_file_import'))
+                                    ->visible(fn (Get $get) => $get('use_file_import'))
                                     ->dehydrated(false)
                                     ->helperText('Headers supported: inventory_item_id or sku or name, plus quantity and unit_price.')
-                                    ->afterStateUpdated(function (Set $set, Get $get, TemporaryUploadedFile | string | null $state) {
+                                    ->afterStateUpdated(function (Set $set, Get $get, TemporaryUploadedFile|string|null $state) {
                                         if (! $state instanceof TemporaryUploadedFile) {
                                             return;
                                         }
@@ -111,7 +115,7 @@ class SalesOrderForm
                                             $set('total', $subtotal);
 
                                             Notification::make()
-                                                ->title(count($rows) . ' sales item(s) imported')
+                                                ->title(count($rows).' sales item(s) imported')
                                                 ->success()
                                                 ->send();
                                         } catch (\Throwable $exception) {
@@ -127,7 +131,7 @@ class SalesOrderForm
                         Repeater::make('salesOrderItems')
                             ->relationship('salesOrderItems')
                             ->label('Sale Items')
-                            ->visible(fn(Get $get) => !$get('use_file_import'))
+                            ->visible(fn (Get $get) => ! $get('use_file_import'))
                             ->table([
                                 TableColumn::make('Item')->width('220px')->alignLeft(),
                                 TableColumn::make('Qty')->alignLeft(),
@@ -138,7 +142,7 @@ class SalesOrderForm
                             ->schema([
                                 Select::make('inventory_item_id')
                                     ->label('Item')
-                                    ->relationship('inventoryItem', 'name', fn($query) => $query->where('is_sellable', true))
+                                    ->relationship('inventoryItem', 'name', fn ($query) => $query->where('is_sellable', true))
                                     ->searchable()
                                     ->preload()
                                     ->required(),
@@ -149,8 +153,8 @@ class SalesOrderForm
                                     ->live()
                                     ->afterStateUpdated(function (Set $set, Get $get, $state) {
                                         $set('total', round((float) ($state ?? 0) * (float) ($get('unit_price') ?? 0), 2));
-                                        \App\Filament\Support\Calculations::updateSubtotal($get, $set, '../../salesOrderItems', '../../subtotal');
-                                        \App\Filament\Support\Calculations::updateSubtotal($get, $set, '../../salesOrderItems', '../../total');
+                                        Calculations::updateSubtotal($get, $set, '../../salesOrderItems', '../../subtotal');
+                                        Calculations::updateSubtotal($get, $set, '../../salesOrderItems', '../../total');
                                     }),
                                 TextInput::make('unit_price')
                                     ->numeric()
@@ -160,8 +164,8 @@ class SalesOrderForm
                                     ->live(onBlur: true)
                                     ->afterStateUpdated(function (Set $set, Get $get, $state) {
                                         $set('total', round((float) ($state ?? 0) * (float) ($get('quantity') ?? 0), 2));
-                                        \App\Filament\Support\Calculations::updateSubtotal($get, $set, '../../salesOrderItems', '../../subtotal');
-                                        \App\Filament\Support\Calculations::updateSubtotal($get, $set, '../../salesOrderItems', '../../total');
+                                        Calculations::updateSubtotal($get, $set, '../../salesOrderItems', '../../subtotal');
+                                        Calculations::updateSubtotal($get, $set, '../../salesOrderItems', '../../total');
                                     }),
                                 TextInput::make('total')
                                     ->numeric()
@@ -174,7 +178,7 @@ class SalesOrderForm
                             ->minItems(1)
                             ->addable(false)
                             ->extraItemActions([
-                                \Filament\Actions\Action::make('add_item')
+                                Action::make('add_item')
                                     ->label('Add Item')
                                     ->icon('heroicon-o-plus')
                                     ->action(function (Repeater $component) {
@@ -190,13 +194,13 @@ class SalesOrderForm
                             ])
                             ->live()
                             ->afterStateUpdated(function (Get $get, Set $set) {
-                                \App\Filament\Support\Calculations::updateSubtotal($get, $set, 'salesOrderItems', 'subtotal');
-                                \App\Filament\Support\Calculations::updateSubtotal($get, $set, 'salesOrderItems', 'total');
+                                Calculations::updateSubtotal($get, $set, 'salesOrderItems', 'subtotal');
+                                Calculations::updateSubtotal($get, $set, 'salesOrderItems', 'total');
                             })
                             ->deleteAction(
-                                fn($action) => $action->after(function (Get $get, Set $set) {
-                                    \App\Filament\Support\Calculations::updateSubtotal($get, $set, 'salesOrderItems', 'subtotal');
-                                    \App\Filament\Support\Calculations::updateSubtotal($get, $set, 'salesOrderItems', 'total');
+                                fn ($action) => $action->after(function (Get $get, Set $set) {
+                                    Calculations::updateSubtotal($get, $set, 'salesOrderItems', 'subtotal');
+                                    Calculations::updateSubtotal($get, $set, 'salesOrderItems', 'total');
                                 })
                             ),
                         // Repeater::make('payments')
@@ -267,7 +271,7 @@ class SalesOrderForm
                         //         $set('total_paid_display', $totalPaid);
                         //         $set('balance_display', max(0, $orderTotal - $totalPaid));
                         //     })
-                        //     ->addable()                    
+                        //     ->addable()
                         //     ->visible(fn(Get $get) => $get('payment_mode') === 'cash' && request()->routeIs('filament.admin.resources.sales-orders.create'))
                         //     ->deletable(),
                     ])
@@ -295,13 +299,12 @@ class SalesOrderForm
                         TextInput::make('calculated_total')
                             ->label('Total Amount')
                             ->formatStateUsing(
-                                fn($record) =>
-                                $record ? number_format($record->total, 2) . ' Birr' : '0.00 Birr'
+                                fn ($record) => $record ? number_format($record->total, 2).' Birr' : '0.00 Birr'
                             )
                             ->readOnly()
                             ->dehydrated(false),
 
-                    ])
+                    ]),
             ])
             ->columns(4);
     }

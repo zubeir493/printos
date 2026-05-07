@@ -9,6 +9,7 @@ use App\Models\JobOrder;
 use App\Models\Payment;
 use App\Models\PurchaseOrder;
 use App\Models\SalesOrder;
+use App\Models\Setting;
 use App\Support\PrivateStorage;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
@@ -39,11 +40,12 @@ class InvoiceGeneratorService
     {
         $invoiceNumber = $this->generateInvoiceNumber('SALES');
         $taxCalculations = $this->calculateTaxes($order->salesOrderItems);
+        $settings = Setting::getSettings();
 
         $invoiceData = [
             'invoice_number' => $invoiceNumber,
             'invoice_date' => Carbon::now()->format('Y-m-d'),
-            'due_date' => $order->due_date ? $order->due_date->format('Y-m-d') : Carbon::now()->addDays(30)->format('Y-m-d'),
+            'due_date' => $order->due_date ? $order->due_date->format('Y-m-d') : Carbon::now()->addDays($settings->invoice_due_days ?? 30)->format('Y-m-d'),
             'order' => $order,
             'items' => $order->salesOrderItems,
             'payments' => $order->paymentAllocations,
@@ -54,6 +56,9 @@ class InvoiceGeneratorService
             'total_amount' => $order->subtotal + $taxCalculations['total_tax'],
             'balance_due' => $order->balance,
             'status' => $this->getInvoiceStatus($order),
+            'terms' => $settings->invoice_terms,
+            'currency_code' => $settings->currency_code ?? 'ETB',
+            'currency_symbol' => $settings->currency_symbol ?? 'Birr',
             'options' => array_merge([
                 'show_tax_breakdown' => true,
                 'show_payment_status' => true,
@@ -148,11 +153,12 @@ class InvoiceGeneratorService
     {
         $invoiceNumber = $this->generateInvoiceNumber('PURCHASE');
         $taxCalculations = $this->calculateTaxes($order->purchaseOrderItems);
+        $settings = Setting::getSettings();
 
         $invoiceData = [
             'invoice_number' => $invoiceNumber,
             'invoice_date' => Carbon::now()->format('Y-m-d'),
-            'due_date' => $order->due_date ? $order->due_date->format('Y-m-d') : Carbon::now()->addDays(30)->format('Y-m-d'),
+            'due_date' => $order->due_date ? $order->due_date->format('Y-m-d') : Carbon::now()->addDays($settings->invoice_due_days ?? 30)->format('Y-m-d'),
             'order' => $order,
             'items' => $order->purchaseOrderItems,
             'payments' => $order->paymentAllocations,
@@ -163,6 +169,9 @@ class InvoiceGeneratorService
             'total_amount' => $order->subtotal + $taxCalculations['total_tax'],
             'balance_due' => $order->balance,
             'status' => $this->getInvoiceStatus($order),
+            'terms' => $settings->invoice_terms,
+            'currency_code' => $settings->currency_code ?? 'ETB',
+            'currency_symbol' => $settings->currency_symbol ?? 'Birr',
             'options' => array_merge([
                 'show_tax_breakdown' => true,
                 'show_payment_status' => true,
@@ -219,6 +228,7 @@ class InvoiceGeneratorService
         $invoiceNumber = $this->generateInvoiceNumber('SERVICE');
         $jobOrderItems = $order->jobOrderTasks()->get();
         $taxCalculations = $this->calculateServiceTaxes($order);
+        $settings = Setting::getSettings();
 
         $items = $jobOrderItems->map(function ($task) use ($order) {
             $quantity = $task->quantity ?: 1;
@@ -239,7 +249,7 @@ class InvoiceGeneratorService
         $invoiceData = [
             'invoice_number' => $invoiceNumber,
             'invoice_date' => Carbon::now()->format('Y-m-d'),
-            'due_date' => $order->due_date ? $order->due_date->format('Y-m-d') : Carbon::now()->addDays(30)->format('Y-m-d'),
+            'due_date' => $order->due_date ? $order->due_date->format('Y-m-d') : Carbon::now()->addDays($settings->invoice_due_days ?? 15)->format('Y-m-d'),
             'order' => $order,
             'items' => $items,
             'payments' => $order->paymentAllocations,
@@ -257,6 +267,9 @@ class InvoiceGeneratorService
             'balance_due' => $order->balance,
             'status' => $this->getInvoiceStatus($order),
             'notes' => $order->remarks ?? null,
+            'terms' => $settings->invoice_terms,
+            'currency_code' => $settings->currency_code ?? 'ETB',
+            'currency_symbol' => $settings->currency_symbol ?? 'Birr',
             'options' => array_merge([
                 'show_service_details' => true,
                 'show_tax_breakdown' => true,
@@ -283,10 +296,10 @@ class InvoiceGeneratorService
             'order_type' => 'job_order',
             'partner_id' => $order->partner_id,
             'invoice_date' => Carbon::now(),
-            'due_date' => $order->due_date ?: Carbon::now()->addDays(15),
-            'subtotal' => $order->total_price,
+            'due_date' => $order->due_date ?: Carbon::now()->addDays($settings->invoice_due_days ?? 15),
+            'subtotal' => $actualSubtotal,
             'tax_amount' => $taxCalculations['total_tax'],
-            'total_amount' => $order->total_price + $taxCalculations['total_tax'],
+            'total_amount' => $actualSubtotal + $taxCalculations['total_tax'],
             'balance_due' => $order->balance,
             'status' => $this->getInvoiceStatus($order),
             'filename' => $filename,
@@ -310,6 +323,7 @@ class InvoiceGeneratorService
     public function generateBatchInvoice(array $orders, array $options = []): array
     {
         $invoiceNumber = $this->generateInvoiceNumber('BATCH');
+        $settings = Setting::getSettings();
 
         $allItems = collect();
         $totalSubtotal = 0;
@@ -330,7 +344,7 @@ class InvoiceGeneratorService
         $invoiceData = [
             'invoice_number' => $invoiceNumber,
             'invoice_date' => Carbon::now()->format('Y-m-d'),
-            'due_date' => $order->due_date ? $order->due_date->format('Y-m-d') : Carbon::now()->addDays(30)->format('Y-m-d'),
+            'due_date' => Carbon::now()->addDays($settings->invoice_due_days ?? 30)->format('Y-m-d'),
             'orders' => $orders,
             'items' => $allItems,
             'company_info' => $this->companyInfo,
@@ -338,6 +352,9 @@ class InvoiceGeneratorService
             'subtotal' => $totalSubtotal,
             'tax_amount' => $taxCalculations['total_tax'],
             'total_amount' => $totalSubtotal + $taxCalculations['total_tax'],
+            'terms' => $settings->invoice_terms,
+            'currency_code' => $settings->currency_code ?? 'ETB',
+            'currency_symbol' => $settings->currency_symbol ?? 'Birr',
             'options' => array_merge([
                 'show_order_breakdown' => true,
                 'show_tax_breakdown' => true,
@@ -481,9 +498,20 @@ class InvoiceGeneratorService
     /**
      * Generate unique invoice number
      */
-    private function generateInvoiceNumber(string $prefix): string
+    private function generateInvoiceNumber(string $type): string
     {
+        $settings = Setting::getSettings();
         $year = Carbon::now()->format('Y');
+
+        $prefix = match ($type) {
+            'SALES' => $settings->invoice_prefix ?? 'INV',
+            'PURCHASE' => $settings->invoice_prefix ?? 'INV',
+            'SERVICE' => $settings->invoice_prefix ?? 'INV',
+            'RECEIPT' => $settings->receipt_prefix ?? 'RCP',
+            'BATCH' => 'BATCH',
+            default => $settings->invoice_prefix ?? 'INV',
+        };
+
         $sequence = $this->getNextSequence($prefix, $year);
 
         return "{$prefix}-{$year}-".str_pad($sequence, 6, '0', STR_PAD_LEFT);
@@ -531,33 +559,23 @@ class InvoiceGeneratorService
     }
 
     /**
-     * Load tax configuration
+     * Load tax configuration from database settings
      */
     private function loadTaxConfiguration(): array
     {
-        $taxes = config('invoice.taxes', []);
-        $taxConfig = [];
+        $settings = Setting::getSettings();
 
-        foreach ($taxes as $key => $tax) {
-            $taxConfig[strtoupper($tax['name'])] = $tax['rate'];
-        }
-
-        return $taxConfig;
+        return $settings->getTaxConfiguration();
     }
 
     /**
-     * Load company information
+     * Load company information from database settings
      */
     private function loadCompanyInformation(): array
     {
-        return config('invoice.company', [
-            'name' => config('app.name', 'Your Company'),
-            'address' => '123 Business Street, City, Country',
-            'phone' => '+1 234 567 8900',
-            'email' => 'billing@yourcompany.com',
-            'tax_id' => 'TAX-123456789',
-            'website' => 'www.yourcompany.com',
-        ]);
+        $settings = Setting::getSettings();
+
+        return $settings->getCompanyInfo();
     }
 
     /**

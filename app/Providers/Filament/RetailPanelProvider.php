@@ -6,6 +6,7 @@ use App\Filament\Resources\SalesOrders\SalesOrderResource;
 use App\Filament\Retail\Widgets\RetailCounterStats;
 use App\Filament\Retail\Widgets\RetailDemandChart;
 use App\Filament\Retail\Widgets\RetailReorderTable;
+use Filament\Enums\ThemeMode;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -30,7 +31,7 @@ class RetailPanelProvider extends PanelProvider
             ->path('retail')
             ->viteTheme('resources/css/filament/admin/theme.css')
             ->darkMode(false)
-            ->defaultThemeMode(\Filament\Enums\ThemeMode::Light)
+            ->defaultThemeMode(ThemeMode::Light)
             ->databaseNotifications()
             ->brandLogo(asset('images/logo.svg')) // TODO: Place logo in public/images/logo.svg
             ->brandLogoHeight('2rem')
@@ -61,6 +62,9 @@ class RetailPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
+            ])
+            ->plugins([
+                //
             ]);
     }
 }

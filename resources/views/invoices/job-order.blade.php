@@ -232,9 +232,7 @@
             <tr>
                 <td colspan="4" class="terms">
                     <strong>Terms & Conditions:</strong><br>
-                    1. Payment is due within 15 days of invoice date.<br>
-                    2. All prices are inclusive of applicable taxes unless otherwise stated.<br>
-                    3. Goods remain the property of {{ $invoiceData['company_info']['name'] ?? config('app.name') }} until paid in full.
+                    {!! nl2br(e($invoiceData['terms'] ?? "1. Payment is due within 15 days of invoice date.\n2. All prices are inclusive of applicable taxes unless otherwise stated.\n3. Goods remain the property of {$invoiceData['company_info']['name']} until paid in full.")) !!}
                 </td>
             </tr>
             @endif

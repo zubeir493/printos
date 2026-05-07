@@ -12,6 +12,7 @@ use App\Models\ProductionPlanItem;
 use App\Models\ProductionReport;
 use App\Models\ProductionReportItem;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
 class ProductionWorkflowTest extends TestCase
@@ -37,7 +38,7 @@ class ProductionWorkflowTest extends TestCase
             'advance_amount' => 20000,
         ]);
 
-        $this->expectException(\Exception::class);
+        $this->expectException(ValidationException::class);
         $jobOrder->update(['status' => 'production']);
     }
 
@@ -60,8 +61,15 @@ class ProductionWorkflowTest extends TestCase
             'advance_amount' => 15000,
         ]);
 
-        Artwork::create([
+        $task = JobOrderTask::create([
             'job_order_id' => $jobOrder->id,
+            'name' => 'Design Task',
+            'quantity' => 1,
+            'task_cost' => 5000,
+        ]);
+        
+        Artwork::create([
+            'job_order_task_id' => $task->id,
             'filename' => 'artwork-1.pdf',
             'is_approved' => true,
         ]);
@@ -86,7 +94,7 @@ class ProductionWorkflowTest extends TestCase
             'job_order_id' => $jobOrder->id,
             'name' => 'Produce Packaging',
             'quantity' => 5000,
-            'unit_cost' => 10.00,
+            'task_cost' => 50000,
         ]);
 
         $planItem = ProductionPlanItem::create([

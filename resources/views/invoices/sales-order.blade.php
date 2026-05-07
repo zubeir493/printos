@@ -219,11 +219,7 @@
             <tr>
                 <td colspan="4" class="terms">
                     <strong>Terms & Conditions:</strong><br>
-                    1. Payment is due within 30 days of invoice date.<br>
-                    2. Late payments are subject to a 1.5% monthly interest charge.<br>
-                    3. All prices are inclusive of applicable taxes unless otherwise stated.<br>
-                    4. Goods remain the property of {{ $invoiceData['company_info']['name'] }} until paid in full.<br>
-                    5. Please quote invoice number when making payment.
+                    {!! nl2br(e($invoiceData['terms'] ?? "1. Payment is due within 30 days of invoice date.\n2. Late payments are subject to a 1.5% monthly interest charge.\n3. All prices are inclusive of applicable taxes unless otherwise stated.\n4. Goods remain the property of {$invoiceData['company_info']['name']} until paid in full.\n5. Please quote invoice number when making payment.")) !!}
                 </td>
             </tr>
             @endif

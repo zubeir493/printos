@@ -60,6 +60,16 @@ class InventoryItemSeeder extends Seeder
                 'is_sellable' => false,
                 'price' => 25.00,
             ],
+            [
+                'name' => 'Duplex 70*100cm',
+                'sku' => 'DUPLEX-70X100',
+                'unit' => 'piece',
+                'purchase_unit' => 'ream',
+                'conversion_factor' => 500,
+                'type' => 'finished_good',
+                'is_sellable' => true,
+                'price' => 3500.00,
+            ],
         ];
 
         foreach ($items as $item) {

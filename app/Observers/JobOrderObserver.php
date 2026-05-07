@@ -25,7 +25,7 @@ class JobOrderObserver
             return;
         }
 
-        if ($jobOrder->status !== 'active') {
+        if ($jobOrder->status !== 'production') {
             return;
         }
 

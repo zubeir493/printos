@@ -2,11 +2,12 @@
 
 namespace App\Providers\Filament;
 
-use App\Filament\Widgets\AdminExceptionsTable;
 use App\Filament\Widgets\AdminHealthStats;
+use App\Filament\Widgets\ExceptionsStatsWidget;
 use App\Filament\Widgets\ProfitabilityMarginChart;
 use App\Filament\Widgets\SystemBottlenecksChart;
 use App\Http\Middleware\RedirectToCorrectPanel;
+use Filament\Enums\ThemeMode;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -32,7 +33,7 @@ class AdminPanelProvider extends PanelProvider
             ->path('/')
             ->viteTheme('resources/css/filament/admin/theme.css')
             ->darkMode(false)
-            ->defaultThemeMode(\Filament\Enums\ThemeMode::Light)
+            ->defaultThemeMode(ThemeMode::Light)
             ->login()
             ->databaseNotifications()
             ->brandLogo(asset('images/logo.svg')) // TODO: Place logo in public/images/logo.svg
@@ -49,7 +50,7 @@ class AdminPanelProvider extends PanelProvider
                 AdminHealthStats::class,
                 ProfitabilityMarginChart::class,
                 SystemBottlenecksChart::class,
-                AdminExceptionsTable::class,
+                ExceptionsStatsWidget::class,
             ])
             ->middleware([
                 EncryptCookies::class,
@@ -65,6 +66,9 @@ class AdminPanelProvider extends PanelProvider
             ->authMiddleware([
                 Authenticate::class,
                 RedirectToCorrectPanel::class,
+            ])
+            ->plugins([
+                //
             ]);
     }
 }

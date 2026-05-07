@@ -6,6 +6,7 @@ use App\Filament\Resources\SalesOrders\SalesOrderResource;
 use App\Filament\Sales\Widgets\SalesOrdersFocusTable;
 use App\Filament\Sales\Widgets\SalesPanelStats;
 use App\Filament\Sales\Widgets\SalesPipelineChart;
+use Filament\Enums\ThemeMode;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -30,7 +31,7 @@ class SalesPanelProvider extends PanelProvider
             ->path('sales')
             ->viteTheme('resources/css/filament/admin/theme.css')
             ->darkMode(false)
-            ->defaultThemeMode(\Filament\Enums\ThemeMode::Light)
+            ->defaultThemeMode(ThemeMode::Light)
             ->databaseNotifications()
             ->brandLogo(asset('images/logo.svg')) // TODO: Place logo in public/images/logo.svg
             ->brandLogoHeight('2rem')
@@ -61,6 +62,9 @@ class SalesPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
+            ])
+            ->plugins([
+                //
             ]);
     }
 }

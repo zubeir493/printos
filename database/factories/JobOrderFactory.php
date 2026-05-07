@@ -13,14 +13,17 @@ class JobOrderFactory extends Factory
     public function definition(): array
     {
         return [
-            'job_order_number' => fake()->word(),
+            'job_order_number' => 'JO-'.str_pad(fake()->unique()->numberBetween(1, 9999), 4, '0', STR_PAD_LEFT),
             'partner_id' => Partner::factory(),
-            'job_type' => fake()->randomElement(['books', 'packages']),
+            'job_type' => fake()->randomElement(['books', 'packages', 'labels', 'vouchers']),
+            'production_mode' => fake()->randomElement(['make_to_order', 'make_to_stock']),
+            'cost_calc_file' => 'job-orders/cost-calculations/placeholder.xlsx',
+            'services' => [],
             'submission_date' => fake()->date(),
             'remarks' => fake()->text(),
-            'subtotal' => fake()->randomFloat(2, 0, 9999999999.99),
-            'tax_amount' => fake()->randomFloat(2, 0, 999999999.99),
-            'total' => fake()->randomFloat(2, 0, 9999999999.99),
+            'subtotal' => fake()->randomFloat(2, 0, 9999.99),
+            'tax_amount' => fake()->randomFloat(2, 0, 999.99),
+            'total' => fake()->randomFloat(2, 0, 9999.99),
             'status' => fake()->randomElement(['draft', 'design', 'production', 'completed', 'cancelled']),
         ];
     }

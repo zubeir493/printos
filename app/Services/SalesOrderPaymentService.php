@@ -28,11 +28,7 @@ class SalesOrderPaymentService
         }
 
         return DB::transaction(function () use ($salesOrder, $amount) {
-            $nextId = (Payment::max('id') ?? 0) + 1;
-            $paymentNumber = 'PAY-SO-'.str_pad($nextId, 6, '0', STR_PAD_LEFT);
-
             $payment = Payment::create([
-                'payment_number' => $paymentNumber,
                 'partner_id' => $salesOrder->partner_id,
                 'amount' => $amount,
                 'direction' => 'inbound',
@@ -90,11 +86,7 @@ class SalesOrderPaymentService
      */
     private function createPaymentFromData(SalesOrder $salesOrder, array $paymentData): Payment
     {
-        $nextId = (Payment::max('id') ?? 0) + 1;
-        $paymentNumber = 'PAY-SO-'.str_pad($nextId, 6, '0', STR_PAD_LEFT);
-
         return Payment::create([
-            'payment_number' => $paymentNumber,
             'partner_id' => $salesOrder->partner_id,
             'amount' => $paymentData['amount'],
             'direction' => 'inbound',

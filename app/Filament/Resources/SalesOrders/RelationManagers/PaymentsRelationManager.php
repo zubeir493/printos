@@ -2,7 +2,9 @@
 
 namespace App\Filament\Resources\SalesOrders\RelationManagers;
 
+use App\Enums\PaymentTransactionType;
 use App\Filament\Support\PanelAccess;
+use App\Models\Bank;
 use App\Models\Payment;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
@@ -17,6 +19,7 @@ use Filament\Schemas\Schema;
 use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 
 class PaymentsRelationManager extends RelationManager
@@ -56,11 +59,11 @@ class PaymentsRelationManager extends RelationManager
 
                 Select::make('bank_id')
                     ->label('Bank Account')
-                    ->options(fn() => \App\Models\Bank::pluck('name', 'id'))
+                    ->options(fn () => Bank::pluck('name', 'id'))
                     ->searchable()
                     ->preload()
-                    ->visible(fn(callable $get) => $get('method') === 'bank')
-                    ->required(fn(callable $get) => $get('method') === 'bank')
+                    ->visible(fn (callable $get) => $get('method') === 'bank')
+                    ->required(fn (callable $get) => $get('method') === 'bank')
                     ->helperText('Select the bank account for this payment'),
 
                 TextInput::make('reference')
@@ -84,17 +87,17 @@ class PaymentsRelationManager extends RelationManager
                     ->searchable()
                     ->weight('bold')
                     ->color('primary')
-                    ->description(fn($record) => $record->payment->payment_date?->format('M j, Y') ?? 'No date'),
+                    ->description(fn ($record) => $record->payment->payment_date?->format('M j, Y') ?? 'No date'),
                 TextColumn::make('payment.method')
                     ->label('Method')
                     ->badge()
-                    ->color(fn($state) => match($state) {
+                    ->color(fn ($state) => match ($state) {
                         'cash' => 'success',
                         'bank' => 'info',
                         'cheque' => 'warning',
                         default => 'gray',
                     })
-                    ->formatStateUsing(fn($state) => ucfirst($state)),
+                    ->formatStateUsing(fn ($state) => ucfirst($state)),
                 TextColumn::make('payment.reference')
                     ->label('Reference')
                     ->searchable()
@@ -117,24 +120,22 @@ class PaymentsRelationManager extends RelationManager
                                 $owner = $this->getOwnerRecord();
                                 $allocated = $state ?? 0;
                                 $total = $owner->subtotal ?? 0;
+
                                 return "{$allocated}/{$total} Birr";
                             })
                     ),
             ])
             ->headerActions([
                 CreateAction::make()
-                    ->using(function (array $data): \Illuminate\Database\Eloquent\Model {
+                    ->using(function (array $data): Model {
                         return DB::transaction(function () use ($data) {
                             $salesOrder = $this->getOwnerRecord();
-                            $nextId = (Payment::max('id') ?? 0) + 1;
-                            $paymentNumber = 'PAY-SO-' . str_pad($nextId, 6, '0', STR_PAD_LEFT);
 
                             $payment = Payment::create([
-                                'payment_number' => $paymentNumber,
                                 'partner_id' => $salesOrder->partner_id,
                                 'amount' => $data['allocated_amount'],
                                 'direction' => 'inbound',
-                                'transaction_type' => \App\Enums\PaymentTransactionType::CUSTOMER_RECEIPT->value,
+                                'transaction_type' => PaymentTransactionType::CUSTOMER_RECEIPT->value,
                                 'method' => $data['method'],
                                 'bank_id' => $data['bank_id'] ?? null,
                                 'reference' => $data['reference'] ?? null,

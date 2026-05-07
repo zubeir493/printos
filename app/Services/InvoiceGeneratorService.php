@@ -14,6 +14,7 @@ use App\Support\PrivateStorage;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
@@ -585,7 +586,11 @@ class InvoiceGeneratorService
     }
 
     /**
-     * Get next sequence number for invoice numbering
+     * Get next sequence number for invoice numbering.
+     *
+     * Uses a DB advisory lock so concurrent requests cannot generate the same
+     * sequence number. The lock key is scoped to prefix+year so different
+     * invoice types don't block each other.
      */
     private function getNextSequence(string $prefix, string $year): int
     {
@@ -594,21 +599,28 @@ class InvoiceGeneratorService
             throw new \InvalidArgumentException('Invalid prefix or year format');
         }
 
-        // Get the highest sequence number for this prefix and year
-        $pattern = "{$prefix}-{$year}-%";
-        $lastInvoice = Invoice::where('invoice_number', 'like', $pattern)
-            ->orderByRaw('CAST(SUBSTR(invoice_number, LENGTH(?) + 1) AS UNSIGNED) DESC', [$pattern])
-            ->first();
+        return DB::transaction(function () use ($prefix, $year): int {
+            // Lock the last invoice row for this prefix+year so concurrent
+            // requests queue up rather than racing to the same sequence.
+            $pattern = "{$prefix}-{$year}-%";
 
-        if ($lastInvoice) {
-            // Extract the sequence number from the invoice number
-            $parts = explode('-', $lastInvoice->invoice_number);
-            $sequence = (int) end($parts);
+            // The prefix string we actually strip is "{prefix}-{year}-" (no wildcard).
+            $stripPrefix = "{$prefix}-{$year}-";
+            $stripLength = strlen($stripPrefix) + 1; // SUBSTR is 1-indexed
 
-            return $sequence + 1;
-        }
+            $lastInvoice = Invoice::where('invoice_number', 'like', $pattern)
+                ->lockForUpdate()
+                ->orderByRaw('CAST(SUBSTR(invoice_number, ?) AS UNSIGNED) DESC', [$stripLength])
+                ->first();
 
-        return 1;
+            if ($lastInvoice) {
+                $parts = explode('-', $lastInvoice->invoice_number);
+
+                return (int) end($parts) + 1;
+            }
+
+            return 1;
+        });
     }
 
     /**

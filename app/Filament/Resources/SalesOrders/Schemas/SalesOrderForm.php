@@ -61,6 +61,7 @@ class SalesOrderForm
                                     ->createOptionForm([
                                         TextInput::make('name')->required(),
                                         TextInput::make('phone'),
+                                        TextInput::make('email')->email(),
                                         TextInput::make('address'),
                                         Hidden::make('is_customer')->default(true),
                                     ]),

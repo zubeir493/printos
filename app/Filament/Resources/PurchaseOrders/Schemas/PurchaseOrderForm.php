@@ -55,6 +55,8 @@ class PurchaseOrderForm
                                             ->required(),
                                         TextInput::make('phone')
                                             ->required(),
+                                        TextInput::make('email')
+                                            ->email(),
                                         TextInput::make('tin_number'),
                                         Hidden::make('is_supplier')->default(true),
                                     ])

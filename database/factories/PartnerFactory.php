@@ -14,6 +14,7 @@ class PartnerFactory extends Factory
         return [
             'name' => fake()->name(),
             'phone' => fake()->phoneNumber(),
+            'email' => fake()->safeEmail(),
             'address' => fake()->text(),
             'tin_number' => fake()->word(),
             'is_supplier' => fake()->boolean(),

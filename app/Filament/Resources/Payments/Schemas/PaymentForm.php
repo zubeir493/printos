@@ -3,7 +3,6 @@
 namespace App\Filament\Resources\Payments\Schemas;
 
 use App\Enums\PaymentTransactionType;
-use App\Models\Payment;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
@@ -22,17 +21,9 @@ class PaymentForm
                     ->schema([
                         TextInput::make('payment_number')
                             ->label('Payment #')
-                            ->default(function () {
-                                $lastPayment = Payment::orderBy('id', 'desc')->first();
-                                $lastNumber = 0;
-                                if ($lastPayment && preg_match('/PAY-(\d+)/', $lastPayment->payment_number, $matches)) {
-                                    $lastNumber = (int) $matches[1];
-                                }
-
-                                return 'PAY-'.str_pad($lastNumber + 1, 4, '0', STR_PAD_LEFT);
-                            })
+                            ->placeholder('Auto-generated on save')
                             ->readOnly()
-                            ->required(),
+                            ->required(false),
                         Select::make('transaction_type')
                             ->label('Transaction Type')
                             ->options(PaymentTransactionType::options())
@@ -75,12 +66,14 @@ class PaymentForm
                                 ? [
                                     TextInput::make('name')->required(),
                                     TextInput::make('phone')->required(),
+                                    TextInput::make('email')->email(),
                                     TextInput::make('address'),
                                     Hidden::make('is_supplier')->default(true),
                                 ]
                                 : [
                                     TextInput::make('name')->required(),
                                     TextInput::make('phone')->required(),
+                                    TextInput::make('email')->email(),
                                     TextInput::make('address'),
                                     Hidden::make('is_customer')->default(true),
                                 ]),

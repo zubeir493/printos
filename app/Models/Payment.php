@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Support\Facades\DB;
 
 class Payment extends Model
 {
@@ -89,8 +90,21 @@ class Payment extends Model
         $this->attributes['partner_id'] = $value;
     }
 
-    protected static function booted()
+    protected static function booted(): void
     {
-        //
+        static::creating(function (self $payment): void {
+            if (! empty($payment->payment_number)) {
+                return;
+            }
+
+            DB::transaction(function () use ($payment): void {
+                $last = self::lockForUpdate()->orderBy('id', 'desc')->first();
+                $lastNumber = 0;
+                if ($last && preg_match('/PAY-(?:\w+-)?(\d+)/', $last->payment_number, $m)) {
+                    $lastNumber = (int) $m[1];
+                }
+                $payment->payment_number = 'PAY-'.str_pad($lastNumber + 1, 6, '0', STR_PAD_LEFT);
+            });
+        });
     }
 }

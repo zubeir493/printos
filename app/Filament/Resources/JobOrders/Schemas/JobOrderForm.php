@@ -46,6 +46,8 @@ class JobOrderForm
                                             ->required(),
                                         TextInput::make('phone')
                                             ->required(),
+                                        TextInput::make('email')
+                                            ->email(),
                                         TextInput::make('address'),
                                         Hidden::make('is_customer')->default(true),
                                     ])

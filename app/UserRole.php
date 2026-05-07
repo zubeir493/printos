@@ -23,7 +23,6 @@ enum UserRole: string
         }
 
         return match ($panel->getId()) {
-            'admin' => true,
             'design' => $this === self::Design,
             'production' => $this === self::Production,
             'finance' => $this === self::Finance,

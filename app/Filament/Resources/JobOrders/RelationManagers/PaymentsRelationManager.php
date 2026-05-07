@@ -139,12 +139,7 @@ class PaymentsRelationManager extends RelationManager
                         return DB::transaction(function () use ($data) {
                             $jobOrder = $this->getOwnerRecord();
 
-                            // 1. Create the Payment
-                            $nextId = (Payment::max('id') ?? 0) + 1;
-                            $paymentNumber = 'PAY-JO-'.str_pad($nextId, 6, '0', STR_PAD_LEFT);
-
                             $payment = Payment::create([
-                                'payment_number' => $paymentNumber,
                                 'partner_id' => $jobOrder->partner_id,
                                 'amount' => $data['allocated_amount'],
                                 'direction' => 'inbound',
@@ -154,7 +149,6 @@ class PaymentsRelationManager extends RelationManager
                                 'payment_date' => $data['payment_date'],
                             ]);
 
-                            // 2. Create the Allocation (this return value is what Filament expects)
                             return $jobOrder->paymentAllocations()->create([
                                 'payment_id' => $payment->id,
                                 'allocated_amount' => $data['allocated_amount'],

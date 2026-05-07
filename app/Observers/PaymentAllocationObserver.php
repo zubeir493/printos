@@ -11,6 +11,36 @@ use App\Services\InvoiceGeneratorService;
 class PaymentAllocationObserver
 {
     /**
+     * Handle the PaymentAllocation "saving" event.
+     * Prevents the total allocated amount from exceeding the payment amount.
+     */
+    public function saving(PaymentAllocation $paymentAllocation): void
+    {
+        if (! $paymentAllocation->payment_id) {
+            return;
+        }
+
+        $payment = Payment::find($paymentAllocation->payment_id);
+        if (! $payment) {
+            return;
+        }
+
+        $existingTotal = (float) PaymentAllocation::where('payment_id', $paymentAllocation->payment_id)
+            ->when($paymentAllocation->exists, fn ($q) => $q->where('id', '!=', $paymentAllocation->id))
+            ->sum('allocated_amount');
+
+        $newTotal = $existingTotal + (float) $paymentAllocation->allocated_amount;
+
+        if ($newTotal > (float) $payment->amount + 0.001) {
+            throw new \RuntimeException(sprintf(
+                'Over-allocation: this payment has %.2f Birr available but %.2f Birr would be allocated.',
+                (float) $payment->amount - $existingTotal,
+                (float) $paymentAllocation->allocated_amount
+            ));
+        }
+    }
+
+    /**
      * Handle the PaymentAllocation "saved" event.
      */
     public function saved(PaymentAllocation $paymentAllocation): void
@@ -68,13 +98,15 @@ class PaymentAllocationObserver
             return;
         }
 
-        // Update JobOrder advance payment info
+        // Update JobOrder advance payment info.
+        // Use the total of all allocations, not just the first one, so that
+        // adding/removing allocations always reflects the correct advance amount.
         if ($paymentAllocation->allocatable_type === JobOrder::class) {
-            $firstAllocation = $allocatable->paymentAllocations()->orderBy('id')->first();
+            $totalAllocated = (float) $allocatable->paymentAllocations()->sum('allocated_amount');
 
             $allocatable->updateQuietly([
-                'advance_paid' => $firstAllocation !== null,
-                'advance_amount' => $firstAllocation ? $firstAllocation->allocated_amount : 0,
+                'advance_paid' => $totalAllocated > 0,
+                'advance_amount' => $totalAllocated,
             ]);
         }
 

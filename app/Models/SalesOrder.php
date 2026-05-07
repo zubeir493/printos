@@ -102,12 +102,16 @@ class SalesOrder extends Model
 
     protected static function booted()
     {
-        static::creating(function ($salesOrder) {
-            if (empty($salesOrder->order_number)) {
-                $lastOrder = self::orderBy('id', 'desc')->first();
-                $nextId = $lastOrder ? $lastOrder->id + 1 : 1;
-                $salesOrder->order_number = 'SO-'.str_pad($nextId, 5, '0', STR_PAD_LEFT);
+        static::creating(function ($salesOrder): void {
+            if (! empty($salesOrder->order_number)) {
+                return;
             }
+
+            DB::transaction(function () use ($salesOrder): void {
+                $last = self::lockForUpdate()->orderBy('id', 'desc')->first();
+                $nextId = $last ? $last->id + 1 : 1;
+                $salesOrder->order_number = 'SO-'.str_pad($nextId, 5, '0', STR_PAD_LEFT);
+            });
         });
 
         static::updating(function ($salesOrder) {

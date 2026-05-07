@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\DB;
 
 class Invoice extends Model
 {
@@ -59,25 +60,25 @@ class Invoice extends Model
         ];
     }
 
-    /**
-     * The "booted" method of the model.
-     */
-    protected static function booted()
+    protected static function booted(): void
     {
-        static::creating(function ($invoice) {
+        static::creating(function ($invoice): void {
             if (empty($invoice->invoice_number)) {
-                $lastInvoice = self::orderBy('id', 'desc')->first();
-                $nextId = $lastInvoice ? $lastInvoice->id + 1 : 1;
                 $prefix = match ($invoice->invoice_type) {
                     'purchase' => 'PI-',
                     'service' => 'SI-',
                     'receipt' => 'RCP-',
                     default => 'INV-',
                 };
-                $invoice->invoice_number = $prefix.str_pad($nextId, 6, '0', STR_PAD_LEFT);
+
+                // Wrap in a transaction so lockForUpdate is effective.
+                DB::transaction(function () use ($invoice, $prefix): void {
+                    $last = self::lockForUpdate()->orderBy('id', 'desc')->first();
+                    $nextId = $last ? $last->id + 1 : 1;
+                    $invoice->invoice_number = $prefix.str_pad($nextId, 6, '0', STR_PAD_LEFT);
+                });
             }
 
-            // Set initial balance_due if not set
             if (is_null($invoice->balance_due)) {
                 $invoice->balance_due = $invoice->total_amount ?? 0;
             }

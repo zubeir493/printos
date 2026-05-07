@@ -66,7 +66,7 @@ class PartnerResource extends Resource
 
     public static function getGloballySearchableAttributes(): array
     {
-        return ['name', 'phone', 'email'];
+        return ['name', 'phone', 'tin_number'];
     }
 
     public static function getGlobalSearchResultTitle($record): string
@@ -78,7 +78,7 @@ class PartnerResource extends Resource
     {
         return [
             'Phone' => $record->phone,
-            'Email' => $record->email,
+            'TIN' => $record->tin_number,
             'Type' => $record->is_customer ? 'Customer' : 'Supplier',
         ];
     }

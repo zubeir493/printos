@@ -55,7 +55,7 @@ class InventoryItemResource extends Resource
 
     public static function getGloballySearchableAttributes(): array
     {
-        return ['name', 'sku', 'description'];
+        return ['name', 'sku', 'category'];
     }
 
     public static function getGlobalSearchResultTitle($record): string

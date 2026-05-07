@@ -67,20 +67,20 @@ class DispatchResource extends Resource
 
     public static function getGloballySearchableAttributes(): array
     {
-        return ['dispatch_number', 'partner.name', 'status'];
+        return ['jobOrder.job_order_number', 'jobOrder.partner.name', 'status'];
     }
 
     public static function getGlobalSearchResultTitle($record): string
     {
-        return $record->dispatch_number;
+        return $record->jobOrder?->job_order_number ?? "Dispatch #{$record->id}";
     }
 
     public static function getGlobalSearchResultDetails($record): array
     {
         return [
-            'Partner' => $record->partner?->name,
+            'Partner' => $record->jobOrder?->partner?->name,
             'Status' => ucfirst($record->status),
-            'Date' => $record->dispatch_date?->format('M j, Y'),
+            'Date' => $record->delivery_date?->format('M j, Y'),
         ];
     }
 
@@ -91,6 +91,6 @@ class DispatchResource extends Resource
         }
 
         return parent::getGlobalSearchEloquentQuery()
-            ->with(['partner']);
+            ->with(['jobOrder.partner']);
     }
 }

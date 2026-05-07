@@ -6,6 +6,7 @@ use App\Filament\Support\Calculations;
 use App\Filament\Support\PanelAccess;
 use App\Models\InventoryItem;
 use App\Models\JobOrder;
+use App\Models\Setting;
 use App\Support\PrivateStorage;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
@@ -64,9 +65,6 @@ class JobOrderForm
                                     })
                                     ->readOnly()
                                     ->required(),
-                            ]),
-                        Grid::make()
-                            ->schema([
                                 Select::make('job_type')
                                     ->options([
                                         'books' => 'Books',
@@ -77,6 +75,10 @@ class JobOrderForm
                                     ->reactive()
                                     ->default('packages')
                                     ->required(),
+                            ])
+                            ->columns(3),
+                        Grid::make()
+                            ->schema([
                                 Select::make('production_mode')
                                     ->options([
                                         'make_to_order' => 'Client Job',
@@ -86,6 +88,11 @@ class JobOrderForm
                                     ->required(),
                                 DatePicker::make('submission_date')
                                     ->default(now())
+                                    ->required(),
+
+                                DatePicker::make('due_date')
+                                    ->label('Payment Due Date')
+                                    ->default(fn () => now()->addDays(30))
                                     ->required(),
                             ])
                             ->columns(3),
@@ -117,6 +124,16 @@ class JobOrderForm
                                     ->suffix('Birr')
                                     ->required()
                                     ->live()
+                                    ->afterStateUpdated(function (UtilitiesGet $get, UtilitiesSet $set) {
+                                        Calculations::sumRepeater($get, $set, '../../jobOrderTasks', 'subtotal', 'task_cost');
+                                        $subtotal = (float) $get('../../subtotal');
+                                        $taxRate = Setting::getSettings()->vat_enabled
+                                            ? (float) Setting::getSettings()->vat_rate / 100
+                                            : 0.0;
+                                        $tax = round($subtotal * $taxRate, 2);
+                                        $set('../../tax_amount', $tax);
+                                        $set('../../total', $subtotal + $tax);
+                                    })
                                     ->hidden(fn () => ! PanelAccess::canSeeMoneyValues())
                                     ->dehydratedWhenHidden(),
 
@@ -203,11 +220,25 @@ class JobOrderForm
                             ->minItems(1)
                             ->live() // Required for live total recalculation
                             ->afterStateUpdated(function (UtilitiesGet $get, UtilitiesSet $set) {
-                                Calculations::sumRepeater($get, $set, 'jobOrderTasks', 'total_price', 'task_cost');
+                                Calculations::sumRepeater($get, $set, 'jobOrderTasks', 'subtotal', 'task_cost');
+                                $subtotal = (float) $get('subtotal');
+                                $taxRate = Setting::getSettings()->vat_enabled
+                                    ? (float) Setting::getSettings()->vat_rate / 100
+                                    : 0.0;
+                                $tax = round($subtotal * $taxRate, 2);
+                                $set('tax_amount', $tax);
+                                $set('total', $subtotal + $tax);
                             })
                             ->deleteAction(
                                 fn ($action) => $action->after(function (UtilitiesGet $get, UtilitiesSet $set) {
-                                    Calculations::sumRepeater($get, $set, 'jobOrderTasks', 'total_price', 'task_cost');
+                                    Calculations::sumRepeater($get, $set, 'jobOrderTasks', 'subtotal', 'task_cost');
+                                    $subtotal = (float) $get('subtotal');
+                                    $taxRate = Setting::getSettings()->vat_enabled
+                                        ? (float) Setting::getSettings()->vat_rate / 100
+                                        : 0.0;
+                                    $tax = round($subtotal * $taxRate, 2);
+                                    $set('tax_amount', $tax);
+                                    $set('total', $subtotal + $tax);
                                 })
                             ),
                         Grid::make(2)
@@ -374,13 +405,26 @@ class JobOrderForm
                             ->downloadable(fn ($record) => in_array(Filament::getCurrentPanel()?->getId(), ['admin', 'finance', 'operations']))
                             ->dehydrated() // Add this line to make the file uploader work on edit pages
                             ->required(),
+                        TextInput::make('subtotal')
+                            ->label('Subtotal')
+                            ->default(0)
+                            ->suffix(' Birr')
+                            ->readOnly()
+                            ->numeric()
+                            ->hidden(fn () => ! PanelAccess::canSeeMoneyValues())
+                            ->dehydratedWhenHidden(),
 
-                        DatePicker::make('due_date')
-                            ->label('Payment Due Date')
-                            ->default(fn () => now()->addDays(30))
-                            ->helperText('Set the payment due date for this job order')
-                            ->required(),
-                        TextInput::make('total_price')
+                        TextInput::make('tax_amount')
+                            ->label('Tax (VAT)')
+                            ->default(0)
+                            ->suffix(' Birr')
+                            ->readOnly()
+                            ->numeric()
+                            ->hidden(fn () => ! PanelAccess::canSeeMoneyValues())
+                            ->dehydratedWhenHidden(),
+
+                        TextInput::make('total')
+                            ->label('Total')
                             ->default(0)
                             ->suffix(' Birr')
                             ->readOnly()

@@ -117,7 +117,7 @@
                     <table>
                         <tr>
                             <td class="title">
-                                <img src="https://via.placeholder.com/100x50" style="width:100%; max-width:100px;">
+                                <img src="https://nejashibooks.com/wp-content/uploads/2020/09/Logo.png" style="width:100%; max-width:100px;">
                             </td>
                             <td class="text-right">
                                 <strong>Invoice #:</strong> {{ $invoiceData['invoice_number'] }}<br>

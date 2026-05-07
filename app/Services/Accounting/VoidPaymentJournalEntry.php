@@ -31,16 +31,16 @@ class VoidPaymentJournalEntry
             $timestamp = now();
 
             $originalJournal->update([
-                'status' => 'voided',
+                'status' => 'void',
                 'voided_at' => $timestamp,
             ]);
 
             $reversalJournal = JournalEntry::create([
                 'date' => $timestamp->toDateString(),
-                'reference' => 'REV-' . $originalJournal->reference,
+                'reference' => 'REV-'.$originalJournal->reference,
                 'source_type' => Payment::class,
                 'source_id' => $payment->id,
-                'narration' => 'Reversal of ' . $originalJournal->reference . ($reason ? ' - ' . $reason : ''),
+                'narration' => 'Reversal of '.$originalJournal->reference.($reason ? ' - '.$reason : ''),
                 'total_debit' => $originalJournal->total_debit,
                 'total_credit' => $originalJournal->total_credit,
                 'status' => 'posted',

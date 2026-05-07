@@ -12,7 +12,6 @@ use Filament\Actions\EditAction;
 use Filament\Actions\ExportAction;
 use Filament\Actions\ExportBulkAction;
 use Filament\Notifications\Notification;
-use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
@@ -49,23 +48,11 @@ class JobOrdersTable
                     ->sortable()
                     ->color(fn ($record) => $record->submission_date && $record->submission_date->isBefore(today()) && ! in_array($record->status, ['completed', 'cancelled']) ? 'danger' : null)
                     ->description(fn ($record) => $record->submission_date && $record->submission_date->isBefore(today()) && ! in_array($record->status, ['completed', 'cancelled']) ? 'Late' : null),
-                TextColumn::make('materials_completion')
-                    ->label('Materials Issued')
-                    ->state(fn ($record) => round($record->materialsCompletionPercentage(), 0).'%')
-                    ->badge()
-                    ->color(fn ($state) => match (true) {
-                        (int) $state >= 100 => 'success',
-                        (int) $state >= 50 => 'warning',
-                        default => 'danger',
-                    }),
                 TextColumn::make('total_price')
-                    ->suffix(' birr')
+                    ->label('Payment Progress')
+                    ->formatStateUsing(fn ($record) => number_format($record->paid_amount, 2).'/'.number_format($record->total_price, 2).' birr')
                     ->visible(fn () => PanelAccess::canSeeMoneyValues())
                     ->sortable(),
-                IconColumn::make('advance_paid')
-                    ->boolean()
-                    ->getStateUsing(fn ($record) => $record->paymentAllocations()->exists())
-                    ->label('Adv. Paid'),
             ])
             ->headerActions([
                 ExportAction::make()
@@ -115,46 +102,6 @@ class JobOrdersTable
                                     ->url($invoiceService->getInvoicePath($result['filename']))
                                     ->openUrlInNewTab(),
                             ];
-
-                            // Only add email action if partner has email
-                            if ($record->partner && $record->partner->email) {
-                                $actions[] = Action::make('email')
-                                    ->label('Email Invoice')
-                                    ->icon('heroicon-o-envelope')
-                                    ->action(function () use ($record, $result, $invoiceService) {
-                                        $sent = $invoiceService->sendInvoiceEmail(
-                                            $result,
-                                            $record->partner->email
-                                        );
-
-                                        if ($sent) {
-                                            // Update invoice record with email info
-                                            $result['invoice']->update([
-                                                'emailed_at' => now(),
-                                                'email_recipient' => $record->partner->email,
-                                            ]);
-
-                                            Notification::make()
-                                                ->title('Invoice Sent')
-                                                ->body('Invoice emailed to '.$record->partner->email)
-                                                ->success()
-                                                ->send();
-                                        } else {
-                                            Notification::make()
-                                                ->title('Email Failed')
-                                                ->body('Failed to send invoice. Please check email configuration.')
-                                                ->danger()
-                                                ->send();
-                                        }
-                                    });
-                            }
-
-                            Notification::make()
-                                ->title('Invoice Generated')
-                                ->body('Invoice '.$result['invoice_data']['invoice_number'].' created successfully.')
-                                ->success()
-                                ->actions($actions)
-                                ->send();
 
                             // Only add email action if partner has email
                             if ($record->partner && $record->partner->email) {

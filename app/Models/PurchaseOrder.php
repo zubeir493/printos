@@ -23,7 +23,9 @@ class PurchaseOrder extends Model
         'order_date',
         'due_date',
         'status',
-        'subtotal'
+        'subtotal',
+        'tax_amount',
+        'total',
     ];
 
     /**
@@ -38,6 +40,9 @@ class PurchaseOrder extends Model
             'partner_id' => 'integer',
             'order_date' => 'date',
             'due_date' => 'date',
+            'subtotal' => 'decimal:2',
+            'tax_amount' => 'decimal:2',
+            'total' => 'decimal:2',
         ];
     }
 
@@ -68,17 +73,28 @@ class PurchaseOrder extends Model
 
     public function getBalanceAttribute(): float
     {
-        return (float) (($this->subtotal ?? 0) - $this->paid_amount);
+        return (float) (($this->total ?? 0) - $this->paid_amount);
     }
-
 
     public function recalculateSubtotal(): void
     {
+        $subtotal = (float) $this->purchaseOrderItems()->sum('total');
+        $taxRate = $this->getTaxRate();
+        $taxAmount = round($subtotal * $taxRate, 2);
+
         $this->updateQuietly([
-            'subtotal' => (float) $this->purchaseOrderItems()->sum('total'),
+            'subtotal' => $subtotal,
+            'tax_amount' => $taxAmount,
+            'total' => $subtotal + $taxAmount,
         ]);
     }
 
+    private function getTaxRate(): float
+    {
+        $settings = Setting::getSettings();
+
+        return $settings->vat_enabled ? (float) $settings->vat_rate / 100 : 0.0;
+    }
 
     protected static function booted()
     {

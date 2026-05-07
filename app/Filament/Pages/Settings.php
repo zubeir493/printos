@@ -8,24 +8,22 @@ use Filament\Actions\Action;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
-use Filament\Schemas\Components\Utilities\Get;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Cache;
-use UnitEnum;
 
 class Settings extends Page implements HasForms
 {
     use InteractsWithForms;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCog6Tooth;
-
 
     protected static ?int $navigationSort = 100;
 
@@ -160,9 +158,28 @@ class Settings extends Page implements HasForms
     {
         $data = $this->form->getState();
 
-        $settings = Setting::first();
-        if ($settings) {
-            $settings->update($data);
+        // Keep tax_configuration in sync with the vat_rate/vat_enabled fields
+        // so that any non-VAT entries are preserved while VAT stays current.
+        $existingSettings = Setting::first();
+        $existingTaxConfig = $existingSettings?->tax_configuration ?? [];
+        $nonVatTaxes = array_values(
+            array_filter($existingTaxConfig, fn ($t) => strtoupper($t['name']) !== 'VAT')
+        );
+
+        $vatEnabled = (bool) ($data['vat_enabled'] ?? false);
+        $vatRate = (float) ($data['vat_rate'] ?? 0);
+
+        if ($vatEnabled && $vatRate > 0) {
+            $data['tax_configuration'] = array_merge(
+                $nonVatTaxes,
+                [['name' => 'VAT', 'rate' => $vatRate / 100]]
+            );
+        } else {
+            $data['tax_configuration'] = $nonVatTaxes;
+        }
+
+        if ($existingSettings) {
+            $existingSettings->update($data);
         } else {
             Setting::create($data);
         }

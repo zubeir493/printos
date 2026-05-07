@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\DB;
 
 class ExceptionsStatsWidget extends BaseWidget
 {
-    protected static ?int $sort = 5;
+    protected static ?int $sort = 1;
 
     protected function getStats(): array
     {

@@ -103,12 +103,19 @@ class Setting extends Model
         $config = [];
 
         foreach ($taxes as $tax) {
-            $config[strtoupper($tax['name'])] = $tax['rate'];
+            $name = strtoupper($tax['name']);
+            // Rates stored in tax_configuration may be either a decimal (0.15)
+            // or a percentage (15). Normalise to a decimal multiplier.
+            $rate = (float) $tax['rate'];
+            $config[$name] = $rate > 1 ? $rate / 100 : $rate;
         }
 
-        // Add VAT if enabled and not already in config
-        if ($this->vat_enabled && ! isset($config['VAT'])) {
-            $config['VAT'] = $this->vat_rate / 100;
+        // VAT is managed via vat_rate (always a percentage). Override any
+        // stale value that may exist in tax_configuration.
+        if ($this->vat_enabled) {
+            $config['VAT'] = (float) $this->vat_rate / 100;
+        } else {
+            unset($config['VAT']);
         }
 
         return $config;

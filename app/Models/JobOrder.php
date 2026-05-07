@@ -36,6 +36,9 @@ class JobOrder extends Model
         'cost_calc_file',
         'advance_amount',
         'total_price',
+        'subtotal',
+        'tax_amount',
+        'total',
         'status',
     ];
 
@@ -53,6 +56,9 @@ class JobOrder extends Model
             'due_date' => 'date',
             'advance_amount' => 'decimal:2',
             'total_price' => 'decimal:2',
+            'subtotal' => 'decimal:2',
+            'tax_amount' => 'decimal:2',
+            'total' => 'decimal:2',
             'services' => 'json',
             'advance_paid' => 'boolean',
         ];
@@ -111,7 +117,7 @@ class JobOrder extends Model
 
     public function getBalanceAttribute(): float
     {
-        return (float) ($this->total_price - $this->paid_amount);
+        return (float) ($this->total - $this->paid_amount);
     }
 
     public function scopePendingPayment($query)
@@ -135,9 +141,23 @@ class JobOrder extends Model
 
     public function recalculateTotal(): void
     {
+        $subtotal = (float) $this->jobOrderTasks()->sum('task_cost');
+        $taxRate = $this->getTaxRate();
+        $taxAmount = round($subtotal * $taxRate, 2);
+
         $this->updateQuietly([
-            'total_price' => (float) $this->jobOrderTasks()->sum('task_cost'),
+            'total_price' => $subtotal, // kept for backwards compatibility
+            'subtotal' => $subtotal,
+            'tax_amount' => $taxAmount,
+            'total' => $subtotal + $taxAmount,
         ]);
+    }
+
+    private function getTaxRate(): float
+    {
+        $settings = Setting::getSettings();
+
+        return $settings->vat_enabled ? (float) $settings->vat_rate / 100 : 0.0;
     }
 
     public function canStartProduction(): bool

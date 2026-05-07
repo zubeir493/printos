@@ -39,8 +39,15 @@ class InvoiceGeneratorService
     public function generateFromSalesOrder(SalesOrder $order, array $options = []): array
     {
         $invoiceNumber = $this->generateInvoiceNumber('SALES');
-        $taxCalculations = $this->calculateTaxes($order->salesOrderItems);
         $settings = Setting::getSettings();
+
+        $taxAmount = (float) $order->tax_amount;
+        $subtotal = (float) $order->subtotal;
+        $totalAmount = (float) $order->total;
+        $taxCalculations = [
+            'total_tax' => $taxAmount,
+            'breakdown' => $taxAmount > 0 ? ['VAT' => $taxAmount] : [],
+        ];
 
         $invoiceData = [
             'invoice_number' => $invoiceNumber,
@@ -51,9 +58,9 @@ class InvoiceGeneratorService
             'payments' => $order->paymentAllocations,
             'company_info' => $this->companyInfo,
             'tax_calculations' => $taxCalculations,
-            'subtotal' => $order->subtotal,
-            'tax_amount' => $taxCalculations['total_tax'],
-            'total_amount' => $order->subtotal + $taxCalculations['total_tax'],
+            'subtotal' => $subtotal,
+            'tax_amount' => $taxAmount,
+            'total_amount' => $totalAmount,
             'balance_due' => $order->balance,
             'status' => $this->getInvoiceStatus($order),
             'terms' => $settings->invoice_terms,
@@ -87,9 +94,9 @@ class InvoiceGeneratorService
             'partner_id' => $order->partner_id,
             'invoice_date' => Carbon::now(),
             'due_date' => $order->due_date ?: Carbon::now()->addDays(30),
-            'subtotal' => $order->subtotal,
-            'tax_amount' => $taxCalculations['total_tax'],
-            'total_amount' => $order->subtotal + $taxCalculations['total_tax'],
+            'subtotal' => $subtotal,
+            'tax_amount' => $taxAmount,
+            'total_amount' => $totalAmount,
             'balance_due' => $order->balance,
             'status' => $this->getInvoiceStatus($order),
             'filename' => $filename,
@@ -152,8 +159,15 @@ class InvoiceGeneratorService
     public function generateFromPurchaseOrder(PurchaseOrder $order, array $options = []): array
     {
         $invoiceNumber = $this->generateInvoiceNumber('PURCHASE');
-        $taxCalculations = $this->calculateTaxes($order->purchaseOrderItems);
         $settings = Setting::getSettings();
+
+        $taxAmount = (float) $order->tax_amount;
+        $subtotal = (float) $order->subtotal;
+        $totalAmount = (float) $order->total;
+        $taxCalculations = [
+            'total_tax' => $taxAmount,
+            'breakdown' => $taxAmount > 0 ? ['VAT' => $taxAmount] : [],
+        ];
 
         $invoiceData = [
             'invoice_number' => $invoiceNumber,
@@ -164,9 +178,9 @@ class InvoiceGeneratorService
             'payments' => $order->paymentAllocations,
             'company_info' => $this->companyInfo,
             'tax_calculations' => $taxCalculations,
-            'subtotal' => $order->subtotal,
-            'tax_amount' => $taxCalculations['total_tax'],
-            'total_amount' => $order->subtotal + $taxCalculations['total_tax'],
+            'subtotal' => $subtotal,
+            'tax_amount' => $taxAmount,
+            'total_amount' => $totalAmount,
             'balance_due' => $order->balance,
             'status' => $this->getInvoiceStatus($order),
             'terms' => $settings->invoice_terms,
@@ -200,9 +214,9 @@ class InvoiceGeneratorService
             'partner_id' => $order->partner_id,
             'invoice_date' => Carbon::now(),
             'due_date' => $order->due_date ?: Carbon::now()->addDays(30),
-            'subtotal' => $order->subtotal,
-            'tax_amount' => $taxCalculations['total_tax'],
-            'total_amount' => $order->subtotal + $taxCalculations['total_tax'],
+            'subtotal' => $subtotal,
+            'tax_amount' => $taxAmount,
+            'total_amount' => $totalAmount,
             'balance_due' => $order->balance,
             'status' => $this->getInvoiceStatus($order),
             'filename' => $filename,
@@ -227,24 +241,28 @@ class InvoiceGeneratorService
     {
         $invoiceNumber = $this->generateInvoiceNumber('SERVICE');
         $jobOrderItems = $order->jobOrderTasks()->get();
-        $taxCalculations = $this->calculateServiceTaxes($order);
         $settings = Setting::getSettings();
 
         $items = $jobOrderItems->map(function ($task) use ($order) {
-            $quantity = $task->quantity ?: 1;
             $taskCost = $task->task_cost ?: 0;
 
             return [
                 'job_order_number' => $order->job_order_number,
                 'service_name' => $task->name,
-                'quantity' => $quantity,
+                'quantity' => $task->quantity ?: 1,
                 'unit_price' => (float) $taskCost,
                 'total' => (float) $taskCost, // task_cost is already the total, not unit price
             ];
         })->all();
 
-        // Calculate actual subtotal from tasks
-        $actualSubtotal = collect($items)->sum('total');
+        $actualSubtotal = (float) $order->subtotal;
+        $taxAmount = (float) $order->tax_amount;
+        $invoiceTotal = (float) $order->total;
+        $paidAmount = (float) $order->paid_amount;
+        $taxCalculations = [
+            'total_tax' => $taxAmount,
+            'breakdown' => $taxAmount > 0 ? ['VAT' => $taxAmount] : [],
+        ];
 
         $invoiceData = [
             'invoice_number' => $invoiceNumber,
@@ -262,9 +280,9 @@ class InvoiceGeneratorService
             ],
             'tax_calculations' => $taxCalculations,
             'subtotal' => $actualSubtotal,
-            'tax_amount' => $taxCalculations['total_tax'],
-            'total_amount' => $actualSubtotal + $taxCalculations['total_tax'],
-            'balance_due' => $order->balance,
+            'tax_amount' => $taxAmount,
+            'total_amount' => $invoiceTotal,
+            'balance_due' => max(0, $invoiceTotal - $paidAmount),
             'status' => $this->getInvoiceStatus($order),
             'notes' => $order->remarks ?? null,
             'terms' => $settings->invoice_terms,
@@ -298,9 +316,9 @@ class InvoiceGeneratorService
             'invoice_date' => Carbon::now(),
             'due_date' => $order->due_date ?: Carbon::now()->addDays($settings->invoice_due_days ?? 15),
             'subtotal' => $actualSubtotal,
-            'tax_amount' => $taxCalculations['total_tax'],
-            'total_amount' => $actualSubtotal + $taxCalculations['total_tax'],
-            'balance_due' => $order->balance,
+            'tax_amount' => $taxAmount,
+            'total_amount' => $invoiceTotal,
+            'balance_due' => max(0, $invoiceTotal - $paidAmount),
             'status' => $this->getInvoiceStatus($order),
             'filename' => $filename,
             'file_path' => $path,
@@ -467,9 +485,13 @@ class InvoiceGeneratorService
         $taxAmount = 0;
         $breakdown = [];
 
-        $quantity = $item->quantity ?? ($item['quantity'] ?? 1);
-        $unitPrice = $item->unit_price ?? $item['unit_price'] ?? $item->task_cost ?? 0;
-        $itemTotal = $quantity * $unitPrice;
+        // Use the item's total directly if available, otherwise calculate from quantity * unit_price
+        $itemTotal = $item->total ?? $item['total'] ?? null;
+        if ($itemTotal === null) {
+            $quantity = $item->quantity ?? ($item['quantity'] ?? 1);
+            $unitPrice = $item->unit_price ?? $item['unit_price'] ?? $item->task_cost ?? 0;
+            $itemTotal = $quantity * $unitPrice;
+        }
 
         foreach ($this->taxConfig as $taxType => $rate) {
             if ($this->isTaxApplicable($item, $taxType)) {

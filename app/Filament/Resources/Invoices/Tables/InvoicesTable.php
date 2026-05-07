@@ -52,15 +52,13 @@ class InvoicesTable
                     ->formatStateUsing(fn ($state) => ucfirst($state)),
 
                 TextColumn::make('payment_progress')
-                    ->label('Progress')
+                    ->label('Payment Progress')
                     ->getStateUsing(function ($record) {
                         $total = (float) $record->total_amount;
                         $paid = $total - (float) $record->balance_due;
 
-                        return $total > 0 ? round(($paid / $total) * 100, 1) : 0;
-                    })
-                    ->formatStateUsing(fn ($state) => view('filament.tables.columns.progress-bar', ['state' => $state]))
-                    ->alignCenter(),
+                        return number_format($paid, 2).'/'.number_format($total, 2);
+                    }),
             ])
             ->filters([
                 SelectFilter::make('invoice_type')

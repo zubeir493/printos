@@ -5,6 +5,7 @@ namespace App\Filament\Resources\SalesOrders\Schemas;
 use App\Filament\Support\Calculations;
 use App\Models\Partner;
 use App\Models\SalesOrder;
+use App\Models\Setting;
 use App\Models\Warehouse;
 use App\Services\SalesOrderItemImportService;
 use Filament\Actions\Action;
@@ -111,8 +112,13 @@ class SalesOrderForm
                                             $set('salesOrderItems', $rows);
 
                                             $subtotal = collect($rows)->sum('total');
+                                            $taxRate = Setting::getSettings()->vat_enabled
+                                                ? (float) Setting::getSettings()->vat_rate / 100
+                                                : 0.0;
+                                            $tax = round($subtotal * $taxRate, 2);
                                             $set('subtotal', $subtotal);
-                                            $set('total', $subtotal);
+                                            $set('tax_amount', $tax);
+                                            $set('total', $subtotal + $tax);
 
                                             Notification::make()
                                                 ->title(count($rows).' sales item(s) imported')
@@ -154,7 +160,13 @@ class SalesOrderForm
                                     ->afterStateUpdated(function (Set $set, Get $get, $state) {
                                         $set('total', round((float) ($state ?? 0) * (float) ($get('unit_price') ?? 0), 2));
                                         Calculations::updateSubtotal($get, $set, '../../salesOrderItems', '../../subtotal');
-                                        Calculations::updateSubtotal($get, $set, '../../salesOrderItems', '../../total');
+                                        $subtotal = (float) $get('../../subtotal');
+                                        $taxRate = Setting::getSettings()->vat_enabled
+                                            ? (float) Setting::getSettings()->vat_rate / 100
+                                            : 0.0;
+                                        $tax = round($subtotal * $taxRate, 2);
+                                        $set('../../tax_amount', $tax);
+                                        $set('../../total', $subtotal + $tax);
                                     }),
                                 TextInput::make('unit_price')
                                     ->numeric()
@@ -165,7 +177,13 @@ class SalesOrderForm
                                     ->afterStateUpdated(function (Set $set, Get $get, $state) {
                                         $set('total', round((float) ($state ?? 0) * (float) ($get('quantity') ?? 0), 2));
                                         Calculations::updateSubtotal($get, $set, '../../salesOrderItems', '../../subtotal');
-                                        Calculations::updateSubtotal($get, $set, '../../salesOrderItems', '../../total');
+                                        $subtotal = (float) $get('../../subtotal');
+                                        $taxRate = Setting::getSettings()->vat_enabled
+                                            ? (float) Setting::getSettings()->vat_rate / 100
+                                            : 0.0;
+                                        $tax = round($subtotal * $taxRate, 2);
+                                        $set('../../tax_amount', $tax);
+                                        $set('../../total', $subtotal + $tax);
                                     }),
                                 TextInput::make('total')
                                     ->numeric()
@@ -195,12 +213,24 @@ class SalesOrderForm
                             ->live()
                             ->afterStateUpdated(function (Get $get, Set $set) {
                                 Calculations::updateSubtotal($get, $set, 'salesOrderItems', 'subtotal');
-                                Calculations::updateSubtotal($get, $set, 'salesOrderItems', 'total');
+                                $subtotal = (float) $get('subtotal');
+                                $taxRate = Setting::getSettings()->vat_enabled
+                                    ? (float) Setting::getSettings()->vat_rate / 100
+                                    : 0.0;
+                                $tax = round($subtotal * $taxRate, 2);
+                                $set('tax_amount', $tax);
+                                $set('total', $subtotal + $tax);
                             })
                             ->deleteAction(
                                 fn ($action) => $action->after(function (Get $get, Set $set) {
                                     Calculations::updateSubtotal($get, $set, 'salesOrderItems', 'subtotal');
-                                    Calculations::updateSubtotal($get, $set, 'salesOrderItems', 'total');
+                                    $subtotal = (float) $get('subtotal');
+                                    $taxRate = Setting::getSettings()->vat_enabled
+                                        ? (float) Setting::getSettings()->vat_rate / 100
+                                        : 0.0;
+                                    $tax = round($subtotal * $taxRate, 2);
+                                    $set('tax_amount', $tax);
+                                    $set('total', $subtotal + $tax);
                                 })
                             ),
                         // Repeater::make('payments')
@@ -288,22 +318,35 @@ class SalesOrderForm
                             ->live()
                             ->required(),
 
-                        // Conditional Due Date Logic
                         DatePicker::make('due_date')
                             ->label('Payment Due Date')
                             ->live()
                             ->default(now())
                             ->required(),
 
-                        // Auto-calculated displays (read-only)
-                        TextInput::make('calculated_total')
-                            ->label('Total Amount')
-                            ->formatStateUsing(
-                                fn ($record) => $record ? number_format($record->total, 2).' Birr' : '0.00 Birr'
-                            )
+                        TextInput::make('subtotal')
+                            ->label('Subtotal')
                             ->readOnly()
-                            ->dehydrated(false),
+                            ->numeric()
+                            ->default(0)
+                            ->suffix('Birr')
+                            ->dehydrated(),
 
+                        TextInput::make('tax_amount')
+                            ->label('Tax (VAT)')
+                            ->readOnly()
+                            ->numeric()
+                            ->default(0)
+                            ->suffix('Birr')
+                            ->dehydrated(),
+
+                        TextInput::make('total')
+                            ->label('Total')
+                            ->readOnly()
+                            ->numeric()
+                            ->default(0)
+                            ->suffix('Birr')
+                            ->dehydrated(),
                     ]),
             ])
             ->columns(4);

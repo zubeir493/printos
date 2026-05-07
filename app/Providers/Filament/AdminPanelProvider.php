@@ -3,7 +3,6 @@
 namespace App\Providers\Filament;
 
 use App\Filament\Widgets\AdminHealthStats;
-use App\Filament\Widgets\ExceptionsStatsWidget;
 use App\Filament\Widgets\ProfitabilityMarginChart;
 use App\Filament\Widgets\SystemBottlenecksChart;
 use App\Http\Middleware\RedirectToCorrectPanel;
@@ -50,7 +49,6 @@ class AdminPanelProvider extends PanelProvider
                 AdminHealthStats::class,
                 ProfitabilityMarginChart::class,
                 SystemBottlenecksChart::class,
-                ExceptionsStatsWidget::class,
             ])
             ->middleware([
                 EncryptCookies::class,

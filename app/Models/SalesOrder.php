@@ -19,6 +19,7 @@ class SalesOrder extends Model
         'payment_method',
         'payment_reference',
         'subtotal',
+        'tax_amount',
         'total',
         'status',
     ];
@@ -32,6 +33,7 @@ class SalesOrder extends Model
             'order_date' => 'date',
             'due_date' => 'date',
             'subtotal' => 'decimal:2',
+            'tax_amount' => 'decimal:2',
             'total' => 'decimal:2',
         ];
     }
@@ -74,10 +76,22 @@ class SalesOrder extends Model
 
     public function recalculateTotal(): void
     {
+        $subtotal = (float) $this->salesOrderItems()->sum('total');
+        $taxRate = $this->getTaxRate();
+        $taxAmount = round($subtotal * $taxRate, 2);
+
         $this->updateQuietly([
-            'total' => (float) $this->salesOrderItems()->sum('total'),
-            'subtotal' => (float) $this->salesOrderItems()->sum('total'),
+            'subtotal' => $subtotal,
+            'tax_amount' => $taxAmount,
+            'total' => $subtotal + $taxAmount,
         ]);
+    }
+
+    private function getTaxRate(): float
+    {
+        $settings = Setting::getSettings();
+
+        return $settings->vat_enabled ? (float) $settings->vat_rate / 100 : 0.0;
     }
 
     public function isCashSale(): bool

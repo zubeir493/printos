@@ -2,6 +2,10 @@
 
 namespace App\Filament\Resources\PurchaseOrders\Schemas;
 
+use App\Filament\Support\Calculations;
+use App\Models\InventoryItem;
+use App\Models\PurchaseOrder;
+use App\Models\Setting;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
@@ -9,11 +13,9 @@ use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Repeater\TableColumn;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
-use Filament\Schemas\Components\Form;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Section;
-use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 
 class PurchaseOrderForm
@@ -30,12 +32,13 @@ class PurchaseOrderForm
                                 TextInput::make('po_number')
                                     ->label('Purchase Order no.')
                                     ->default(function () {
-                                        $lastPO = \App\Models\PurchaseOrder::orderBy('id', 'desc')->first();
+                                        $lastPO = PurchaseOrder::orderBy('id', 'desc')->first();
                                         $lastNumber = 0;
                                         if ($lastPO && preg_match('/PO-(\d+)/', $lastPO->po_number, $matches)) {
                                             $lastNumber = (int) $matches[1];
                                         }
-                                        return 'PO-' . str_pad($lastNumber + 1, 4, '0', STR_PAD_LEFT);
+
+                                        return 'PO-'.str_pad($lastNumber + 1, 4, '0', STR_PAD_LEFT);
                                     })
                                     ->readOnly()
                                     ->required()
@@ -44,7 +47,7 @@ class PurchaseOrderForm
 
                                 Select::make('partner_id')
                                     ->label('Supplier')
-                                    ->relationship('partner', 'name', modifyQueryUsing: fn($query) => $query->where('is_supplier', true))
+                                    ->relationship('partner', 'name', modifyQueryUsing: fn ($query) => $query->where('is_supplier', true))
                                     ->searchable()
                                     ->preload()
                                     ->createOptionForm([
@@ -75,14 +78,13 @@ class PurchaseOrderForm
                             ->compact()
                             ->schema([
                                 Select::make('inventory_item_id')
-                                    ->relationship('inventoryItem', 'name', fn($query) =>
-                                    $query->select('id', 'name', 'purchase_unit'))
+                                    ->relationship('inventoryItem', 'name', fn ($query) => $query->select('id', 'name', 'purchase_unit'))
                                     ->searchable()
                                     ->preload()
                                     ->required()
                                     ->live()
                                     ->afterStateUpdated(function ($state, callable $set) {
-                                        $unit = \App\Models\InventoryItem::find($state)?->purchase_unit ?? '';
+                                        $unit = InventoryItem::find($state)?->purchase_unit ?? '';
                                         $set('unit_label', $unit);
                                     })
                                     ->dehydrated(),
@@ -91,13 +93,17 @@ class PurchaseOrderForm
                                     ->numeric()
                                     ->required()
                                     ->live()
-                                    ->suffix(fn($get) => $get('unit_label') ?? '')
+                                    ->suffix(fn ($get) => $get('unit_label') ?? '')
                                     ->afterStateUpdated(function ($set, $get, $state) {
-                                        // Update row total immediately
-                                        $set('total', (float)($state ?? 0) * (float)($get('unit_price') ?? 0));
-
-                                        // Update subtotal
-                                        \App\Filament\Support\Calculations::updateSubtotal($get, $set, '../../purchaseOrderItems', '../../subtotal');
+                                        $set('total', (float) ($state ?? 0) * (float) ($get('unit_price') ?? 0));
+                                        Calculations::updateSubtotal($get, $set, '../../purchaseOrderItems', '../../subtotal');
+                                        $subtotal = (float) $get('../../subtotal');
+                                        $taxRate = Setting::getSettings()->vat_enabled
+                                            ? (float) Setting::getSettings()->vat_rate / 100
+                                            : 0.0;
+                                        $tax = round($subtotal * $taxRate, 2);
+                                        $set('../../tax_amount', $tax);
+                                        $set('../../total', $subtotal + $tax);
                                     })
                                     ->dehydrated(),
 
@@ -107,11 +113,15 @@ class PurchaseOrderForm
                                     ->suffix('Birr')
                                     ->live(onBlur: true)
                                     ->afterStateUpdated(function ($set, $get, $state) {
-                                        // Update row total immediately
-                                        $set('total', (float)($state ?? 0) * (float)($get('quantity') ?? 0));
-
-                                        // Update subtotal
-                                        \App\Filament\Support\Calculations::updateSubtotal($get, $set, '../../purchaseOrderItems', '../../subtotal');
+                                        $set('total', (float) ($state ?? 0) * (float) ($get('quantity') ?? 0));
+                                        Calculations::updateSubtotal($get, $set, '../../purchaseOrderItems', '../../subtotal');
+                                        $subtotal = (float) $get('../../subtotal');
+                                        $taxRate = Setting::getSettings()->vat_enabled
+                                            ? (float) Setting::getSettings()->vat_rate / 100
+                                            : 0.0;
+                                        $tax = round($subtotal * $taxRate, 2);
+                                        $set('../../tax_amount', $tax);
+                                        $set('../../total', $subtotal + $tax);
                                     })
                                     ->dehydrated(),
 
@@ -124,11 +134,25 @@ class PurchaseOrderForm
                             ->columns(5)
                             ->live()
                             ->afterStateUpdated(function ($get, $set) {
-                                \App\Filament\Support\Calculations::updateSubtotal($get, $set, 'purchaseOrderItems', 'subtotal');
+                                Calculations::updateSubtotal($get, $set, 'purchaseOrderItems', 'subtotal');
+                                $subtotal = (float) $get('subtotal');
+                                $taxRate = Setting::getSettings()->vat_enabled
+                                    ? (float) Setting::getSettings()->vat_rate / 100
+                                    : 0.0;
+                                $tax = round($subtotal * $taxRate, 2);
+                                $set('tax_amount', $tax);
+                                $set('total', $subtotal + $tax);
                             })
                             ->deleteAction(
-                                fn($action) => $action->after(function ($get, $set) {
-                                \App\Filament\Support\Calculations::updateSubtotal($get, $set, 'purchaseOrderItems', 'subtotal');
+                                fn ($action) => $action->after(function ($get, $set) {
+                                    Calculations::updateSubtotal($get, $set, 'purchaseOrderItems', 'subtotal');
+                                    $subtotal = (float) $get('subtotal');
+                                    $taxRate = Setting::getSettings()->vat_enabled
+                                        ? (float) Setting::getSettings()->vat_rate / 100
+                                        : 0.0;
+                                    $tax = round($subtotal * $taxRate, 2);
+                                    $set('tax_amount', $tax);
+                                    $set('total', $subtotal + $tax);
                                 })
                             )
                             ->defaultItems(1)
@@ -150,7 +174,6 @@ class PurchaseOrderForm
                                     }),
                             ]),
 
-
                     ])->columnSpan(3),
                 Section::make()
                     ->compact()
@@ -164,17 +187,34 @@ class PurchaseOrderForm
                             ])
                             ->default('draft')
                             ->required(),
-                        
+
                         DatePicker::make('due_date')
                             ->label('Payment Due Date')
-                            ->default(fn() => now()->addDays(30))
+                            ->default(fn () => now()->addDays(30))
                             ->helperText('Set the payment due date for this job order')
                             ->required(),
                         TextInput::make('subtotal')
                             ->numeric()
                             ->suffix('Birr')
                             ->readOnly()
-                            ->default(0),
+                            ->default(0)
+                            ->dehydrated(),
+
+                        TextInput::make('tax_amount')
+                            ->label('Tax (VAT)')
+                            ->numeric()
+                            ->suffix('Birr')
+                            ->readOnly()
+                            ->default(0)
+                            ->dehydrated(),
+
+                        TextInput::make('total')
+                            ->label('Total')
+                            ->numeric()
+                            ->suffix('Birr')
+                            ->readOnly()
+                            ->default(0)
+                            ->dehydrated(),
 
                     ]),
             ])->columns(4);

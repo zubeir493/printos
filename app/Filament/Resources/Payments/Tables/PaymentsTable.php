@@ -2,8 +2,12 @@
 
 namespace App\Filament\Resources\Payments\Tables;
 
+use App\Enums\PaymentTransactionType;
+use App\Filament\Exports\PaymentExporter;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\ExportAction;
+use Filament\Actions\ExportBulkAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -22,9 +26,10 @@ class PaymentsTable
                     ->label('Amount')
                     ->formatStateUsing(function ($state, $record) {
                         $prefix = $record->direction === 'inbound' ? '+' : '-';
-                        return $prefix . number_format($state, 2);
+
+                        return $prefix.number_format($state, 2);
                     })
-                    ->description(fn ($record) => 'via ' . ucfirst($record->method))
+                    ->description(fn ($record) => 'via '.ucfirst($record->method))
                     ->color(fn ($record) => $record->direction === 'inbound' ? 'success' : 'danger')
                     ->weight('bold')
                     ->sortable()
@@ -33,21 +38,21 @@ class PaymentsTable
                     ->badge()
                     ->label('Type')
                     ->formatStateUsing(function ($state) {
-                        return \App\Enums\PaymentTransactionType::tryFrom($state)?->label() ?? ucwords(str_replace('_', ' ', (string) $state));
+                        return PaymentTransactionType::tryFrom($state)?->label() ?? ucwords(str_replace('_', ' ', (string) $state));
                     })
                     ->color('primary'),
-                TextColumn::make('voided_at')
+                TextColumn::make('status')
                     ->label('Status')
                     ->badge()
-                    ->formatStateUsing(fn ($state) => $state ? 'Voided' : 'Active')
-                    ->color(fn ($state) => $state ? 'gray' : 'success'),
+                    ->getStateUsing(fn ($record) => $record->voided_at ? 'Voided' : 'Posted')
+                    ->color(fn ($record) => $record->voided_at ? 'danger' : 'success'),
                 TextColumn::make('payment_date')
                     ->date()
                     ->sortable(),
             ])
             ->headerActions([
-                \Filament\Actions\ExportAction::make()
-                    ->exporter(\App\Filament\Exports\PaymentExporter::class)
+                ExportAction::make()
+                    ->exporter(PaymentExporter::class),
             ])
             ->filters([
                 SelectFilter::make('direction')
@@ -67,8 +72,8 @@ class PaymentsTable
             ->bulkActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make(),
-                    \Filament\Actions\ExportBulkAction::make()
-                        ->exporter(\App\Filament\Exports\PaymentExporter::class)
+                    ExportBulkAction::make()
+                        ->exporter(PaymentExporter::class),
                 ]),
             ]);
     }

@@ -60,6 +60,9 @@ class InvoiceGenerated extends Mailable
                 'invoiceData' => $this->invoiceData,
                 'companyInfo' => $companyInfo,
                 'options' => $this->options,
+                'download_url' => isset($this->invoiceData['filename'])
+                    ? PrivateStorage::downloadUrl($this->invoiceData['path'] ?? 'invoices/'.$this->invoiceData['filename'], now()->addDays(7))
+                    : null,
             ]
         );
     }

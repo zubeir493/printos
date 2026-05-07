@@ -92,7 +92,7 @@ class MailtrapApiTransport extends AbstractTransport
 
         foreach ($email->getAttachments() as $attachment) {
             $attachments[] = [
-                'content' => base64_encode($attachment->bodyToString()),
+                'content' => base64_encode($attachment->getBody()),
                 'filename' => $attachment->getFilename() ?? 'attachment',
                 'type' => $attachment->getContentType(),
                 'disposition' => 'attachment',
@@ -107,7 +107,7 @@ class MailtrapApiTransport extends AbstractTransport
     }
 
     /**
-     * @param array<int, Address> $addresses
+     * @param  array<int, Address>  $addresses
      */
     private function addresses(array $addresses): array
     {

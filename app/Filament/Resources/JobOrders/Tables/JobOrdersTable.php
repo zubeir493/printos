@@ -103,7 +103,7 @@ class JobOrdersTable
                     ->label('Invoice')
                     ->icon('heroicon-o-document-text')
                     ->color('primary')
-                    ->hidden(fn ($record) => $record->invoices()->exists())
+                    ->hidden(fn ($record) => $record->invoices()->exists() || ! PanelAccess::canSeeMoneyValues() || $record->balance <= 0)
                     ->action(function ($record) {
                         try {
                             $invoiceService = app(InvoiceGeneratorService::class);

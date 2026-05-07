@@ -586,6 +586,8 @@ class InvoiceGeneratorService
         $pdf = Pdf::loadView($view, ['invoiceData' => $invoiceData])
             ->setPaper('a4')
             ->setOption('defaultFont', 'Arial')
+            ->setOption('fontDir', public_path('fonts'))
+            ->setOption('fontCache', public_path('fonts'))
             ->setOption('isRemoteEnabled', true);
 
         return Storage::disk($this->storageDisk)->put($invoice->file_path, $pdf->output());

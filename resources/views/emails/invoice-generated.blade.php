@@ -97,6 +97,15 @@
         </div>
         @endif
         
+        @if(isset($download_url))
+        <div style="margin: 20px 0; text-align: center;">
+            <a href="{{ $download_url }}" style="background-color: #2196f3; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold; display: inline-block;">
+                📥 Download Document
+            </a>
+            <p style="font-size: 12px; color: #666; margin-top: 10px;">Link valid for 7 days. You can also find the document attached to this email.</p>
+        </div>
+        @endif
+        
         @if(isset($invoiceData['invoice_data']))
         <div class="invoice-details">
             <h3>Invoice Details</h3>

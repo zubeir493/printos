@@ -179,10 +179,10 @@
                             <td>{{ number_format($invoiceData['subtotal'], 2) }}</td>
                         </tr>
                         
-                        @if($invoiceData['options']['show_tax_breakdown'] && !empty($invoiceData['tax_calculations']['breakdown']))
+                        @if(!empty($invoiceData['options']['show_tax_breakdown']) && !empty($invoiceData['tax_calculations']['breakdown']))
                             @foreach($invoiceData['tax_calculations']['breakdown'] as $taxType => $amount)
                             <tr class="total">
-                                <td>{{ $taxType }} ({{ ($this->taxConfig[$taxType] ?? 0) * 100 }}%):</td>
+                                <td>{{ $taxType }}:</td>
                                 <td>{{ number_format($amount, 2) }}</td>
                             </tr>
                             @endforeach

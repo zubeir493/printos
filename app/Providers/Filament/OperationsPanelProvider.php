@@ -74,6 +74,7 @@ class OperationsPanelProvider extends PanelProvider
                 OperationsJobStatusChart::class,
                 HighPriorityJobsTable::class,
             ])
+            ->globalSearch(true)
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,

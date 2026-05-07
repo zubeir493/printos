@@ -16,6 +16,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class PartnerResource extends Resource
 {
@@ -61,5 +62,33 @@ class PartnerResource extends Resource
             'view' => ViewPartner::route('/{record}'),
             'edit' => EditPartner::route('/{record}/edit'),
         ];
+    }
+
+    public static function getGloballySearchableAttributes(): array
+    {
+        return ['name', 'phone', 'email'];
+    }
+
+    public static function getGlobalSearchResultTitle($record): string
+    {
+        return $record->name;
+    }
+
+    public static function getGlobalSearchResultDetails($record): array
+    {
+        return [
+            'Phone' => $record->phone,
+            'Email' => $record->email,
+            'Type' => $record->is_customer ? 'Customer' : 'Supplier',
+        ];
+    }
+
+    public static function getGlobalSearchEloquentQuery(): Builder
+    {
+        if (! PanelAccess::canManagePartners()) {
+            return static::getModel()::query()->whereRaw('1 = 0');
+        }
+
+        return parent::getGlobalSearchEloquentQuery();
     }
 }

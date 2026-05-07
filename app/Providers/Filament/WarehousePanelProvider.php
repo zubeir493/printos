@@ -65,6 +65,7 @@ class WarehousePanelProvider extends PanelProvider
                 LogisticsPulseChart::class,
                 PendingPickListTable::class,
             ])
+            ->globalSearch(true)
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,

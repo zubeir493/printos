@@ -23,7 +23,7 @@ class JobOrderExporter extends Exporter
                 ->label('Type'),
             ExportColumn::make('submission_date')
                 ->label('Submission Date'),
-            ExportColumn::make('total_price')
+            ExportColumn::make('total')
                 ->label('Total Price (Birr)'),
             ExportColumn::make('status')
                 ->label('Status'),
@@ -31,7 +31,7 @@ class JobOrderExporter extends Exporter
             ExportColumn::make('materials_fully_issued_at'),
             ExportColumn::make('advance_paid')
                 ->label('Advance Paid')
-                ->getStateUsing(fn($record) => $record->paymentAllocations()->exists() ? 'Yes' : 'No'),
+                ->getStateUsing(fn ($record) => $record->paymentAllocations()->exists() ? 'Yes' : 'No'),
             ExportColumn::make('advance_amount')
                 ->label('Advance Amount (Birr)'),
             ExportColumn::make('production_mode'),
@@ -40,10 +40,10 @@ class JobOrderExporter extends Exporter
 
     public static function getCompletedNotificationBody(Export $export): string
     {
-        $body = 'Your job order export has completed and ' . Number::format($export->successful_rows) . ' ' . str('row')->plural($export->successful_rows) . ' exported.';
+        $body = 'Your job order export has completed and '.Number::format($export->successful_rows).' '.str('row')->plural($export->successful_rows).' exported.';
 
         if ($failedRowsCount = $export->getFailedRowsCount()) {
-            $body .= ' ' . Number::format($failedRowsCount) . ' ' . str('row')->plural($failedRowsCount) . ' failed to export.';
+            $body .= ' '.Number::format($failedRowsCount).' '.str('row')->plural($failedRowsCount).' failed to export.';
         }
 
         return $body;

@@ -35,7 +35,6 @@ class JobOrder extends Model
         'advance_paid',
         'cost_calc_file',
         'advance_amount',
-        'total_price',
         'subtotal',
         'tax_amount',
         'total',
@@ -55,7 +54,6 @@ class JobOrder extends Model
             'submission_date' => 'date',
             'due_date' => 'date',
             'advance_amount' => 'decimal:2',
-            'total_price' => 'decimal:2',
             'subtotal' => 'decimal:2',
             'tax_amount' => 'decimal:2',
             'total' => 'decimal:2',
@@ -122,12 +120,12 @@ class JobOrder extends Model
 
     public function scopePendingPayment($query)
     {
-        return $query->whereRaw('total_price > (SELECT COALESCE(SUM(allocated_amount), 0) FROM payment_allocations WHERE allocatable_id = job_orders.id AND allocatable_type = ?)', [self::class]);
+        return $query->whereRaw('total > (SELECT COALESCE(SUM(allocated_amount), 0) FROM payment_allocations WHERE allocatable_id = job_orders.id AND allocatable_type = ?)', [self::class]);
     }
 
     public function scopeFullyPaid($query)
     {
-        return $query->whereRaw('total_price <= (SELECT COALESCE(SUM(allocated_amount), 0) FROM payment_allocations WHERE allocatable_id = job_orders.id AND allocatable_type = ?)', [self::class]);
+        return $query->whereRaw('total <= (SELECT COALESCE(SUM(allocated_amount), 0) FROM payment_allocations WHERE allocatable_id = job_orders.id AND allocatable_type = ?)', [self::class]);
     }
 
     public function scopeLate($query, CarbonInterface|string|null $date = null)
@@ -146,7 +144,6 @@ class JobOrder extends Model
         $taxAmount = round($subtotal * $taxRate, 2);
 
         $this->updateQuietly([
-            'total_price' => $subtotal, // kept for backwards compatibility
             'subtotal' => $subtotal,
             'tax_amount' => $taxAmount,
             'total' => $subtotal + $taxAmount,

@@ -15,11 +15,13 @@ class JobOrderFactory extends Factory
         return [
             'job_order_number' => fake()->word(),
             'partner_id' => Partner::factory(),
-            'job_type' => fake()->randomElement(["books","packages"]),
+            'job_type' => fake()->randomElement(['books', 'packages']),
             'submission_date' => fake()->date(),
             'remarks' => fake()->text(),
-            'total_price' => fake()->randomFloat(2, 0, 9999999999.99),
-            'status' => fake()->randomElement(["draft","design","production","completed","cancelled"]),
+            'subtotal' => fake()->randomFloat(2, 0, 9999999999.99),
+            'tax_amount' => fake()->randomFloat(2, 0, 999999999.99),
+            'total' => fake()->randomFloat(2, 0, 9999999999.99),
+            'status' => fake()->randomElement(['draft', 'design', 'production', 'completed', 'cancelled']),
         ];
     }
 }

@@ -2,19 +2,23 @@
 
 namespace App\Filament\Resources\JobOrders;
 
-use App\Filament\Resources\JobOrders\Pages;
 use App\Filament\Resources\JobOrders\Pages\CreateJobOrder;
 use App\Filament\Resources\JobOrders\Pages\EditJobOrder;
 use App\Filament\Resources\JobOrders\Pages\ListJobOrders;
+use App\Filament\Resources\JobOrders\RelationManagers\JobOrderArtworksRelationManager;
+use App\Filament\Resources\JobOrders\RelationManagers\MaterialsOverviewRelationManager;
+use App\Filament\Resources\JobOrders\RelationManagers\PaymentsRelationManager;
 use App\Filament\Resources\JobOrders\Schemas\JobOrderForm;
 use App\Filament\Resources\JobOrders\Tables\JobOrdersTable;
 use App\Filament\Support\PanelAccess;
 use App\Models\JobOrder;
+use App\Models\JobOrderTask;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class JobOrderResource extends Resource
 {
@@ -37,7 +41,8 @@ class JobOrderResource extends Resource
     public static function getNavigationBadge(): ?string
     {
         // Count active jobOrderTasks (not completed or cancelled)
-        $count = \App\Models\JobOrderTask::whereNotIn('status', ['completed', 'cancelled', 'pending'])->count();
+        $count = JobOrderTask::whereNotIn('status', ['completed', 'cancelled', 'pending'])->count();
+
         return $count > 0 ? (string) $count : null;
     }
 
@@ -46,23 +51,21 @@ class JobOrderResource extends Resource
         return JobOrderForm::configure($schema);
     }
 
-
-
     public static function table(Table $table): Table
     {
         return JobOrdersTable::configure($table)
-            ->recordUrl(fn($record) => static::getUrl('view', ['record' => $record]));
+            ->recordUrl(fn ($record) => static::getUrl('view', ['record' => $record]));
     }
 
     public static function getRelations(): array
     {
         $relations = [
-            \App\Filament\Resources\JobOrders\RelationManagers\MaterialsOverviewRelationManager::class,
-            \App\Filament\Resources\JobOrders\RelationManagers\JobOrderArtworksRelationManager::class,
+            MaterialsOverviewRelationManager::class,
+            JobOrderArtworksRelationManager::class,
         ];
 
         if (PanelAccess::canAccessFinanceSection()) {
-            $relations[] = \App\Filament\Resources\JobOrders\RelationManagers\PaymentsRelationManager::class;
+            $relations[] = PaymentsRelationManager::class;
         }
 
         return $relations;
@@ -76,5 +79,34 @@ class JobOrderResource extends Resource
             'view' => Pages\ViewJobOrder::route('/{record}'),
             'edit' => EditJobOrder::route('/{record}/edit'),
         ];
+    }
+
+    public static function getGloballySearchableAttributes(): array
+    {
+        return ['job_order_number', 'partner.name'];
+    }
+
+    public static function getGlobalSearchResultTitle($record): string
+    {
+        return $record->job_order_number;
+    }
+
+    public static function getGlobalSearchResultDetails($record): array
+    {
+        return [
+            'Customer' => $record->partner?->name,
+            'Status' => ucfirst($record->status),
+            'Total' => number_format($record->total, 2).' Birr',
+        ];
+    }
+
+    public static function getGlobalSearchEloquentQuery(): Builder
+    {
+        if (! PanelAccess::canManageJobOrders()) {
+            return static::getModel()::query()->whereRaw('1 = 0');
+        }
+
+        return parent::getGlobalSearchEloquentQuery()
+            ->with(['partner']);
     }
 }

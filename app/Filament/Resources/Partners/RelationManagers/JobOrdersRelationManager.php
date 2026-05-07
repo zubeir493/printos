@@ -11,8 +11,8 @@ use Filament\Actions\DissociateAction;
 use Filament\Actions\DissociateBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
@@ -41,7 +41,7 @@ class JobOrdersRelationManager extends RelationManager
                     ->columnSpanFull(),
                 Toggle::make('advance_paid')
                     ->required(),
-                TextInput::make('total_price')
+                TextInput::make('total')
                     ->required()
                     ->numeric()
                     ->prefix('$'),
@@ -67,14 +67,14 @@ class JobOrdersRelationManager extends RelationManager
                     ->sortable(),
                 IconColumn::make('advance_paid')
                     ->boolean()
-                    ->getStateUsing(fn($record) => $record->paymentAllocations()->exists())
+                    ->getStateUsing(fn ($record) => $record->paymentAllocations()->exists())
                     ->label('Adv. Paid'),
-                TextColumn::make('total_price')
+                TextColumn::make('total')
                     ->suffix(' Birr')
                     ->sortable(),
                 TextColumn::make('status')
                     ->badge()
-                    ->color(fn(string $state): string => match ($state) {
+                    ->color(fn (string $state): string => match ($state) {
                         'active' => 'primary',
                         'completed' => 'success',
                         'cancelled' => 'danger',

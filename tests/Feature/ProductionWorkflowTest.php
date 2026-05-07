@@ -34,7 +34,7 @@ class ProductionWorkflowTest extends TestCase
             'services' => [],
             'status' => 'draft',
             'submission_date' => now(),
-            'total_price' => 100000,
+            'total' => 100000,
             'advance_amount' => 20000,
         ]);
 
@@ -57,7 +57,7 @@ class ProductionWorkflowTest extends TestCase
             'services' => [],
             'status' => 'draft',
             'submission_date' => now(),
-            'total_price' => 80000,
+            'total' => 80000,
             'advance_amount' => 15000,
         ]);
 
@@ -67,7 +67,7 @@ class ProductionWorkflowTest extends TestCase
             'quantity' => 1,
             'task_cost' => 5000,
         ]);
-        
+
         Artwork::create([
             'job_order_task_id' => $task->id,
             'filename' => 'artwork-1.pdf',

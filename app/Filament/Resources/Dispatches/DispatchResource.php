@@ -15,6 +15,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class DispatchResource extends Resource
 {
@@ -62,5 +63,34 @@ class DispatchResource extends Resource
             'view' => ViewDispatch::route('/{record}'),
             'edit' => EditDispatch::route('/{record}/edit'),
         ];
+    }
+
+    public static function getGloballySearchableAttributes(): array
+    {
+        return ['dispatch_number', 'partner.name', 'status'];
+    }
+
+    public static function getGlobalSearchResultTitle($record): string
+    {
+        return $record->dispatch_number;
+    }
+
+    public static function getGlobalSearchResultDetails($record): array
+    {
+        return [
+            'Partner' => $record->partner?->name,
+            'Status' => ucfirst($record->status),
+            'Date' => $record->dispatch_date?->format('M j, Y'),
+        ];
+    }
+
+    public static function getGlobalSearchEloquentQuery(): Builder
+    {
+        if (! PanelAccess::canAccessWarehouseSection()) {
+            return static::getModel()::query()->whereRaw('1 = 0');
+        }
+
+        return parent::getGlobalSearchEloquentQuery()
+            ->with(['partner']);
     }
 }

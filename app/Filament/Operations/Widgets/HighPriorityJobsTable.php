@@ -11,7 +11,7 @@ class HighPriorityJobsTable extends BaseWidget
 {
     protected static ?int $sort = 3;
 
-    protected int | string | array $columnSpan = 1;
+    protected int|string|array $columnSpan = 1;
 
     protected static ?string $heading = 'High-Priority Jobs';
 
@@ -35,7 +35,7 @@ class HighPriorityJobsTable extends BaseWidget
                     ->date(),
                 Tables\Columns\TextColumn::make('status')
                     ->badge(),
-                Tables\Columns\TextColumn::make('total_price')
+                Tables\Columns\TextColumn::make('total')
                     ->label('Value')
                     ->alignEnd()
                     ->formatStateUsing(fn ($state) => number_format((float) $state, 2)),

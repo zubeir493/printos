@@ -40,7 +40,7 @@ class LateJobOrdersTest extends TestCase
             'remarks' => 'Late job order scope test',
             'advance_amount' => 0,
             'advance_paid' => false,
-            'total_price' => 0,
+            'total' => 0,
             'status' => $status,
             'production_mode' => 'make_to_order',
         ]);

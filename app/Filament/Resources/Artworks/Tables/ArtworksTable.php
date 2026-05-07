@@ -93,17 +93,6 @@ class ArtworksTable
                     ->icon('heroicon-m-arrow-down-tray')
                     ->url(fn ($record): ?string => PrivateStorage::downloadUrl($record->filename, now()->addMinutes(60)))
                     ->openUrlInNewTab(),
-                Action::make('approve')
-                    ->label('Approve')
-                    ->icon('heroicon-m-check-badge')
-                    ->color('success')
-                    ->hidden(fn ($record) => $record->is_approved)
-                    ->action(function ($record) {
-                        $record->update(['is_approved' => true]);
-
-                        // Update task status automatically
-                        $record->jobOrderTask->updateStatus();
-                    }),
                 Action::make('sendEmail')
                     ->label('Send Artwork')
                     ->icon('heroicon-m-envelope')

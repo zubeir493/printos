@@ -3,13 +3,12 @@
 namespace App\Filament\Resources\JobOrders\RelationManagers;
 
 use App\Filament\Support\PanelAccess;
-use Filament\Actions\AssociateAction;
+use App\Models\Bank;
+use App\Models\Payment;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\DissociateAction;
-use Filament\Actions\DissociateBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
@@ -17,11 +16,11 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
+use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
-use App\Models\Payment;
-use Filament\Tables\Columns\Summarizers\Sum;
 
 class PaymentsRelationManager extends RelationManager
 {
@@ -47,13 +46,15 @@ class PaymentsRelationManager extends RelationManager
                     ->maxValue(function ($record) {
                         $owner = $this->getOwnerRecord();
                         $currentAllocation = $record ? $record->allocated_amount : 0;
-                        return max(0, $owner->total_price - ($owner->paid_amount - $currentAllocation));
+
+                        return max(0, $owner->total - ($owner->paid_amount - $currentAllocation));
                     })
                     ->helperText(function ($record) {
                         $owner = $this->getOwnerRecord();
                         $currentAllocation = $record ? $record->allocated_amount : 0;
-                        $remaining = $owner->total_price - ($owner->paid_amount - $currentAllocation);
-                        return "Remaining balance to allocate: " . number_format($remaining, 2) . " Birr";
+                        $remaining = $owner->total - ($owner->paid_amount - $currentAllocation);
+
+                        return 'Remaining balance to allocate: '.number_format($remaining, 2).' Birr';
                     }),
 
                 Select::make('method')
@@ -69,11 +70,11 @@ class PaymentsRelationManager extends RelationManager
 
                 Select::make('bank_id')
                     ->label('Bank Account')
-                    ->options(fn() => \App\Models\Bank::pluck('name', 'id'))
+                    ->options(fn () => Bank::pluck('name', 'id'))
                     ->searchable()
                     ->preload()
-                    ->visible(fn(callable $get) => $get('method') === 'bank')
-                    ->required(fn(callable $get) => $get('method') === 'bank')
+                    ->visible(fn (callable $get) => $get('method') === 'bank')
+                    ->required(fn (callable $get) => $get('method') === 'bank')
                     ->helperText('Select bank account for this payment'),
 
                 TextInput::make('reference')
@@ -98,17 +99,17 @@ class PaymentsRelationManager extends RelationManager
                     ->searchable()
                     ->weight('bold')
                     ->color('primary')
-                    ->description(fn($record) => $record->payment->payment_date?->format('M j, Y') ?? 'No date'),
+                    ->description(fn ($record) => $record->payment->payment_date?->format('M j, Y') ?? 'No date'),
                 TextColumn::make('payment.method')
                     ->label('Method')
                     ->badge()
-                    ->color(fn($state) => match($state) {
+                    ->color(fn ($state) => match ($state) {
                         'cash' => 'success',
                         'bank' => 'info',
                         'cheque' => 'warning',
                         default => 'gray',
                     })
-                    ->formatStateUsing(fn($state) => ucfirst($state)),
+                    ->formatStateUsing(fn ($state) => ucfirst($state)),
                 TextColumn::make('payment.payment_date')
                     ->label('Date')
                     ->date(),
@@ -123,7 +124,8 @@ class PaymentsRelationManager extends RelationManager
                             ->formatStateUsing(function ($state) {
                                 $owner = $this->getOwnerRecord();
                                 $allocated = $state ?? 0;
-                                $total = $owner->total_price ?? 0;
+                                $total = $owner->total ?? 0;
+
                                 return "{$allocated}/{$total} Birr";
                             })
                     ),
@@ -133,14 +135,14 @@ class PaymentsRelationManager extends RelationManager
             ])
             ->headerActions([
                 CreateAction::make()
-                    ->using(function (array $data, string $model): \Illuminate\Database\Eloquent\Model {
+                    ->using(function (array $data, string $model): Model {
                         return DB::transaction(function () use ($data) {
                             $jobOrder = $this->getOwnerRecord();
-                            
+
                             // 1. Create the Payment
                             $nextId = (Payment::max('id') ?? 0) + 1;
-                            $paymentNumber = 'PAY-JO-' . str_pad($nextId, 6, '0', STR_PAD_LEFT);
-                            
+                            $paymentNumber = 'PAY-JO-'.str_pad($nextId, 6, '0', STR_PAD_LEFT);
+
                             $payment = Payment::create([
                                 'payment_number' => $paymentNumber,
                                 'partner_id' => $jobOrder->partner_id,

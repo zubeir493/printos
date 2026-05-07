@@ -2,33 +2,35 @@
 
 namespace App\Filament\Widgets;
 
+use App\Models\JobOrder;
 use App\Models\SalesOrder;
-use Filament\Widgets\ChartWidget;
 use Carbon\Carbon;
+use Filament\Widgets\ChartWidget;
 
 class ProfitabilityMarginChart extends ChartWidget
 {
     protected ?string $heading = 'Revenue vs Expected (MTD)';
+
     protected static ?int $sort = 2;
 
     protected function getData(): array
     {
         $data = [];
         $potential = [];
-        
-        for($i=14; $i>=0; $i--) {
+
+        for ($i = 14; $i >= 0; $i--) {
             $date = Carbon::now()->subDays($i);
             $dateLabel = $date->format('M d');
-            
+
             // Real Revenue - Completed Sales Orders
-            $data[$dateLabel] = \App\Models\SalesOrder::whereDate('created_at', $date)
+            $data[$dateLabel] = SalesOrder::whereDate('created_at', $date)
                 ->where('status', 'completed')
                 ->sum('total');
 
             // Potential Revenue - Job Orders In Pipeline
-            $potential[$dateLabel] = \App\Models\JobOrder::whereDate('created_at', $date)
+            $potential[$dateLabel] = JobOrder::whereDate('created_at', $date)
                 ->whereIn('status', ['design', 'production'])
-                ->sum('total_price');
+                ->sum('total');
         }
 
         return [

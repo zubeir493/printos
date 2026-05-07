@@ -2,13 +2,14 @@
 
 namespace Tests\Feature;
 
+use App\Models\JobOrder;
+use App\Models\JobOrderTask;
 use App\Models\Machine;
+use App\Models\Partner;
 use App\Models\ProductionPlan;
 use App\Models\ProductionPlanItem;
 use App\Models\ProductionReport;
-use App\Models\JobOrder;
-use App\Models\JobOrderTask;
-use App\Models\Partner;
+use App\Models\ProductionReportItem;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -21,7 +22,7 @@ class ProductionPlanningTest extends TestCase
     {
         $user = User::factory()->create();
         $machine = Machine::create(['name' => 'Machine 1', 'code' => 'M1']);
-        
+
         $partner = Partner::create([
             'name' => 'Test Partner',
             'phone' => '123456789',
@@ -35,10 +36,10 @@ class ProductionPlanningTest extends TestCase
             'cost_calc_file' => 'test.xlsx',
             'services' => [],
             'submission_date' => now(),
-            'total_price' => 1000.00,
+            'total' => 1000.00,
             'status' => 'draft',
         ]);
-        
+
         // Since I don't have factories for all, I'll use create manually
         $task = JobOrderTask::create([
             'job_order_id' => $jobOrder->id,
@@ -69,7 +70,7 @@ class ProductionPlanningTest extends TestCase
         ]);
 
         foreach ($plan->items as $item) {
-            \App\Models\ProductionReportItem::create([
+            ProductionReportItem::create([
                 'production_report_id' => $report->id,
                 'production_plan_item_id' => $item->id,
                 'date' => now(),
@@ -88,7 +89,7 @@ class ProductionPlanningTest extends TestCase
             'production_plan_item_id' => $planItem->id,
             'actual_quantity' => 1000,
         ]);
-        
+
         $this->assertEquals(1, $report->items()->count());
         $this->assertEquals($machine->id, $report->items->first()->productionPlanItem->machine_id);
     }

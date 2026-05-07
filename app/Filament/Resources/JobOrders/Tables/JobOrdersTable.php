@@ -48,9 +48,9 @@ class JobOrdersTable
                     ->sortable()
                     ->color(fn ($record) => $record->submission_date && $record->submission_date->isBefore(today()) && ! in_array($record->status, ['completed', 'cancelled']) ? 'danger' : null)
                     ->description(fn ($record) => $record->submission_date && $record->submission_date->isBefore(today()) && ! in_array($record->status, ['completed', 'cancelled']) ? 'Late' : null),
-                TextColumn::make('total_price')
+                TextColumn::make('total')
                     ->label('Payment Progress')
-                    ->formatStateUsing(fn ($record) => number_format($record->paid_amount, 2).'/'.number_format($record->total_price, 2).' birr')
+                    ->formatStateUsing(fn ($record) => number_format($record->paid_amount, 2).'/'.number_format($record->total, 2).' birr')
                     ->visible(fn () => PanelAccess::canSeeMoneyValues())
                     ->sortable(),
             ])

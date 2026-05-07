@@ -153,7 +153,7 @@ class MaterialIssueApprovalWorkflowTest extends TestCase
             'remarks' => 'Testing over-issue flow',
             'advance_amount' => 0,
             'advance_paid' => false,
-            'total_price' => 0,
+            'total' => 0,
             'production_mode' => 'make_to_order',
         ]);
 

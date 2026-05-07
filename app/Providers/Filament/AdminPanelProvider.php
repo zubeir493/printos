@@ -50,6 +50,7 @@ class AdminPanelProvider extends PanelProvider
                 ProfitabilityMarginChart::class,
                 SystemBottlenecksChart::class,
             ])
+            ->globalSearch(true)
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,

@@ -41,7 +41,7 @@ class AdminExceptionsTable extends BaseWidget
                     ->label('Tasks')
                     ->state(fn (JobOrder $record) => $record->jobOrderTasks->count())
                     ->alignEnd(),
-                Tables\Columns\TextColumn::make('total_price')
+                Tables\Columns\TextColumn::make('total')
                     ->label('Value')
                     ->alignEnd()
                     ->formatStateUsing(fn ($state) => number_format((float) $state, 2)),

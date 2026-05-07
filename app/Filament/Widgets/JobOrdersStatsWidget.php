@@ -3,15 +3,15 @@
 namespace App\Filament\Widgets;
 
 use App\Models\JobOrder;
-use Filament\Widgets\StatsOverviewWidget\Stat;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
+use Filament\Widgets\StatsOverviewWidget\Stat;
 
 class JobOrdersStatsWidget extends BaseWidget
 {
     protected function getStats(): array
     {
         $totalJobs = JobOrder::count();
-        $totalValue = JobOrder::sum('total_price');
+        $totalValue = JobOrder::sum('total');
         $activeJobs = JobOrder::whereIn('status', ['design', 'production'])->count();
         $lateJobs = JobOrder::late()->count();
         $completedToday = JobOrder::where('status', 'completed')

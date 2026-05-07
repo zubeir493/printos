@@ -90,6 +90,7 @@ class FinancePanelProvider extends PanelProvider
                 UnallocatedPaymentsTable::class,
                 OverdueInvoicesTable::class,
             ])
+            ->globalSearch(true)
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,

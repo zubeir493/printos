@@ -20,7 +20,6 @@ class Payment extends Model
     protected $fillable = [
         'payment_number',
         'partner_id',
-        'job_order_id',
         'bank_id',
         'payment_date',
         'amount',
@@ -45,7 +44,6 @@ class Payment extends Model
         return [
             'id' => 'integer',
             'partner_id' => 'integer',
-            'job_order_id' => 'integer',
             'bank_id' => 'integer',
             'payment_date' => 'date',
             'amount' => 'decimal:2',
@@ -64,11 +62,6 @@ class Payment extends Model
     public function account(): BelongsTo
     {
         return $this->belongsTo(Account::class);
-    }
-
-    public function jobOrder(): BelongsTo
-    {
-        return $this->belongsTo(JobOrder::class);
     }
 
     public function bank(): BelongsTo

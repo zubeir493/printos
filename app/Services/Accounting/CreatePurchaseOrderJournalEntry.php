@@ -2,11 +2,10 @@
 
 namespace App\Services\Accounting;
 
-use App\Models\PurchaseOrder;
+use App\Models\Account;
 use App\Models\JournalEntry;
 use App\Models\JournalItem;
-use App\Models\Account;
-use Illuminate\Support\Facades\DB;
+use App\Models\PurchaseOrder;
 
 class CreatePurchaseOrderJournalEntry
 {
@@ -15,31 +14,26 @@ class CreatePurchaseOrderJournalEntry
         $purchaseOrder->load('purchaseOrderItems');
 
         $total = $purchaseOrder->purchaseOrderItems->sum(function ($item) {
-            return (float)$item->quantity * (float)$item->unit_price;
+            return (float) $item->quantity * (float) $item->unit_price;
         });
 
         if ($total <= 0) {
-            $total = (float)$purchaseOrder->subtotal;
+            $total = (float) $purchaseOrder->subtotal;
         }
 
-        if ($total <= 0) return;
+        if ($total <= 0) {
+            return;
+        }
 
-        $inventoryAccount = Account::where('name', 'Inventory')->first() ?? Account::firstOrCreate(
-            ['name' => 'Inventory'],
-            ['type' => 'Asset', 'code' => 'ACC-INV']
-        );
-        
-        $accountsPayableAccount = Account::where('name', 'like', 'Accounts Payable%')->first() ?? Account::firstOrCreate(
-            ['name' => 'Accounts Payable'],
-            ['type' => 'Liability', 'code' => 'ACC-AP']
-        );
+        $inventoryAccount = Account::getSystemAccount('1500', 'Inventory', 'Asset');
+        $accountsPayableAccount = Account::getSystemAccount(Account::CODE_AP, 'Accounts Payable', 'Liability');
 
         $journalEntry = JournalEntry::create([
             'date' => $purchaseOrder->order_date ?? now(),
-            'reference' => 'Purchase Order #' . $purchaseOrder->po_number,
+            'reference' => 'Purchase Order #'.$purchaseOrder->po_number,
             'source_type' => PurchaseOrder::class,
             'source_id' => $purchaseOrder->id,
-            'narration' => 'Purchase Order #' . $purchaseOrder->po_number,
+            'narration' => 'Purchase Order #'.$purchaseOrder->po_number,
             'total_debit' => $total,
             'total_credit' => $total,
             'status' => 'posted',

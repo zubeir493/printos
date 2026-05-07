@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Support\Facades\DB;
 
 class SalesOrder extends Model
 {
@@ -127,25 +128,27 @@ class SalesOrder extends Model
 
         static::updated(function ($salesOrder) {
             if ($salesOrder->wasChanged('status') && $salesOrder->status === 'completed') {
-                foreach ($salesOrder->salesOrderItems as $item) {
-                    // Prevent duplicate movements
-                    $exists = StockMovement::where('reference_type', self::class)
-                        ->where('reference_id', $salesOrder->id)
-                        ->where('inventory_item_id', $item->inventory_item_id)
-                        ->exists();
+                DB::transaction(function () use ($salesOrder) {
+                    foreach ($salesOrder->salesOrderItems as $item) {
+                        // Prevent duplicate movements
+                        $exists = StockMovement::where('reference_type', self::class)
+                            ->where('reference_id', $salesOrder->id)
+                            ->where('inventory_item_id', $item->inventory_item_id)
+                            ->exists();
 
-                    if (! $exists) {
-                        StockMovement::create([
-                            'inventory_item_id' => $item->inventory_item_id,
-                            'warehouse_id' => $salesOrder->warehouse_id,
-                            'type' => 'sale',
-                            'reference_type' => self::class,
-                            'reference_id' => $salesOrder->id,
-                            'quantity' => -abs($item->quantity),
-                            'movement_date' => now(),
-                        ]);
+                        if (! $exists) {
+                            StockMovement::create([
+                                'inventory_item_id' => $item->inventory_item_id,
+                                'warehouse_id' => $salesOrder->warehouse_id,
+                                'type' => 'sale',
+                                'reference_type' => self::class,
+                                'reference_id' => $salesOrder->id,
+                                'quantity' => -abs($item->quantity),
+                                'movement_date' => now(),
+                            ]);
+                        }
                     }
-                }
+                });
             }
         });
     }

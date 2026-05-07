@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Payments\Schemas;
 
 use App\Enums\PaymentTransactionType;
+use App\Models\Payment;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
@@ -22,13 +23,13 @@ class PaymentForm
                         TextInput::make('payment_number')
                             ->label('Payment #')
                             ->default(function () {
-                                $lastPayment = \App\Models\Payment::orderBy('id', 'desc')->first();
+                                $lastPayment = Payment::orderBy('id', 'desc')->first();
                                 $lastNumber = 0;
                                 if ($lastPayment && preg_match('/PAY-(\d+)/', $lastPayment->payment_number, $matches)) {
                                     $lastNumber = (int) $matches[1];
                                 }
 
-                                return 'PAY-' . str_pad($lastNumber + 1, 4, '0', STR_PAD_LEFT);
+                                return 'PAY-'.str_pad($lastNumber + 1, 4, '0', STR_PAD_LEFT);
                             })
                             ->readOnly()
                             ->required(),
@@ -43,38 +44,46 @@ class PaymentForm
                             })
                             ->required()
                             ->live(),
-                        // For customer receipts
+                        // Single partner field — label, filter, and create form adapt to transaction type
                         Select::make('partner_id')
-                            ->label('Customer')
-                            ->relationship('partner', 'name', modifyQueryUsing: fn($query) => $query->where('is_customer', true))
-                            ->visible(fn($get) => $get('transaction_type') === PaymentTransactionType::CUSTOMER_RECEIPT->value)
-                            ->required(fn($get) => $get('transaction_type') === PaymentTransactionType::CUSTOMER_RECEIPT->value)
+                            ->label(fn ($get) => $get('transaction_type') === PaymentTransactionType::SUPPLIER_PAYMENT->value
+                                ? 'Supplier'
+                                : 'Customer')
+                            ->relationship(
+                                'partner',
+                                'name',
+                                modifyQueryUsing: function ($query, $get) {
+                                    $type = $get('transaction_type');
+                                    if ($type === PaymentTransactionType::SUPPLIER_PAYMENT->value) {
+                                        return $query->where('is_supplier', true);
+                                    }
+
+                                    return $query->where('is_customer', true);
+                                }
+                            )
+                            ->visible(fn ($get) => in_array($get('transaction_type'), [
+                                PaymentTransactionType::CUSTOMER_RECEIPT->value,
+                                PaymentTransactionType::SUPPLIER_PAYMENT->value,
+                            ]))
+                            ->required(fn ($get) => in_array($get('transaction_type'), [
+                                PaymentTransactionType::CUSTOMER_RECEIPT->value,
+                                PaymentTransactionType::SUPPLIER_PAYMENT->value,
+                            ]))
                             ->searchable()
                             ->preload()
-                            ->createOptionForm([
-                                TextInput::make('name')
-                                    ->required(),
-                                TextInput::make('phone')
-                                    ->required(),
-                                TextInput::make('address'),
-                                Hidden::make('is_customer')->default(true),
-                            ]),
-                        // For supplier payments  
-                        Select::make('partner_id')
-                            ->label('Supplier')
-                            ->relationship('partner', 'name', modifyQueryUsing: fn($query) => $query->where('is_supplier', true))
-                            ->visible(fn($get) => $get('transaction_type') === PaymentTransactionType::SUPPLIER_PAYMENT->value)
-                            ->required(fn($get) => $get('transaction_type') === PaymentTransactionType::SUPPLIER_PAYMENT->value)
-                            ->searchable()
-                            ->preload()
-                            ->createOptionForm([
-                                TextInput::make('name')
-                                    ->required(),
-                                TextInput::make('phone')
-                                    ->required(),
-                                TextInput::make('address'),
-                                Hidden::make('is_supplier')->default(true),
-                            ]),
+                            ->createOptionForm(fn ($get) => $get('transaction_type') === PaymentTransactionType::SUPPLIER_PAYMENT->value
+                                ? [
+                                    TextInput::make('name')->required(),
+                                    TextInput::make('phone')->required(),
+                                    TextInput::make('address'),
+                                    Hidden::make('is_supplier')->default(true),
+                                ]
+                                : [
+                                    TextInput::make('name')->required(),
+                                    TextInput::make('phone')->required(),
+                                    TextInput::make('address'),
+                                    Hidden::make('is_customer')->default(true),
+                                ]),
                         TextInput::make('amount')
                             ->required()
                             ->numeric()
@@ -108,8 +117,8 @@ class PaymentForm
                             ->relationship('bank', 'name')
                             ->searchable()
                             ->preload()
-                            ->visible(fn(callable $get) => $get('method') === 'bank')
-                            ->required(fn(callable $get) => $get('method') === 'bank')
+                            ->visible(fn (callable $get) => $get('method') === 'bank')
+                            ->required(fn (callable $get) => $get('method') === 'bank')
                             ->helperText('Select the bank account for this payment'),
                         TextInput::make('reference')
                             ->label('Memo / Reference')

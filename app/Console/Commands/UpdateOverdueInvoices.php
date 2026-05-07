@@ -29,10 +29,10 @@ class UpdateOverdueInvoices extends Command
     {
         $this->info('Checking for overdue invoices...');
 
-        // Find sent invoices that are past due date but not marked as overdue
+        // Find all unpaid invoices that are past their due date
         $overdueInvoices = Invoice::where('due_date', '<', now())
-                                ->where('status', 'sent')
-                                ->get();
+            ->whereNotIn('status', ['paid', 'cancelled', 'overdue'])
+            ->get();
 
         $updatedCount = 0;
 
@@ -46,7 +46,7 @@ class UpdateOverdueInvoices extends Command
             $updatedCount++;
 
             $this->line("Invoice {$invoice->invoice_number} marked as overdue");
-            
+
             // Log the status change
             Log::info("Invoice {$invoice->invoice_number} marked as overdue", [
                 'invoice_id' => $invoice->id,

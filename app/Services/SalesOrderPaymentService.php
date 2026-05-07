@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\PaymentTransactionType;
 use App\Models\Payment;
 use App\Models\SalesOrder;
 use Illuminate\Support\Facades\DB;
@@ -28,16 +29,16 @@ class SalesOrderPaymentService
 
         return DB::transaction(function () use ($salesOrder, $amount) {
             $nextId = (Payment::max('id') ?? 0) + 1;
-            $paymentNumber = 'PAY-SO-' . str_pad($nextId, 6, '0', STR_PAD_LEFT);
+            $paymentNumber = 'PAY-SO-'.str_pad($nextId, 6, '0', STR_PAD_LEFT);
 
             $payment = Payment::create([
                 'payment_number' => $paymentNumber,
                 'partner_id' => $salesOrder->partner_id,
                 'amount' => $amount,
                 'direction' => 'inbound',
-                'transaction_type' => \App\Enums\PaymentTransactionType::CUSTOMER_RECEIPT->value,
+                'transaction_type' => PaymentTransactionType::CUSTOMER_RECEIPT->value,
                 'method' => $salesOrder->payment_method ?: 'cash',
-                'reference' => $salesOrder->payment_reference ?: 'Immediate receipt for sale ' . $salesOrder->order_number,
+                'reference' => $salesOrder->payment_reference ?: 'Immediate receipt for sale '.$salesOrder->order_number,
                 'payment_date' => $salesOrder->order_date,
             ]);
 
@@ -61,7 +62,7 @@ class SalesOrderPaymentService
 
             // Validate total payments don't exceed order total
             if ($totalPayments > $salesOrder->total) {
-                throw new \Exception("Total payments (₱{$totalPayments}) exceed order total (₱{$salesOrder->total})");
+                throw new \Exception("Total payments ({$totalPayments} Birr) exceed order total ({$salesOrder->total} Birr)");
             }
 
             foreach ($paymentsData as $paymentData) {
@@ -70,7 +71,7 @@ class SalesOrderPaymentService
                 }
 
                 $payment = $this->createPaymentFromData($salesOrder, $paymentData);
-                
+
                 // Create payment allocation
                 $salesOrder->paymentAllocations()->create([
                     'payment_id' => $payment->id,
@@ -90,17 +91,17 @@ class SalesOrderPaymentService
     private function createPaymentFromData(SalesOrder $salesOrder, array $paymentData): Payment
     {
         $nextId = (Payment::max('id') ?? 0) + 1;
-        $paymentNumber = 'PAY-SO-' . str_pad($nextId, 6, '0', STR_PAD_LEFT);
+        $paymentNumber = 'PAY-SO-'.str_pad($nextId, 6, '0', STR_PAD_LEFT);
 
         return Payment::create([
             'payment_number' => $paymentNumber,
             'partner_id' => $salesOrder->partner_id,
             'amount' => $paymentData['amount'],
             'direction' => 'inbound',
-            'transaction_type' => \App\Enums\PaymentTransactionType::CUSTOMER_RECEIPT->value,
+            'transaction_type' => PaymentTransactionType::CUSTOMER_RECEIPT->value,
             'method' => $paymentData['method'],
             'bank_id' => $paymentData['bank_id'] ?? null,
-            'reference' => $paymentData['reference'] ?? 'Payment for ' . $salesOrder->order_number,
+            'reference' => $paymentData['reference'] ?? 'Payment for '.$salesOrder->order_number,
             'payment_date' => $salesOrder->order_date,
         ]);
     }

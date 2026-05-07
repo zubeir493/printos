@@ -38,6 +38,21 @@ class InvoiceGeneratorService
      */
     public function generateFromSalesOrder(SalesOrder $order, array $options = []): array
     {
+        // Idempotency guard — never create two invoices for the same order
+        $existing = Invoice::where('order_id', $order->id)
+            ->where('order_type', 'sales_order')
+            ->first();
+
+        if ($existing) {
+            return [
+                'filename' => $existing->filename,
+                'path' => $existing->file_path,
+                'invoice_data' => [],
+                'pdf' => null,
+                'invoice' => $existing,
+            ];
+        }
+
         $invoiceNumber = $this->generateInvoiceNumber('SALES');
         $settings = Setting::getSettings();
 
@@ -158,6 +173,21 @@ class InvoiceGeneratorService
      */
     public function generateFromPurchaseOrder(PurchaseOrder $order, array $options = []): array
     {
+        // Idempotency guard — never create two invoices for the same order
+        $existing = Invoice::where('order_id', $order->id)
+            ->where('order_type', 'purchase_order')
+            ->first();
+
+        if ($existing) {
+            return [
+                'filename' => $existing->filename,
+                'path' => $existing->file_path,
+                'invoice_data' => [],
+                'pdf' => null,
+                'invoice' => $existing,
+            ];
+        }
+
         $invoiceNumber = $this->generateInvoiceNumber('PURCHASE');
         $settings = Setting::getSettings();
 
@@ -239,6 +269,21 @@ class InvoiceGeneratorService
      */
     public function generateFromJobOrder(JobOrder $order, array $options = []): array
     {
+        // Idempotency guard — never create two invoices for the same order
+        $existing = Invoice::where('order_id', $order->id)
+            ->where('order_type', 'job_order')
+            ->first();
+
+        if ($existing) {
+            return [
+                'filename' => $existing->filename,
+                'path' => $existing->file_path,
+                'invoice_data' => [],
+                'pdf' => null,
+                'invoice' => $existing,
+            ];
+        }
+
         $invoiceNumber = $this->generateInvoiceNumber('SERVICE');
         $jobOrderItems = $order->jobOrderTasks()->get();
         $settings = Setting::getSettings();

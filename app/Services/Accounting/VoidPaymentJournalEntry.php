@@ -6,6 +6,7 @@ use App\Models\JournalEntry;
 use App\Models\JournalItem;
 use App\Models\Payment;
 use App\Models\User;
+use App\Observers\PaymentAllocationObserver;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -56,6 +57,16 @@ class VoidPaymentJournalEntry
                     'credit' => $item->debit,
                 ]);
             }
+
+            // Remove all payment allocations so order balances and invoice
+            // statuses are recalculated correctly.
+            // We call the observer's balance-update logic manually then force-delete
+            // to bypass the journal-entry guard (the void is the authoritative action).
+            $allocationObserver = app(PaymentAllocationObserver::class);
+            $payment->paymentAllocations()->each(function ($allocation) use ($allocationObserver): void {
+                $allocation->deleteQuietly();
+                $allocationObserver->deleted($allocation);
+            });
 
             Payment::whereKey($payment->id)->update([
                 'voided_at' => $timestamp,

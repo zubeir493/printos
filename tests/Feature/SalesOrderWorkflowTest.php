@@ -2,11 +2,11 @@
 
 namespace Tests\Feature;
 
+use App\Models\Account;
 use App\Models\InventoryBalance;
 use App\Models\InventoryItem;
-use App\Models\Account;
-use App\Models\Payment;
 use App\Models\Partner;
+use App\Models\Payment;
 use App\Models\SalesOrder;
 use App\Models\SalesOrderItem;
 use App\Models\Warehouse;
@@ -229,6 +229,7 @@ class SalesOrderWorkflowTest extends TestCase
             'status' => 'posted',
         ]);
 
-        $this->assertSame(200.0, $salesOrder->fresh()->balance);
+        // Balance is the full order total (subtotal + VAT from default settings)
+        $this->assertEqualsWithDelta($salesOrder->fresh()->total, $salesOrder->fresh()->balance, 0.001);
     }
 }

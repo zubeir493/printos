@@ -3,8 +3,8 @@
 namespace Tests\Feature;
 
 use App\Models\Account;
+use App\Models\InventoryItem;
 use App\Models\JournalEntry;
-use App\Models\JournalItem;
 use App\Models\Partner;
 use App\Models\Payment;
 use App\Models\PurchaseOrder;
@@ -32,7 +32,7 @@ class AccountingWorkflowTest extends TestCase
             'subtotal' => 10000.00,
         ]);
 
-        $inventoryItem = \App\Models\InventoryItem::create([
+        $inventoryItem = InventoryItem::create([
             'name' => 'Office Paper',
             'sku' => 'PAPER-01',
             'unit' => 'Ream',
@@ -172,7 +172,7 @@ class AccountingWorkflowTest extends TestCase
 
         $this->assertDatabaseHas('journal_entries', [
             'id' => $originalJournal->id,
-            'status' => 'voided',
+            'status' => 'void',
         ]);
 
         $this->assertDatabaseHas('journal_entries', [

@@ -126,11 +126,8 @@ class Setting extends Model
      */
     protected static function booted(): void
     {
+        // saved fires on both create and update, so one listener is sufficient
         static::saved(function ($setting) {
-            Cache::forget('app_settings');
-        });
-
-        static::updated(function ($setting) {
             Cache::forget('app_settings');
         });
     }

@@ -23,8 +23,10 @@ class InventoryItem extends Model
         'purchase_unit',
         'conversion_factor',
         'type',
+        'category',
         'is_sellable',
         'price',
+        'average_cost',
     ];
 
     /**

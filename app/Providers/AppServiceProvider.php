@@ -2,12 +2,32 @@
 
 namespace App\Providers;
 
+use App\Models\Artwork;
+use App\Models\Employee;
+use App\Models\InventoryItem;
+use App\Models\JobOrderTask;
 use App\Models\Payment;
 use App\Models\PaymentAllocation;
-use App\Policies\PaymentPolicy;
+use App\Models\PurchaseOrder;
+use App\Models\PurchaseOrderItem;
+use App\Models\SalesOrder;
+use App\Models\StockMovement;
+use App\Observers\ArtworkObserver;
+use App\Observers\EmployeeObserver;
+use App\Observers\InventoryItemObserver;
+use App\Observers\JobOrderTaskObserver;
+use App\Observers\PaymentAllocationObserver;
+use App\Observers\PaymentObserver;
+use App\Observers\PurchaseOrderItemObserver;
+use App\Observers\PurchaseOrderObserver;
+use App\Observers\SalesOrderObserver;
+use App\Observers\StockMovementObserver;
 use App\Policies\PaymentAllocationPolicy;
+use App\Policies\PaymentPolicy;
 use Filament\Actions\CreateAction;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -25,25 +45,34 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // In production: force HTTPS for all generated URLs and prevent lazy loading.
+        // In local: enable strict mode to surface mass-assignment and lazy-loading issues early.
+        if ($this->app->isProduction()) {
+            URL::forceScheme('https');
+            Model::preventLazyLoading();
+        } elseif ($this->app->environment('local')) {
+            Model::shouldBeStrict();
+        }
+
         CreateAction::configureUsing(fn (CreateAction $action) => $action->createAnother(false));
 
         Gate::policy(Payment::class, PaymentPolicy::class);
         Gate::policy(PaymentAllocation::class, PaymentAllocationPolicy::class);
 
-        \App\Models\Payment::observe(\App\Observers\PaymentObserver::class);
-        \App\Models\PaymentAllocation::observe(\App\Observers\PaymentAllocationObserver::class);
-        \App\Models\StockMovement::observe(\App\Observers\StockMovementObserver::class);
-        
+        Payment::observe(PaymentObserver::class);
+        PaymentAllocation::observe(PaymentAllocationObserver::class);
+        StockMovement::observe(StockMovementObserver::class);
+
         // Totals Automation
-        \App\Models\JobOrderTask::observe(\App\Observers\JobOrderTaskObserver::class);
-        \App\Models\PurchaseOrderItem::observe(\App\Observers\PurchaseOrderItemObserver::class);
-        
+        JobOrderTask::observe(JobOrderTaskObserver::class);
+        PurchaseOrderItem::observe(PurchaseOrderItemObserver::class);
+
         // Accounting Triggers
-        \App\Models\PurchaseOrder::observe(\App\Observers\PurchaseOrderObserver::class);
-        \App\Models\SalesOrder::observe(\App\Observers\SalesOrderObserver::class);
-        
-        \App\Models\Employee::observe(\App\Observers\EmployeeObserver::class);
-        \App\Models\InventoryItem::observe(\App\Observers\InventoryItemObserver::class);
-        \App\Models\Artwork::observe(\App\Observers\ArtworkObserver::class);
+        PurchaseOrder::observe(PurchaseOrderObserver::class);
+        SalesOrder::observe(SalesOrderObserver::class);
+
+        Employee::observe(EmployeeObserver::class);
+        InventoryItem::observe(InventoryItemObserver::class);
+        Artwork::observe(ArtworkObserver::class);
     }
 }

@@ -26,6 +26,7 @@ class JournalEntry extends Model
         'status',
         'posted_at',
         'voided_at',
+        'reversal_of_journal_entry_id',
     ];
 
     /**

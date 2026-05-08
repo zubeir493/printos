@@ -43,6 +43,15 @@
         }
     },
     "scripts": {
+        "deploy": [
+            "@php artisan down --render=\"errors::503\" --retry=60",
+            "composer install --no-dev --optimize-autoloader --no-interaction",
+            "@php artisan migrate --force --no-interaction",
+            "@php artisan optimize",
+            "@php artisan filament:optimize",
+            "@php artisan queue:restart",
+            "@php artisan up"
+        ],
         "setup": [
             "composer install",
             "@php -r \"file_exists('.env') || copy('.env.example', '.env');\"",

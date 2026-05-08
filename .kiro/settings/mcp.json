@@ -8,7 +8,8 @@
       ],
       "autoApprove": [
         "database-schema",
-        "database-query"
+        "database-query",
+        "search-docs"
       ]
     }
   }

@@ -9,7 +9,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class ProductionPlanItem extends Model
 {
     protected $fillable = [
+        'production_plan_id',
         'production_plan_machine_id',
+        'machine_id',
         'job_order_task_id',
         'planned_quantity',
         'planned_plates',

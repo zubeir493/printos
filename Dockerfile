@@ -20,8 +20,8 @@ RUN composer install \
     --no-interaction
 
 COPY . .
-RUN mkdir -p bootstrap/cache \
-    && composer dump-autoload --optimize --no-dev
+RUN mkdir -p bootstrap/cache storage/framework/{sessions,views,cache} storage/logs \
+    && composer dump-autoload --optimize --no-dev --no-scripts
 
 # ============================================================
 # Stage 2 — Node: compile frontend assets

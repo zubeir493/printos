@@ -1,22 +1,6 @@
 # ============================================================
-# Stage 1 — Node: compile frontend assets
-# ============================================================
-FROM node:22-alpine AS assets
-
-WORKDIR /app
-
-COPY package.json package-lock.json ./
-RUN npm ci --no-audit --prefer-offline
-
-COPY vite.config.js ./
-COPY resources/ ./resources/
-COPY public/ ./public/
-
-RUN npm run build
-
-# ============================================================
-# Stage 2 — Composer: install PHP dependencies (no dev)
-# Uses the same PHP image as production so extensions match.
+# Stage 1 — Composer: install PHP dependencies (no dev)
+# Must come first so the assets stage can copy vendor/
 # ============================================================
 FROM php:8.3-fpm-alpine AS vendor
 
@@ -37,6 +21,24 @@ RUN composer install \
 
 COPY . .
 RUN composer dump-autoload --optimize --no-dev
+
+# ============================================================
+# Stage 2 — Node: compile frontend assets
+# Needs vendor/ because Filament theme CSS is resolved from it
+# ============================================================
+FROM node:22-alpine AS assets
+
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+RUN npm ci --no-audit --prefer-offline
+
+COPY vite.config.js ./
+COPY resources/ ./resources/
+COPY public/ ./public/
+COPY --from=vendor /app/vendor ./vendor
+
+RUN npm run build
 
 # ============================================================
 # Stage 3 — Production image

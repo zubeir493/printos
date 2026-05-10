@@ -40,16 +40,16 @@ class BankBalancesChart extends ChartWidget
         }
 
         $colors = [
-            '#0f766e',
-            '#2563eb',
-            '#f59e0b',
-            '#dc2626',
-            '#7c3aed',
-            '#16a34a',
-            '#0891b2',
-            '#db2777',
-            '#ea580c',
-            '#475569',
+            '#6366f1', // Indigo
+            '#0ea5e9', // Sky
+            '#0d9488', // Teal
+            '#059669', // Emerald
+            '#7c3aed', // Violet
+            '#a78bfa', // Light violet
+            '#38bdf8', // Light sky
+            '#2dd4bf', // Light teal
+            '#4f46e5', // Dark indigo
+            '#475569', // Slate
         ];
 
         return [

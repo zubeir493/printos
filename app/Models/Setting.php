@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Storage;
 
 class Setting extends Model
 {
@@ -90,7 +91,9 @@ class Setting extends Model
             'email' => $this->company_email,
             'website' => $this->company_website,
             'tax_id' => $this->company_tax_id,
-            'logo' => $this->company_logo,
+            'logo' => $this->company_logo
+                ? Storage::disk('public')->url($this->company_logo)
+                : null,
         ];
     }
 

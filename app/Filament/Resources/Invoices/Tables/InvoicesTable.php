@@ -24,7 +24,7 @@ class InvoicesTable
                     ->label('Invoice #')
                     ->searchable()
                     ->sortable()
-                    ->description(fn ($record) => 'Generated for '.$record->partner->name)
+                    ->description(fn ($record) => 'Generated for '.($record->partner?->name ?? 'Internal'))
                     ->weight('bold')
                     ->color('primary'),
 

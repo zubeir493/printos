@@ -48,6 +48,11 @@ class DispatchResource extends Resource
             ->recordUrl(fn ($record) => static::getUrl('view', ['record' => $record]));
     }
 
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()->with(['jobOrder.partner']);
+    }
+
     public static function getRelations(): array
     {
         return [

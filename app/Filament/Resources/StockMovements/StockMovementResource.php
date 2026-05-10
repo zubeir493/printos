@@ -6,15 +6,14 @@ namespace App\Filament\Resources\StockMovements;
 use App\Filament\Resources\StockMovements\Pages\ListStockMovements;
 use App\Filament\Resources\StockMovements\Pages\ViewStockMovement;
 use App\Filament\Resources\StockMovements\Schemas\StockMovementForm;
-use App\Filament\Resources\StockMovements\Schemas\StockMovementInfolist;
 use App\Filament\Resources\StockMovements\Tables\StockMovementsTable;
 use App\Models\StockMovement;
 use BackedEnum;
-use Filament\Facades\Filament;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class StockMovementResource extends Resource
 {
@@ -23,6 +22,7 @@ class StockMovementResource extends Resource
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedArrowsRightLeft;
 
     protected static ?string $navigationLabel = 'Movements';
+
     protected static ?string $navigationParentItem = 'Warehouses';
 
     public static function form(Schema $schema): Schema
@@ -38,7 +38,12 @@ class StockMovementResource extends Resource
     public static function table(Table $table): Table
     {
         return StockMovementsTable::configure($table)
-            ->recordUrl(fn($record) => static::getUrl('view', ['record' => $record]));
+            ->recordUrl(fn ($record) => static::getUrl('view', ['record' => $record]));
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()->with(['warehouse']);
     }
 
     public static function getRelations(): array

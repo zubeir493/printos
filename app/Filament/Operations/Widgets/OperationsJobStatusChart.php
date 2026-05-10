@@ -24,7 +24,7 @@ class OperationsJobStatusChart extends ChartWidget
                 [
                     'label' => 'Jobs',
                     'data' => $counts,
-                    'backgroundColor' => ['#9ca3af', '#3b82f6', '#f59e0b', '#10b981', '#ef4444'],
+                    'backgroundColor' => ['#6366f1', '#0ea5e9', '#0d9488', '#059669', '#e11d48'],
                 ],
             ],
             'labels' => ['Draft', 'Design', 'Production', 'Completed', 'Cancelled'],

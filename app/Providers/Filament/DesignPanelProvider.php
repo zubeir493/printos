@@ -33,6 +33,7 @@ class DesignPanelProvider extends PanelProvider
         return $panel
             ->id('design')
             ->path('design')
+            ->authGuard('web')
             ->viteTheme('resources/css/filament/admin/theme.css')
             ->darkMode(false)
             ->defaultThemeMode(ThemeMode::Light)

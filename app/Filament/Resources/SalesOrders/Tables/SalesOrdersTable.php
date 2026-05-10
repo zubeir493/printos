@@ -9,7 +9,6 @@ use App\Services\InvoiceGeneratorService;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\EditAction;
 use Filament\Actions\ExportAction;
 use Filament\Actions\ExportBulkAction;
 use Filament\Notifications\Notification;
@@ -27,7 +26,7 @@ class SalesOrdersTable
                     ->label('Sales Order')
                     ->searchable()
                     ->sortable()
-                    ->description(fn ($record) => $record->partner->name)
+                    ->description(fn ($record) => $record->partner?->name)
                     ->weight('bold')
                     ->color('primary'),
                 TextColumn::make('paid_amount')
@@ -66,8 +65,6 @@ class SalesOrdersTable
                     ->options(Warehouse::orderBy('name')->pluck('name', 'id')->all()),
             ])
             ->recordActions([
-                EditAction::make()
-                    ->visible(fn () => PanelAccess::canManageSalesOrders()),
                 Action::make('invoice')
                     ->label('Invoice')
                     ->icon('heroicon-o-document-text')

@@ -29,6 +29,7 @@ class HrPanelProvider extends PanelProvider
         return $panel
             ->id('hr')
             ->path('hr')
+            ->authGuard('web')
             ->viteTheme('resources/css/filament/admin/theme.css')
             ->darkMode(false)
             ->defaultThemeMode(ThemeMode::Light)

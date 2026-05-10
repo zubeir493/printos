@@ -29,6 +29,7 @@ class RetailPanelProvider extends PanelProvider
         return $panel
             ->id('retail')
             ->path('retail')
+            ->authGuard('web')
             ->viteTheme('resources/css/filament/admin/theme.css')
             ->darkMode(false)
             ->defaultThemeMode(ThemeMode::Light)

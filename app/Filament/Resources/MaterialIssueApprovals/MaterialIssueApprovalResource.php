@@ -10,6 +10,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class MaterialIssueApprovalResource extends Resource
 {
@@ -47,6 +48,15 @@ class MaterialIssueApprovalResource extends Resource
     public static function table(Table $table): Table
     {
         return MaterialIssueApprovalsTable::configure($table);
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()->with([
+            'materialRequest.jobOrderTask.jobOrder',
+            'materialRequest.inventoryItem',
+            'requester',
+        ]);
     }
 
     public static function getPages(): array

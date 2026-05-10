@@ -35,6 +35,7 @@ class ProductionPanelProvider extends PanelProvider
         return $panel
             ->id('production')
             ->path('production')
+            ->authGuard('web')
             ->viteTheme('resources/css/filament/admin/theme.css')
             ->darkMode(false)
             ->defaultThemeMode(ThemeMode::Light)

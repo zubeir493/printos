@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Bank extends Model
@@ -51,20 +50,20 @@ class Bank extends Model
     {
         return (float) $this->payments()
             ->where('direction', 'inbound')
-            ->sum('amount') + 
+            ->sum('amount') +
             (float) $this->transfersTo()
-            ->where('status', 'completed')
-            ->sum('amount');
+                ->where('status', 'completed')
+                ->sum('amount');
     }
 
     public function getTotalOutflowAttribute(): float
     {
         return (float) $this->payments()
             ->where('direction', 'outbound')
-            ->sum('amount') + 
+            ->sum('amount') +
             (float) $this->transfersFrom()
-            ->where('status', 'completed')
-            ->sum('amount');
+                ->where('status', 'completed')
+                ->sum('amount');
     }
 
     public function getExpectedBalanceAttribute(): float

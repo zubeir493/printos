@@ -27,7 +27,7 @@ class WorkforceCompositionChart extends ChartWidget
                 [
                     'label' => 'Employees',
                     'data' => $departments->pluck('employees_count')->all(),
-                    'backgroundColor' => ['#ec4899', '#f97316', '#14b8a6', '#6366f1', '#84cc16', '#64748b'],
+                    'backgroundColor' => ['#6366f1', '#0ea5e9', '#0d9488', '#059669', '#a78bfa', '#475569'],
                 ],
             ],
             'labels' => $departments

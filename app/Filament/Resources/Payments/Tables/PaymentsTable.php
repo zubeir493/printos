@@ -20,7 +20,7 @@ class PaymentsTable
             ->columns([
                 TextColumn::make('payment_number')
                     ->label('Payment')
-                    ->description(fn ($record) => $record->partner->name)
+                    ->description(fn ($record) => $record->partner?->name)
                     ->searchable(),
                 TextColumn::make('amount')
                     ->label('Amount')

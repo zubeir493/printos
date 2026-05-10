@@ -25,7 +25,7 @@ class ArtworkForm
                     ->schema([
                         Select::make('job_order_task_id')
                             ->label('Task / Job Order')
-                            ->relationship('jobOrderTask', 'name')
+                            ->relationship('jobOrderTask', 'name', fn ($query) => $query->with('jobOrder'))
                             ->getOptionLabelFromRecordUsing(fn ($record) => "{$record->name} ({$record->jobOrder->job_order_number})")
                             ->required()
                             ->searchable()

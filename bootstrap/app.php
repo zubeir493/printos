@@ -8,6 +8,7 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
@@ -33,7 +34,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
                     // Avoid infinite redirect if the user still doesn't have access to their home panel
                     if (rtrim($request->getPathInfo(), '/') !== rtrim($redirectPath, '/')) {
-                        return redirect($redirectPath);
+                        return new RedirectResponse(url($redirectPath));
                     }
                 }
             }
@@ -50,14 +51,13 @@ return Application::configure(basePath: dirname(__DIR__))
                             ->warning()
                             ->send();
 
-                        return redirect($redirectPath);
+                        return new RedirectResponse(url($redirectPath));
                     }
                 }
             }
 
             // Handle timeout and connection errors
             if ($e instanceof ConnectionException ||
-                $e instanceof ConnectionException ||
                 $e instanceof RequestException ||
                 str_contains($e->getMessage() ?? '', 'timeout') ||
                 str_contains($e->getMessage() ?? '', 'connection')) {
@@ -68,7 +68,7 @@ return Application::configure(basePath: dirname(__DIR__))
                         ->danger()
                         ->send();
 
-                    return back();
+                    return new RedirectResponse($request->headers->get('referer') ?? url('/'));
                 }
             }
 
@@ -92,7 +92,7 @@ return Application::configure(basePath: dirname(__DIR__))
                         ->danger()
                         ->send();
 
-                    return back();
+                    return new RedirectResponse($request->headers->get('referer') ?? url('/'));
                 }
             }
         });

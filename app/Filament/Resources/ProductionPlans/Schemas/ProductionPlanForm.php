@@ -8,8 +8,8 @@ use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Repeater\TableColumn;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
-use Filament\Schemas\Schema;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
 
 class ProductionPlanForm
 {
@@ -92,7 +92,7 @@ class ProductionPlanForm
                                             'planned_quantity' => 0,
                                             'planned_plates' => 0,
                                             'planned_rounds' => 0,
-                                        ]
+                                        ],
                                     ],
                                 ];
                                 $component->state($state);

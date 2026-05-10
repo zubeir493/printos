@@ -9,10 +9,13 @@ class ProductionPlan extends Model
 {
     protected $fillable = ['week_start', 'week_end', 'status'];
 
-    protected $casts = [
-        'week_start' => 'date',
-        'week_end' => 'date',
-    ];
+    protected function casts(): array
+    {
+        return [
+            'week_start' => 'date',
+            'week_end' => 'date',
+        ];
+    }
 
     public function machines(): HasMany
     {

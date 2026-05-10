@@ -2,9 +2,9 @@
 
 namespace App\Filament\Resources\ProductionReports;
 
-use App\Filament\Resources\ProductionReports\Pages\CreateProductionReport;
 use App\Filament\Resources\ProductionReports\Pages\EditProductionReport;
 use App\Filament\Resources\ProductionReports\Pages\ListProductionReports;
+use App\Filament\Resources\ProductionReports\Pages\ViewProductionReport;
 use App\Filament\Resources\ProductionReports\Schemas\ProductionReportForm;
 use App\Filament\Resources\ProductionReports\Tables\ProductionReportsTable;
 use App\Models\ProductionReport;
@@ -13,6 +13,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class ProductionReportResource extends Resource
 {
@@ -25,12 +26,15 @@ class ProductionReportResource extends Resource
         return ProductionReportForm::configure($schema);
     }
 
-
-
     public static function table(Table $table): Table
     {
         return ProductionReportsTable::configure($table)
-            ->recordUrl(fn($record) => static::getUrl('view', ['record' => $record]));
+            ->recordUrl(fn ($record) => static::getUrl('view', ['record' => $record]));
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()->with(['productionPlan']);
     }
 
     public static function getRelations(): array
@@ -49,7 +53,7 @@ class ProductionReportResource extends Resource
     {
         return [
             'index' => ListProductionReports::route('/'),
-            'view' => \App\Filament\Resources\ProductionReports\Pages\ViewProductionReport::route('/{record}'),
+            'view' => ViewProductionReport::route('/{record}'),
             'edit' => EditProductionReport::route('/{record}/edit'),
         ];
     }

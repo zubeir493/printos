@@ -11,7 +11,9 @@ class Account extends Model
     use HasFactory;
 
     public const CODE_CASH = '1010';
+
     public const CODE_AR = '1200';
+
     public const CODE_AP = '2100';
 
     /**

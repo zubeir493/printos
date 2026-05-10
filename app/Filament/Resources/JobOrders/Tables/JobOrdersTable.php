@@ -70,6 +70,7 @@ class JobOrdersTable
                     ),
                 SelectFilter::make('status')
                     ->options([
+                        'draft' => 'Draft',
                         'active' => 'Active',
                         'completed' => 'Completed',
                         'cancelled' => 'Cancelled',

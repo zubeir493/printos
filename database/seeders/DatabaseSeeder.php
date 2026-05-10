@@ -19,8 +19,9 @@ class DatabaseSeeder extends Seeder
             AccountSeeder::class,
             BankSeeder::class,
             WarehouseSeeder::class,
-            SizeSeeder::class,
             InventoryItemSeeder::class,
+            MachineSeeder::class,
+            PartnerSeeder::class,
             UserSeeder::class,
         ]);
     }

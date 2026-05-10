@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Employee extends Model
@@ -28,14 +29,17 @@ class Employee extends Model
         'account_number',
     ];
 
-    protected $casts = [
-        'hire_date' => 'date',
-        'basic_salary' => 'decimal:2',
-        'hourly_overtime_rate' => 'decimal:2',
-        'holiday_overtime_rate' => 'decimal:2',
-    ];
+    protected function casts(): array
+    {
+        return [
+            'hire_date' => 'date',
+            'basic_salary' => 'decimal:2',
+            'hourly_overtime_rate' => 'decimal:2',
+            'holiday_overtime_rate' => 'decimal:2',
+        ];
+    }
 
-    public function salaryHistories(): \Illuminate\Database\Eloquent\Relations\HasMany
+    public function salaryHistories(): HasMany
     {
         return $this->hasMany(EmployeeSalaryHistory::class);
     }

@@ -13,7 +13,7 @@ class PendingPickListTable extends BaseWidget
 
     protected int | string | array $columnSpan = 1;
 
-    protected static ?string $heading = 'Pending Pick-list';
+    protected static ?string $heading = 'Pending Dispathces';
 
     public function table(Table $table): Table
     {
@@ -25,22 +25,18 @@ class PendingPickListTable extends BaseWidget
                     ->whereHas('inventoryItem', fn ($query) => $query->where('type', 'wip'))
                     ->orderByDesc('quantity_on_hand')
             )
+            ->searchable(false)
             ->columns([
-                Tables\Columns\TextColumn::make('inventoryItem.name')
-                    ->label('WIP Item')
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('inventoryItem.sku')
-                    ->label('SKU')
-                    ->searchable(),
                 Tables\Columns\TextColumn::make('warehouse.name')
                     ->label('Warehouse')
+                    ->searchable(),
+                Tables\Columns\TextColumn::make('inventoryItem.name')
+                    ->label('Item')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('quantity_on_hand')
                     ->label('Available Qty')
                     ->alignEnd()
                     ->formatStateUsing(fn ($state) => number_format((float) $state, 2)),
-                Tables\Columns\TextColumn::make('inventoryItem.unit')
-                    ->label('Unit'),
             ]);
     }
 }

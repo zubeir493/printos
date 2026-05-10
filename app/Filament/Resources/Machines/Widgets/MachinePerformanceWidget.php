@@ -87,14 +87,14 @@ class MachinePerformanceWidget extends ChartWidget
                 [
                     'label' => 'Planned',
                     'data' => $plannedData,
-                    'borderColor' => 'rgb(34, 197, 94)',
-                    'backgroundColor' => 'rgba(34, 197, 94, 0.1)',
+                    'borderColor' => 'rgb(13, 148, 136)',
+                    'backgroundColor' => 'rgba(13, 148, 136, 0.1)',
                 ],
                 [
                     'label' => 'Reported',
                     'data' => $reportedData,
-                    'borderColor' => 'rgb(249, 115, 22)',
-                    'backgroundColor' => 'rgba(249, 115, 22, 0.1)',
+                    'borderColor' => 'rgb(14, 165, 233)',
+                    'backgroundColor' => 'rgba(14, 165, 233, 0.1)',
                 ],
             ],
             'labels' => $weeks,

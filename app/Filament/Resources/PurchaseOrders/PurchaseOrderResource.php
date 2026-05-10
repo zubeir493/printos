@@ -5,6 +5,9 @@ namespace App\Filament\Resources\PurchaseOrders;
 use App\Filament\Resources\PurchaseOrders\Pages\CreatePurchaseOrder;
 use App\Filament\Resources\PurchaseOrders\Pages\EditPurchaseOrder;
 use App\Filament\Resources\PurchaseOrders\Pages\ListPurchaseOrders;
+use App\Filament\Resources\PurchaseOrders\Pages\ViewPurchaseOrder;
+use App\Filament\Resources\PurchaseOrders\RelationManagers\GoodsReceiptsRelationManager;
+use App\Filament\Resources\PurchaseOrders\RelationManagers\PaymentsRelationManager;
 use App\Filament\Resources\PurchaseOrders\Schemas\PurchaseOrderForm;
 use App\Filament\Resources\PurchaseOrders\Tables\PurchaseOrdersTable;
 use App\Filament\Support\PanelAccess;
@@ -14,6 +17,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class PurchaseOrderResource extends Resource
 {
@@ -35,6 +39,7 @@ class PurchaseOrderResource extends Resource
     {
         // Count only active purchase orders (exclude received and cancelled)
         $count = static::getModel()::whereNotIn('status', ['received', 'cancelled'])->count();
+
         return $count > 0 ? (string) $count : null;
     }
 
@@ -43,22 +48,25 @@ class PurchaseOrderResource extends Resource
         return PurchaseOrderForm::configure($schema);
     }
 
-
-
     public static function table(Table $table): Table
     {
         return PurchaseOrdersTable::configure($table)
-            ->recordUrl(fn($record) => static::getUrl('view', ['record' => $record]));
+            ->recordUrl(fn ($record) => static::getUrl('view', ['record' => $record]));
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()->with(['partner']);
     }
 
     public static function getRelations(): array
     {
         $relations = [
-            \App\Filament\Resources\PurchaseOrders\RelationManagers\GoodsReceiptsRelationManager::class,
+            GoodsReceiptsRelationManager::class,
         ];
 
         if (PanelAccess::canAccessFinanceSection()) {
-            $relations[] = \App\Filament\Resources\PurchaseOrders\RelationManagers\PaymentsRelationManager::class;
+            $relations[] = PaymentsRelationManager::class;
         }
 
         return $relations;
@@ -69,7 +77,7 @@ class PurchaseOrderResource extends Resource
         return [
             'index' => ListPurchaseOrders::route('/'),
             'create' => CreatePurchaseOrder::route('/create'),
-            'view' => \App\Filament\Resources\PurchaseOrders\Pages\ViewPurchaseOrder::route('/{record}'),
+            'view' => ViewPurchaseOrder::route('/{record}'),
             'edit' => EditPurchaseOrder::route('/{record}/edit'),
         ];
     }
@@ -84,6 +92,7 @@ class PurchaseOrderResource extends Resource
             // We recalculate here to be safe, or just use $item['total']
             $qty = (float) ($item['quantity'] ?? 0);
             $price = (float) ($item['unit_price'] ?? 0);
+
             return $carry + ($qty * $price);
         }, 0);
 

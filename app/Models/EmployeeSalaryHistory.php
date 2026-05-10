@@ -19,12 +19,15 @@ class EmployeeSalaryHistory extends Model
         'change_reason',
     ];
 
-    protected $casts = [
-        'effective_date' => 'date',
-        'basic_salary' => 'decimal:2',
-        'hourly_overtime_rate' => 'decimal:2',
-        'holiday_overtime_rate' => 'decimal:2',
-    ];
+    protected function casts(): array
+    {
+        return [
+            'effective_date' => 'date',
+            'basic_salary' => 'decimal:2',
+            'hourly_overtime_rate' => 'decimal:2',
+            'holiday_overtime_rate' => 'decimal:2',
+        ];
+    }
 
     public function employee(): BelongsTo
     {

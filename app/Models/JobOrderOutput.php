@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class JobOrderOutput extends Model
@@ -40,6 +39,7 @@ class JobOrderOutput extends Model
     {
         return $this->belongsTo(Warehouse::class);
     }
+
     protected static function booted()
     {
         static::created(function ($output) {

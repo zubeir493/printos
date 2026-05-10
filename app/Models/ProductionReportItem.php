@@ -16,9 +16,12 @@ class ProductionReportItem extends Model
         'rounds',
     ];
 
-    protected $casts = [
-        'date' => 'date',
-    ];
+    protected function casts(): array
+    {
+        return [
+            'date' => 'date',
+        ];
+    }
 
     public function productionReportMachine(): BelongsTo
     {

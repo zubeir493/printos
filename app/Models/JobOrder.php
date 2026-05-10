@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Observers\JobOrderObserver;
+use App\States\JobOrder\JobOrderState;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -12,11 +13,24 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Support\Collection;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\ModelStates\HasStates;
 
 #[ObservedBy(JobOrderObserver::class)]
 class JobOrder extends Model
 {
     use HasFactory;
+    use HasStates;
+    use LogsActivity;
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logAll()
+            ->logOnlyDirty()
+            ->useLogName('job_order');
+    }
 
     /**
      * The attributes that are mass assignable.
@@ -41,11 +55,6 @@ class JobOrder extends Model
         'status',
     ];
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
     protected function casts(): array
     {
         return [
@@ -59,6 +68,7 @@ class JobOrder extends Model
             'total' => 'decimal:2',
             'services' => 'json',
             'advance_paid' => 'boolean',
+            'status' => JobOrderState::class,
         ];
     }
 
@@ -282,6 +292,13 @@ class JobOrder extends Model
                 'remaining' => $remaining,
                 'overconsumed' => $overconsumed,
                 'completion' => round($completion, 2),
+                // Purchase-unit display fields
+                'purchase_unit' => $item->hasPurchaseUnit() ? $item->purchase_unit : $item->unit,
+                'remaining_purchase_qty' => $item->hasPurchaseUnit()
+                    ? round($item->toPurchaseUnits($remaining), 4)
+                    : $remaining,
+                'price_per_purchase_unit' => $item->pricePerPurchaseUnit(),
+                'inventory_item_id' => $itemId,
             ];
         }
 

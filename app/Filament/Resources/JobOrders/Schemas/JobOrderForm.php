@@ -38,6 +38,14 @@ class JobOrderForm
                     ->schema([
                         Grid::make()
                             ->schema([
+                                Select::make('production_mode')
+                                    ->options([
+                                        'make_to_order' => 'Client Job',
+                                        'make_to_stock' => 'Internal Job',
+                                    ])
+                                    ->default('make_to_order')
+                                    ->live()
+                                    ->required(),
                                 Select::make('partner_id')
                                     ->label('Customer')
                                     ->relationship('partner', 'name', modifyQueryUsing: fn ($query) => $query->where('is_customer', true))
@@ -53,7 +61,8 @@ class JobOrderForm
                                     ])
                                     ->preload()
                                     ->searchable()
-                                    ->required(),
+                                    ->required(fn (UtilitiesGet $get) => $get('production_mode') !== 'make_to_stock')
+                                    ->hidden(fn (UtilitiesGet $get) => $get('production_mode') === 'make_to_stock'),
                                 TextInput::make('job_order_number')
                                     ->label('Job Order #')
                                     ->default(function () {
@@ -77,17 +86,6 @@ class JobOrderForm
                                     ->reactive()
                                     ->default('packages')
                                     ->required(),
-                            ])
-                            ->columns(3),
-                        Grid::make()
-                            ->schema([
-                                Select::make('production_mode')
-                                    ->options([
-                                        'make_to_order' => 'Client Job',
-                                        'make_to_stock' => 'Internal Job',
-                                    ])
-                                    ->default('make_to_order')
-                                    ->required(),
                                 DatePicker::make('submission_date')
                                     ->default(now())
                                     ->required(),
@@ -109,16 +107,8 @@ class JobOrderForm
                                     ->required()
                                     ->numeric(),
 
-                                Select::make('size')
-                                    ->label('Size')
-                                    ->preload()
-                                    ->relationship('sizeItem', 'size')
-                                    ->createOptionForm([
-                                        TextInput::make('size')
-                                            ->required(),
-                                    ])
-                                    ->searchable()
-                                    ->required(),
+                                TextInput::make('size')
+                                    ->label('Size'),
 
                                 TextInput::make('task_cost')
                                     ->label('Cost')
@@ -383,12 +373,34 @@ class JobOrderForm
                 Section::make()
                     ->schema([
                         Select::make('status')
-                            ->options([
-                                'draft' => 'Draft',
-                                'active' => 'Active',
-                                'completed' => 'Completed',
-                                'cancelled' => 'Cancelled',
-                            ])
+                            ->options(function ($record) {
+                                $all = [
+                                    'draft' => 'Draft',
+                                    'active' => 'Active',
+                                    'completed' => 'Completed',
+                                    'cancelled' => 'Cancelled',
+                                ];
+
+                                if (! $record) {
+                                    return ['draft' => 'Draft'];
+                                }
+
+                                $current = (string) $record->status;
+                                $allowed = [$current => $all[$current]];
+
+                                $transitions = [
+                                    'draft' => ['active', 'cancelled'],
+                                    'active' => ['completed', 'cancelled'],
+                                    'completed' => [],
+                                    'cancelled' => [],
+                                ];
+
+                                foreach ($transitions[$current] ?? [] as $next) {
+                                    $allowed[$next] = $all[$next];
+                                }
+
+                                return $allowed;
+                            })
                             ->default('draft')
                             ->helperText('Status of the overall job order.')
                             ->required(),

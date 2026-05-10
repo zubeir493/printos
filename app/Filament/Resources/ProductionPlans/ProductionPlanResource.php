@@ -5,6 +5,7 @@ namespace App\Filament\Resources\ProductionPlans;
 use App\Filament\Resources\ProductionPlans\Pages\CreateProductionPlan;
 use App\Filament\Resources\ProductionPlans\Pages\EditProductionPlan;
 use App\Filament\Resources\ProductionPlans\Pages\ListProductionPlans;
+use App\Filament\Resources\ProductionPlans\Pages\ViewProductionPlan;
 use App\Filament\Resources\ProductionPlans\Schemas\ProductionPlanForm;
 use App\Filament\Resources\ProductionPlans\Tables\ProductionPlansTable;
 use App\Models\ProductionPlan;
@@ -25,12 +26,10 @@ class ProductionPlanResource extends Resource
         return ProductionPlanForm::configure($schema);
     }
 
-
-
     public static function table(Table $table): Table
     {
         return ProductionPlansTable::configure($table)
-            ->recordUrl(fn($record) => static::getUrl('view', ['record' => $record]));
+            ->recordUrl(fn ($record) => static::getUrl('view', ['record' => $record]));
     }
 
     public static function getRelations(): array
@@ -45,7 +44,7 @@ class ProductionPlanResource extends Resource
         return [
             'index' => ListProductionPlans::route('/'),
             'create' => CreateProductionPlan::route('/create'),
-            'view' => \App\Filament\Resources\ProductionPlans\Pages\ViewProductionPlan::route('/{record}'),
+            'view' => ViewProductionPlan::route('/{record}'),
             'edit' => EditProductionPlan::route('/{record}/edit'),
         ];
     }

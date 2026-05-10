@@ -2,11 +2,10 @@
 
 namespace App\Services;
 
-use App\Models\InventoryItem;
-use App\Models\Warehouse;
 use App\Models\InventoryBalance;
+use App\Models\InventoryItem;
 use App\Models\StockMovement;
-use Illuminate\Support\Facades\DB;
+use App\Models\Warehouse;
 
 class InventoryService
 {
@@ -43,7 +42,7 @@ class InventoryService
         $item = InventoryItem::findOrFail($itemId);
         $warehouse = Warehouse::findOrFail($warehouseId);
 
-        $factor = (float)($item->conversion_factor ?: 1);
+        $factor = (float) ($item->conversion_factor ?: 1);
         $baseQuantity = $purchaseQuantity * $factor;
         $baseUnitPrice = $purchaseUnitPrice / $factor;
 
@@ -98,14 +97,15 @@ class InventoryService
             'warehouse_id' => $warehouseId,
         ])->first();
 
-        if (!$balance || $balance->quantity_on_hand < $quantity) {
-             throw new \Exception("Insufficient stock for {$item->name} in the selected warehouse.");
+        if (! $balance || $balance->quantity_on_hand < $quantity) {
+            throw new \Exception("Insufficient stock for {$item->name} in the selected warehouse.");
         }
 
-        $unitCost = (float)($item->price ?? 0);
-        if ($item->type === 'raw_material' && (float)($item->conversion_factor ?? 0) > 0) {
-            $unitCost = $unitCost / (float)$item->conversion_factor;
-        }
+        $unitCost = $item->hasPurchaseUnit()
+            ? ((float) ($item->average_cost ?? 0) > 0
+                ? (float) $item->average_cost
+                : (float) ($item->price ?? 0) / (float) $item->conversion_factor)
+            : (float) ($item->average_cost > 0 ? $item->average_cost : ($item->price ?? 0));
 
         return $this->createMovement(
             $item,

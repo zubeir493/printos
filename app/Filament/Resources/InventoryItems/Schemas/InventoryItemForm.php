@@ -4,15 +4,13 @@ namespace App\Filament\Resources\InventoryItems\Schemas;
 
 use App\Filament\Support\PanelAccess;
 use App\Support\PrivateStorage;
+use Filament\Forms\Components\BaseFileUpload;
 use Filament\Forms\Components\FileUpload;
-use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
-use Filament\Forms\Get;
 use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Section;
-use Filament\Schemas\Components\Utilities\Get as UtilitiesGet;
 use Filament\Schemas\Schema;
 
 class InventoryItemForm
@@ -54,21 +52,24 @@ class InventoryItemForm
                         ->default('quran'),
                     TextInput::make('purchase_unit')
                         ->label('Purchase Unit')
-                        ->hidden(fn($get) => $get('type') !== 'raw_material'),
+                        ->hidden(fn ($get) => $get('type') !== 'raw_material'),
                     TextInput::make('conversion_factor')
                         ->numeric()
-                        ->hidden(fn($get) => $get('type') !== 'raw_material'),
+                        ->hidden(fn ($get) => $get('type') !== 'raw_material'),
                     TextInput::make('price')
                         ->label('Price / Value')
-                        ->helperText('Selling price for finished goods, or stock value per unit for raw materials.')
+                        ->helperText(fn ($get) => $get('type') === 'raw_material' && filled($get('purchase_unit'))
+                            ? 'Price per '.($get('purchase_unit') ?: 'purchase unit').' (e.g. per ream, per kg).'
+                            : 'Selling price for finished goods, or stock value per base unit for raw materials.'
+                        )
                         ->numeric()
                         ->hidden(fn ($get) => in_array($get('type'), ['tools', 'spare_parts']) || ! PanelAccess::canSeeMoneyValues())
-                        ->required(fn ($get) => !in_array($get('type'), ['tools', 'spare_parts']) && PanelAccess::canSeeMoneyValues())
+                        ->required(fn ($get) => ! in_array($get('type'), ['tools', 'spare_parts']) && PanelAccess::canSeeMoneyValues())
                         ->suffix('Birr')
                         ->dehydratedWhenHidden(),
                     Toggle::make('is_sellable')
                         ->label('Is Sellable')
-                        ->hidden(fn($get) => in_array($get('type'), ['tools', 'spare_parts']))
+                        ->hidden(fn ($get) => in_array($get('type'), ['tools', 'spare_parts']))
                         ->default(false),
                 ])->columnSpan(4)->columns(2),
                 Group::make([
@@ -79,14 +80,14 @@ class InventoryItemForm
                         ->maxSize(1024)
                         ->disk('s3')
                         ->visibility('private')
-                        ->getUploadedFileUsing(fn (\Filament\Forms\Components\BaseFileUpload $component, string $file, string | array | null $storedFileNames): ?array => PrivateStorage::uploadedFileInfo($component, $file, $storedFileNames))
+                        ->getUploadedFileUsing(fn (BaseFileUpload $component, string $file, string|array|null $storedFileNames): ?array => PrivateStorage::uploadedFileInfo($component, $file, $storedFileNames))
                         ->getOpenableFileUrlUsing(fn (string $file): ?string => PrivateStorage::url($file))
                         ->getDownloadableFileUrlUsing(fn (string $file): ?string => PrivateStorage::downloadUrl($file))
                         ->directory('inventory/items')
                         ->previewable(false)
                         ->hiddenOn('view')
-                        ->hidden(fn($get) => $get('type') === 'spare_parts'),
-                ])->columnSpan(2)
+                        ->hidden(fn ($get) => $get('type') === 'spare_parts'),
+                ])->columnSpan(2),
             ])->columns(6);
     }
 }

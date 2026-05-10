@@ -49,12 +49,12 @@ class MachineEfficiencyChart extends ChartWidget
                 [
                     'label' => 'Planned Quantity',
                     'data' => $labels->map(fn ($label) => (float) ($planned[$label] ?? 0))->all(),
-                    'backgroundColor' => '#2563eb',
+                    'backgroundColor' => '#6366f1',
                 ],
                 [
                     'label' => 'Actual Quantity',
                     'data' => $labels->map(fn ($label) => (float) ($actual[$label] ?? 0))->all(),
-                    'backgroundColor' => '#f59e0b',
+                    'backgroundColor' => '#0d9488',
                 ],
             ],
             'labels' => $labels->all(),

@@ -38,12 +38,12 @@ class ExpectedCashflowChart extends ChartWidget
                 [
                     'label' => 'Est. Inflows (SO)',
                     'data' => $inflows,
-                    'backgroundColor' => '#10b981',
+                    'backgroundColor' => '#059669',
                 ],
                 [
                     'label' => 'Est. Outflows (PO)',
                     'data' => $outflows,
-                    'backgroundColor' => '#ef4444',
+                    'backgroundColor' => '#e11d48',
                 ],
             ],
             'labels' => $labels,

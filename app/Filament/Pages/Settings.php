@@ -5,6 +5,7 @@ namespace App\Filament\Pages;
 use App\Models\Setting;
 use BackedEnum;
 use Filament\Actions\Action;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -48,6 +49,14 @@ class Settings extends Page implements HasForms
                             ->label('Company Name')
                             ->required()
                             ->placeholder('Your Company Name'),
+                        FileUpload::make('company_logo')
+                            ->label('Company Logo')
+                            ->image()
+                            ->disk('public')
+                            ->directory('logos')
+                            ->visibility('public')
+                            ->imagePreviewHeight('80')
+                            ->helperText('Used on invoices and receipts. Recommended: square PNG, max 200×200px.'),
                         Textarea::make('company_address')
                             ->label('Address')
                             ->rows(3)

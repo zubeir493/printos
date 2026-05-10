@@ -29,12 +29,12 @@ class LogisticsPulseChart extends ChartWidget
                 [
                     'label' => 'Inbound (Goods Receipts)',
                     'data' => $inbound,
-                    'backgroundColor' => '#3b82f6', // Blue
+                    'backgroundColor' => '#6366f1', // Indigo
                 ],
                 [
                     'label' => 'Outbound (Dispatches)',
                     'data' => $outbound,
-                    'backgroundColor' => '#10b981', // Emerald
+                    'backgroundColor' => '#0d9488', // Teal
                 ],
             ],
             'labels' => $labels,

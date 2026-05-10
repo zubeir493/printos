@@ -72,22 +72,30 @@ class PurchaseOrderForm
                         Repeater::make('purchaseOrderItems')
                             ->relationship('purchaseOrderItems')
                             ->table([
-                                TableColumn::make('Item')->width('200px')->alignLeft(),
-                                TableColumn::make('Qty')->alignLeft(),
-                                TableColumn::make('Unit Price')->alignLeft(),
-                                TableColumn::make('Total')->alignLeft(),
+                                TableColumn::make('Item')->width('250px')->alignLeft(),
+                                TableColumn::make('Qty')->width('160px')->alignLeft(),
+                                TableColumn::make('Unit Price')->width('160px')->alignLeft(),
+                                TableColumn::make('Total')->width('160px')->alignLeft(),
                             ])
                             ->compact()
                             ->schema([
                                 Select::make('inventory_item_id')
-                                    ->relationship('inventoryItem', 'name', fn ($query) => $query->select('id', 'name', 'purchase_unit'))
+                                    ->relationship('inventoryItem', 'name', fn ($query) => $query->select('id', 'name', 'purchase_unit', 'unit', 'average_cost', 'price', 'conversion_factor'))
                                     ->searchable()
                                     ->preload()
                                     ->required()
                                     ->live()
+                                    ->getOptionLabelUsing(fn ($value) => \Illuminate\Support\Str::limit(
+                                        \App\Models\InventoryItem::find($value)?->name ?? '',
+                                        30
+                                    ))
                                     ->afterStateUpdated(function ($state, callable $set) {
-                                        $unit = InventoryItem::find($state)?->purchase_unit ?? '';
-                                        $set('unit_label', $unit);
+                                        $item = InventoryItem::find($state);
+                                        if (! $item) {
+                                            return;
+                                        }
+                                        $set('unit_label', $item->hasPurchaseUnit() ? $item->purchase_unit : ($item->unit ?? 'unit'));
+                                        $set('unit_price', $item->pricePerPurchaseUnit());
                                     })
                                     ->dehydrated(),
 
@@ -95,7 +103,7 @@ class PurchaseOrderForm
                                     ->numeric()
                                     ->required()
                                     ->live()
-                                    ->suffix(fn ($get) => $get('unit_label') ?? '')
+                                    ->suffix(fn ($get) => $get('unit_label') ?: 'unit')
                                     ->afterStateUpdated(function ($set, $get, $state) {
                                         $set('total', (float) ($state ?? 0) * (float) ($get('unit_price') ?? 0));
                                         Calculations::updateSubtotal($get, $set, '../../purchaseOrderItems', '../../subtotal');
@@ -132,6 +140,19 @@ class PurchaseOrderForm
                                     ->readOnly()
                                     ->dehydrated()
                                     ->suffix('Birr'),
+
+                                Hidden::make('unit_label')
+                                    ->default('unit')
+                                    ->afterStateHydrated(function ($set, $get) {
+                                        $itemId = $get('inventory_item_id');
+                                        if (! $itemId) {
+                                            return;
+                                        }
+                                        $item = InventoryItem::find($itemId);
+                                        if ($item) {
+                                            $set('unit_label', $item->hasPurchaseUnit() ? $item->purchase_unit : ($item->unit ?? 'unit'));
+                                        }
+                                    }),
                             ])
                             ->columns(5)
                             ->live()
@@ -171,6 +192,7 @@ class PurchaseOrderForm
                                             'quantity' => 0,
                                             'unit_price' => 0,
                                             'total' => 0,
+                                            'unit_label' => 'unit',
                                         ];
                                         $component->state($state);
                                     }),
@@ -193,7 +215,6 @@ class PurchaseOrderForm
                         DatePicker::make('due_date')
                             ->label('Payment Due Date')
                             ->default(fn () => now()->addDays(30))
-                            ->helperText('Set the payment due date for this job order')
                             ->required(),
                         TextInput::make('subtotal')
                             ->numeric()

@@ -25,8 +25,8 @@ class RetailDemandChart extends ChartWidget
                             ->whereDate('order_date', today()->subDays($daysAgo))
                             ->sum('total'))
                         ->all(),
-                    'borderColor' => '#f43f5e',
-                    'backgroundColor' => 'rgba(244, 63, 94, 0.15)',
+                    'borderColor' => '#6366f1',
+                    'backgroundColor' => 'rgba(99, 102, 241, 0.15)',
                     'fill' => true,
                     'tension' => 0.35,
                 ],

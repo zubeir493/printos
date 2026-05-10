@@ -41,6 +41,7 @@ class OperationsPanelProvider extends PanelProvider
         return $panel
             ->id('operations')
             ->path('operations')
+            ->authGuard('web')
             ->viteTheme('resources/css/filament/admin/theme.css')
             ->darkMode(false)
             ->defaultThemeMode(ThemeMode::Light)

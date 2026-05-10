@@ -1,59 +1,93 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# PrintOS
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+A production-ready ERP system built for printing companies. Manages the full lifecycle from job order intake through production, materials, dispatch, and invoicing — across multiple role-based panels.
 
-## About Laravel
+## Tech Stack
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- **PHP 8.3** / **Laravel 12**
+- **Filament 5** — admin UI framework
+- **Livewire 4** / **Alpine.js**
+- **MySQL 8** — primary database
+- **Redis 7** — cache, sessions, queues
+- **Tailwind CSS v4**
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Panels & Roles
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+| Panel | Role | Access |
+|---|---|---|
+| `/` | Admin | Full access to all modules |
+| `/design` | Design | Artworks, job order tasks, design workflow |
+| `/production` | Production | Tasks in production status, machines, production plans |
+| `/operations` | Operations | Job orders, dispatches, purchase orders, material management |
+| `/warehouse` | Warehouse | Inventory, stock movements, goods receipts, dispatches |
+| `/finance` | Finance | Payments, invoices, journal entries, financial reports |
+| `/sales` | Sales | Sales orders, customer management |
+| `/retail` | Retail | Point-of-sale sales orders |
+| `/hr` | HR | Employee management, salary tracking |
 
-## Learning Laravel
+All roles log in from the main `/login` page and are redirected to their panel automatically.
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+## Core Modules
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+**Job Orders** — Client and internal jobs with task breakdown, artwork approval workflow, material requirements, and state machine enforcement (Draft → Active → Completed/Cancelled).
 
-## Laravel Sponsors
+**Inventory & Warehouse** — Raw materials with purchase/base unit conversion (e.g. reams → sheets), stock movements, warehouse transfers, goods receipts, stock adjustments.
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+**Procurement** — Purchase orders with one-click generation from job order material shortages, unit-aware pricing, goods receipt workflow.
 
-### Premium Partners
+**Finance** — Payments, payment allocations (polymorphic across job orders and sales orders), invoices with PDF generation, journal entries, bank transfers, financial reports (P&L, balance sheet, general ledger, aging).
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+**Production** — Production plans, machine efficiency tracking, production reports.
 
-## Contributing
+**Dispatch** — Outbound dispatch management linked to job orders.
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+**HR** — Employee records, salary history, overtime rates.
 
-## Code of Conduct
+## Getting Started
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+### Local (Laravel Herd / Valet)
 
-## Security Vulnerabilities
+```bash
+composer install
+npm install && npm run build
+cp .env.example .env
+php artisan key:generate
+php artisan migrate
+php artisan db:seed
+php artisan storage:link
+```
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+### Docker (VPS / Production)
+
+```bash
+cp .env.docker .env
+# Edit .env — set APP_KEY, DB_PASSWORD, REDIS_PASSWORD, APP_URL
+php artisan key:generate --show   # paste output into APP_KEY
+docker compose up -d
+```
+
+The entrypoint automatically runs migrations, links storage, and warms caches on startup.
+
+### First Login
+
+After seeding, log in with the credentials from `database/seeders/UserSeeder.php`. The admin user has full access to all panels.
+
+## Environment Variables
+
+Key variables to configure for production:
+
+| Variable | Description |
+|---|---|
+| `APP_KEY` | Laravel encryption key — generate with `php artisan key:generate --show` |
+| `APP_URL` | Full URL including scheme, e.g. `https://printos.example.com` |
+| `DB_*` | MySQL connection details |
+| `REDIS_PASSWORD` | Redis auth password |
+| `SESSION_SECURE_COOKIE` | Set to `true` when running behind HTTPS |
+| `FILESYSTEM_DISK` | `local` for VPS storage, `s3` for object storage |
+| `PRIVATE_FILESYSTEM_DISK` | Disk for private files (artworks, invoices, text files) |
+| `AWS_*` | S3-compatible storage credentials (Backblaze B2, AWS, etc.) |
+| `MAIL_*` | SMTP credentials for invoice and artwork emails |
 
 ## License
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Proprietary. All rights reserved.

@@ -2,17 +2,16 @@
 
 namespace App\Filament\Resources\PaymentAllocations;
 
-use App\Filament\Resources\PaymentAllocations\Pages\CreatePaymentAllocation;
 use App\Filament\Resources\PaymentAllocations\Pages\ListPaymentAllocations;
+use App\Filament\Resources\PaymentAllocations\Pages\ViewPaymentAllocation;
 use App\Filament\Resources\PaymentAllocations\Schemas\PaymentAllocationForm;
 use App\Filament\Resources\PaymentAllocations\Tables\PaymentAllocationsTable;
 use App\Models\PaymentAllocation;
-use BackedEnum;
 use Filament\Facades\Filament;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class PaymentAllocationResource extends Resource
 {
@@ -40,7 +39,12 @@ class PaymentAllocationResource extends Resource
     public static function table(Table $table): Table
     {
         return PaymentAllocationsTable::configure($table)
-            ->recordUrl(fn($record) => static::getUrl('view', ['record' => $record]));
+            ->recordUrl(fn ($record) => static::getUrl('view', ['record' => $record]));
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()->with(['payment.partner', 'allocatable']);
     }
 
     public static function getRelations(): array
@@ -54,7 +58,7 @@ class PaymentAllocationResource extends Resource
     {
         return [
             'index' => ListPaymentAllocations::route('/'),
-            'view' => \App\Filament\Resources\PaymentAllocations\Pages\ViewPaymentAllocation::route('/{record}'),
+            'view' => ViewPaymentAllocation::route('/{record}'),
         ];
     }
 }

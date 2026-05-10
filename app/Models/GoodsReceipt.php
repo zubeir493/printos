@@ -2,10 +2,11 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
-
 use App\Observers\GoodsReceiptObserver;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[ObservedBy(GoodsReceiptObserver::class)]
 class GoodsReceipt extends Model
@@ -19,17 +20,25 @@ class GoodsReceipt extends Model
         'posted_at',
     ];
 
-    public function purchaseOrder()
+    protected function casts(): array
+    {
+        return [
+            'receipt_date' => 'date',
+            'posted_at' => 'datetime',
+        ];
+    }
+
+    public function purchaseOrder(): BelongsTo
     {
         return $this->belongsTo(PurchaseOrder::class);
     }
 
-    public function warehouse()
+    public function warehouse(): BelongsTo
     {
         return $this->belongsTo(Warehouse::class);
     }
 
-    public function items()
+    public function items(): HasMany
     {
         return $this->hasMany(GoodsReceiptItem::class);
     }

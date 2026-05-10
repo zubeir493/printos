@@ -29,6 +29,7 @@ class SalesPanelProvider extends PanelProvider
         return $panel
             ->id('sales')
             ->path('sales')
+            ->authGuard('web')
             ->viteTheme('resources/css/filament/admin/theme.css')
             ->darkMode(false)
             ->defaultThemeMode(ThemeMode::Light)

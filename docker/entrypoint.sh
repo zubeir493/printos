@@ -4,6 +4,9 @@ set -e
 echo "==> Running migrations..."
 php artisan migrate --force --no-interaction
 
+echo "==> Linking public storage..."
+php artisan storage:link --force
+
 echo "==> Caching configuration..."
 php artisan optimize
 php artisan filament:optimize

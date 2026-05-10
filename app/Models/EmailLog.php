@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class EmailLog extends Model
 {
@@ -15,16 +16,19 @@ class EmailLog extends Model
         'sent_at',
     ];
 
-    protected $casts = [
-        'sent_at' => 'datetime',
-    ];
+    protected function casts(): array
+    {
+        return [
+            'sent_at' => 'datetime',
+        ];
+    }
 
-    public function artwork()
+    public function artwork(): BelongsTo
     {
         return $this->belongsTo(Artwork::class);
     }
 
-    public function sender()
+    public function sender(): BelongsTo
     {
         return $this->belongsTo(User::class, 'sent_by');
     }

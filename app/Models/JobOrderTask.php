@@ -6,7 +6,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use App\Models\Size;
 
 class JobOrderTask extends Model
 {
@@ -54,7 +53,7 @@ class JobOrderTask extends Model
         return $this->belongsTo(User::class, 'designer_id');
     }
 
-    public function dispatchItems(): \Illuminate\Database\Eloquent\Relations\HasMany
+    public function dispatchItems(): HasMany
     {
         return $this->hasMany(DispatchItem::class);
     }
@@ -64,13 +63,9 @@ class JobOrderTask extends Model
         return $this->hasMany(ProductionPlanItem::class);
     }
 
-    public function sizeItem(): BelongsTo
-    {
-        return $this->belongsTo(Size::class, 'size');
-    }
     public function getProducedQuantityAttribute(): int|float
     {
-        return (float) \App\Models\StockMovement::where('reference_type', static::class)
+        return (float) StockMovement::where('reference_type', static::class)
             ->where('reference_id', $this->id)
             ->where('type', 'production_output')
             ->sum('quantity');
@@ -81,12 +76,12 @@ class JobOrderTask extends Model
         return $this->produced_quantity - $this->dispatchItems()->sum('quantity');
     }
 
-    public function materialRequests(): \Illuminate\Database\Eloquent\Relations\HasMany
+    public function materialRequests(): HasMany
     {
         return $this->hasMany(MaterialRequest::class);
     }
 
-    public function artworks(): \Illuminate\Database\Eloquent\Relations\HasMany
+    public function artworks(): HasMany
     {
         return $this->hasMany(Artwork::class);
     }

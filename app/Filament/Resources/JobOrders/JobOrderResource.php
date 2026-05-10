@@ -14,11 +14,13 @@ use App\Filament\Support\PanelAccess;
 use App\Models\JobOrder;
 use App\Models\JobOrderTask;
 use BackedEnum;
+use Filament\GlobalSearch\Actions\Action;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 
 class JobOrderResource extends Resource
 {
@@ -27,6 +29,18 @@ class JobOrderResource extends Resource
     protected static bool $canCreateAnother = false;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBriefcase;
+
+    public static function getGlobalSearchActions(Model $record): array
+    {
+        return [
+            Action::make('view')
+                ->label('View')
+                ->url(static::getUrl('view', ['record' => $record])),
+            Action::make('edit')
+                ->label('Edit')
+                ->url(static::getUrl('edit', ['record' => $record])),
+        ];
+    }
 
     public static function canCreate(): bool
     {
@@ -95,9 +109,14 @@ class JobOrderResource extends Resource
     {
         return [
             'Customer' => $record->partner?->name,
-            'Status' => ucfirst($record->status),
+            'Status' => ucfirst((string) $record->status),
             'Total' => number_format($record->total, 2).' Birr',
         ];
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()->with(['partner']);
     }
 
     public static function getGlobalSearchEloquentQuery(): Builder

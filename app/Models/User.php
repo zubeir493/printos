@@ -62,6 +62,13 @@ class User extends Authenticatable implements FilamentUser
             return false;
         }
 
+        // Allow all roles to authenticate via the admin panel login.
+        // RedirectToCorrectPanel middleware will send non-admin users
+        // to their own panel immediately after login.
+        if ($panel->getId() === 'admin') {
+            return true;
+        }
+
         return $this->role->canAccessPanel($panel);
     }
 

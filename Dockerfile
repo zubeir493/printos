@@ -16,8 +16,14 @@ RUN npm run build
 
 # ============================================================
 # Stage 2 — Composer: install PHP dependencies (no dev)
+# Uses the same PHP image as production so extensions match.
 # ============================================================
-FROM composer:2 AS vendor
+FROM php:8.3-fpm-alpine AS vendor
+
+RUN apk add --no-cache libzip-dev icu-dev oniguruma-dev \
+    && docker-php-ext-install zip intl mbstring
+
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /app
 

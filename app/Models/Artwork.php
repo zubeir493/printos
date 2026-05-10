@@ -6,6 +6,7 @@ use App\Support\PrivateStorage;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOneThrough;
 
 class Artwork extends Model
 {
@@ -18,16 +19,19 @@ class Artwork extends Model
         'uploaded_by',
     ];
 
-    protected $casts = [
-        'is_approved' => 'boolean',
-    ];
+    protected function casts(): array
+    {
+        return [
+            'is_approved' => 'boolean',
+        ];
+    }
 
     public function jobOrderTask(): BelongsTo
     {
         return $this->belongsTo(JobOrderTask::class);
     }
 
-    public function jobOrder(): \Illuminate\Database\Eloquent\Relations\HasOneThrough
+    public function jobOrder(): HasOneThrough
     {
         return $this->hasOneThrough(
             JobOrder::class,

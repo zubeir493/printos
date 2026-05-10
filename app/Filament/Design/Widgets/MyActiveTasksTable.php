@@ -11,7 +11,7 @@ class MyActiveTasksTable extends BaseWidget
 {
     protected static ?int $sort = 4;
 
-    protected int | string | array $columnSpan = 1;
+    protected int|string|array $columnSpan = 1;
 
     protected static ?string $heading = 'My Active Tasks';
 
@@ -30,7 +30,7 @@ class MyActiveTasksTable extends BaseWidget
                 Tables\Columns\TextColumn::make('jobOrder.job_order_number')
                     ->label('Job Order')
                     ->weight('bold')
-                    ->description(fn(JobOrderTask $record) => $record->jobOrder->partner->name)
+                    ->description(fn (JobOrderTask $record) => $record->jobOrder->partner?->name)
                     ->searchable(),
                 Tables\Columns\TextColumn::make('name')
                     ->label('Task')

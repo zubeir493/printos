@@ -24,7 +24,7 @@ class JobOrderTaskStatusChart extends ChartWidget
                 [
                     'label' => 'Tasks',
                     'data' => $distribution->values()->all(),
-                    'backgroundColor' => ['#2563eb', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6'],
+                    'backgroundColor' => ['#6366f1', '#0ea5e9', '#059669', '#e11d48', '#a78bfa'],
                 ],
             ],
             'labels' => $distribution->keys()->map(fn ($status) => str($status)->headline()->toString())->all(),

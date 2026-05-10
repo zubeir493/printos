@@ -2,17 +2,14 @@
 
 namespace App\Filament\Resources\PurchaseOrderItems;
 
-use App\Filament\Resources\PurchaseOrderItems\Pages\CreatePurchaseOrderItem;
 use App\Filament\Resources\PurchaseOrderItems\Pages\EditPurchaseOrderItem;
 use App\Filament\Resources\PurchaseOrderItems\Pages\ListPurchaseOrderItems;
+use App\Filament\Resources\PurchaseOrderItems\Pages\ViewPurchaseOrderItem;
 use App\Filament\Resources\PurchaseOrderItems\Schemas\PurchaseOrderItemForm;
 use App\Filament\Resources\PurchaseOrderItems\Tables\PurchaseOrderItemsTable;
 use App\Models\PurchaseOrderItem;
-use BackedEnum;
-use Filament\Facades\Filament;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 
 class PurchaseOrderItemResource extends Resource
@@ -28,7 +25,6 @@ class PurchaseOrderItemResource extends Resource
         return false;
     }
 
-
     public static function form(Schema $schema): Schema
     {
         return PurchaseOrderItemForm::configure($schema);
@@ -37,7 +33,7 @@ class PurchaseOrderItemResource extends Resource
     public static function table(Table $table): Table
     {
         return PurchaseOrderItemsTable::configure($table)
-            ->recordUrl(fn($record) => static::getUrl('view', ['record' => $record]));
+            ->recordUrl(fn ($record) => static::getUrl('view', ['record' => $record]));
     }
 
     public static function getRelations(): array
@@ -51,8 +47,7 @@ class PurchaseOrderItemResource extends Resource
     {
         return [
             'index' => ListPurchaseOrderItems::route('/'),
-            'create' => CreatePurchaseOrderItem::route('/create'),
-            'view' => \App\Filament\Resources\PurchaseOrderItems\Pages\ViewPurchaseOrderItem::route('/{record}'),
+            'view' => ViewPurchaseOrderItem::route('/{record}'),
             'edit' => EditPurchaseOrderItem::route('/{record}/edit'),
         ];
     }

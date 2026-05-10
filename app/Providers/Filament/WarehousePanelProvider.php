@@ -37,6 +37,7 @@ class WarehousePanelProvider extends PanelProvider
         return $panel
             ->id('warehouse')
             ->path('warehouse')
+            ->authGuard('web')
             ->viteTheme('resources/css/filament/admin/theme.css')
             ->darkMode(false)
             ->defaultThemeMode(ThemeMode::Light)

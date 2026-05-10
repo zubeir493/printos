@@ -2,18 +2,14 @@
 
 namespace App\Filament\Resources\ProductionPlans\Tables;
 
-use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Actions\Action;
-use Filament\Tables\Actions\BulkActionGroup;
-use Filament\Tables\Actions\DeleteBulkAction;
-use Filament\Tables\Actions\EditAction;
-use Filament\Tables\Actions\ViewAction;
-use Filament\Tables\Table;
+use App\Filament\Resources\ProductionReports\ProductionReportResource;
 use App\Models\ProductionReport;
-use App\Models\ProductionReportItem;
 use Filament\Actions\Action as ActionsAction;
-use Filament\Actions\BulkActionGroup as ActionsBulkActionGroup;
 use Filament\Actions\EditAction as ActionsEditAction;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Table;
+use Illuminate\Http\RedirectResponse;
 
 class ProductionPlansTable
 {
@@ -29,14 +25,14 @@ class ProductionPlansTable
                     ->sortable(),
                 TextColumn::make('status')
                     ->badge()
-                    ->color(fn(string $state): string => match ($state) {
+                    ->color(fn (string $state): string => match ($state) {
                         'draft' => 'gray',
                         'approved' => 'success',
                         default => 'gray',
                     }),
             ])
             ->filters([
-                \Filament\Tables\Filters\SelectFilter::make('status')
+                SelectFilter::make('status')
                     ->options([
                         'draft' => 'Draft',
                         'approved' => 'Approved',
@@ -48,7 +44,7 @@ class ProductionPlansTable
                     ->label('Report Week')
                     ->icon('heroicon-o-clipboard-document-check')
                     ->color('success')
-                    ->visible(fn($record) => $record->status === 'approved' && !ProductionReport::where('production_plan_id', $record->id)->exists())
+                    ->visible(fn ($record) => $record->status === 'approved' && ! ProductionReport::where('production_plan_id', $record->id)->exists())
                     ->action(function ($record) {
                         $report = ProductionReport::create([
                             'production_plan_id' => $record->id,
@@ -71,7 +67,9 @@ class ProductionPlansTable
                             }
                         }
 
-                        return redirect(\App\Filament\Resources\ProductionReports\ProductionReportResource::getUrl('edit', ['record' => $report]));
+                        return new RedirectResponse(
+                            ProductionReportResource::getUrl('edit', ['record' => $report])
+                        );
                     }),
             ])
             ->recordActions([

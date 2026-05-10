@@ -23,28 +23,41 @@ class InventoryBalanceExporter extends Exporter
                 ->label('Quantity')
                 ->formatStateUsing(function ($state, $record) {
                     $item = $record->inventoryItem;
-                    if (!$item) return number_format($state);
-
-                    $type = $item->type instanceof \BackedEnum ? $item->type->value : $item->type;
-                    if (strtolower((string)$type) === 'raw_material' && $item->purchase_unit && $item->conversion_factor > 0) {
-                        return number_format((float)$state / (float)$item->conversion_factor, 2) . ' ' . $item->purchase_unit;
+                    if (! $item) {
+                        return number_format($state);
                     }
-                    return number_format($state) . ' ' . $item->unit;
+
+                    if ($item->hasPurchaseUnit()) {
+                        return number_format($item->toPurchaseUnits((float) $state), 2).' '.$item->purchase_unit;
+                    }
+
+                    return number_format($state).' '.$item->unit;
                 }),
             ExportColumn::make('total_value')
                 ->label('Total Value (Birr)')
                 ->state(function (InventoryBalance $record): float {
-                    return (float) $record->quantity_on_hand * (float) ($record->inventoryItem->price ?? 0);
+                    $item = $record->inventoryItem;
+                    if (! $item || in_array($item->type, ['tools', 'spare_parts', 'wip'])) {
+                        return 0.0;
+                    }
+
+                    $baseUnitCost = $item->hasPurchaseUnit()
+                        ? ((float) ($item->average_cost ?? 0) > 0
+                            ? (float) $item->average_cost
+                            : (float) ($item->price ?? 0) / (float) $item->conversion_factor)
+                        : (float) ($item->average_cost > 0 ? $item->average_cost : ($item->price ?? 0));
+
+                    return (float) $record->quantity_on_hand * $baseUnitCost;
                 }),
         ];
     }
 
     public static function getCompletedNotificationBody(Export $export): string
     {
-        $body = 'Your inventory balance export has completed and ' . Number::format($export->successful_rows) . ' ' . str('row')->plural($export->successful_rows) . ' exported.';
+        $body = 'Your inventory balance export has completed and '.Number::format($export->successful_rows).' '.str('row')->plural($export->successful_rows).' exported.';
 
         if ($failedRowsCount = $export->getFailedRowsCount()) {
-            $body .= ' ' . Number::format($failedRowsCount) . ' ' . str('row')->plural($failedRowsCount) . ' failed to export.';
+            $body .= ' '.Number::format($failedRowsCount).' '.str('row')->plural($failedRowsCount).' failed to export.';
         }
 
         return $body;

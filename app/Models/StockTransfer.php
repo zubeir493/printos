@@ -5,6 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\DB;
 
 class StockTransfer extends Model
 {
@@ -48,7 +50,7 @@ class StockTransfer extends Model
         return $this->belongsTo(Warehouse::class);
     }
 
-    public function items(): \Illuminate\Database\Eloquent\Relations\HasMany
+    public function items(): HasMany
     {
         return $this->hasMany(StockTransferItem::class);
     }
@@ -56,13 +58,13 @@ class StockTransfer extends Model
     protected static function booted()
     {
         static::creating(function ($transfer) {
-            if (!$transfer->transfer_number) {
+            if (! $transfer->transfer_number) {
                 $lastTransfer = static::orderBy('id', 'desc')->first();
                 $lastNumber = 0;
                 if ($lastTransfer && preg_match('/ST-(\d+)/', $lastTransfer->transfer_number, $matches)) {
                     $lastNumber = (int) $matches[1];
                 }
-                $transfer->transfer_number = 'ST-' . str_pad($lastNumber + 1, 4, '0', STR_PAD_LEFT);
+                $transfer->transfer_number = 'ST-'.str_pad($lastNumber + 1, 4, '0', STR_PAD_LEFT);
             }
         });
 
@@ -75,9 +77,9 @@ class StockTransfer extends Model
 
     public function post()
     {
-        \Illuminate\Support\Facades\DB::transaction(function () {
+        DB::transaction(function () {
             foreach ($this->items as $item) {
-                $balance = \App\Models\InventoryBalance::where([
+                $balance = InventoryBalance::where([
                     'inventory_item_id' => $item->inventory_item_id,
                     'warehouse_id' => $this->from_warehouse_id,
                 ])->first();

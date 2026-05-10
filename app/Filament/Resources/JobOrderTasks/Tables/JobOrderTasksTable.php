@@ -2,16 +2,32 @@
 
 namespace App\Filament\Resources\JobOrderTasks\Tables;
 
-use Filament\Actions\BulkActionGroup;
-use Filament\Facades\Filament;
+use App\Filament\Exports\JobOrderTaskExporter;
+use App\Filament\Support\PanelAccess;
+use App\Models\InventoryBalance;
+use App\Models\InventoryItem;
+use App\Models\JobOrderTask;
+use App\Models\MaterialRequest;
+use App\Models\StockMovement;
 use App\Models\User;
+use App\Models\Warehouse;
 use App\Services\MaterialIssueService;
 use App\UserRole;
-use App\Filament\Support\PanelAccess;
+use Filament\Actions\Action;
+use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Actions\ExportAction;
+use Filament\Actions\ExportBulkAction;
+use Filament\Facades\Filament;
+use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 
 class JobOrderTasksTable
@@ -23,7 +39,7 @@ class JobOrderTasksTable
                 TextColumn::make('name')
                     ->label('Task')
                     ->weight('bold')
-                    ->description(fn($record) => $record->jobOrder->job_order_number)
+                    ->description(fn ($record) => $record->jobOrder->job_order_number)
                     ->searchable(),
                 TextColumn::make('quantity')
                     ->numeric()
@@ -47,12 +63,12 @@ class JobOrderTasksTable
                     ->searchable(),
             ])
             ->headerActions([
-                \Filament\Actions\ExportAction::make()
-                    ->exporter(\App\Filament\Exports\JobOrderTaskExporter::class)
-                    ->visible(fn () => in_array(Filament::getCurrentPanel()?->getId(), ['admin', 'operations', 'finance']))
+                ExportAction::make()
+                    ->exporter(JobOrderTaskExporter::class)
+                    ->visible(fn () => in_array(Filament::getCurrentPanel()?->getId(), ['admin', 'operations', 'finance'])),
             ])
             ->filters([
-                \Filament\Tables\Filters\SelectFilter::make('status')
+                SelectFilter::make('status')
                     ->options([
                         'pending' => 'Pending',
                         'design' => 'Design',
@@ -60,7 +76,7 @@ class JobOrderTasksTable
                         'completed' => 'Completed',
                         'cancelled' => 'Cancelled',
                     ]),
-                \Filament\Tables\Filters\SelectFilter::make('designer_id')
+                SelectFilter::make('designer_id')
                     ->label('Designer')
                     ->options(fn () => User::query()
                         ->where('role', UserRole::Design->value)
@@ -69,7 +85,7 @@ class JobOrderTasksTable
                         ->all())
                     ->searchable()
                     ->preload(),
-                \Filament\Tables\Filters\TernaryFilter::make('assigned')
+                TernaryFilter::make('assigned')
                     ->label('Assignment')
                     ->queries(
                         true: fn ($query) => $query->whereNotNull('designer_id'),
@@ -80,54 +96,54 @@ class JobOrderTasksTable
             ->actions([
                 EditAction::make()
                     ->visible(fn () => PanelAccess::canManageJobOrderTasks()),
-                \Filament\Actions\Action::make('assign_designer')
+                Action::make('assign_designer')
                     ->label('Assign Designer')
                     ->icon('heroicon-o-user-plus')
                     ->color('info')
-                    ->visible(fn ($record) => blank($record->designer_id) 
-                        && !in_array($record->status, ['completed', 'cancelled'])
+                    ->visible(fn ($record) => blank($record->designer_id)
+                        && ! in_array($record->status, ['completed', 'cancelled'])
                         && in_array(Filament::getCurrentPanel()?->getId(), ['admin', 'operations']))
                     ->form([
-                        \Filament\Forms\Components\Select::make('designer_id')
+                        Select::make('designer_id')
                             ->label('Designer')
-                            ->options(\App\Models\User::where('role', 'design')->pluck('name', 'id'))
+                            ->options(User::where('role', 'design')->pluck('name', 'id'))
                             ->required(),
                     ])
                     ->action(function (array $data, $record) {
                         $record->update(['designer_id' => $data['designer_id']]);
-                        
+
                         // Update status automatically
                         $record->updateStatus();
 
-                        \Filament\Notifications\Notification::make()
+                        Notification::make()
                             ->title(($data['designer_id'] ?? null) ? 'Designer assigned' : 'Designer unassigned')
                             ->success()
                             ->send();
                     }),
-                \Filament\Actions\Action::make('request_materials')
+                Action::make('request_materials')
                     ->label('Request Materials')
                     ->icon('heroicon-o-document-plus')
                     ->color('info')
-                    ->visible(fn ($record) => !in_array($record->status, ['completed', 'cancelled'])
+                    ->visible(fn ($record) => ! in_array($record->status, ['completed', 'cancelled'])
                         && Filament::getCurrentPanel()?->getId() === 'production')
                     ->form(fn ($record) => [
-                        \Filament\Forms\Components\Repeater::make('items')
+                        Repeater::make('items')
                             ->addable(false)
                             ->deletable(false)
                             ->reorderable(false)
                             ->schema([
-                                \Filament\Forms\Components\Select::make('inventory_item_id')
+                                Select::make('inventory_item_id')
                                     ->label('Material')
-                                    ->options(\App\Models\InventoryItem::pluck('name', 'id'))
+                                    ->options(InventoryItem::pluck('name', 'id'))
                                     ->disabled()
                                     ->dehydrated()
                                     ->required(),
-                                \Filament\Forms\Components\TextInput::make('requested_quantity')
+                                TextInput::make('requested_quantity')
                                     ->label('Quantity to Request')
                                     ->numeric()
                                     ->required()
-                                    ->hint(fn ($get) => "Required: " . ($record->paper[$get('paper_index')]['required_quantity'] ?? 0)),
-                                \Filament\Forms\Components\Hidden::make('paper_index'),
+                                    ->hint(fn ($get) => 'Required: '.($record->paper[$get('paper_index')]['required_quantity'] ?? 0)),
+                                Hidden::make('paper_index'),
                             ])->columns(2)
                             ->default(fn () => collect($record->paper ?? [])->map(fn ($item, $index) => [
                                 'inventory_item_id' => $item['inventory_item_id'],
@@ -140,9 +156,11 @@ class JobOrderTasksTable
                     ])
                     ->action(function (array $data, $record) {
                         foreach ($data['items'] as $item) {
-                            if ($item['requested_quantity'] <= 0) continue;
-                            
-                            \App\Models\MaterialRequest::create([
+                            if ($item['requested_quantity'] <= 0) {
+                                continue;
+                            }
+
+                            MaterialRequest::create([
                                 'job_order_task_id' => $record->id,
                                 'inventory_item_id' => $item['inventory_item_id'],
                                 'requested_quantity' => $item['requested_quantity'],
@@ -150,41 +168,41 @@ class JobOrderTasksTable
                             ]);
                         }
 
-                        \Filament\Notifications\Notification::make()
+                        Notification::make()
                             ->title('Materials Requested')
                             ->success()
                             ->send();
                     }),
-                \Filament\Actions\Action::make('issue_materials')
+                Action::make('issue_materials')
                     ->label('Issue Materials')
                     ->icon('heroicon-o-archive-box-arrow-down')
                     ->color('warning')
-                    ->visible(fn ($record) => !in_array($record->status, ['completed', 'cancelled'])
+                    ->visible(fn ($record) => ! in_array($record->status, ['completed', 'cancelled'])
                         && $record->materialRequests()
                             ->whereColumn('issued_quantity', '<', 'requested_quantity')
                             ->whereDoesntHave('pendingIssueApprovals', fn ($query) => $query->where('status', 'pending'))
                             ->exists()
                         && in_array(Filament::getCurrentPanel()?->getId(), ['admin', 'operations', 'warehouse']))
                     ->form(fn ($record) => [
-                        \Filament\Forms\Components\Select::make('warehouse_id')
+                        Select::make('warehouse_id')
                             ->label('Warehouse')
-                            ->options(\App\Models\Warehouse::pluck('name', 'id'))
-                            ->default(fn () => \App\Models\Warehouse::where('is_default', true)->value('id'))
+                            ->options(Warehouse::pluck('name', 'id'))
+                            ->default(fn () => Warehouse::where('is_default', true)->value('id'))
                             ->required()
                             ->searchable()
                             ->live(),
-                        \Filament\Forms\Components\Repeater::make('items')
+                        Repeater::make('items')
                             ->addable(false)
                             ->deletable(false)
                             ->reorderable(false)
                             ->schema([
-                                \Filament\Forms\Components\Hidden::make('material_request_id'),
-                                \Filament\Forms\Components\Select::make('inventory_item_id')
+                                Hidden::make('material_request_id'),
+                                Select::make('inventory_item_id')
                                     ->label('Material')
-                                    ->options(\App\Models\InventoryItem::pluck('name', 'id'))
+                                    ->options(InventoryItem::pluck('name', 'id'))
                                     ->disabled()
                                     ->dehydrated(),
-                                \Filament\Forms\Components\TextInput::make('quantity')
+                                TextInput::make('quantity')
                                     ->numeric()
                                     ->required()
                                     ->label('Quantity to Issue')
@@ -192,21 +210,26 @@ class JobOrderTasksTable
                                         $pending = $record->materialRequests->find($get('material_request_id'))?->requested_quantity - $record->materialRequests->find($get('material_request_id'))?->issued_quantity;
                                         $warehouseId = $get('../../warehouse_id');
                                         $itemId = $get('inventory_item_id');
-                                        $stock = $warehouseId ? \App\Models\InventoryBalance::where('warehouse_id', $warehouseId)->where('inventory_item_id', $itemId)->value('quantity_on_hand') ?? 0 : 0;
+                                        $stock = $warehouseId ? InventoryBalance::where('warehouse_id', $warehouseId)->where('inventory_item_id', $itemId)->value('quantity_on_hand') ?? 0 : 0;
+
                                         return "Pending: {$pending} | In Stock: {$stock}";
                                     })
                                     ->maxValue(function ($get, $record) {
                                         $pending = $record->materialRequests->find($get('material_request_id'))?->requested_quantity - $record->materialRequests->find($get('material_request_id'))?->issued_quantity;
                                         $warehouseId = $get('../../warehouse_id');
                                         $itemId = $get('inventory_item_id');
-                                        $stock = $warehouseId ? \App\Models\InventoryBalance::where('warehouse_id', $warehouseId)->where('inventory_item_id', $itemId)->value('quantity_on_hand') ?? 0 : 0;
+                                        $stock = $warehouseId ? InventoryBalance::where('warehouse_id', $warehouseId)->where('inventory_item_id', $itemId)->value('quantity_on_hand') ?? 0 : 0;
+
                                         return min($pending, $stock);
                                     })
                                     ->helperText(function ($get, $record) {
                                         $warehouseId = $get('../../warehouse_id');
-                                        if (!$warehouseId) return "Please select a warehouse first.";
+                                        if (! $warehouseId) {
+                                            return 'Please select a warehouse first.';
+                                        }
+
                                         return 'If this exceeds the required quantity, it will be queued for approval instead of issuing immediately.';
-                                    })
+                                    }),
                             ])->columns(2)
                             ->default(fn () => $record->materialRequests()
                                 ->whereColumn('issued_quantity', '<', 'requested_quantity')
@@ -223,14 +246,16 @@ class JobOrderTasksTable
                             $results = ['issued' => 0, 'pending_approval' => 0];
 
                             foreach ($data['items'] as $item) {
-                                if ($item['quantity'] <= 0) continue;
+                                if ($item['quantity'] <= 0) {
+                                    continue;
+                                }
 
-                                $mr = \App\Models\MaterialRequest::findOrFail($item['material_request_id']);
+                                $mr = MaterialRequest::findOrFail($item['material_request_id']);
                                 $result = app(MaterialIssueService::class)->issue($mr, (int) $data['warehouse_id'], (float) $item['quantity'], auth()->user());
                                 $results[$result['status']]++;
                             }
 
-                            \Filament\Notifications\Notification::make()
+                            Notification::make()
                                 ->title(trim(collect([
                                     $results['issued'] ? "{$results['issued']} item(s) issued" : null,
                                     $results['pending_approval'] ? "{$results['pending_approval']} item(s) sent for approval" : null,
@@ -238,7 +263,7 @@ class JobOrderTasksTable
                                 ->success()
                                 ->send();
                         } catch (\Exception $e) {
-                            \Filament\Notifications\Notification::make()
+                            Notification::make()
                                 ->title('Error Issuing Materials')
                                 ->body($e->getMessage())
                                 ->danger()
@@ -246,31 +271,31 @@ class JobOrderTasksTable
                                 ->send();
                         }
                     }),
-                \Filament\Actions\Action::make('log_production')
+                Action::make('log_production')
                     ->label('Log Production')
                     ->icon('heroicon-o-archive-box-arrow-down')
                     ->color('success')
-                    ->visible(fn ($record) => !in_array($record->status, ['completed', 'cancelled'])
+                    ->visible(fn ($record) => ! in_array($record->status, ['completed', 'cancelled'])
                         && $record->materialRequests()->where('issued_quantity', '>', 0)->exists()
                         && Filament::getCurrentPanel()?->getId() === 'production')
                     ->form(function ($record) {
                         $productionMode = $record->jobOrder->production_mode;
-                        
+
                         return [
-                            \Filament\Forms\Components\Select::make('warehouse_id')
+                            Select::make('warehouse_id')
                                 ->label('Warehouse')
-                                ->options(\App\Models\Warehouse::pluck('name', 'id'))
-                                ->default(fn () => \App\Models\Warehouse::where('is_default', true)->value('id'))
+                                ->options(Warehouse::pluck('name', 'id'))
+                                ->default(fn () => Warehouse::where('is_default', true)->value('id'))
                                 ->required(),
-                            \Filament\Forms\Components\TextInput::make('quantity')
+                            TextInput::make('quantity')
                                 ->label('Produced Quantity')
                                 ->numeric()
                                 ->required()
                                 ->default(fn ($record) => $record->quantity),
                             // For internal jobs, allow selecting existing finished goods
-                            \Filament\Forms\Components\Select::make('existing_inventory_item_id')
+                            Select::make('existing_inventory_item_id')
                                 ->label('Select Finished Good')
-                                ->options(\App\Models\InventoryItem::where('type', 'finished_good')->pluck('name', 'id'))
+                                ->options(InventoryItem::where('type', 'finished_good')->pluck('name', 'id'))
                                 ->searchable()
                                 ->preload()
                                 ->visible(fn () => $productionMode === 'make_to_stock')
@@ -280,19 +305,19 @@ class JobOrderTasksTable
                     ->action(function (array $data, $record) {
                         try {
                             \DB::beginTransaction();
-                            
+
                             $productionMode = $record->jobOrder->production_mode;
                             $item = null;
                             $itemTypeName = '';
-                            
+
                             if ($productionMode === 'make_to_order') {
                                 // Client Job - Create WIP item with improved naming
-                                $clientName = $record->jobOrder->partner->name ?? 'Unknown Client';
+                                $clientName = $record->jobOrder->partner?->name ?? 'Internal';
                                 $jobOrderType = $record->jobOrder->job_type ?? 'Unknown';
-                                $itemSku = 'TASK-' . $record->id;
+                                $itemSku = 'TASK-'.$record->id;
                                 $itemType = 'wip';
-                                
-                                $item = \App\Models\InventoryItem::firstOrCreate(
+
+                                $item = InventoryItem::firstOrCreate(
                                     ['sku' => $itemSku],
                                     [
                                         'name' => "{$record->name} - {$jobOrderType} - {$clientName} ({$record->jobOrder->job_order_number})",
@@ -305,14 +330,14 @@ class JobOrderTasksTable
                                 $itemTypeName = 'WIP';
                             } else {
                                 // Internal Job - Use existing finished good or create new
-                                if (!empty($data['existing_inventory_item_id'])) {
-                                    $item = \App\Models\InventoryItem::find($data['existing_inventory_item_id']);
+                                if (! empty($data['existing_inventory_item_id'])) {
+                                    $item = InventoryItem::find($data['existing_inventory_item_id']);
                                 } else {
                                     // Create new finished good
-                                    $itemSku = 'FG-TASK-' . $record->id;
+                                    $itemSku = 'FG-TASK-'.$record->id;
                                     $itemType = 'finished_good';
-                                    
-                                    $item = \App\Models\InventoryItem::firstOrCreate(
+
+                                    $item = InventoryItem::firstOrCreate(
                                         ['sku' => $itemSku],
                                         [
                                             'name' => "Finished - {$record->name} ({$record->jobOrder->job_order_number})",
@@ -327,11 +352,11 @@ class JobOrderTasksTable
                             }
 
                             if ($item) {
-                                \App\Models\StockMovement::create([
+                                StockMovement::create([
                                     'inventory_item_id' => $item->id,
                                     'warehouse_id' => $data['warehouse_id'],
                                     'type' => 'production_output',
-                                    'reference_type' => \App\Models\JobOrderTask::class,
+                                    'reference_type' => JobOrderTask::class,
                                     'reference_id' => $record->id,
                                     'quantity' => abs($data['quantity']),
                                     'movement_date' => now(),
@@ -342,14 +367,14 @@ class JobOrderTasksTable
                             // Update task status automatically
                             $record->updateStatus();
 
-                            \Filament\Notifications\Notification::make()
+                            Notification::make()
                                 ->title('Production Logged Successfully')
                                 ->body("Added {$data['quantity']} units to {$itemTypeName}: {$item->name}")
                                 ->success()
                                 ->send();
                         } catch (\Exception $e) {
                             \DB::rollBack();
-                            \Filament\Notifications\Notification::make()
+                            Notification::make()
                                 ->title('Error Logging Production')
                                 ->body($e->getMessage())
                                 ->danger()
@@ -357,14 +382,14 @@ class JobOrderTasksTable
                                 ->send();
                         }
                     }),
-                ])
+            ])
             ->bulkActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make()
                         ->visible(fn () => PanelAccess::canManageJobOrderTasks()),
-                    \Filament\Actions\ExportBulkAction::make()
-                        ->exporter(\App\Filament\Exports\JobOrderTaskExporter::class)
-                        ->visible(fn () => PanelAccess::canManageJobOrderTasks())
+                    ExportBulkAction::make()
+                        ->exporter(JobOrderTaskExporter::class)
+                        ->visible(fn () => PanelAccess::canManageJobOrderTasks()),
                 ]),
             ]);
     }

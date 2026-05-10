@@ -3,9 +3,24 @@
 namespace App\Filament\Resources\JobOrders\Pages;
 
 use App\Filament\Resources\JobOrders\JobOrderResource;
+use App\Filament\Resources\PurchaseOrders\Pages\EditPurchaseOrder;
 use App\Filament\Support\PanelAccess;
+use App\Models\InventoryBalance;
+use App\Models\InventoryItem;
+use App\Models\MaterialRequest;
+use App\Models\Partner;
+use App\Models\PurchaseOrder;
+use App\Models\StockMovement;
+use App\Models\Warehouse;
+use App\Services\InventoryService;
 use App\Services\MaterialIssueService;
 use Filament\Actions;
+use Filament\Actions\Action;
+use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
 
 class ViewJobOrder extends ViewRecord
@@ -15,13 +30,12 @@ class ViewJobOrder extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
-            \Filament\Actions\Action::make('issue_materials')
+            Action::make('issue_materials')
                 ->label('Issue Materials')
                 ->icon('heroicon-o-archive-box-arrow-down')
                 ->color('warning')
-                ->visible(fn ($record) =>
-                    PanelAccess::canAccessWarehouseSection() &&
-                    !in_array($record->status, ['completed', 'cancelled']) &&
+                ->visible(fn ($record) => PanelAccess::canAccessWarehouseSection() &&
+                    ! in_array($record->status, ['completed', 'cancelled']) &&
                     $record->materialRequests()
                         ->whereColumn('issued_quantity', '<', 'requested_quantity')
                         ->whereDoesntHave('pendingIssueApprovals', fn ($query) => $query->where('status', 'pending'))
@@ -29,25 +43,25 @@ class ViewJobOrder extends ViewRecord
                         ->exists()
                 )
                 ->form(fn ($record) => [
-                    \Filament\Forms\Components\Select::make('warehouse_id')
+                    Select::make('warehouse_id')
                         ->label('Warehouse')
-                        ->options(\App\Models\Warehouse::pluck('name', 'id'))
-                        ->default(fn () => \App\Models\Warehouse::where('is_default', true)->value('id'))
+                        ->options(Warehouse::pluck('name', 'id'))
+                        ->default(fn () => Warehouse::where('is_default', true)->value('id'))
                         ->required()
                         ->searchable()
                         ->live(),
-                    \Filament\Forms\Components\Repeater::make('items')
+                    Repeater::make('items')
                         ->addable(false)
                         ->deletable(false)
                         ->reorderable(false)
                         ->schema([
-                            \Filament\Forms\Components\Hidden::make('material_request_id'),
-                            \Filament\Forms\Components\Select::make('inventory_item_id')
+                            Hidden::make('material_request_id'),
+                            Select::make('inventory_item_id')
                                 ->label('Material')
-                                ->options(\App\Models\InventoryItem::pluck('name', 'id'))
+                                ->options(InventoryItem::pluck('name', 'id'))
                                 ->disabled()
                                 ->dehydrated(),
-                            \Filament\Forms\Components\TextInput::make('quantity')
+                            TextInput::make('quantity')
                                 ->numeric()
                                 ->required()
                                 ->label('Quantity to Issue')
@@ -55,17 +69,19 @@ class ViewJobOrder extends ViewRecord
                                     $pending = $record->materialRequests->find($get('material_request_id'))?->requested_quantity - $record->materialRequests->find($get('material_request_id'))?->issued_quantity;
                                     $warehouseId = $get('../../warehouse_id');
                                     $itemId = $get('inventory_item_id');
-                                    $stock = $warehouseId ? \App\Models\InventoryBalance::where('warehouse_id', $warehouseId)->where('inventory_item_id', $itemId)->value('quantity_on_hand') ?? 0 : 0;
+                                    $stock = $warehouseId ? InventoryBalance::where('warehouse_id', $warehouseId)->where('inventory_item_id', $itemId)->value('quantity_on_hand') ?? 0 : 0;
+
                                     return "Pending: {$pending} | In Stock: {$stock}";
                                 })
                                 ->maxValue(function ($get, $record) {
                                     $pending = $record->materialRequests->find($get('material_request_id'))?->requested_quantity - $record->materialRequests->find($get('material_request_id'))?->issued_quantity;
                                     $warehouseId = $get('../../warehouse_id');
                                     $itemId = $get('inventory_item_id');
-                                    $stock = $warehouseId ? \App\Models\InventoryBalance::where('warehouse_id', $warehouseId)->where('inventory_item_id', $itemId)->value('quantity_on_hand') ?? 0 : 0;
+                                    $stock = $warehouseId ? InventoryBalance::where('warehouse_id', $warehouseId)->where('inventory_item_id', $itemId)->value('quantity_on_hand') ?? 0 : 0;
+
                                     return min($pending, $stock);
                                 })
-                                ->helperText('If this exceeds the required quantity, it will be queued for approval instead of issuing immediately.')
+                                ->helperText('If this exceeds the required quantity, it will be queued for approval instead of issuing immediately.'),
                         ])->columns(2)
                         ->default(fn () => $record->materialRequests()
                             ->whereColumn('issued_quantity', '<', 'requested_quantity')
@@ -83,14 +99,16 @@ class ViewJobOrder extends ViewRecord
                         $results = ['issued' => 0, 'pending_approval' => 0];
 
                         foreach ($data['items'] as $item) {
-                            if ($item['quantity'] <= 0) continue;
+                            if ($item['quantity'] <= 0) {
+                                continue;
+                            }
 
-                            $mr = \App\Models\MaterialRequest::findOrFail($item['material_request_id']);
+                            $mr = MaterialRequest::findOrFail($item['material_request_id']);
                             $result = app(MaterialIssueService::class)->issue($mr, (int) $data['warehouse_id'], (float) $item['quantity'], auth()->user());
                             $results[$result['status']]++;
                         }
 
-                        \Filament\Notifications\Notification::make()
+                        Notification::make()
                             ->title(trim(collect([
                                 $results['issued'] ? "{$results['issued']} item(s) issued" : null,
                                 $results['pending_approval'] ? "{$results['pending_approval']} item(s) sent for approval" : null,
@@ -98,7 +116,7 @@ class ViewJobOrder extends ViewRecord
                             ->success()
                             ->send();
                     } catch (\Exception $e) {
-                        \Filament\Notifications\Notification::make()
+                        Notification::make()
                             ->title('Error Issuing Materials')
                             ->body($e->getMessage())
                             ->danger()
@@ -106,12 +124,11 @@ class ViewJobOrder extends ViewRecord
                             ->send();
                     }
                 }),
-            \Filament\Actions\Action::make('return_materials')
+            Action::make('return_materials')
                 ->label('Return Materials')
                 ->icon('heroicon-o-arrow-path')
                 ->color('danger')
-                ->visible(fn ($record) =>
-                    PanelAccess::canAccessWarehouseSection() &&
+                ->visible(fn ($record) => PanelAccess::canAccessWarehouseSection() &&
                     $record->status !== 'completed' &&
                     $record->materialRequests()
                         ->where('issued_quantity', '>', 0)
@@ -119,24 +136,24 @@ class ViewJobOrder extends ViewRecord
                         ->exists()
                 )
                 ->form(fn ($record) => [
-                    \Filament\Forms\Components\Repeater::make('items')
+                    Repeater::make('items')
                         ->addable(false)
                         ->deletable(false)
                         ->reorderable(false)
                         ->schema([
-                            \Filament\Forms\Components\Hidden::make('material_request_id'),
-                            \Filament\Forms\Components\Hidden::make('original_warehouse_id'),
-                            \Filament\Forms\Components\Select::make('inventory_item_id')
+                            Hidden::make('material_request_id'),
+                            Hidden::make('original_warehouse_id'),
+                            Select::make('inventory_item_id')
                                 ->label('Material')
-                                ->options(\App\Models\InventoryItem::pluck('name', 'id'))
+                                ->options(InventoryItem::pluck('name', 'id'))
                                 ->disabled()
                                 ->dehydrated(),
-                            \Filament\Forms\Components\TextInput::make('quantity')
+                            TextInput::make('quantity')
                                 ->numeric()
                                 ->required()
                                 ->label('Quantity to Return')
-                                ->hint(fn ($get) => "Issued: " . $record->materialRequests->find($get('material_request_id'))?->issued_quantity)
-                                ->maxValue(fn ($get) => $record->materialRequests->find($get('material_request_id'))?->issued_quantity)
+                                ->hint(fn ($get) => 'Issued: '.$record->materialRequests->find($get('material_request_id'))?->issued_quantity)
+                                ->maxValue(fn ($get) => $record->materialRequests->find($get('material_request_id'))?->issued_quantity),
                         ])->columns(2)
                         ->default(fn () => $record->materialRequests()
                             ->where('issued_quantity', '>', 0)
@@ -144,7 +161,7 @@ class ViewJobOrder extends ViewRecord
                             ->get()
                             ->map(function ($mr) use ($record) {
                                 // Find the original warehouse this item was consumed from
-                                $originalWarehouse = \App\Models\StockMovement::where('type', 'consumption')
+                                $originalWarehouse = StockMovement::where('type', 'consumption')
                                     ->where('reference_id', $record->id)
                                     ->where('inventory_item_id', $mr->inventory_item_id)
                                     ->orderByDesc('movement_date')
@@ -160,15 +177,17 @@ class ViewJobOrder extends ViewRecord
                 ])
                 ->action(function ($record, $data) {
                     try {
-                        $inventoryService = app(\App\Services\InventoryService::class);
-                        $defaultWarehouseId = \App\Models\Warehouse::where('is_default', true)->value('id');
+                        $inventoryService = app(InventoryService::class);
+                        $defaultWarehouseId = Warehouse::where('is_default', true)->value('id');
                         \DB::beginTransaction();
-                        
+
                         foreach ($data['items'] as $item) {
-                            if ($item['quantity'] <= 0) continue;
-                            
-                            $mr = \App\Models\MaterialRequest::find($item['material_request_id']);
-                            
+                            if ($item['quantity'] <= 0) {
+                                continue;
+                            }
+
+                            $mr = MaterialRequest::find($item['material_request_id']);
+
                             if ($item['quantity'] > $mr->issued_quantity) {
                                 throw new \Exception("Cannot return more than what was issued for {$mr->inventoryItem->name}.");
                             }
@@ -188,13 +207,13 @@ class ViewJobOrder extends ViewRecord
                         }
                         \DB::commit();
 
-                        \Filament\Notifications\Notification::make()
+                        Notification::make()
                             ->title('Materials Returned Successfully')
                             ->success()
                             ->send();
                     } catch (\Exception $e) {
                         \DB::rollBack();
-                        \Filament\Notifications\Notification::make()
+                        Notification::make()
                             ->title('Error Returning Materials')
                             ->body($e->getMessage())
                             ->danger()
@@ -204,6 +223,84 @@ class ViewJobOrder extends ViewRecord
                 }),
             Actions\EditAction::make()
                 ->visible(fn () => PanelAccess::canManageJobOrders()),
+            Action::make('generate_po')
+                ->label('Generate PO')
+                ->icon('heroicon-o-shopping-cart')
+                ->color('success')
+                ->visible(fn ($record) => PanelAccess::canManagePurchaseOrders() &&
+                    collect($record->materials_summary)->where('remaining', '>', 0)->isNotEmpty()
+                )
+                ->form([
+                    Select::make('partner_id')
+                        ->label('Supplier')
+                        ->options(Partner::where('is_supplier', true)->pluck('name', 'id'))
+                        ->required()
+                        ->searchable()
+                        ->preload(),
+                ])
+                ->requiresConfirmation()
+                ->action(function ($record, array $data) {
+                    try {
+                        \DB::beginTransaction();
+
+                        $missingMaterials = collect($record->materials_summary)->where('remaining', '>', 0);
+
+                        if ($missingMaterials->isEmpty()) {
+                            throw new \Exception('No missing materials found.');
+                        }
+
+                        // Replicate PO Number generation logic
+                        $lastPO = PurchaseOrder::orderBy('id', 'desc')->first();
+                        $lastNumber = 0;
+                        if ($lastPO && preg_match('/PO-(\d+)/', $lastPO->po_number, $matches)) {
+                            $lastNumber = (int) $matches[1];
+                        }
+                        $poNumber = 'PO-'.str_pad($lastNumber + 1, 4, '0', STR_PAD_LEFT);
+
+                        $po = PurchaseOrder::create([
+                            'po_number' => $poNumber,
+                            'partner_id' => $data['partner_id'],
+                            'order_date' => now(),
+                            'status' => 'draft',
+                        ]);
+
+                        foreach ($missingMaterials as $material) {
+                            $inventoryItem = InventoryItem::where('name', $material['material_name'])->first();
+                            if (! $inventoryItem) {
+                                continue;
+                            }
+
+                            $purchaseQty = $material['remaining_purchase_qty'] ?? $inventoryItem->toPurchaseUnits($material['remaining']);
+                            $unitPrice = $material['price_per_purchase_unit'] ?? $inventoryItem->pricePerPurchaseUnit();
+
+                            $po->purchaseOrderItems()->create([
+                                'inventory_item_id' => $inventoryItem->id,
+                                'quantity' => round($purchaseQty, 4),
+                                'unit_price' => $unitPrice,
+                                'total' => round($purchaseQty * $unitPrice, 2),
+                                'status' => 'pending',
+                            ]);
+                        }
+
+                        $po->recalculateSubtotal();
+
+                        \DB::commit();
+
+                        Notification::make()
+                            ->title('Purchase Order Generated')
+                            ->success()
+                            ->send();
+
+                        $this->redirect(EditPurchaseOrder::getUrl(['record' => $po]));
+                    } catch (\Exception $e) {
+                        \DB::rollBack();
+                        Notification::make()
+                            ->title('Error Generating PO')
+                            ->body($e->getMessage())
+                            ->danger()
+                            ->send();
+                    }
+                }),
         ];
     }
 }

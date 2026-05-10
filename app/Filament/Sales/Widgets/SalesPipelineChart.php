@@ -22,7 +22,7 @@ class SalesPipelineChart extends ChartWidget
                     'data' => collect($statuses)
                         ->map(fn (string $status) => SalesOrder::query()->where('status', $status)->count())
                         ->all(),
-                    'backgroundColor' => ['#f59e0b', '#38bdf8', '#6366f1', '#10b981', '#ef4444'],
+                    'backgroundColor' => ['#6366f1', '#38bdf8', '#0d9488', '#059669', '#e11d48'],
                 ],
             ],
             'labels' => ['Draft', 'Pending', 'Approved', 'Completed', 'Cancelled'],

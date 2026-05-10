@@ -1,17 +1,11 @@
 {
-  "mcpServers": {
-    "laravel-boost": {
-      "command": "php",
-      "args": [
-        "artisan",
-        "boost:mcp"
-      ],
-      "autoApprove": [
-        "database-schema",
-        "database-query",
-        "search-docs",
-        "application-info"
-      ]
+    "mcpServers": {
+        "laravel-boost": {
+            "command": "vendor\\bin\\sail",
+            "args": [
+                "artisan",
+                "boost:mcp"
+            ]
+        }
     }
-  }
 }

@@ -2,10 +2,12 @@
 
 namespace App\Providers;
 
+use App\Livewire\ExceptionHandlerHook;
 use App\Models\Artwork;
 use App\Models\Employee;
 use App\Models\InventoryItem;
 use App\Models\JobOrderTask;
+use App\Models\MaterialRequest;
 use App\Models\Payment;
 use App\Models\PaymentAllocation;
 use App\Models\PurchaseOrder;
@@ -16,6 +18,7 @@ use App\Observers\ArtworkObserver;
 use App\Observers\EmployeeObserver;
 use App\Observers\InventoryItemObserver;
 use App\Observers\JobOrderTaskObserver;
+use App\Observers\MaterialRequestObserver;
 use App\Observers\PaymentAllocationObserver;
 use App\Observers\PaymentObserver;
 use App\Observers\PurchaseOrderItemObserver;
@@ -29,6 +32,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
+use Livewire\Livewire;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -56,6 +60,8 @@ class AppServiceProvider extends ServiceProvider
 
         CreateAction::configureUsing(fn (CreateAction $action) => $action->createAnother(false));
 
+        Livewire::componentHook(ExceptionHandlerHook::class);
+
         Gate::policy(Payment::class, PaymentPolicy::class);
         Gate::policy(PaymentAllocation::class, PaymentAllocationPolicy::class);
 
@@ -74,5 +80,6 @@ class AppServiceProvider extends ServiceProvider
         Employee::observe(EmployeeObserver::class);
         InventoryItem::observe(InventoryItemObserver::class);
         Artwork::observe(ArtworkObserver::class);
+        MaterialRequest::observe(MaterialRequestObserver::class);
     }
 }

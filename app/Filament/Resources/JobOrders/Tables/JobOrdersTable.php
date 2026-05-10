@@ -26,7 +26,7 @@ class JobOrdersTable
             ->columns([
                 TextColumn::make('job_order_number')
                     ->label('Job Order')
-                    ->description(fn ($record) => $record->partner?->name)
+                    ->description(fn ($record) => $record->partner?->name ?? 'Internal Order')
                     ->weight('bold')
                     ->color('primary')
                     ->searchable()

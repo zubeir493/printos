@@ -18,6 +18,18 @@
     z-index: 20;
 }
 
+.fi-topbar .fi-user-menu-trigger {
+    flex-shrink: 0;
+    display: flex;
+    gap: .5rem;
+    align-items: center;
+    color: var(--color-gray-100);
+}
+
+.fi-topbar .fi-user-menu-trigger>span {
+    font-size: .85rem;
+}
+
 @media screen and (max-width: 1023px) {
     .fi-main-ctn {
         width: 100%;
@@ -154,23 +166,49 @@ nav.fi-sidebar-nav::-webkit-scrollbar {
 /* TopBar customization */
 .fi-modal-trigger:has(.fi-topbar-database-notifications-btn svg) {
     display: flex;
-    padding: 4px;
+    padding: 6px;
     border-radius: 8px;
+    transition: .2s ease;
+    background-color: var(--color-gray-700);
     transition: .2s ease;
 }
 
-.fi-modal-trigger:has(.fi-topbar-database-notifications-btn svg):hover {
-    background-color: var(--color-gray-700);
+
+.fi-modal-trigger:has(.fi-topbar-database-notifications-btn svg):hover,
+.fi-user-menu-trigger:hover {
+    background-color: var(--color-gray-600);
 }
 
 .fi-topbar-database-notifications-btn svg,
 .fi-topbar-database-notifications-btn svg:hover {
-    color: var(--gray-50);
-    width: 18px;
+    color: var(--color-indigo-100);
+    width: 20px;
 }
 
 .fi-user-menu-trigger>img {
-    border-radius: 7.5px;
+    border-radius: 5px;
+    width: 28px;
+    height: 28px;
+}
+
+.fi-user-menu-trigger {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px;
+    background: var(--color-gray-700);
+    border-radius: 8px;
+    padding-right: 8px;
+    transition: .2s ease;
+}
+
+
+.fi-user-menu-trigger-name {
+    font-family: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--color-gray-200);
+    white-space: nowrap;
 }
 
 /* Buttons */

@@ -4,6 +4,7 @@ namespace App\Observers;
 
 use App\Models\Artwork;
 use App\Models\User;
+use App\Notifications\ArtworkApprovedNotification;
 use App\Notifications\ArtworkUploadedNotification;
 use App\UserRole;
 use Illuminate\Support\Facades\Auth;
@@ -34,9 +35,15 @@ class ArtworkObserver
 
     public function updated(Artwork $artwork): void
     {
-        // Check if the is_approved field was changed to true
         if ($artwork->wasChanged('is_approved') && $artwork->is_approved) {
             $artwork->jobOrderTask?->updateStatus();
+
+            // Notify the designer who uploaded the artwork
+            $uploader = $artwork->uploader;
+
+            if ($uploader) {
+                $uploader->notify(new ArtworkApprovedNotification($artwork));
+            }
         }
     }
 }

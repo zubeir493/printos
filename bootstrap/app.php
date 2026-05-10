@@ -27,68 +27,68 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->render(function (Throwable $e, Request $request) {
-            // Handle 403 errors
+            $isFilamentRequest = $request->is('filament/*') || str_starts_with($request->path(), 'filament');
+
+            // 403 — redirect authenticated users to their role home; others see the 403 view
             if ($e instanceof HttpException && $e->getStatusCode() === 403) {
                 if (Auth::check()) {
                     $redirectPath = Auth::user()->role->getRedirectPath();
 
-                    // Avoid infinite redirect if the user still doesn't have access to their home panel
                     if (rtrim($request->getPathInfo(), '/') !== rtrim($redirectPath, '/')) {
                         return new RedirectResponse(url($redirectPath));
                     }
                 }
             }
 
-            // Handle 404 errors in Filament context
-            if ($e instanceof NotFoundHttpException) {
-                if ($request->is('filament/*') || str_starts_with($request->path(), 'filament')) {
-                    if (Auth::check()) {
-                        // For Filament 404s, redirect to dashboard with notification
-                        $redirectPath = Auth::user()->role->getRedirectPath();
-                        Notification::make()
-                            ->title('Page Not Found')
-                            ->body('The page you are looking for does not exist or has been moved.')
-                            ->warning()
-                            ->send();
-
-                        return new RedirectResponse(url($redirectPath));
-                    }
-                }
-            }
-
-            // Handle timeout and connection errors
-            if ($e instanceof ConnectionException ||
-                $e instanceof RequestException ||
-                str_contains($e->getMessage() ?? '', 'timeout') ||
-                str_contains($e->getMessage() ?? '', 'connection')) {
-                if ($request->is('filament/*') || str_starts_with($request->path(), 'filament')) {
+            // 404 on Filament routes — redirect with notification instead of a full-page error
+            if ($e instanceof NotFoundHttpException && $isFilamentRequest) {
+                if (Auth::check()) {
+                    $redirectPath = Auth::user()->role->getRedirectPath();
                     Notification::make()
-                        ->title('Connection Timeout')
-                        ->body('The request took too long to complete. Please try again.')
-                        ->danger()
-                        ->send();
-
-                    return new RedirectResponse($request->headers->get('referer') ?? url('/'));
-                }
-            }
-
-            // Handle validation errors with better UX in Filament
-            if ($e instanceof ValidationException) {
-                if ($request->is('filament/*') || str_starts_with($request->path(), 'filament')) {
-                    Notification::make()
-                        ->title('Validation Error')
-                        ->body('Please check your input and try again.')
+                        ->title('Page not found')
+                        ->body('That page doesn\'t exist or may have been moved.')
                         ->warning()
                         ->send();
+
+                    return new RedirectResponse(url($redirectPath));
                 }
             }
 
-            // Handle server errors (500) in Filament context
-            if ($e instanceof HttpException && $e->getStatusCode() >= 500) {
-                if ($request->is('filament/*') || str_starts_with($request->path(), 'filament')) {
+            // Connection / timeout errors on Filament routes
+            if ($isFilamentRequest && (
+                $e instanceof ConnectionException ||
+                $e instanceof RequestException ||
+                str_contains($e->getMessage() ?? '', 'timeout') ||
+                str_contains($e->getMessage() ?? '', 'connection')
+            )) {
+                Notification::make()
+                    ->title('Connection problem')
+                    ->body('The request took too long to complete. Please try again.')
+                    ->danger()
+                    ->send();
+
+                return new RedirectResponse($request->headers->get('referer') ?? url('/'));
+            }
+
+            // Validation errors on Filament routes — Livewire handles inline errors,
+            // but this catches any that bubble up unexpectedly
+            if ($e instanceof ValidationException && $isFilamentRequest) {
+                Notification::make()
+                    ->title('Please check your input')
+                    ->body('Some fields have errors. Review the form and try again.')
+                    ->warning()
+                    ->send();
+            }
+
+            // All other server errors (5xx) on Filament routes — redirect with notification
+            // This catches both HttpException 5xx AND unhandled runtime Throwables
+            if ($isFilamentRequest && ! ($e instanceof ValidationException) && ! ($e instanceof NotFoundHttpException)) {
+                $statusCode = $e instanceof HttpException ? $e->getStatusCode() : 500;
+
+                if ($statusCode >= 500) {
                     Notification::make()
-                        ->title('Server Error')
-                        ->body('Something went wrong on our end. Please try again or contact support if the problem persists.')
+                        ->title('Something went wrong')
+                        ->body('An unexpected error occurred. Please try again or contact your administrator if it keeps happening.')
                         ->danger()
                         ->send();
 

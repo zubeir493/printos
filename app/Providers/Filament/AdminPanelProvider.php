@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\AvatarProviders\PrimaryColorAvatarProvider;
 use App\Filament\Widgets\AdminHealthStats;
 use App\Filament\Widgets\ProfitabilityMarginChart;
 use App\Filament\Widgets\SystemBottlenecksChart;
@@ -36,6 +37,7 @@ class AdminPanelProvider extends PanelProvider
             ->login()
             ->profile()
             ->databaseNotifications()
+            ->defaultAvatarProvider(PrimaryColorAvatarProvider::class)
             ->brandLogo(asset('images/logo.svg')) // TODO: Place logo in public/images/logo.svg
             ->brandLogoHeight('2rem')
             ->colors([

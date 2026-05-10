@@ -7,6 +7,7 @@ use App\Models\JobOrder;
 use App\Models\MaterialIssueApproval;
 use App\Models\MaterialRequest;
 use App\Models\User;
+use App\Notifications\MaterialIssueDecisionNotification;
 use App\UserRole;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\DB;
@@ -85,7 +86,7 @@ class MaterialIssueService
     {
         DB::transaction(function () use ($approval, $actor, $notes) {
             $approval = MaterialIssueApproval::query()
-                ->with(['materialRequest.inventoryItem', 'materialRequest.jobOrderTask.jobOrder'])
+                ->with(['materialRequest.inventoryItem', 'materialRequest.jobOrderTask.jobOrder', 'requester'])
                 ->lockForUpdate()
                 ->findOrFail($approval->id);
 
@@ -127,6 +128,11 @@ class MaterialIssueService
                 'approved_at' => now(),
                 'rejected_at' => null,
             ]);
+
+            // Notify the requester of the decision
+            if ($approval->requested_by) {
+                $approval->requester?->notify(new MaterialIssueDecisionNotification($approval));
+            }
         });
     }
 
@@ -134,6 +140,7 @@ class MaterialIssueService
     {
         DB::transaction(function () use ($approval, $actor, $notes) {
             $approval = MaterialIssueApproval::query()
+                ->with(['materialRequest.inventoryItem', 'materialRequest.jobOrderTask.jobOrder', 'requester'])
                 ->lockForUpdate()
                 ->findOrFail($approval->id);
 
@@ -148,6 +155,11 @@ class MaterialIssueService
                 'approved_at' => null,
                 'rejected_at' => now(),
             ]);
+
+            // Notify the requester of the decision
+            if ($approval->requested_by) {
+                $approval->requester?->notify(new MaterialIssueDecisionNotification($approval));
+            }
         });
     }
 

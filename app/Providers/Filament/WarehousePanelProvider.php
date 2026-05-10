@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\AvatarProviders\PrimaryColorAvatarProvider;
 use App\Filament\Pages\StockOverview;
 use App\Filament\Resources\Dispatches\DispatchResource;
 use App\Filament\Resources\GoodsReceipts\GoodsReceiptResource;
@@ -42,6 +43,7 @@ class WarehousePanelProvider extends PanelProvider
             ->darkMode(false)
             ->defaultThemeMode(ThemeMode::Light)
             ->databaseNotifications()
+            ->defaultAvatarProvider(PrimaryColorAvatarProvider::class)
             ->profile()
             ->brandLogo(asset('images/logo.svg')) // TODO: Place logo in public/images/logo.svg
             ->brandLogoHeight('2rem')

@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\AvatarProviders\PrimaryColorAvatarProvider;
 use App\Filament\Resources\SalesOrders\SalesOrderResource;
 use App\Filament\Retail\Widgets\RetailCounterStats;
 use App\Filament\Retail\Widgets\RetailDemandChart;
@@ -34,6 +35,7 @@ class RetailPanelProvider extends PanelProvider
             ->darkMode(false)
             ->defaultThemeMode(ThemeMode::Light)
             ->databaseNotifications()
+            ->defaultAvatarProvider(PrimaryColorAvatarProvider::class)
             ->profile()
             ->brandLogo(asset('images/logo.svg')) // TODO: Place logo in public/images/logo.svg
             ->brandLogoHeight('2rem')

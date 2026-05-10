@@ -1,93 +1,49 @@
-# PrintOS
+# PrintOS | The Total Print Management Ecosystem
 
-A production-ready ERP system built for printing companies. Manages the full lifecycle from job order intake through production, materials, dispatch, and invoicing — across multiple role-based panels.
+**Stop juggling spreadsheets and start scaling your production.** 
 
-## Tech Stack
+PrintOS is a high-performance ERP designed specifically for the printing industry. From the moment a customer places an order to the second the final package leaves the loading dock, PrintOS synchronizes your entire team, automates your inventory, and protects your profit margins.
 
-- **PHP 8.3** / **Laravel 12**
-- **Filament 5** — admin UI framework
-- **Livewire 4** / **Alpine.js**
-- **MySQL 8** — primary database
-- **Redis 7** — cache, sessions, queues
-- **Tailwind CSS v4**
+---
 
-## Panels & Roles
+## 💎 The Competitive Advantage
 
-| Panel | Role | Access |
-|---|---|---|
-| `/` | Admin | Full access to all modules |
-| `/design` | Design | Artworks, job order tasks, design workflow |
-| `/production` | Production | Tasks in production status, machines, production plans |
-| `/operations` | Operations | Job orders, dispatches, purchase orders, material management |
-| `/warehouse` | Warehouse | Inventory, stock movements, goods receipts, dispatches |
-| `/finance` | Finance | Payments, invoices, journal entries, financial reports |
-| `/sales` | Sales | Sales orders, customer management |
-| `/retail` | Retail | Point-of-sale sales orders |
-| `/hr` | HR | Employee management, salary tracking |
+### **Total Production Visibility**
+Eliminate the "where is this job?" chaos. PrintOS provides a real-time pulse of your shop floor, tracking every order through design, pre-press, and production.
 
-All roles log in from the main `/login` page and are redirected to their panel automatically.
+### **Automated Material Intelligence**
+Stop losing money on waste. Our smart inventory engine handles complex unit conversions (like reams-to-sheets) and alerts you to shortages before they stall your presses. 
 
-## Core Modules
+### **Integrated Financial Control**
+Close the loop between operations and accounting. Generate professional invoices, track payment allocations, and view real-time P&L reports without ever leaving the platform.
 
-**Job Orders** — Client and internal jobs with task breakdown, artwork approval workflow, material requirements, and state machine enforcement (Draft → Active → Completed/Cancelled).
+---
 
-**Inventory & Warehouse** — Raw materials with purchase/base unit conversion (e.g. reams → sheets), stock movements, warehouse transfers, goods receipts, stock adjustments.
+## 🏢 A Tailored Experience for Every Role
+PrintOS replaces cluttered interfaces with **Role-Specific Command Centers**. Your team sees only what they need to succeed:
 
-**Procurement** — Purchase orders with one-click generation from job order material shortages, unit-aware pricing, goods receipt workflow.
+*   **Sales & Retail:** Swift order entry and CRM tools to keep customers coming back.
+*   **Design & Pre-Press:** Robust artwork management and approval workflows to ensure "Right First Time" printing.
+*   **Production & Operations:** Machine efficiency tracking and smart scheduling to maximize throughput.
+*   **Warehouse & Logistics:** Precision stock control and integrated dispatch management.
+*   **Finance & HR:** Enterprise-grade accounting and payroll tracking for total fiscal oversight.
 
-**Finance** — Payments, payment allocations (polymorphic across job orders and sales orders), invoices with PDF generation, journal entries, bank transfers, financial reports (P&L, balance sheet, general ledger, aging).
+---
 
-**Production** — Production plans, machine efficiency tracking, production reports.
+## ⚡ Built for Reliability
+While your team enjoys a simple, intuitive interface, the engine under the hood is built with world-class technology (**Laravel 12, MySQL 8, and Redis**). This ensures:
 
-**Dispatch** — Outbound dispatch management linked to job orders.
+*   **Bank-Grade Security:** Comprehensive role-based access control.
+*   **Scalability:** Ready to handle thousands of orders and multi-site operations.
+*   **Cloud-Native:** Accessible from anywhere, with secure document storage for artworks and invoices.
 
-**HR** — Employee records, salary history, overtime rates.
+---
 
-## Getting Started
+## 🛠 Deployment & Implementation
 
-### Local (Laravel Herd / Valet)
+### **Developer Quickstart**
+PrintOS is designed for modern DevOps workflows. Launch a local instance in minutes:
 
 ```bash
-composer install
-npm install && npm run build
-cp .env.example .env
-php artisan key:generate
-php artisan migrate
-php artisan db:seed
-php artisan storage:link
-```
-
-### Docker (VPS / Production)
-
-```bash
-cp .env.docker .env
-# Edit .env — set APP_KEY, DB_PASSWORD, REDIS_PASSWORD, APP_URL
-php artisan key:generate --show   # paste output into APP_KEY
-docker compose up -d
-```
-
-The entrypoint automatically runs migrations, links storage, and warms caches on startup.
-
-### First Login
-
-After seeding, log in with the credentials from `database/seeders/UserSeeder.php`. The admin user has full access to all panels.
-
-## Environment Variables
-
-Key variables to configure for production:
-
-| Variable | Description |
-|---|---|
-| `APP_KEY` | Laravel encryption key — generate with `php artisan key:generate --show` |
-| `APP_URL` | Full URL including scheme, e.g. `https://printos.example.com` |
-| `DB_*` | MySQL connection details |
-| `REDIS_PASSWORD` | Redis auth password |
-| `SESSION_SECURE_COOKIE` | Set to `true` when running behind HTTPS |
-| `FILESYSTEM_DISK` | `local` for VPS storage, `s3` for object storage |
-| `PRIVATE_FILESYSTEM_DISK` | Disk for private files (artworks, invoices, text files) |
-| `AWS_*` | S3-compatible storage credentials (Backblaze B2, AWS, etc.) |
-| `MAIL_*` | SMTP credentials for invoice and artwork emails |
-
-## License
-
-Proprietary. All rights reserved.
+composer install && npm install && npm run build
+php artisan migrate --seed

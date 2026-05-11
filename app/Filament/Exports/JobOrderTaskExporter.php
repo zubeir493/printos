@@ -23,8 +23,8 @@ class JobOrderTaskExporter extends Exporter
                 ->label('Task Name'),
             ExportColumn::make('quantity')
                 ->label('Quantity'),
-            ExportColumn::make('unit_cost')
-                ->label('Unit Cost'),
+            ExportColumn::make('task_cost')
+                ->label('Task Cost'),
             ExportColumn::make('jobOrder.status')
                 ->label('Order Status'),
             ExportColumn::make('status')
@@ -34,10 +34,10 @@ class JobOrderTaskExporter extends Exporter
 
     public static function getCompletedNotificationBody(Export $export): string
     {
-        $body = 'Your job order task export has completed and ' . Number::format($export->successful_rows) . ' ' . str('row')->plural($export->successful_rows) . ' exported.';
+        $body = 'Your job order task export has completed and '.Number::format($export->successful_rows).' '.str('row')->plural($export->successful_rows).' exported.';
 
         if ($failedRowsCount = $export->getFailedRowsCount()) {
-            $body .= ' ' . Number::format($failedRowsCount) . ' ' . str('row')->plural($failedRowsCount) . ' failed to export.';
+            $body .= ' '.Number::format($failedRowsCount).' '.str('row')->plural($failedRowsCount).' failed to export.';
         }
 
         return $body;

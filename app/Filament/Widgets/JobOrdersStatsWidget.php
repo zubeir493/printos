@@ -12,7 +12,7 @@ class JobOrdersStatsWidget extends BaseWidget
     {
         $totalJobs = JobOrder::count();
         $totalValue = JobOrder::sum('total');
-        $activeJobs = JobOrder::whereIn('status', ['design', 'production'])->count();
+        $activeJobs = JobOrder::where('status', 'active')->count();
         $lateJobs = JobOrder::late()->count();
         $completedToday = JobOrder::where('status', 'completed')
             ->whereDate('updated_at', today())
@@ -25,7 +25,7 @@ class JobOrdersStatsWidget extends BaseWidget
 
         return [
             Stat::make('Active Jobs', $activeJobs)
-                ->description('In design/production')
+                ->description('Open workflow')
                 ->descriptionIcon('heroicon-m-cog')
                 ->color($activeJobs > 20 ? 'warning' : 'primary')
                 ->chart($activeChart),

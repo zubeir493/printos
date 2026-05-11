@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Storage;
+use Symfony\Component\Process\Process;
 
 class BackupDatabase extends Command
 {
@@ -44,17 +45,20 @@ class BackupDatabase extends Command
                     $port = config('database.connections.'.$connection.'.port');
                     $username = config('database.connections.'.$connection.'.username');
                     $password = config('database.connections.'.$connection.'.password');
-                    $dumpCommand = "mysqldump -h {$host} -P {$port} -u {$username} -p{$password} {$database}";
+                    $dumpCommand = ['mariadb-dump', '-h', $host, '-P', (string) $port, '-u', $username, $database];
+                    $environment = ['MYSQL_PWD' => $password];
                     break;
                 case 'pgsql':
                     $host = config('database.connections.'.$connection.'.host');
                     $port = config('database.connections.'.$connection.'.port');
                     $username = config('database.connections.'.$connection.'.username');
                     $password = config('database.connections.'.$connection.'.password');
-                    $dumpCommand = "PGPASSWORD={$password} pg_dump -h {$host} -p {$port} -U {$username} {$database}";
+                    $dumpCommand = ['pg_dump', '-h', $host, '-p', (string) $port, '-U', $username, $database];
+                    $environment = ['PGPASSWORD' => $password];
                     break;
                 case 'sqlite':
-                    $dumpCommand = "sqlite3 {$database} .dump";
+                    $dumpCommand = ['sqlite3', $database, '.dump'];
+                    $environment = [];
                     break;
                 default:
                     $this->error('Database type not supported for backup: '.$connection);
@@ -62,14 +66,18 @@ class BackupDatabase extends Command
                     return Command::FAILURE;
             }
 
-            // Execute the dump command
-            $output = shell_exec($dumpCommand);
+            // Execute the dump command.
+            $process = new Process($dumpCommand, base_path(), $environment ?? []);
+            $process->setTimeout(1800);
+            $process->run();
 
-            if ($output === null) {
-                $this->error('Failed to generate database dump');
+            if (! $process->isSuccessful()) {
+                $this->error('Failed to generate database dump: '.$process->getErrorOutput());
 
                 return Command::FAILURE;
             }
+
+            $output = $process->getOutput();
 
             // Store the backup
             Storage::disk('s3')->put($filename, $output);

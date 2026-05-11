@@ -17,7 +17,7 @@ return new class extends Migration
             $table->id();
             $table->string('job_order_number')->unique();
             $table->foreignId('partner_id')->constrained();
-            $table->enum('job_type', ["books", "packages"]);
+            $table->enum('job_type', ['books', 'packages']);
             $table->string('cost_calc_file');
             $table->json('services');
             $table->date('submission_date');
@@ -25,7 +25,7 @@ return new class extends Migration
             $table->decimal('advance_amount', 12, 2);
             $table->boolean('advance_paid')->default(false);
             $table->decimal('total_price', 12, 2);
-            $table->enum('status', ["draft", "design", "production", "completed", "cancelled"]);
+            $table->enum('status', ['draft', 'active', 'completed', 'cancelled'])->default('draft');
             $table->timestamps();
         });
 

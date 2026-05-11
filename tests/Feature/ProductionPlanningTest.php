@@ -8,8 +8,10 @@ use App\Models\Machine;
 use App\Models\Partner;
 use App\Models\ProductionPlan;
 use App\Models\ProductionPlanItem;
+use App\Models\ProductionPlanMachine;
 use App\Models\ProductionReport;
 use App\Models\ProductionReportItem;
+use App\Models\ProductionReportMachine;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -45,7 +47,7 @@ class ProductionPlanningTest extends TestCase
             'job_order_id' => $jobOrder->id,
             'name' => 'Task 1',
             'quantity' => 1000,
-            'unit_cost' => 500.00,
+            'task_cost' => 500.00,
         ]);
 
         $plan = ProductionPlan::create([
@@ -54,8 +56,14 @@ class ProductionPlanningTest extends TestCase
             'status' => 'approved',
         ]);
 
+        $planMachine = ProductionPlanMachine::create([
+            'production_plan_id' => $plan->id,
+            'machine_id' => $machine->id,
+        ]);
+
         $planItem = ProductionPlanItem::create([
             'production_plan_id' => $plan->id,
+            'production_plan_machine_id' => $planMachine->id,
             'machine_id' => $machine->id,
             'job_order_task_id' => $task->id,
             'planned_quantity' => 1000,
@@ -69,9 +77,14 @@ class ProductionPlanningTest extends TestCase
             'status' => 'draft',
         ]);
 
+        $reportMachine = ProductionReportMachine::create([
+            'production_report_id' => $report->id,
+            'production_plan_machine_id' => $planMachine->id,
+        ]);
+
         foreach ($plan->items as $item) {
             ProductionReportItem::create([
-                'production_report_id' => $report->id,
+                'production_report_machine_id' => $reportMachine->id,
                 'production_plan_item_id' => $item->id,
                 'date' => now(),
                 'actual_quantity' => $item->planned_quantity,
@@ -85,7 +98,7 @@ class ProductionPlanningTest extends TestCase
         ]);
 
         $this->assertDatabaseHas('production_report_items', [
-            'production_report_id' => $report->id,
+            'production_report_machine_id' => $reportMachine->id,
             'production_plan_item_id' => $planItem->id,
             'actual_quantity' => 1000,
         ]);

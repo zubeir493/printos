@@ -1,6 +1,8 @@
 {
     "agents": [
-        "kiro"
+        "kiro",
+        "copilot",
+        "codex"
     ],
     "cloud": false,
     "guidelines": true,

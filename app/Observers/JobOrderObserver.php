@@ -30,13 +30,13 @@ class JobOrderObserver
             return;
         }
 
-        if ($jobOrder->status !== 'production') {
+        if ((string) $jobOrder->status !== 'active') {
             return;
         }
 
         if (! $jobOrder->canStartProduction()) {
             throw ValidationException::withMessages([
-                'status' => 'Approve all artworks before moving this job order to production.',
+                'status' => 'Approve all artworks before activating this job order.',
             ]);
         }
 

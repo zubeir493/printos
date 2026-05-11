@@ -24,7 +24,7 @@ class JobOrderFactory extends Factory
             'subtotal' => fake()->randomFloat(2, 0, 9999.99),
             'tax_amount' => fake()->randomFloat(2, 0, 999.99),
             'total' => fake()->randomFloat(2, 0, 9999.99),
-            'status' => fake()->randomElement(['draft', 'design', 'production', 'completed', 'cancelled']),
+            'status' => fake()->randomElement(['draft', 'active', 'completed', 'cancelled']),
         ];
     }
 }

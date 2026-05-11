@@ -16,7 +16,7 @@ class JobOrderTaskFactory extends Factory
             'job_order_id' => JobOrder::factory(),
             'name' => fake()->name(),
             'quantity' => fake()->numberBetween(-10000, 10000),
-            'unit_cost' => fake()->randomFloat(2, 0, 9999999999.99),
+            'task_cost' => fake()->randomFloat(2, 0, 9999999999.99),
         ];
     }
 }

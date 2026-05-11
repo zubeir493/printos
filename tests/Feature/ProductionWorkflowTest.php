@@ -9,8 +9,10 @@ use App\Models\Machine;
 use App\Models\Partner;
 use App\Models\ProductionPlan;
 use App\Models\ProductionPlanItem;
+use App\Models\ProductionPlanMachine;
 use App\Models\ProductionReport;
 use App\Models\ProductionReportItem;
+use App\Models\ProductionReportMachine;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
@@ -39,7 +41,7 @@ class ProductionWorkflowTest extends TestCase
         ]);
 
         $this->expectException(ValidationException::class);
-        $jobOrder->update(['status' => 'production']);
+        $jobOrder->update(['status' => 'active']);
     }
 
     public function test_production_plan_and_report_can_be_created_for_approved_job_order()
@@ -74,10 +76,10 @@ class ProductionWorkflowTest extends TestCase
             'is_approved' => true,
         ]);
 
-        $jobOrder->update(['status' => 'production']);
+        $jobOrder->update(['status' => 'active']);
 
         $this->assertNotNull($jobOrder->fresh()->production_started_at);
-        $this->assertEquals('production', $jobOrder->status);
+        $this->assertEquals('active', $jobOrder->status);
 
         $machine = Machine::create([
             'name' => 'Offset Press 2',
@@ -90,6 +92,11 @@ class ProductionWorkflowTest extends TestCase
             'status' => 'approved',
         ]);
 
+        $planMachine = ProductionPlanMachine::create([
+            'production_plan_id' => $plan->id,
+            'machine_id' => $machine->id,
+        ]);
+
         $task = JobOrderTask::create([
             'job_order_id' => $jobOrder->id,
             'name' => 'Produce Packaging',
@@ -99,6 +106,7 @@ class ProductionWorkflowTest extends TestCase
 
         $planItem = ProductionPlanItem::create([
             'production_plan_id' => $plan->id,
+            'production_plan_machine_id' => $planMachine->id,
             'machine_id' => $machine->id,
             'job_order_task_id' => $task->id,
             'planned_quantity' => 5000,
@@ -111,8 +119,13 @@ class ProductionWorkflowTest extends TestCase
             'status' => 'completed',
         ]);
 
-        ProductionReportItem::create([
+        $reportMachine = ProductionReportMachine::create([
             'production_report_id' => $report->id,
+            'production_plan_machine_id' => $planMachine->id,
+        ]);
+
+        ProductionReportItem::create([
+            'production_report_machine_id' => $reportMachine->id,
             'production_plan_item_id' => $planItem->id,
             'date' => now(),
             'actual_quantity' => 4900,
@@ -126,7 +139,7 @@ class ProductionWorkflowTest extends TestCase
         ]);
 
         $this->assertDatabaseHas('production_report_items', [
-            'production_report_id' => $report->id,
+            'production_report_machine_id' => $reportMachine->id,
             'production_plan_item_id' => $planItem->id,
             'actual_quantity' => 4900,
         ]);

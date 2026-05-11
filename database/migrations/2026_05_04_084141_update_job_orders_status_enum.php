@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -14,6 +15,10 @@ return new class extends Migration
         Schema::table('job_orders', function (Blueprint $table) {
             $table->string('status')->change();
         });
+
+        DB::table('job_orders')
+            ->whereIn('status', ['design', 'production'])
+            ->update(['status' => 'active']);
     }
 
     /**
@@ -22,7 +27,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('job_orders', function (Blueprint $table) {
-            $table->enum('status', ["draft", "design", "production", "completed", "cancelled"])->change();
+            $table->enum('status', ['draft', 'active', 'completed', 'cancelled'])->default('draft')->change();
         });
     }
 };

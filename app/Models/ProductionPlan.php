@@ -22,6 +22,11 @@ class ProductionPlan extends Model
         return $this->hasMany(ProductionPlanMachine::class);
     }
 
+    public function items(): HasMany
+    {
+        return $this->hasMany(ProductionPlanItem::class);
+    }
+
     public function reports(): HasMany
     {
         return $this->hasMany(ProductionReport::class);

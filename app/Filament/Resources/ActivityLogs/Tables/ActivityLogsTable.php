@@ -17,6 +17,7 @@ class ActivityLogsTable
     public static function configure(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn (Builder $query) => $query->with(['causer', 'subject']))
             ->columns([
                 // Primary column: who did what to which record
                 TextColumn::make('activity')
@@ -131,11 +132,21 @@ class ActivityLogsTable
         $id = $record->subject_id;
 
         if ($subject && $id) {
-            $attrs = $record->properties['attributes'] ?? [];
+            // Try to get reference from properties first (for create/update events)
+            $attrs = $record->properties['attributes'] ?? $record->properties['old'] ?? [];
             $ref = $attrs['job_order_number'] ?? $attrs['po_number'] ?? $attrs['order_number']
                 ?? $attrs['invoice_number'] ?? $attrs['payment_number'] ?? $attrs['transfer_number']
                 ?? $attrs['adjustment_number'] ?? $attrs['receipt_number'] ?? $attrs['employee_id']
                 ?? $attrs['name'] ?? null;
+
+            // If not found in properties, try to get from the subject model
+            if (!$ref && $record->subject) {
+                $subjectModel = $record->subject;
+                $ref = $subjectModel->job_order_number ?? $subjectModel->po_number ?? $subjectModel->order_number
+                    ?? $subjectModel->invoice_number ?? $subjectModel->payment_number ?? $subjectModel->transfer_number
+                    ?? $subjectModel->adjustment_number ?? $subjectModel->receipt_number ?? $subjectModel->employee_id
+                    ?? $subjectModel->name ?? null;
+            }
 
             $subjectLabel = $ref ? "#{$ref}" : "#{$id}";
 

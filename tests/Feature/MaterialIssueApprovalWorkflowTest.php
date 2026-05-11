@@ -149,7 +149,7 @@ class MaterialIssueApprovalWorkflowTest extends TestCase
             'cost_calc_file' => 'test.pdf',
             'services' => json_encode(['printing']),
             'submission_date' => now()->toDateString(),
-            'status' => 'production',
+            'status' => 'active',
             'remarks' => 'Testing over-issue flow',
             'advance_amount' => 0,
             'advance_paid' => false,

@@ -17,8 +17,8 @@ class LateJobOrdersTest extends TestCase
 
         $partner = Partner::factory()->create();
 
-        $lateJob = $this->makeJobOrder($partner->id, 'JO-LATE-001', now()->subDay()->toDateString(), 'production');
-        $this->makeJobOrder($partner->id, 'JO-ONTIME-001', today()->toDateString(), 'production');
+        $lateJob = $this->makeJobOrder($partner->id, 'JO-LATE-001', now()->subDay()->toDateString(), 'active');
+        $this->makeJobOrder($partner->id, 'JO-ONTIME-001', today()->toDateString(), 'active');
         $this->makeJobOrder($partner->id, 'JO-DONE-001', now()->subDays(3)->toDateString(), 'completed');
         $this->makeJobOrder($partner->id, 'JO-CANCELLED-001', now()->subDays(2)->toDateString(), 'cancelled');
 

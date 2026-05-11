@@ -61,9 +61,9 @@ class Setting extends Model
         return static::create([
             'company_name' => config('app.name', 'PrintOS'),
             'company_address' => '123 Business Street, City, Country',
-            'company_phone' => '+1 234 567 8900',
+            'company_phone' => '+1234678900',
             'company_email' => 'billing@yourcompany.com',
-            'company_website' => 'www.yourcompany.com',
+            'company_website' => 'https://www.yourcompany.com',
             'company_tax_id' => 'TAX-123456789',
             'vat_rate' => 15.00,
             'vat_enabled' => true,

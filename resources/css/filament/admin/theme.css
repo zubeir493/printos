@@ -169,7 +169,8 @@ nav.fi-sidebar-nav::-webkit-scrollbar {
     padding: 6px;
     border-radius: 8px;
     transition: .2s ease;
-    background-color: var(--color-gray-700);
+    background: linear-gradient(#3e3d3e, #403e40 79.91%, #5e5d5e);
+    box-shadow: inset 0 -1px 1px .25px #000, inset 0 0 1px .75px #ffffff80;
     transition: .2s ease;
 }
 
@@ -196,7 +197,8 @@ nav.fi-sidebar-nav::-webkit-scrollbar {
     align-items: center;
     gap: 8px;
     padding: 4px;
-    background: var(--color-gray-700);
+    background: linear-gradient(#3e3d3e, #403e40 79.91%, #5e5d5e);
+    box-shadow: inset 0 -1px 1px .25px #000, inset 0 0 1px .75px #ffffff80;
     border-radius: 8px;
     padding-right: 8px;
     transition: .2s ease;
@@ -234,4 +236,13 @@ nav.fi-sidebar-nav::-webkit-scrollbar {
 .fi-ac-btn-action.fi-color-primary>.fi-loading-indicator {
     height: 18px;
     order: 2;
+}
+
+/* login screen logo */
+.fi-simple-header>.fi-logo {
+    filter: brightness(0);
+}
+
+h1.fi-simple-header-heading {
+    display: none !important;
 }

@@ -202,13 +202,18 @@ class Settings extends Page implements HasForms
             ->send();
     }
 
-    protected function getFormActions(): array
+    protected function getHeaderActions(): array
     {
         return [
             Action::make('save')
                 ->label('Save Settings')
-                ->submit('save')
-                ->icon(Heroicon::OutlinedCheck),
+                ->action(fn () => $this->save())
+                ->icon(Heroicon::OutlinedDocumentCheck),
         ];
+    }
+
+    protected function getFormActions(): array
+    {
+        return [];
     }
 }

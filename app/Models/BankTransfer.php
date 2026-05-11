@@ -6,10 +6,21 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\DB;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class BankTransfer extends Model
 {
     use HasFactory;
+    use LogsActivity;
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['transfer_number', 'from_bank_id', 'to_bank_id', 'amount', 'transfer_date', 'status', 'completed_at', 'completed_by'])
+            ->logOnlyDirty()
+            ->useLogName('bank_transfer');
+    }
 
     protected $fillable = [
         'transfer_number',

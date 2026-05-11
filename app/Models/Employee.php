@@ -6,10 +6,20 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class Employee extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, LogsActivity, SoftDeletes;
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['employee_id', 'first_name', 'last_name', 'phone', 'hire_date', 'status', 'department', 'position', 'basic_salary', 'hourly_overtime_rate', 'holiday_overtime_rate', 'payment_method'])
+            ->logOnlyDirty()
+            ->useLogName('employee');
+    }
 
     protected $fillable = [
         'employee_id',

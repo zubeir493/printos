@@ -5,10 +5,21 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class JournalEntry extends Model
 {
     use HasFactory;
+    use LogsActivity;
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['date', 'reference', 'narration', 'total_debit', 'total_credit', 'status', 'posted_at', 'voided_at'])
+            ->logOnlyDirty()
+            ->useLogName('journal_entry');
+    }
 
     /**
      * The attributes that are mass assignable.

@@ -17,7 +17,7 @@
 
         {{-- Logo --}}
         <div class="flex justify-center mb-10">
-            <img src="{{ asset('images/logo.svg') }}" alt="PrintOS" class="h-8" onerror="this.style.display='none'">
+            <img src="{{ asset('images/logo.svg') }}" alt="PrintOS" class="h-8" style="filter: brightness(0);" onerror="this.style.display='none'">
         </div>
 
         {{-- Callout card --}}

@@ -7,10 +7,22 @@ use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 #[ObservedBy(GoodsReceiptObserver::class)]
 class GoodsReceipt extends Model
 {
+    use LogsActivity;
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['receipt_number', 'purchase_order_id', 'warehouse_id', 'receipt_date', 'status', 'posted_at'])
+            ->logOnlyDirty()
+            ->useLogName('goods_receipt');
+    }
+
     protected $fillable = [
         'receipt_number',
         'purchase_order_id',

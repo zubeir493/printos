@@ -5,9 +5,21 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class MaterialRequest extends Model
 {
+    use LogsActivity;
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['requested_quantity', 'issued_quantity', 'reason'])
+            ->logOnlyDirty()
+            ->useLogName('material_request');
+    }
+
     protected $fillable = [
         'job_order_task_id',
         'inventory_item_id',

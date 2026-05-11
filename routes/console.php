@@ -14,5 +14,8 @@ Schedule::command('backup:database')->dailyAt('02:00');
 // Mark overdue invoices every morning
 Schedule::command('invoices:update-overdue')->dailyAt('06:00')->withoutOverlapping();
 
+// Notify about late job orders every morning
+Schedule::command('job-orders:notify-late')->dailyAt('06:05')->withoutOverlapping();
+
 // Nightly reconciliation safety net — keeps invoice balances in sync
 Schedule::command('invoices:fix-balances')->dailyAt('03:00')->withoutOverlapping();

@@ -2,10 +2,9 @@
 
 namespace App\Console\Commands;
 
-use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Carbon\Carbon;
+use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Storage;
 
 class BackupDatabase extends Command
 {
@@ -31,8 +30,8 @@ class BackupDatabase extends Command
         $this->info('Starting database backup...');
 
         try {
-            $database = config('database.connections.' . config('database.default') . '.database');
-            $filename = 'backups/database/' . $database . '_' . Carbon::now()->format('Y-m-d_H-i-s') . '.sql';
+            $database = config('database.connections.'.config('database.default').'.database');
+            $filename = 'backups/database/'.$database.'_'.Carbon::now()->format('Y-m-d_H-i-s').'.sql';
 
             // Determine the dump command based on database type
             $connection = config('database.default');
@@ -41,24 +40,25 @@ class BackupDatabase extends Command
             switch ($connection) {
                 case 'mysql':
                 case 'mariadb':
-                    $host = config('database.connections.' . $connection . '.host');
-                    $port = config('database.connections.' . $connection . '.port');
-                    $username = config('database.connections.' . $connection . '.username');
-                    $password = config('database.connections.' . $connection . '.password');
+                    $host = config('database.connections.'.$connection.'.host');
+                    $port = config('database.connections.'.$connection.'.port');
+                    $username = config('database.connections.'.$connection.'.username');
+                    $password = config('database.connections.'.$connection.'.password');
                     $dumpCommand = "mysqldump -h {$host} -P {$port} -u {$username} -p{$password} {$database}";
                     break;
                 case 'pgsql':
-                    $host = config('database.connections.' . $connection . '.host');
-                    $port = config('database.connections.' . $connection . '.port');
-                    $username = config('database.connections.' . $connection . '.username');
-                    $password = config('database.connections.' . $connection . '.password');
+                    $host = config('database.connections.'.$connection.'.host');
+                    $port = config('database.connections.'.$connection.'.port');
+                    $username = config('database.connections.'.$connection.'.username');
+                    $password = config('database.connections.'.$connection.'.password');
                     $dumpCommand = "PGPASSWORD={$password} pg_dump -h {$host} -p {$port} -U {$username} {$database}";
                     break;
                 case 'sqlite':
                     $dumpCommand = "sqlite3 {$database} .dump";
                     break;
                 default:
-                    $this->error('Database type not supported for backup: ' . $connection);
+                    $this->error('Database type not supported for backup: '.$connection);
+
                     return Command::FAILURE;
             }
 
@@ -67,20 +67,22 @@ class BackupDatabase extends Command
 
             if ($output === null) {
                 $this->error('Failed to generate database dump');
+
                 return Command::FAILURE;
             }
 
             // Store the backup
             Storage::disk('s3')->put($filename, $output);
 
-            $this->info('Database backup completed successfully: ' . $filename);
+            $this->info('Database backup completed successfully: '.$filename);
 
             // Clean up old backups (keep last 30 days)
             $this->cleanupOldBackups();
 
             return Command::SUCCESS;
         } catch (\Exception $e) {
-            $this->error('Backup failed: ' . $e->getMessage());
+            $this->error('Backup failed: '.$e->getMessage());
+
             return Command::FAILURE;
         }
     }
@@ -97,10 +99,10 @@ class BackupDatabase extends Command
 
         foreach ($files as $file) {
             $lastModified = Carbon::createFromTimestamp(Storage::disk('s3')->lastModified($file));
-            
+
             if ($lastModified->lt($cutoffDate)) {
                 Storage::disk('s3')->delete($file);
-                $this->info('Deleted old backup: ' . $file);
+                $this->info('Deleted old backup: '.$file);
             }
         }
 

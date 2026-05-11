@@ -21,7 +21,7 @@ class ArtworkUploadedNotification extends Notification
             ->title('New Artwork Uploaded')
             ->body("New artwork has been uploaded for task '{$this->artwork->jobOrderTask->name}' on job {$this->artwork->jobOrder->job_order_number}.")
             ->icon('heroicon-o-photo')
-            ->iconColor('warning')
+            ->iconColor('primary')
             ->getDatabaseMessage();
     }
 }

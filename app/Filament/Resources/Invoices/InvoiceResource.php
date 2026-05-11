@@ -6,9 +6,9 @@ use App\Filament\Resources\Invoices\Pages\CreateInvoice;
 use App\Filament\Resources\Invoices\Pages\EditInvoice;
 use App\Filament\Resources\Invoices\Pages\ListInvoices;
 use App\Filament\Resources\Invoices\Pages\ViewInvoice;
-// use Filament\Forms\Form;
 use App\Filament\Resources\Invoices\Schemas\InvoiceForm;
 use App\Filament\Resources\Invoices\Tables\InvoicesTable;
+use App\Filament\Support\PanelAccess;
 use App\Models\Invoice;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -16,6 +16,7 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 
 class InvoiceResource extends Resource
 {
@@ -26,6 +27,30 @@ class InvoiceResource extends Resource
     protected static ?string $navigationLabel = 'Invoices';
 
     protected static ?int $navigationSort = 4;
+
+    public static function canViewAny(): bool
+    {
+        return PanelAccess::canAccessFinanceSection();
+    }
+
+    public static function getGloballySearchableAttributes(): array
+    {
+        return ['invoice_number', 'partner.name'];
+    }
+
+    public static function getGlobalSearchResultTitle(Model $record): string
+    {
+        return $record->invoice_number;
+    }
+
+    public static function getGlobalSearchResultDetails(Model $record): array
+    {
+        return [
+            'Partner' => $record->partner?->name,
+            'Status' => ucfirst($record->status),
+            'Total' => number_format($record->total_amount, 2).' Birr',
+        ];
+    }
 
     public static function getEloquentQuery(): Builder
     {

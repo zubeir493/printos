@@ -3,41 +3,36 @@
 namespace App\Console\Commands;
 
 use App\Models\Invoice;
+use App\Models\User;
+use App\Notifications\InvoiceOverdueNotification;
+use App\UserRole;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Notification;
 
 class UpdateOverdueInvoices extends Command
 {
-    /**
-     * The name and signature of the console command.
-     *
-     * @var string
-     */
     protected $signature = 'invoices:update-overdue';
 
-    /**
-     * The console command description.
-     *
-     * @var string
-     */
-    protected $description = 'Update overdue invoice status automatically';
+    protected $description = 'Update overdue invoice status and notify finance/admin/operations users';
 
-    /**
-     * Execute the console command.
-     */
-    public function handle()
+    public function handle(): int
     {
         $this->info('Checking for overdue invoices...');
 
-        // Find all unpaid invoices that are past their due date
         $overdueInvoices = Invoice::where('due_date', '<', now())
             ->whereNotIn('status', ['paid', 'cancelled', 'overdue'])
             ->get();
 
+        $recipients = User::whereIn('role', [
+            UserRole::Admin->value,
+            UserRole::Finance->value,
+            UserRole::Operations->value,
+        ])->get();
+
         $updatedCount = 0;
 
         foreach ($overdueInvoices as $invoice) {
-            // Skip if already paid
             if ($invoice->isPaid()) {
                 continue;
             }
@@ -47,17 +42,19 @@ class UpdateOverdueInvoices extends Command
 
             $this->line("Invoice {$invoice->invoice_number} marked as overdue");
 
-            // Log the status change
             Log::info("Invoice {$invoice->invoice_number} marked as overdue", [
                 'invoice_id' => $invoice->id,
                 'due_date' => $invoice->due_date,
                 'partner_id' => $invoice->partner_id,
             ]);
+
+            if ($recipients->isNotEmpty()) {
+                Notification::send($recipients, new InvoiceOverdueNotification($invoice));
+            }
         }
 
         $this->info("Updated {$updatedCount} invoices to overdue status");
 
-        // Show summary
         $totalOverdue = Invoice::overdue()->count();
         $this->info("Total overdue invoices: {$totalOverdue}");
 

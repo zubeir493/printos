@@ -36,6 +36,7 @@ class JobOrderTask extends Model
         'paper',
         'status',
         'size',
+        'instructions',
     ];
 
     /**

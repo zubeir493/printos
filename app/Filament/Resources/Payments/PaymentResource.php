@@ -16,6 +16,7 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 
 class PaymentResource extends Resource
 {
@@ -30,14 +31,33 @@ class PaymentResource extends Resource
         return $count > 0 ? (string) $count : null;
     }
 
-    public static function form(Schema $schema): Schema
-    {
-        return PaymentForm::configure($schema);
-    }
-
     public static function canViewAny(): bool
     {
         return PanelAccess::canAccessFinanceSection();
+    }
+
+    public static function getGloballySearchableAttributes(): array
+    {
+        return ['payment_number', 'partner.name', 'reference'];
+    }
+
+    public static function getGlobalSearchResultTitle(Model $record): string
+    {
+        return $record->payment_number;
+    }
+
+    public static function getGlobalSearchResultDetails(Model $record): array
+    {
+        return [
+            'Partner' => $record->partner?->name,
+            'Amount' => number_format($record->amount, 2).' Birr',
+            'Date' => $record->payment_date?->format('M j, Y'),
+        ];
+    }
+
+    public static function form(Schema $schema): Schema
+    {
+        return PaymentForm::configure($schema);
     }
 
     public static function table(Table $table): Table

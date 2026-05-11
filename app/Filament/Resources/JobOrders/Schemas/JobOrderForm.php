@@ -403,7 +403,9 @@ class JobOrderForm
                             })
                             ->default('draft')
                             ->helperText('Status of the overall job order.')
-                            ->required(),
+                            ->required()
+                            ->hidden(fn ($record) => $record !== null)
+                            ->dehydratedWhenHidden(),
 
                         FileUpload::make('cost_calc_file')
                             ->label('Cost Calculation File')

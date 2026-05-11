@@ -33,6 +33,7 @@ class OverdueInvoiceReport extends Command
 
         if ($overdueInvoices->isEmpty()) {
             $this->info('No overdue invoices found!');
+
             return Command::SUCCESS;
         }
 
@@ -43,15 +44,15 @@ class OverdueInvoiceReport extends Command
 
         // Group by partner
         $byPartner = $overdueInvoices->groupBy('partner_id');
-        
+
         foreach ($byPartner as $partnerId => $invoices) {
             $partner = $invoices->first()->partner;
             $partnerTotal = $invoices->sum('balance_due');
-            
+
             $this->info("Partner: {$partner->name}");
             $this->info("  Invoices: {$invoices->count()}");
             $this->info("  Total Due: {$partnerTotal} Birr");
-            
+
             foreach ($invoices as $invoice) {
                 $daysOverdue = $invoice->due_date->diffInDays(now());
                 $this->line("    - {$invoice->invoice_number} ({$daysOverdue} days overdue) - {$invoice->balance_due} Birr");
@@ -62,7 +63,7 @@ class OverdueInvoiceReport extends Command
         // Aging report
         $this->info('Aging Report:');
         $this->info('============');
-        
+
         $agingRanges = [
             '1-30 days' => [1, 30],
             '31-60 days' => [31, 60],
@@ -73,14 +74,16 @@ class OverdueInvoiceReport extends Command
         foreach ($agingRanges as $label => $range) {
             $count = $overdueInvoices->filter(function ($invoice) use ($range) {
                 $days = $invoice->due_date->diffInDays(now());
+
                 return $days >= $range[0] && $days <= $range[1];
             })->count();
-            
+
             $amount = $overdueInvoices->filter(function ($invoice) use ($range) {
                 $days = $invoice->due_date->diffInDays(now());
+
                 return $days >= $range[0] && $days <= $range[1];
             })->sum('balance_due');
-            
+
             $this->info("{$label}: {$count} invoices, {$amount} Birr");
         }
 

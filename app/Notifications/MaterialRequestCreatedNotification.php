@@ -24,7 +24,7 @@ class MaterialRequestCreatedNotification extends Notification
             ->title('New Material Request')
             ->body("Task '{$task->name}' on job {$jobOrder->job_order_number} requires {$this->materialRequest->requested_quantity} of {$this->materialRequest->inventoryItem->name}.")
             ->icon('heroicon-o-archive-box-arrow-down')
-            ->iconColor('warning')
+            ->iconColor('primary')
             ->getDatabaseMessage();
     }
 }

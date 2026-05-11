@@ -23,6 +23,7 @@ use Filament\Facades\Filament;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
@@ -44,12 +45,6 @@ class JobOrderTasksTable
                 TextColumn::make('quantity')
                     ->numeric()
                     ->sortable(),
-                TextColumn::make('designer.name')
-                    ->label('Designer')
-                    ->placeholder('Unassigned')
-                    ->badge()
-                    ->color(fn ($state) => filled($state) ? 'info' : 'gray')
-                    ->searchable(),
                 TextColumn::make('status')
                     ->badge()
                     ->color(fn ($state) => match ($state) {
@@ -61,6 +56,13 @@ class JobOrderTasksTable
                     })
                     ->sortable()
                     ->searchable(),
+            TextColumn::make('jobOrder.submission_date')
+                ->label('Deadline')
+                ->date()
+                ->sortable()
+                ->since()
+                ->color(fn ($state) => $state && \Carbon\Carbon::parse($state)->isPast() ? 'danger' : null),
+                
             ])
             ->headerActions([
                 ExportAction::make()
@@ -108,15 +110,22 @@ class JobOrderTasksTable
                             ->label('Designer')
                             ->options(User::where('role', 'design')->pluck('name', 'id'))
                             ->required(),
+                        Textarea::make('instructions')
+                            ->label('Brief / Instructions')
+                            ->placeholder('Describe what needs to be designed, any specific requirements, references, or deadlines...')
+                            ->rows(4)
+                            ->helperText('This will be included in the notification sent to the designer and saved on the task.'),
                     ])
                     ->action(function (array $data, $record) {
-                        $record->update(['designer_id' => $data['designer_id']]);
+                        $record->update([
+                            'designer_id' => $data['designer_id'],
+                            'instructions' => $data['instructions'] ?? null,
+                        ]);
 
-                        // Update status automatically
                         $record->updateStatus();
 
                         Notification::make()
-                            ->title(($data['designer_id'] ?? null) ? 'Designer assigned' : 'Designer unassigned')
+                            ->title('Designer assigned')
                             ->success()
                             ->send();
                     }),

@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Collection;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
@@ -23,6 +24,7 @@ class JobOrder extends Model
     use HasFactory;
     use HasStates;
     use LogsActivity;
+    use SoftDeletes;
 
     public function getActivitylogOptions(): LogOptions
     {
@@ -53,6 +55,7 @@ class JobOrder extends Model
         'tax_amount',
         'total',
         'status',
+        'notified_late_at',
     ];
 
     protected function casts(): array
@@ -69,6 +72,7 @@ class JobOrder extends Model
             'services' => 'json',
             'advance_paid' => 'boolean',
             'status' => JobOrderState::class,
+            'notified_late_at' => 'datetime',
         ];
     }
 

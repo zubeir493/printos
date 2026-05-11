@@ -17,6 +17,7 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 
 class JobOrderTaskResource extends Resource
 {
@@ -38,6 +39,25 @@ class JobOrderTaskResource extends Resource
     public static function canEdit($record): bool
     {
         return PanelAccess::canManageJobOrderTasks();
+    }
+
+    public static function getGloballySearchableAttributes(): array
+    {
+        return ['name', 'jobOrder.job_order_number'];
+    }
+
+    public static function getGlobalSearchResultTitle(Model $record): string
+    {
+        return $record->name;
+    }
+
+    public static function getGlobalSearchResultDetails(Model $record): array
+    {
+        return [
+            'Job Order' => $record->jobOrder?->job_order_number,
+            'Status' => ucfirst($record->status),
+            'Designer' => $record->designer?->name ?? 'Unassigned',
+        ];
     }
 
     public static function form(Schema $schema): Schema

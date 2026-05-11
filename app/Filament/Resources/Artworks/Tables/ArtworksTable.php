@@ -4,15 +4,15 @@ namespace App\Filament\Resources\Artworks\Tables;
 
 use App\Mail\ShareArtwork;
 use App\Models\EmailLog;
-use App\Models\JobOrder;
+use App\Models\JobOrderTask;
 use App\Support\PrivateStorage;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
+use Filament\Facades\Filament;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
-use Filament\Support\Enums\IconSize;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -27,22 +27,6 @@ class ArtworksTable
     {
         return $table
             ->columns([
-                IconColumn::make('type')
-                    ->label('Type')
-                    ->getStateUsing(fn ($record) => strtolower(pathinfo($record->filename, PATHINFO_EXTENSION)))
-                    ->icon(fn ($state) => match ($state) {
-                        'pdf' => 'heroicon-s-document-text',
-                        'ai', 'eps', 'psd' => 'heroicon-s-paint-brush',
-                        'png', 'jpg', 'jpeg', 'webp' => 'heroicon-s-photo',
-                        default => 'heroicon-s-document',
-                    })
-                    ->color(fn ($state) => match ($state) {
-                        'pdf' => 'danger',
-                        'ai', 'eps', 'psd' => 'warning',
-                        'png', 'jpg', 'jpeg', 'webp' => 'success',
-                        default => 'gray',
-                    })
-                    ->size(IconSize::Large),
                 TextColumn::make('jobOrderTask.name')
                     ->label('Task')
                     ->description(fn ($record) => $record->jobOrder?->job_order_number)
@@ -70,24 +54,30 @@ class ArtworksTable
             ])
             ->filters([
                 SelectFilter::make('job_order_task_id')
-                    ->label('Filter By Task')
-                    ->relationship('jobOrderTask', 'name')
-                    ->searchable()
-                    ->preload(),
-                SelectFilter::make('job_order_id')
-                    ->label('Filter By Job Order')
-                    ->options(JobOrder::pluck('job_order_number', 'id'))
-                    ->query(function ($query, array $data) {
-                        if ($data['value']) {
-                            $query->whereHas('jobOrderTask', fn ($q) => $q->where('job_order_id', $data['value']));
-                        }
-                    })
+                    ->label('Task')
+                    ->options(fn () => JobOrderTask::query()
+                        ->with('jobOrder')
+                        ->get()
+                        ->mapWithKeys(fn ($task) => [
+                            $task->id => "{$task->name} (#{$task->jobOrder->job_order_number})",
+                        ])
+                    )
                     ->searchable()
                     ->preload(),
                 TernaryFilter::make('is_approved')
                     ->label('Approval Status'),
             ])
             ->recordActions([
+                Action::make('approve')
+                    ->label('Approve')
+                    ->icon('heroicon-m-check-badge')
+                    ->color('success')
+                    ->hidden(fn ($record) => $record->is_approved)
+                    ->visible(fn () => in_array(Filament::getCurrentPanel()?->getId(), ['admin', 'operations']))
+                    ->requiresConfirmation()
+                    ->modalHeading('Approve Artwork')
+                    ->modalDescription('Mark this artwork as approved? The task status will update automatically.')
+                    ->action(fn ($record) => $record->update(['is_approved' => true])),
                 Action::make('download')
                     ->label('Download')
                     ->icon('heroicon-m-arrow-down-tray')

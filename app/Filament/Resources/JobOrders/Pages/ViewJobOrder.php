@@ -14,14 +14,19 @@ use App\Models\StockMovement;
 use App\Models\Warehouse;
 use App\Services\InventoryService;
 use App\Services\MaterialIssueService;
+use App\States\JobOrder\Active;
+use App\States\JobOrder\Cancelled;
+use App\States\JobOrder\Completed;
 use Filament\Actions;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
+use Filament\Support\Colors\Color;
 
 class ViewJobOrder extends ViewRecord
 {
@@ -30,6 +35,50 @@ class ViewJobOrder extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('activate')
+                ->label('Start Job Order')
+                ->icon('heroicon-o-rocket-launch')
+                ->color(Color::Indigo)
+                ->visible(fn ($record) => (string) $record->status === 'draft' && PanelAccess::canManageJobOrders())
+                ->requiresConfirmation()
+                ->modalHeading('Start this Job Order?')
+                ->modalDescription('This marks the job order as active and signals that work has begun. Make sure all tasks and materials are set up.')
+                ->action(function ($record) {
+                    $record->status->transitionTo(Active::class);
+                    Notification::make()->title('Job order is now active')->success()->send();
+                }),
+
+            Action::make('complete')
+                ->label('Mark as Completed')
+                ->icon('heroicon-o-check-circle')
+                ->color('success')
+                ->visible(fn ($record) => (string) $record->status === 'active' && PanelAccess::canManageJobOrders())
+                ->requiresConfirmation()
+                ->modalHeading('Complete Job Order')
+                ->modalDescription('Mark this job order as completed? Make sure all tasks and dispatches are done.')
+                ->action(function ($record) {
+                    $record->status->transitionTo(Completed::class);
+                    Notification::make()->title('Job order marked as completed')->success()->send();
+                }),
+
+            Action::make('cancel_job_order')
+                ->label('Cancel')
+                ->icon('heroicon-o-x-circle')
+                ->color('danger')
+                ->visible(fn ($record) => (string) $record->status === 'active' && PanelAccess::canManageJobOrders())
+                ->form([
+                    Textarea::make('cancel_reason')
+                        ->label('Reason for cancellation')
+                        ->placeholder('Why is this job order being cancelled?')
+                        ->required()
+                        ->rows(3),
+                ])
+                ->modalHeading('Cancel Job Order')
+                ->action(function ($record, array $data) {
+                    $record->update(['remarks' => trim(($record->remarks ? $record->remarks."\n\n" : '').'Cancelled: '.$data['cancel_reason'])]);
+                    $record->status->transitionTo(Cancelled::class);
+                    Notification::make()->title('Job order cancelled')->danger()->send();
+                }),
             Action::make('issue_materials')
                 ->label('Issue Materials')
                 ->icon('heroicon-o-archive-box-arrow-down')
@@ -228,6 +277,7 @@ class ViewJobOrder extends ViewRecord
                 ->icon('heroicon-o-shopping-cart')
                 ->color('success')
                 ->visible(fn ($record) => PanelAccess::canManagePurchaseOrders() &&
+                    (string) $record->status === 'active' &&
                     collect($record->materials_summary)->where('remaining', '>', 0)->isNotEmpty()
                 )
                 ->form([

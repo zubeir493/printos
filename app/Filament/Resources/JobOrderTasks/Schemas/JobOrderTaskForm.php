@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\JobOrderTasks\Schemas;
 
+use App\Models\InventoryItem;
+use App\Models\User;
 use App\UserRole;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Hidden;
@@ -9,8 +11,8 @@ use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Repeater\TableColumn;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
-
 use Filament\Schemas\Schema;
 
 class JobOrderTaskForm
@@ -24,19 +26,24 @@ class JobOrderTaskForm
                     ->required(),
                 Select::make('designer_id')
                     ->label('Assigned Designer')
-                    ->options(fn () => \App\Models\User::query()
+                    ->options(fn () => User::query()
                         ->where('role', UserRole::Design->value)
                         ->orderBy('name')
                         ->pluck('name', 'id'))
                     ->searchable()
                     ->preload()
                     ->nullable(),
+                Textarea::make('instructions')
+                    ->label('Design Brief / Instructions')
+                    ->placeholder('Describe what needs to be designed, any specific requirements, references, or deadlines...')
+                    ->rows(3)
+                    ->columnSpanFull(),
                 TextInput::make('name')
                     ->required(),
                 TextInput::make('quantity')
                     ->required()
                     ->numeric(),
-                TextInput::make('unit_cost')
+                TextInput::make('task_cost')
                     ->required()
                     ->label('Cost')
                     ->numeric()
@@ -44,7 +51,7 @@ class JobOrderTaskForm
                 Placeholder::make('status_display')
                     ->label('Status')
                     ->weight('Bold')
-                    ->content(fn ($record) => match($record?->status) {
+                    ->content(fn ($record) => match ($record?->status) {
                         'pending' => 'Pending',
                         'design' => 'Design',
                         'production' => 'Production',
@@ -63,13 +70,13 @@ class JobOrderTaskForm
                     ->schema([
                         Select::make('inventory_item_id')
                             ->label('Material')
-                            ->options(\App\Models\InventoryItem::pluck('name', 'id'))
+                            ->options(InventoryItem::pluck('name', 'id'))
                             ->searchable()
                             ->preload()
                             ->required()
                             ->live()
                             ->afterStateUpdated(function ($state, callable $set) {
-                                $item = \App\Models\InventoryItem::find($state);
+                                $item = InventoryItem::find($state);
                                 $set('base_unit', $item?->unit);
                             }),
                         TextInput::make('required_quantity')

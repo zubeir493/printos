@@ -4,7 +4,6 @@ namespace App\Notifications;
 
 use App\Models\JobOrderTask;
 use Filament\Notifications\Notification as FilamentNotification;
-use Filament\Support\Colors\Color;
 use Illuminate\Notifications\Notification;
 
 class DesignerAssignedToTask extends Notification
@@ -18,11 +17,17 @@ class DesignerAssignedToTask extends Notification
 
     public function toDatabase(object $notifiable): array
     {
+        $body = "You have been assigned to task '{$this->task->name}' for job {$this->task->jobOrder->job_order_number}.\n";
+
+        if (filled($this->task->instructions)) {
+            $body .= "\n\nBrief: {$this->task->instructions}";
+        }
+
         return FilamentNotification::make()
             ->title('Design Task Assigned')
-            ->body("You have been assigned to task '{$this->task->name}' for job {$this->task->jobOrder->job_order_number}.")
+            ->body($body)
             ->icon('heroicon-o-paint-brush')
-            ->iconColor(Color::Indigo)
+            ->iconColor('primary')
             ->getDatabaseMessage();
     }
 }

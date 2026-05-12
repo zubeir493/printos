@@ -50,6 +50,18 @@ class GoodsReceiptObserver
 
             // Stamp posted_at last — this is the idempotency sentinel.
             $locked->updateQuietly(['posted_at' => now()]);
+            
+            // Auto-mark purchase order as received if all items are fully received
+            $purchaseOrder = $locked->purchaseOrder;
+            if ($purchaseOrder && $purchaseOrder->status === 'approved') {
+                $allItemsFullyReceived = $purchaseOrder->purchaseOrderItems()
+                    ->whereRaw('received_quantity >= quantity')
+                    ->count() === $purchaseOrder->purchaseOrderItems()->count();
+                    
+                if ($allItemsFullyReceived) {
+                    $purchaseOrder->update(['status' => 'received']);
+                }
+            }
         });
     }
 }

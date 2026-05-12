@@ -182,7 +182,7 @@ nav.fi-sidebar-nav::-webkit-scrollbar {
 
 .fi-topbar-database-notifications-btn svg,
 .fi-topbar-database-notifications-btn svg:hover {
-    color: var(--color-indigo-100);
+    color: white;
     width: 20px;
 }
 

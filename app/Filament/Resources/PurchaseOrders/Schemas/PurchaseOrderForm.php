@@ -143,6 +143,7 @@ class PurchaseOrderForm
 
                                 Hidden::make('unit_label')
                                     ->default('unit')
+                                    ->dehydrated(false)
                                     ->afterStateHydrated(function ($set, $get) {
                                         $itemId = $get('inventory_item_id');
                                         if (! $itemId) {
@@ -202,15 +203,8 @@ class PurchaseOrderForm
                 Section::make()
                     ->compact()
                     ->schema([
-                        Select::make('status')
-                            ->options([
-                                'draft' => 'Draft',
-                                'approved' => 'Approved',
-                                'received' => 'Received',
-                                'cancelled' => 'Cancelled',
-                            ])
-                            ->default('draft')
-                            ->required(),
+                        Hidden::make('status')
+                            ->default('draft'),
 
                         DatePicker::make('due_date')
                             ->label('Payment Due Date')

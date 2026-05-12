@@ -34,12 +34,6 @@ class JobOrderObserver
             return;
         }
 
-        if (! $jobOrder->canStartProduction()) {
-            throw ValidationException::withMessages([
-                'status' => 'Approve all artworks before activating this job order.',
-            ]);
-        }
-
         if (! $jobOrder->production_started_at) {
             $jobOrder->production_started_at = now();
         }

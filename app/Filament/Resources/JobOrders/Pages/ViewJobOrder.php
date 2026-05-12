@@ -45,6 +45,7 @@ class ViewJobOrder extends ViewRecord
                 ->modalDescription('This marks the job order as active and signals that work has begun. Make sure all tasks and materials are set up.')
                 ->action(function ($record) {
                     $record->status->transitionTo(Active::class);
+                    $record->save();
                     Notification::make()->title('Job order is now active')->success()->send();
                 }),
 

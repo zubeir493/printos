@@ -5,12 +5,15 @@ namespace App\Filament\Resources\JobOrders\Tables;
 use App\Filament\Exports\JobOrderExporter;
 use App\Filament\Support\PanelAccess;
 use App\Services\InvoiceGeneratorService;
+use Illuminate\Support\Facades\DB;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ExportAction;
 use Filament\Actions\ExportBulkAction;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
@@ -146,6 +149,97 @@ class JobOrdersTable
                         } catch (\Exception $e) {
                             Notification::make()
                                 ->title('Invoice Action Failed')
+                                ->body($e->getMessage())
+                                ->danger()
+                                ->send();
+                        }
+                    }),
+                Action::make('pay')
+                    ->label('Pay')
+                    ->icon('heroicon-o-banknotes')
+                    ->color('success')
+                    ->visible(fn ($record) => 
+                        $record->balance > 0 && 
+                        PanelAccess::canAccessFinanceSection() &&
+                        in_array($record->status, ['active', 'completed'])
+                    )
+                    ->form([
+                        TextInput::make('allocated_amount')
+                            ->label('Amount to Allocate')
+                            ->required()
+                            ->numeric()
+                            ->suffix('Birr')
+                            ->default(fn ($record) => $record->balance)
+                            ->helperText(fn ($record) => "Balance: {$record->balance} Birr"),
+                    ])
+                    ->action(function ($record, array $data) {
+                        try {
+                            DB::beginTransaction();
+                            
+                            $amount = (float) $data['allocated_amount'];
+                            
+                            // Check if order has existing allocations
+                            $existingAllocation = \App\Models\PaymentAllocation::where('allocatable_type', get_class($record))
+                                ->where('allocatable_id', $record->id)
+                                ->first();
+                            
+                            if ($existingAllocation) {
+                                // Find payment that contains this allocation
+                                $payment = $existingAllocation->payment;
+                            } else {
+                                // Create new payment for this customer
+                                $payment = \App\Models\Payment::create([
+                                    'payment_number' => 'PAY-' . str_pad(\App\Models\Payment::max('id') + 1, 6, '0', STR_PAD_LEFT),
+                                    'partner_id' => $record->partner_id,
+                                    'payment_date' => now(),
+                                    'direction' => 'incoming',
+                                    'amount' => $record->balance,
+                                    'method' => 'cash',
+                                    'reference' => 'Auto-created for ' . $record->job_order_number,
+                                ]);
+                            }
+                            
+                            if (!$payment) {
+                                throw new \Exception("Failed to find or create payment for {$record->job_order_number}.");
+                            }
+                            
+                            // Check if payment has sufficient unallocated amount
+                            $totalAllocated = $payment->paymentAllocations()->sum('allocated_amount');
+                            $availableAmount = $payment->amount - $totalAllocated;
+                            
+                            // If this is a newly created payment, exclude allocation we're about to create from the calculation
+                            if (!isset($existingAllocation)) {
+                                $availableAmount += $amount;
+                            }
+                            
+                            if ($amount > $availableAmount) {
+                                throw new \Exception("Only {$availableAmount} Birr available from this payment.");
+                            }
+                            
+                            if ($amount > $record->balance) {
+                                throw new \Exception("Cannot allocate more than balance of {$record->balance} Birr.");
+                            }
+                            
+                            // Create payment allocation
+                            $payment->paymentAllocations()->create([
+                                'allocatable_id' => $record->id,
+                                'allocatable_type' => get_class($record),
+                                'allocated_amount' => $amount,
+                            ]);
+                            
+                            DB::commit();
+                            
+                            Notification::make()
+                                ->title('Payment Allocated')
+                                ->body("{$amount} Birr allocated to {$record->job_order_number} from {$payment->payment_number}")
+                                ->success()
+                                ->send();
+                                
+                        } catch (\Exception $e) {
+                            DB::rollBack();
+                            
+                            Notification::make()
+                                ->title('Payment Allocation Failed')
                                 ->body($e->getMessage())
                                 ->danger()
                                 ->send();

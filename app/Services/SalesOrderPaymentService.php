@@ -17,7 +17,7 @@ class SalesOrderPaymentService
             return null;
         }
 
-        $amount = (float) $salesOrder->salesOrderItems->sum('total');
+        $amount = (float) $salesOrder->fresh()->total;
 
         if ($amount <= 0) {
             $amount = (float) $salesOrder->fresh()->total;

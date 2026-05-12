@@ -90,6 +90,7 @@ class SalesOrderForm
                                 Toggle::make('use_file_import')
                                     ->label('Import from Excel/CSV')
                                     ->helperText('Toggle to use file import instead of manual entry')
+                                    ->dehydrated(false)
                                     ->live(),
                                 FileUpload::make('items_import_file')
                                     ->label('Import Sales Items')
@@ -234,77 +235,6 @@ class SalesOrderForm
                                     $set('total', $subtotal + $tax);
                                 })
                             ),
-                        // Repeater::make('payments')
-                        //     ->label('Payment Methods')
-                        //     ->table([
-                        //         TableColumn::make('Method'),
-                        //         TableColumn::make('Amount'),
-                        //         TableColumn::make('Reference'),
-                        //     ])
-                        //     ->compact()
-                        //     ->schema([
-                        //         Select::make('method')
-                        //             ->label('Method')
-                        //             ->options([
-                        //                 'cash' => 'Cash',
-                        //                 'bank' => 'Bank Transfer',
-                        //                 'cheque' => 'Cheque',
-                        //             ])
-                        //             ->required()
-                        //             ->live()
-                        //             ->afterStateUpdated(function ($state, Set $set, Get $get) {
-                        //                 // Clear bank_id when method changes from bank
-                        //                 if ($state !== 'bank') {
-                        //                     $set('bank_id', null);
-                        //                 }
-                        //             }),
-                        //         Select::make('bank_id')
-                        //             ->label('Bank Account')
-                        //             ->relationship('bank', 'name')
-                        //             ->searchable()
-                        //             ->preload()
-                        //             ->visible(fn(Get $get) => $get('method') === 'bank')
-                        //             ->required(fn(Get $get) => $get('method') === 'bank')
-                        //             ->helperText('Select bank account for this payment'),
-                        //         TextInput::make('amount')
-                        //             ->label('Amount')
-                        //             ->numeric()
-                        //             ->prefix('₱')
-                        //             ->step(0.01)
-                        //             ->required()
-                        //             ->rules(['min:0.01'])
-                        //             ->live(onBlur: true)
-                        //             ->afterStateUpdated(function (Set $set, Get $get) {
-                        //                 // Recalculate total paid and balance
-                        //                 $payments = $get('../../payments') ?? [];
-                        //                 $totalPaid = collect($payments)->sum('amount');
-                        //                 $orderTotal = $get('../../total') ?? 0;
-
-                        //                 $set('../../total_paid_display', $totalPaid);
-                        //                 $set('../../balance_display', max(0, $orderTotal - $totalPaid));
-                        //             }),
-                        //         TextInput::make('reference')
-                        //             ->label('Reference')
-                        //             ->placeholder('Receipt number, cheque number, etc.')
-                        //             ->maxLength(255),
-                        //     ])
-                        //     ->columns(2)
-                        //     ->defaultItems(1)
-                        //     ->minItems(1)
-                        //     ->visible(fn(Get $get) => $get('payment_mode') === 'cash' && request()->routeIs('filament.admin.resources.sales-orders.create'))
-                        //     ->live()
-                        //     ->afterStateUpdated(function (Get $get, Set $set) {
-                        //         // Recalculate totals when payments change
-                        //         $payments = $get('payments') ?? [];
-                        //         $totalPaid = collect($payments)->sum('amount');
-                        //         $orderTotal = $get('total') ?? 0;
-
-                        //         $set('total_paid_display', $totalPaid);
-                        //         $set('balance_display', max(0, $orderTotal - $totalPaid));
-                        //     })
-                        //     ->addable()
-                        //     ->visible(fn(Get $get) => $get('payment_mode') === 'cash' && request()->routeIs('filament.admin.resources.sales-orders.create'))
-                        //     ->deletable(),
                     ])
                     ->columnSpan(3),
                 Section::make('Summary')

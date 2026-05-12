@@ -372,40 +372,7 @@ class JobOrderForm
 
                 Section::make()
                     ->schema([
-                        Select::make('status')
-                            ->options(function ($record) {
-                                $all = [
-                                    'draft' => 'Draft',
-                                    'active' => 'Active',
-                                    'completed' => 'Completed',
-                                    'cancelled' => 'Cancelled',
-                                ];
-
-                                if (! $record) {
-                                    return ['draft' => 'Draft'];
-                                }
-
-                                $current = (string) $record->status;
-                                $allowed = [$current => $all[$current]];
-
-                                $transitions = [
-                                    'draft' => ['active', 'cancelled'],
-                                    'active' => ['completed', 'cancelled'],
-                                    'completed' => [],
-                                    'cancelled' => [],
-                                ];
-
-                                foreach ($transitions[$current] ?? [] as $next) {
-                                    $allowed[$next] = $all[$next];
-                                }
-
-                                return $allowed;
-                            })
-                            ->default('draft')
-                            ->helperText('Status of the overall job order.')
-                            ->required()
-                            ->hidden(fn ($record) => $record !== null)
-                            ->dehydratedWhenHidden(),
+                        Hidden::make('status')->default('draft'),
 
                         FileUpload::make('cost_calc_file')
                             ->label('Cost Calculation File')

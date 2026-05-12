@@ -177,7 +177,7 @@ nav.fi-sidebar-nav::-webkit-scrollbar {
 
 .fi-modal-trigger:has(.fi-topbar-database-notifications-btn svg):hover,
 .fi-user-menu-trigger:hover {
-    background-color: var(--color-gray-600);
+    background-color: #2e2e2e;
 }
 
 .fi-topbar-database-notifications-btn svg,

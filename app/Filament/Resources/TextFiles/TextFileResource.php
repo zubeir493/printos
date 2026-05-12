@@ -36,7 +36,7 @@ class TextFileResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()->with(['jobOrder.partner', 'uploader']);
+        return parent::getEloquentQuery()->with(['jobOrderTask.jobOrder', 'uploader']);
     }
 
     public static function getRelations(): array
@@ -48,7 +48,7 @@ class TextFileResource extends Resource
     {
         return [
             'index' => ListTextFiles::route('/'),
-            'create' => CreateTextFile::route('/create'),
+            // 'create' => CreateTextFile::route('/create'),
         ];
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\TextFiles\Tables;
 
+use App\Models\JobOrderTask;
 use App\Support\PrivateStorage;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
@@ -16,13 +17,14 @@ class TextFilesTable
     {
         return $table
             ->columns([
-                TextColumn::make('original_name')
-                    ->label('File Name')
-                    ->description(fn ($record) => $record->jobOrder?->job_order_number)
+                TextColumn::make('jobOrderTask.name')
+                    ->label('Task')
+                    ->description(fn ($record) => $record->jobOrderTask?->jobOrder?->job_order_number)
                     ->weight('bold')
                     ->searchable(),
-                TextColumn::make('jobOrder.partner.name')
-                    ->label('Customer')
+                TextColumn::make('original_name')
+                    ->label('File Name')
+                    ->limit(50)
                     ->searchable(),
                 TextColumn::make('uploader.name')
                     ->label('Uploaded By')
@@ -35,12 +37,14 @@ class TextFilesTable
             ])
             ->defaultSort('created_at', 'desc')
             ->filters([
-                SelectFilter::make('job_order_id')
-                    ->label('Job Order')
-                    ->relationship(
-                        'jobOrder',
-                        'job_order_number',
-                        fn ($query) => $query->where('production_mode', 'make_to_stock'),
+                SelectFilter::make('job_order_task_id')
+                    ->label('Task')
+                    ->options(fn () => JobOrderTask::query()
+                        ->with('jobOrder')
+                        ->get()
+                        ->mapWithKeys(fn ($task) => [
+                            $task->id => "{$task->name} (#{$task->jobOrder->job_order_number})",
+                        ])
                     )
                     ->searchable()
                     ->preload(),

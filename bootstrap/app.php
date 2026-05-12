@@ -39,6 +39,31 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->render(function (Throwable $e, Request $request) {
             $isFilamentRequest = $request->is('filament/*') || str_starts_with($request->path(), 'filament');
 
+            // PHP fatal errors surfaced as Error instances (max execution time, memory, etc.)
+            if ($e instanceof \Error) {
+                $message = $e->getMessage() ?? '';
+
+                if (str_contains($message, 'Maximum execution time')) {
+                    $body = 'This page took too long to load and was stopped automatically. Try refreshing — if it keeps happening, contact your administrator.';
+                } elseif (str_contains($message, 'Allowed memory size')) {
+                    $body = 'This operation used more memory than allowed. Try again with a smaller dataset, or contact your administrator.';
+                } else {
+                    $body = 'An unexpected error occurred. Please try again or contact your administrator if it keeps happening.';
+                }
+
+                if ($isFilamentRequest) {
+                    Notification::make()
+                        ->title('Something went wrong')
+                        ->body($body)
+                        ->danger()
+                        ->send();
+
+                    return new RedirectResponse($request->headers->get('referer') ?? url('/'));
+                }
+
+                return response()->view('errors.500', [], 500);
+            }
+
             // 403 — redirect authenticated users to their role home; others see the 403 view
             if ($e instanceof HttpException && $e->getStatusCode() === 403) {
                 if (Auth::check()) {

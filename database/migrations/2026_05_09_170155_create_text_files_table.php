@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::create('text_files', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('job_order_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('job_order_task_id')->constrained()->cascadeOnDelete();
             $table->foreignId('uploaded_by')->nullable()->constrained('users')->nullOnDelete();
             $table->string('filename');
             $table->string('original_name')->nullable();

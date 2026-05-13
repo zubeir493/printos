@@ -11,7 +11,7 @@
     "packages": [
         "filament/filament"
     ],
-    "sail": true,
+    "sail": false,
     "skills": [
         "laravel-best-practices",
         "pest-testing",

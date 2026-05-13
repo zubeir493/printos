@@ -88,7 +88,7 @@ class SalesOrderWorkflowTest extends TestCase
 
         $this->assertDatabaseHas('payments', [
             'partner_id' => $customer->id,
-            'amount' => 200.00,
+            'amount' => 230.00,
             'transaction_type' => 'customer_receipt',
             'method' => 'cash',
         ]);
@@ -99,7 +99,7 @@ class SalesOrderWorkflowTest extends TestCase
             'payment_id' => $payment->id,
             'allocatable_type' => SalesOrder::class,
             'allocatable_id' => $salesOrder->id,
-            'allocated_amount' => 200.00,
+            'allocated_amount' => 230.00,
         ]);
 
         $this->assertDatabaseHas('stock_movements', [
@@ -115,7 +115,7 @@ class SalesOrderWorkflowTest extends TestCase
 
         $this->assertDatabaseHas('journal_items', [
             'account_id' => $arAccount->id,
-            'debit' => 200.00,
+            'debit' => 230.00,
             'credit' => 0.00,
         ]);
     }

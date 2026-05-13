@@ -11,7 +11,7 @@ class CreateSalesJournalEntry
 {
     public function handle(SalesOrder $sale): void
     {
-        $sale->load('salesOrderItems');
+        $sale = $sale->fresh(['salesOrderItems']) ?? $sale->load('salesOrderItems');
 
         $subtotal = (float) $sale->subtotal;
         $taxAmount = (float) $sale->tax_amount;

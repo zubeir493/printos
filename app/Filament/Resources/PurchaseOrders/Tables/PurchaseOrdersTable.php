@@ -33,25 +33,6 @@ class PurchaseOrdersTable
                     ->weight('bold')
                     ->color('primary')
                     ->description(fn ($record) => $record->partner?->name),
-                TextColumn::make('order_date')
-                    ->label('Date')
-                    ->date()
-                    ->sortable()
-                    ->description(fn ($record) => $record->purchaseOrderItems()->count().' items'),
-                TextColumn::make('status')
-                    ->badge()
-                    ->color(fn (string $state): string => match ($state) {
-                        'draft' => 'gray',
-                        'approved' => 'info',
-                        'received' => 'success',
-                        'cancelled' => 'danger',
-                    })
-                    ->formatStateUsing(fn (string $state): string => match ($state) {
-                        'draft' => 'Draft',
-                        'approved' => 'Approved',
-                        'received' => 'Received',
-                        'cancelled' => 'Cancelled',
-                    }),
                 TextColumn::make('payment_progress')
                     ->label('Payment Progress')
                     ->getStateUsing(function ($record) {
@@ -74,6 +55,24 @@ class PurchaseOrdersTable
                         if ($percentage >= 50) return 'warning';
                         return 'danger';
                     }),
+                TextColumn::make('status')
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'draft' => 'gray',
+                        'approved' => 'info',
+                        'received' => 'success',
+                        'cancelled' => 'danger',
+                    })
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'draft' => 'Draft',
+                        'approved' => 'Approved',
+                        'received' => 'Received',
+                        'cancelled' => 'Cancelled',
+                    }),
+                TextColumn::make('order_date')
+                    ->label('Date')
+                    ->date()
+                    ->sortable(),
             ])
             ->filters([
                 SelectFilter::make('status')
@@ -102,83 +101,81 @@ class PurchaseOrdersTable
                         PanelAccess::canAccessFinanceSection() &&
                         in_array($record->status, ['approved', 'received'])
                     )
-                    ->form([
-                        TextInput::make('allocated_amount')
-                            ->label('Amount to Allocate')
-                            ->required()
-                            ->numeric()
-                            ->suffix('Birr')
-                            ->default(fn ($record) => $record->balance)
-                            ->helperText(fn ($record) => "Balance: {$record->balance} Birr"),
+                    ->schema([
+                        \Filament\Schemas\Components\Grid::make(2)->schema([
+                            \Filament\Forms\Components\Select::make('method')
+                                ->label('Paid Via')
+                                ->options([
+                                    'cash'   => 'Cash',
+                                    'bank'   => 'Bank Transfer',
+                                    'cheque' => 'Cheque',
+                                ])
+                                ->default('bank')
+                                ->required()
+                                ->live(),
+                            \Filament\Forms\Components\Select::make('bank_id')
+                                ->label('Bank Account')
+                                ->options(\App\Models\Bank::pluck('name', 'id'))
+                                ->searchable()
+                                ->preload()
+                                ->visible(fn (callable $get) => $get('method') === 'bank')
+                                ->required(fn (callable $get) => $get('method') === 'bank'),
+                            TextInput::make('allocated_amount')
+                                ->label('Amount to Allocate')
+                                ->required()
+                                ->numeric()
+                                ->suffix('Birr')
+                                ->default(fn ($record) => $record->balance)
+                                ->helperText(fn ($record) => "Balance: {$record->balance} Birr"),
+                            \Filament\Forms\Components\DatePicker::make('payment_date')
+                                ->label('Payment Date')
+                                ->default(now())
+                                ->required(),
+                            \Filament\Forms\Components\TextInput::make('reference')
+                                ->label('Memo / Reference')
+                                ->placeholder('Receipt number, cheque number, or short note')
+                                ->maxLength(255),
+                        ]),
                     ])
                     ->action(function ($record, array $data) {
                         try {
                             DB::beginTransaction();
-                            
+
                             $amount = (float) $data['allocated_amount'];
-                            
-                            // Check if order has existing allocations
-                            $existingAllocation = \App\Models\PaymentAllocation::where('allocatable_type', get_class($record))
-                                ->where('allocatable_id', $record->id)
-                                ->first();
-                            
-                            if ($existingAllocation) {
-                                // Find the payment that contains this allocation
-                                $payment = $existingAllocation->payment;
-                            } else {
-                                // Create new payment for this supplier
-                                $payment = \App\Models\Payment::create([
-                                    'payment_number' => 'PAY-' . str_pad(\App\Models\Payment::max('id') + 1, 6, '0', STR_PAD_LEFT),
-                                    'partner_id' => $record->partner_id,
-                                    'payment_date' => now(),
-                                    'direction' => 'outgoing',
-                                    'amount' => $record->balance,
-                                    'method' => 'cash',
-                                    'reference' => 'Auto-created for ' . $record->po_number,
-                                ]);
-                            }
-                            
-                            if (!$payment) {
-                                throw new \Exception("Failed to find or create payment for {$record->po_number}.");
-                            }
-                            
-                            // Check if payment has sufficient unallocated amount
-                            $totalAllocated = $payment->paymentAllocations()->sum('allocated_amount');
-                            $availableAmount = $payment->amount - $totalAllocated;
-                            
-                            // If this is a newly created payment, exclude the allocation we're about to create from the calculation
-                            if (!isset($existingAllocation)) {
-                                $availableAmount += $amount;
-                            }
-                            
-                            if ($amount > $availableAmount) {
-                                throw new \Exception("Only {$availableAmount} Birr available from this payment.");
-                            }
-                            
+
                             if ($amount > $record->balance) {
-                                throw new \Exception("Cannot allocate more than balance of {$record->balance} Birr.");
+                                throw new \Exception("Cannot allocate more than the remaining balance of {$record->balance} Birr.");
                             }
-                            
-                            // Create payment allocation
+
+                            $payment = \App\Models\Payment::create([
+                                'partner_id'       => $record->partner_id,
+                                'payment_date'     => $data['payment_date'],
+                                'transaction_type' => \App\Enums\PaymentTransactionType::SUPPLIER_PAYMENT->value,
+                                'amount'           => $amount,
+                                'method'           => $data['method'],
+                                'bank_id'          => $data['bank_id'] ?? null,
+                                'reference'        => $data['reference'] ?? 'Payment for '.$record->po_number,
+                            ]);
+
                             $payment->paymentAllocations()->create([
                                 'allocatable_id' => $record->id,
                                 'allocatable_type' => get_class($record),
                                 'allocated_amount' => $amount,
                             ]);
-                            
+
                             DB::commit();
-                            
+
                             Notification::make()
-                                ->title('Payment Allocated')
-                                ->body("{$amount} Birr allocated to {$record->po_number} from {$payment->payment_number}")
+                                ->title('Payment Recorded')
+                                ->body("{$amount} Birr paid against {$record->po_number}.")
                                 ->success()
                                 ->send();
-                                
+
                         } catch (\Exception $e) {
                             DB::rollBack();
-                            
+
                             Notification::make()
-                                ->title('Payment Allocation Failed')
+                                ->title('Payment Failed')
                                 ->body($e->getMessage())
                                 ->danger()
                                 ->send();

@@ -30,7 +30,19 @@ class ViewSalesOrder extends ViewRecord
                 ->modalHeading('Complete this Sales Order?')
                 ->modalDescription('This will mark the sale as completed and deduct inventory.')
                 ->action(function ($record) {
-                    $record->update(['status' => 'completed']);
+                    try {
+                        $record->update(['status' => 'completed']);
+                    } catch (\Exception $e) {
+                        Notification::make()
+                            ->title('Cannot complete this order')
+                            ->body($e->getMessage())
+                            ->danger()
+                            ->persistent()
+                            ->send();
+
+                        return;
+                    }
+
                     Notification::make()
                         ->title('Sales Order Completed')
                         ->body($record->order_number.' has been completed.')

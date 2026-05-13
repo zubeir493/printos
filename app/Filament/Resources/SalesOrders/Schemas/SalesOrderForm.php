@@ -16,15 +16,14 @@ use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Repeater\TableColumn;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
+use Filament\Schemas\Components\Actions as SchemaActions;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
-use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 
 class SalesOrderForm
 {
@@ -81,65 +80,119 @@ class SalesOrderForm
                                 Select::make('payment_mode')
                                     ->label('Payment Type')
                                     ->options([
-                                        'cash' => 'Cash',
+                                        'cash'   => 'Cash',
                                         'credit' => 'Credit',
                                     ])
                                     ->default('cash')
                                     ->required()
                                     ->live(),
-                                Toggle::make('use_file_import')
-                                    ->label('Import from Excel/CSV')
-                                    ->helperText('Toggle to use file import instead of manual entry')
-                                    ->dehydrated(false)
-                                    ->live(),
-                                FileUpload::make('items_import_file')
-                                    ->label('Import Sales Items')
-                                    ->acceptedFileTypes([
-                                        'text/csv',
-                                        'application/csv',
-                                        'application/vnd.ms-excel',
-                                        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                                    ])
-                                    ->visible(fn (Get $get) => $get('use_file_import'))
-                                    ->dehydrated(false)
-                                    ->helperText('Headers supported: inventory_item_id or sku or name, plus quantity and unit_price.')
-                                    ->afterStateUpdated(function (Set $set, Get $get, TemporaryUploadedFile|string|null $state) {
-                                        if (! $state instanceof TemporaryUploadedFile) {
-                                            return;
-                                        }
+                                // Standalone import button — FileUpload lives inside the action modal,
+                                // completely isolated from the form's save lifecycle.
+                                SchemaActions::make([
+                                    Action::make('import_items')
+                                        ->label('Import from CSV / Excel')
+                                        ->icon('heroicon-o-arrow-up-tray')
+                                        ->color(\Filament\Support\Colors\Color::Indigo)
+                                        ->visible(fn () => ! request()->routeIs('*.view'))
+                                        ->modalHeading('Import Sale Items')
+                                        ->modalDescription('Upload a CSV or Excel file. Required columns: name (or sku / inventory_item_id), quantity. Optional: unit_price.')
+                                        ->modalWidth('lg')
+                                        ->schema([
+                                            FileUpload::make('import_file')
+                                                ->label('File')
+                                                ->acceptedFileTypes([
+                                                    'text/csv',
+                                                    'application/csv',
+                                                    'application/vnd.ms-excel',
+                                                    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                                                ])
+                                                ->required(),
+                                        ])
+                                        ->action(function (array $data, Get $get, Set $set) {
+                                            $file = $data['import_file'];
+                                            $path = is_array($file) ? array_key_first($file) : $file;
 
-                                        try {
-                                            $rows = app(SalesOrderItemImportService::class)->importRows($state->getRealPath());
+                                            try {
+                                                // $path already contains the full relative path (e.g. livewire-tmp/xxxx.csv)
+                                                $disk = \Livewire\Features\SupportFileUploads\FileUploadConfiguration::disk();
+                                                $contents = \Illuminate\Support\Facades\Storage::disk($disk)->get($path);
 
-                                            $set('salesOrderItems', $rows);
+                                                if ($contents === null) {
+                                                    throw new \RuntimeException('Could not read the uploaded file. Please try again.');
+                                                }
 
-                                            $subtotal = collect($rows)->sum('total');
-                                            $taxRate = Setting::getSettings()->vat_enabled
-                                                ? (float) Setting::getSettings()->vat_rate / 100
-                                                : 0.0;
-                                            $tax = round($subtotal * $taxRate, 2);
-                                            $set('subtotal', $subtotal);
-                                            $set('tax_amount', $tax);
-                                            $set('total', $subtotal + $tax);
+                                                // Write to a real OS temp file so OpenSpout can open it by path
+                                                $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION)) ?: 'csv';
+                                                $localTmp = tempnam(sys_get_temp_dir(), 'so_import_').'.'.$ext;
+                                                file_put_contents($localTmp, $contents);
 
-                                            Notification::make()
-                                                ->title(count($rows).' sales item(s) imported')
-                                                ->success()
-                                                ->send();
-                                        } catch (\Throwable $exception) {
-                                            Notification::make()
-                                                ->title('Unable to import sales items')
-                                                ->body($exception->getMessage())
-                                                ->danger()
-                                                ->persistent()
-                                                ->send();
-                                        }
-                                    }),
+                                                try {
+                                                    $imported = app(SalesOrderItemImportService::class)->importRows($localTmp);
+                                                } finally {
+                                                    @unlink($localTmp);
+                                                }
+
+                                                // Merge with existing rows:
+                                                // - Same item + same price → sum quantities
+                                                // - Same item + different price → keep as separate row (user resolves)
+                                                // - New item → append
+                                                $existing = collect($get('salesOrderItems') ?? []);
+
+                                                foreach ($imported as $newRow) {
+                                                    $matchIndex = $existing->search(fn ($row) =>
+                                                        (int) ($row['inventory_item_id'] ?? 0) === (int) ($newRow['inventory_item_id'] ?? 0)
+                                                        && (float) ($row['unit_price'] ?? 0) === (float) ($newRow['unit_price'] ?? 0)
+                                                    );
+
+                                                    if ($matchIndex !== false) {
+                                                        // Same item, same price — merge quantities
+                                                        $merged = $existing[$matchIndex];
+                                                        $merged['quantity'] = (float) $merged['quantity'] + (float) $newRow['quantity'];
+                                                        $merged['total'] = round($merged['quantity'] * (float) $merged['unit_price'], 2);
+                                                        $existing[$matchIndex] = $merged;
+                                                    } else {
+                                                        // New item or same item with different price — append
+                                                        $existing->push($newRow);
+                                                    }
+                                                }
+
+                                                $rows = $existing->values()->toArray();
+                                                $set('salesOrderItems', $rows);
+
+                                                $subtotal = collect($rows)->sum('total');
+                                                $taxRate = Setting::getSettings()->vat_enabled
+                                                    ? (float) Setting::getSettings()->vat_rate / 100
+                                                    : 0.0;
+                                                $tax = round($subtotal * $taxRate, 2);
+                                                $set('subtotal', $subtotal);
+                                                $set('tax_amount', $tax);
+                                                $set('total', $subtotal + $tax);
+
+                                                $mergedCount = count($imported) - collect($imported)->filter(fn ($r) =>
+                                                    collect($get('salesOrderItems') ?? [])->contains(fn ($e) =>
+                                                        (int) ($e['inventory_item_id'] ?? 0) === (int) ($r['inventory_item_id'] ?? 0)
+                                                    )
+                                                )->count();
+
+                                                Notification::make()
+                                                    ->title(count($imported).' item(s) imported')
+                                                    ->body('Matching items with the same price had their quantities merged. Items with different prices were added as separate rows.')
+                                                    ->success()
+                                                    ->send();
+                                            } catch (\Throwable $e) {
+                                                Notification::make()
+                                                    ->title('Import failed')
+                                                    ->body($e->getMessage())
+                                                    ->danger()
+                                                    ->persistent()
+                                                    ->send();
+                                            }
+                                        }),
+                                ])->label('Bulk Import'),
                             ]),
                         Repeater::make('salesOrderItems')
                             ->relationship('salesOrderItems')
                             ->label('Sale Items')
-                            ->visible(fn (Get $get) => ! $get('use_file_import'))
                             ->table([
                                 TableColumn::make('Item')->width('220px')->alignLeft(),
                                 TableColumn::make('Qty')->alignLeft(),
@@ -153,11 +206,26 @@ class SalesOrderForm
                                     ->relationship('inventoryItem', 'name', fn ($query) => $query->where('is_sellable', true))
                                     ->searchable()
                                     ->preload()
-                                    ->required(),
+                                    ->required()
+                                    ->live()
+                                    ->afterStateUpdated(function ($state, callable $set, callable $get) {
+                                        $item = \App\Models\InventoryItem::find($state);
+                                        if (! $item) {
+                                            return;
+                                        }
+                                        $unit = $item->hasPurchaseUnit() ? $item->purchase_unit : ($item->unit ?? 'unit');
+                                        $price = (float) ($item->price ?? 0);
+                                        $qty = (float) ($get('quantity') ?? 1);
+
+                                        $set('unit_label', $unit);
+                                        $set('unit_price', $price);
+                                        $set('total', round($qty * $price, 2));
+                                    }),
                                 TextInput::make('quantity')
                                     ->numeric()
                                     ->required()
                                     ->default(1)
+                                    ->suffix(fn ($get) => $get('unit_label') ?: 'unit')
                                     ->live()
                                     ->afterStateUpdated(function (Set $set, Get $get, $state) {
                                         $set('total', round((float) ($state ?? 0) * (float) ($get('unit_price') ?? 0), 2));
@@ -192,6 +260,19 @@ class SalesOrderForm
                                     ->readOnly()
                                     ->dehydrated()
                                     ->suffix('Birr'),
+                                Hidden::make('unit_label')
+                                    ->default('unit')
+                                    ->dehydrated()
+                                    ->afterStateHydrated(function ($set, $get) {
+                                        $itemId = $get('inventory_item_id');
+                                        if (! $itemId) {
+                                            return;
+                                        }
+                                        $item = \App\Models\InventoryItem::find($itemId);
+                                        if ($item && ! $get('unit_label')) {
+                                            $set('unit_label', $item->hasPurchaseUnit() ? $item->purchase_unit : ($item->unit ?? 'unit'));
+                                        }
+                                    }),
                             ])
                             ->columns(4)
                             ->defaultItems(1)
@@ -205,9 +286,10 @@ class SalesOrderForm
                                         $state = $component->getState() ?? [];
                                         $state[] = [
                                             'inventory_item_id' => null,
-                                            'quantity' => 1,
-                                            'unit_price' => 0,
-                                            'total' => 0,
+                                            'quantity'          => 1,
+                                            'unit_price'        => 0,
+                                            'total'             => 0,
+                                            'unit_label'        => 'unit',
                                         ];
                                         $component->state($state);
                                     }),
@@ -239,16 +321,6 @@ class SalesOrderForm
                     ->columnSpan(3),
                 Section::make('Summary')
                     ->schema([
-                        // Payment Info
-                        Select::make('payment_mode')
-                            ->label('Payment Type')
-                            ->options([
-                                'cash' => 'Cash Sale',
-                                'credit' => 'Credit Sale',
-                            ])
-                            ->live()
-                            ->required(),
-
                         DatePicker::make('due_date')
                             ->label('Payment Due Date')
                             ->live()

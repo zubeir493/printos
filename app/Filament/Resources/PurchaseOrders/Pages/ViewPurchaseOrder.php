@@ -35,15 +35,105 @@
                 ->icon('heroicon-o-archive-box-arrow-down')
                 ->color('primary')
                 ->visible(fn ($record) => $record->status === 'approved' && PanelAccess::canAccessWarehouseSection())
-                ->requiresConfirmation()
                 ->modalHeading('Receive Items')
-                ->modalDescription('Use the Goods Receipts tab below to record received items. The order status will automatically update to "received" when all items are fully received.')
-                ->action(function ($record) {
-                    Notification::make()
-                        ->title('Ready to Receive Items')
-                        ->body('Use the Goods Receipts tab below to add receipts.')
-                        ->info()
-                        ->send();
+                ->modalDescription(fn ($record) => "Record stock received against {$record->po_number}. Items will be added to inventory immediately.")
+                ->schema([
+                    \Filament\Schemas\Components\Grid::make(2)->schema([
+                        \Filament\Forms\Components\Select::make('warehouse_id')
+                            ->label('Receiving Warehouse')
+                            ->options(\App\Models\Warehouse::pluck('name', 'id'))
+                            ->default(fn () => \App\Models\Warehouse::where('is_default', true)->value('id'))
+                            ->searchable()
+                            ->preload()
+                            ->required(),
+                        \Filament\Forms\Components\DatePicker::make('receipt_date')
+                            ->label('Receipt Date')
+                            ->default(now())
+                            ->required(),
+                    ]),
+                    \Filament\Forms\Components\Repeater::make('items')
+                        ->label('Items to Receive')
+                        ->table([
+                            \Filament\Forms\Components\Repeater\TableColumn::make('Item')->alignLeft(),
+                            \Filament\Forms\Components\Repeater\TableColumn::make('Ordered Quantity')->alignLeft(),
+                            \Filament\Forms\Components\Repeater\TableColumn::make('Already Received')->alignLeft(),
+                            \Filament\Forms\Components\Repeater\TableColumn::make('Quantity')->alignLeft(),
+                        ])
+                        ->compact()
+                        ->schema([
+                            \Filament\Forms\Components\Hidden::make('purchase_order_item_id'),
+                            \Filament\Forms\Components\Placeholder::make('item_name')
+                                ->content(fn ($get) => \App\Models\PurchaseOrderItem::with('inventoryItem')
+                                    ->find($get('purchase_order_item_id'))
+                                    ?->inventoryItem?->name ?? '—'),
+                            \Filament\Forms\Components\Placeholder::make('ordered')
+                                ->content(fn ($get) => \App\Models\PurchaseOrderItem::find($get('purchase_order_item_id'))
+                                    ?->quantity ?? '—'),
+                            \Filament\Forms\Components\Placeholder::make('already_received')
+                                ->content(fn ($get) => \App\Models\PurchaseOrderItem::find($get('purchase_order_item_id'))
+                                    ?->received_quantity ?? '0'),
+                            \Filament\Forms\Components\TextInput::make('quantity_received')
+                                ->numeric()
+                                ->minValue(0)
+                                ->required(),
+                        ])
+                        ->columns(4)
+                        ->addable(false)
+                        ->deletable(false)
+                        ->reorderable(false)
+                        ->default(fn ($record) => $record->purchaseOrderItems()
+                            ->with('inventoryItem')
+                            ->get()
+                            ->map(fn ($item) => [
+                                'purchase_order_item_id' => $item->id,
+                                'quantity_received'      => max(0, $item->quantity - $item->received_quantity),
+                            ])
+                            ->toArray()
+                        )
+                        ->columnSpanFull(),
+                ])
+                ->action(function ($record, array $data) {
+                    try {
+                        \Illuminate\Support\Facades\DB::transaction(function () use ($record, $data) {
+                            $lastNumber = \App\Models\GoodsReceipt::max('id') ?? 0;
+                            $receiptNumber = 'GR-'.str_pad($lastNumber + 1, 5, '0', STR_PAD_LEFT);
+
+                            $receipt = \App\Models\GoodsReceipt::create([
+                                'receipt_number'    => $receiptNumber,
+                                'purchase_order_id' => $record->id,
+                                'warehouse_id'      => $data['warehouse_id'],
+                                'receipt_date'      => $data['receipt_date'],
+                                'status'            => 'draft',
+                            ]);
+
+                            foreach ($data['items'] as $item) {
+                                if (($item['quantity_received'] ?? 0) <= 0) {
+                                    continue;
+                                }
+
+                                $receipt->items()->create([
+                                    'purchase_order_item_id' => $item['purchase_order_item_id'],
+                                    'quantity_received'      => $item['quantity_received'],
+                                ]);
+                            }
+
+                            // Post immediately — triggers GoodsReceiptObserver which updates inventory
+                            $receipt->update(['status' => 'posted']);
+                        });
+
+                        Notification::make()
+                            ->title('Items Received')
+                            ->body('Stock has been added to inventory.')
+                            ->success()
+                            ->send();
+
+                    } catch (\Exception $e) {
+                        Notification::make()
+                            ->title('Failed to Receive Items')
+                            ->body($e->getMessage())
+                            ->danger()
+                            ->send();
+                    }
                 }),
 
              Action::make('mark_received')

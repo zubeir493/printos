@@ -246,3 +246,21 @@ nav.fi-sidebar-nav::-webkit-scrollbar {
 h1.fi-simple-header-heading {
     display: none !important;
 }
+
+/* Truncate long selected values in all Select inputs to a single line */
+.fi-select-input,
+.choices__item--selectable,
+[data-choices] .choices__item,
+.fi-select-input .fi-select-input-value-label,
+.fi-input[data-choices-target],
+.choices .choices__list--single .choices__item {
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.fi-sc-actions .fi-sc-actions-label-ctn .fi-sc-actions-label {
+    line-height: var(--text-sm--line-height);
+}

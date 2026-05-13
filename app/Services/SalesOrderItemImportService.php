@@ -70,11 +70,14 @@ class SalesOrderItemImportService
             return null;
         }
 
+        $unit = $item->hasPurchaseUnit() ? $item->purchase_unit : ($item->unit ?? 'unit');
+
         return [
             'inventory_item_id' => $item->id,
-            'quantity' => $quantity,
-            'unit_price' => $unitPrice,
-            'total' => round($quantity * $unitPrice, 2),
+            'quantity'          => $quantity,
+            'unit_label'        => $unit,
+            'unit_price'        => $unitPrice ?: (float) ($item->price ?? 0),
+            'total'             => round($quantity * ($unitPrice ?: (float) ($item->price ?? 0)), 2),
         ];
     }
 

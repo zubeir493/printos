@@ -2,10 +2,10 @@
 
 namespace App\Filament\Resources\Payments\RelationManagers;
 
-use Filament\Actions\CreateAction;
+use App\Models\JobOrder;
+use App\Models\PurchaseOrder;
+use App\Models\SalesOrder;
 use Filament\Actions\DeleteAction;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
@@ -15,12 +15,14 @@ class PaymentAllocationsRelationManager extends RelationManager
 {
     protected static string $relationship = 'paymentAllocations';
 
+    protected static ?string $title = 'Applied To';
+
     public static function canViewForRecord($ownerRecord, string $pageClass): bool
     {
         $transactionType = $ownerRecord->transaction_type ?? match ($ownerRecord->payment_type ?? null) {
-            'expense' => 'direct_expense',
-            'petty_cash' => $ownerRecord->direction === 'inbound' ? 'petty_cash_funding' : 'petty_cash_expense',
-            default => $ownerRecord->direction === 'outbound' ? 'supplier_payment' : 'customer_receipt',
+            'expense'     => 'direct_expense',
+            'petty_cash'  => $ownerRecord->direction === 'inbound' ? 'petty_cash_funding' : 'petty_cash_expense',
+            default       => $ownerRecord->direction === 'outbound' ? 'supplier_payment' : 'customer_receipt',
         };
 
         return in_array($transactionType, ['customer_receipt', 'supplier_payment'], true);
@@ -28,38 +30,8 @@ class PaymentAllocationsRelationManager extends RelationManager
 
     public function form(Schema $schema): Schema
     {
-        return $schema
-            ->components([
-                Select::make('allocatable_type')
-                    ->options([
-                        \App\Models\JobOrder::class => 'Job Order',
-                        \App\Models\SalesOrder::class => 'Sales Order',
-                        \App\Models\PurchaseOrder::class => 'Purchase Order',
-                    ])
-                    ->required()
-                    ->reactive(),
-
-                Select::make('allocatable_id')
-                    ->label('Document')
-                    ->options(function (callable $get) {
-                        $type = $get('allocatable_type');
-                        if (!$type) return [];
-                        
-                        return $type::all()->pluck('id', 'id')->map(function ($id, $originalId) use ($type) {
-                            $record = $type::find($originalId);
-                            if ($type === \App\Models\JobOrder::class) return $record->job_order_number;
-                            if ($type === \App\Models\SalesOrder::class) return $record->order_number;
-                            if ($type === \App\Models\PurchaseOrder::class) return $record->po_number;
-                            return $id;
-                        });
-                    })
-                    ->required(),
-
-                TextInput::make('allocated_amount')
-                    ->numeric()
-                    ->required()
-                    ->suffix('Birr'),
-            ]);
+        // Allocations are created from the order side — no create form needed here.
+        return $schema->components([]);
     }
 
     public function table(Table $table): Table
@@ -69,41 +41,30 @@ class PaymentAllocationsRelationManager extends RelationManager
                 TextColumn::make('allocatable_type')
                     ->label('Type')
                     ->badge()
-                    ->color(fn($state) => match($state) {
-                        \App\Models\JobOrder::class => 'info',
-                        \App\Models\SalesOrder::class => 'success',
-                        \App\Models\PurchaseOrder::class => 'warning',
-                        default => 'gray',
+                    ->color(fn ($state) => match ($state) {
+                        JobOrder::class      => 'info',
+                        SalesOrder::class    => 'success',
+                        PurchaseOrder::class => 'warning',
+                        default              => 'gray',
                     })
-                    ->formatStateUsing(fn ($state) => match($state) {
-                        \App\Models\JobOrder::class => 'Job Order',
-                        \App\Models\SalesOrder::class => 'Sales Order',
-                        \App\Models\PurchaseOrder::class => 'Purchase Order',
-                        default => str_replace('App\\Models\\', '', $state),
+                    ->formatStateUsing(fn ($state) => match ($state) {
+                        JobOrder::class      => 'Job Order',
+                        SalesOrder::class    => 'Sales Order',
+                        PurchaseOrder::class => 'Purchase Order',
+                        default              => class_basename($state),
                     }),
-                TextColumn::make('allocatable.id')
-                    ->label('Reference')
-                    ->searchable()
+                TextColumn::make('document_number')
+                    ->label('Document #')
                     ->weight('bold')
                     ->color('primary')
-                    ->formatStateUsing(function ($record) {
-                        if ($record->allocatable_type === \App\Models\JobOrder::class) return $record->allocatable->job_order_number;
-                        if ($record->allocatable_type === \App\Models\SalesOrder::class) return $record->allocatable->order_number;
-                        if ($record->allocatable_type === \App\Models\PurchaseOrder::class) return $record->allocatable->po_number;
-                        return $record->allocatable_id;
-                    })
-                    ->description(fn($record) => $record->allocatable?->partner?->name),
+                    ->description(fn ($record) => $record->allocatable?->partner?->name),
                 TextColumn::make('allocated_amount')
-                    ->label('Allocated')
-                    ->suffix(' ETB')
-                    ->sortable()
+                    ->label('Amount')
+                    ->suffix(' Birr')
                     ->weight('bold')
                     ->color('success'),
             ])
-            ->headerActions([
-                CreateAction::make(),
-            ])
-            ->actions([
+            ->recordActions([
                 DeleteAction::make(),
             ]);
     }

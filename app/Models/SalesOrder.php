@@ -128,15 +128,30 @@ class SalesOrder extends Model
 
         static::updating(function ($salesOrder) {
             if ($salesOrder->isDirty('status') && $salesOrder->status === 'completed') {
-                // Validate sufficient stock
+                // Validate sufficient stock — quantities may be in purchase units, convert to base
                 foreach ($salesOrder->salesOrderItems as $item) {
+                    $inventoryItem = $item->inventoryItem;
+                    $requiredBase = $item->quantity;
+
+                    if (
+                        $inventoryItem
+                        && $inventoryItem->hasPurchaseUnit()
+                        && $item->unit_label === $inventoryItem->purchase_unit
+                    ) {
+                        $requiredBase = $inventoryItem->toBaseUnits((float) $item->quantity);
+                    }
+
                     $balance = InventoryBalance::where('inventory_item_id', $item->inventory_item_id)
                         ->where('warehouse_id', $salesOrder->warehouse_id)
                         ->first();
                     $qty = $balance ? (float) $balance->quantity_on_hand : 0;
-                    if ($qty < (float) $item->quantity) {
-                        $itemName = $item->inventoryItem ? $item->inventoryItem->name : 'Unknown Item';
-                        throw new \Exception("Insufficient stock for item {$itemName}. Available: {$qty}, Required: {$item->quantity}");
+
+                    if ($qty < $requiredBase) {
+                        $itemName = $inventoryItem ? $inventoryItem->name : 'Unknown Item';
+                        $availableDisplay = $inventoryItem && $inventoryItem->hasPurchaseUnit() && $item->unit_label === $inventoryItem->purchase_unit
+                            ? round($inventoryItem->toPurchaseUnits($qty), 4).' '.$inventoryItem->purchase_unit
+                            : $qty.' '.($inventoryItem?->unit ?? 'units');
+                        throw new \Exception("Insufficient stock for item {$itemName}. Available: {$availableDisplay}, Required: {$item->quantity} {$item->unit_label}.");
                     }
                 }
             }
@@ -153,14 +168,26 @@ class SalesOrder extends Model
                             ->exists();
 
                         if (! $exists) {
+                            $inventoryItem = $item->inventoryItem;
+                            $baseQty = (float) $item->quantity;
+
+                            // Convert to base units if the item was sold in purchase units
+                            if (
+                                $inventoryItem
+                                && $inventoryItem->hasPurchaseUnit()
+                                && $item->unit_label === $inventoryItem->purchase_unit
+                            ) {
+                                $baseQty = $inventoryItem->toBaseUnits($baseQty);
+                            }
+
                             StockMovement::create([
                                 'inventory_item_id' => $item->inventory_item_id,
-                                'warehouse_id' => $salesOrder->warehouse_id,
-                                'type' => 'sale',
-                                'reference_type' => self::class,
-                                'reference_id' => $salesOrder->id,
-                                'quantity' => -abs($item->quantity),
-                                'movement_date' => now(),
+                                'warehouse_id'      => $salesOrder->warehouse_id,
+                                'type'              => 'sale',
+                                'reference_type'    => self::class,
+                                'reference_id'      => $salesOrder->id,
+                                'quantity'          => -abs($baseQty),
+                                'movement_date'     => now(),
                             ]);
                         }
                     }

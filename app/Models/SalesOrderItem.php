@@ -14,6 +14,7 @@ class SalesOrderItem extends Model
         'sales_order_id',
         'inventory_item_id',
         'quantity',
+        'unit_label',
         'unit_price',
         'total',
     ];

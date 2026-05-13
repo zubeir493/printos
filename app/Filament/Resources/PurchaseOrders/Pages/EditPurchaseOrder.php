@@ -31,12 +31,20 @@ class EditPurchaseOrder extends EditRecord
                 ->icon('heroicon-o-truck')
                 ->color('success')
                 ->visible(fn(PurchaseOrder $record) => PanelAccess::canAccessWarehouseSection() && !in_array($record->status, ['draft', 'cancelled']))
-                ->form([
-                    Select::make('warehouse_id')
-                        ->label('Warehouse')
-                        ->options(\App\Models\Warehouse::pluck('name', 'id'))
-                        ->default(fn () => \App\Models\Warehouse::where('is_default', true)->value('id'))
-                        ->required(),
+                ->form([                    
+                    \Filament\Schemas\Components\Grid::make(2)->schema([
+                        \Filament\Forms\Components\Select::make('warehouse_id')
+                            ->label('Receiving Warehouse')
+                            ->options(\App\Models\Warehouse::pluck('name', 'id'))
+                            ->default(fn () => \App\Models\Warehouse::where('is_default', true)->value('id'))
+                            ->searchable()
+                            ->preload()
+                            ->required(),
+                        \Filament\Forms\Components\DatePicker::make('receipt_date')
+                            ->label('Receipt Date')
+                            ->default(now())
+                            ->required(),
+                    ]),
                     Repeater::make('items')
                         ->label('Items to Receive')
                         ->table([

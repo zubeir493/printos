@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\PurchaseOrders\RelationManagers;
 
+use App\Enums\PaymentTransactionType;
 use App\Filament\Support\PanelAccess;
 use App\Models\Bank;
 use App\Models\Payment;
@@ -81,37 +82,48 @@ class PaymentsRelationManager extends RelationManager
             ->columns([
                 TextColumn::make('payment.payment_number')
                     ->label('Payment #')
-                    ->searchable()
                     ->weight('bold')
                     ->color('primary')
-                    ->description(fn ($record) => $record->payment->payment_date?->format('M j, Y') ?? 'No date'),
+                    ->searchable()
+                    ->description(fn ($record) => $record->payment?->payment_date?->format('M j, Y') ?? '—'),
                 TextColumn::make('payment.method')
                     ->label('Method')
                     ->badge()
                     ->color(fn ($state) => match ($state) {
-                        'cash' => 'success',
-                        'bank' => 'info',
+                        'cash'   => 'success',
+                        'bank'   => 'info',
                         'cheque' => 'warning',
-                        default => 'gray',
+                        default  => 'gray',
                     })
-                    ->formatStateUsing(fn ($state) => ucfirst($state)),
+                    ->formatStateUsing(fn ($state) => match ($state) {
+                        'bank'   => 'Bank Transfer',
+                        'cheque' => 'Cheque',
+                        default  => ucfirst($state ?? ''),
+                    }),
                 TextColumn::make('payment.reference')
-                    ->label('Reference'),
+                    ->label('Reference')
+                    ->placeholder('—')
+                    ->limit(40),
                 TextColumn::make('payment.payment_date')
                     ->label('Date')
-                    ->date(),
+                    ->date()
+                    ->sortable(),
                 TextColumn::make('allocated_amount')
-                    ->label('Allocated')
+                    ->label('Amount')
                     ->suffix(' Birr')
+                    ->weight('bold')
+                    ->color('danger')
+                    ->sortable()
                     ->summarize(
                         Sum::make()
-                            ->label('Payment Summary')
+                            ->label('Total Paid')
                             ->formatStateUsing(function ($state) {
                                 $owner = $this->getOwnerRecord();
-                                $allocated = $state ?? 0;
-                                $total = $owner->subtotal ?? 0;
+                                $paid = number_format($state ?? 0, 2);
+                                $total = number_format($owner->total ?? 0, 2);
+                                $balance = number_format(max(0, ($owner->total ?? 0) - ($state ?? 0)), 2);
 
-                                return "{$allocated}/{$total} Birr";
+                                return "{$paid} / {$total} Birr — Balance: {$balance} Birr";
                             })
                     ),
             ])
@@ -122,17 +134,17 @@ class PaymentsRelationManager extends RelationManager
                             $purchaseOrder = $this->getOwnerRecord();
 
                             $payment = Payment::create([
-                                'partner_id' => $purchaseOrder->partner_id,
-                                'amount' => $data['allocated_amount'],
-                                'direction' => 'outbound',
-                                'method' => $data['method'],
-                                'bank_id' => $data['bank_id'] ?? null,
-                                'reference' => $data['reference'] ?? null,
-                                'payment_date' => $data['payment_date'],
+                                'partner_id'       => $purchaseOrder->partner_id,
+                                'amount'           => $data['allocated_amount'],
+                                'transaction_type' => PaymentTransactionType::SUPPLIER_PAYMENT->value,
+                                'method'           => $data['method'],
+                                'bank_id'          => $data['bank_id'] ?? null,
+                                'reference'        => $data['reference'] ?? null,
+                                'payment_date'     => $data['payment_date'],
                             ]);
 
                             return $purchaseOrder->paymentAllocations()->create([
-                                'payment_id' => $payment->id,
+                                'payment_id'       => $payment->id,
                                 'allocated_amount' => $data['allocated_amount'],
                             ]);
                         });

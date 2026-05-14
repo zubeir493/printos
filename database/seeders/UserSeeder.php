@@ -2,11 +2,9 @@
 
 namespace Database\Seeders;
 
-
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 
 class UserSeeder extends Seeder
 {
@@ -57,6 +55,11 @@ class UserSeeder extends Seeder
             'role' => 'hr',
         ]);
 
-
+        DB::table('users')->insert([
+            'name' => 'production',
+            'email' => 'production@filament.site',
+            'password' => Hash::make('production123'),
+            'role' => 'production',
+        ]);
     }
 }

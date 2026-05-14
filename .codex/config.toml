@@ -1,4 +1,4 @@
 [mcp_servers.laravel-boost]
-command = "vendor/bin/sail"
+command = "php"
 args = ["artisan", "boost:mcp"]
-cwd = "/Users/macmini/Herd/printos"
+cwd = "C:\\Users\\user\\Herd\\printos"

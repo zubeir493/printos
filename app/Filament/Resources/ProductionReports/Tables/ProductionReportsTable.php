@@ -19,6 +19,9 @@ class ProductionReportsTable
                     ->formatStateUsing(fn ($record) => "Plan: {$record->productionPlan->week_start->format('M d')} - {$record->productionPlan->week_end->format('M d')}")
                     ->searchable()
                     ->sortable(),
+                TextColumn::make('created_at')
+                    ->dateTime()
+                    ->sortable(),
                 TextColumn::make('status')
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
@@ -26,9 +29,6 @@ class ProductionReportsTable
                         'submitted' => 'success',
                         default => 'gray',
                     }),
-                TextColumn::make('created_at')
-                    ->dateTime()
-                    ->sortable(),
             ])
             ->filters([
                 SelectFilter::make('status')

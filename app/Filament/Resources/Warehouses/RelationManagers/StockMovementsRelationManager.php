@@ -2,12 +2,10 @@
 
 namespace App\Filament\Resources\Warehouses\RelationManagers;
 
-use App\Models\StockMovement;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Table;
 use Filament\Tables\Filters\SelectFilter;
-use Illuminate\Database\Eloquent\Builder;
+use Filament\Tables\Table;
 
 class StockMovementsRelationManager extends RelationManager
 {
@@ -21,8 +19,8 @@ class StockMovementsRelationManager extends RelationManager
             ->recordTitleAttribute('id')
             ->columns([
                 TextColumn::make('movement_date')
-                    ->label('Time | Date')
-                    ->dateTime('h:i A | d M')
+                    ->label('Moved At')
+                    ->dateTime('d M Y, h:i A')
                     ->sortable(),
 
                 TextColumn::make('inventoryItem.name')
@@ -33,7 +31,7 @@ class StockMovementsRelationManager extends RelationManager
                 TextColumn::make('type')
                     ->label('Type')
                     ->badge()
-                    ->color(fn(string $state): string => match ($state) {
+                    ->color(fn (string $state): string => match ($state) {
                         'purchase', 'transfer_in', 'material_return', 'production_output' => 'success',
                         'transfer_out', 'consumption' => 'danger',
                         'dispatch' => 'warning',

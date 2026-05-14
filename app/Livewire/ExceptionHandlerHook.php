@@ -45,6 +45,14 @@ class ExceptionHandlerHook extends ComponentHook
             return self::humaniseQuery($e);
         }
 
+        if (str_contains($e->getMessage(), 'would go negative')) {
+            return 'There is not enough stock in the selected warehouse for this movement. Please reduce the quantity or choose another warehouse.';
+        }
+
+        if (str_contains($e->getMessage(), 'Insufficient stock')) {
+            return $e->getMessage();
+        }
+
         // Null / type errors usually mean a required value was missing
         if ($e instanceof \TypeError || $e instanceof \ValueError) {
             return 'A required value was missing or in the wrong format. Please check your input and try again.';

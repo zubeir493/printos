@@ -2,11 +2,14 @@
 
 namespace App\Filament\Resources\Dispatches\Tables;
 
+use App\Models\JobOrder;
+use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
-use Filament\Actions\ViewAction;
+use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 
 class DispatchesTable
@@ -37,10 +40,10 @@ class DispatchesTable
                     ->searchable(),
             ])
             ->filters([
-                \Filament\Tables\Filters\SelectFilter::make('job_order_id')
+                SelectFilter::make('job_order_id')
                     ->label('Job Order')
-                    ->options(\App\Models\JobOrder::pluck('job_order_number', 'id')->toArray()),
-                \Filament\Tables\Filters\SelectFilter::make('status')
+                    ->options(JobOrder::pluck('job_order_number', 'id')->toArray()),
+                SelectFilter::make('status')
                     ->options([
                         'pending' => 'Pending',
                         'completed' => 'Completed',
@@ -48,6 +51,38 @@ class DispatchesTable
                     ]),
             ])
             ->recordActions([
+                Action::make('complete_dispatch')
+                    ->label('Mark as Delivered')
+                    ->icon('heroicon-o-check-circle')
+                    ->color('success')
+                    ->visible(fn ($record) => $record->status === 'pending')
+                    ->requiresConfirmation()
+                    ->modalHeading('Confirm Delivery')
+                    ->modalDescription('Mark this dispatch as delivered? This confirms the items have been received by the customer.')
+                    ->action(function ($record): void {
+                        $record->update(['status' => 'completed']);
+
+                        Notification::make()
+                            ->title('Dispatch marked as delivered')
+                            ->success()
+                            ->send();
+                    }),
+                Action::make('cancel_dispatch')
+                    ->label('Cancel Dispatch')
+                    ->icon('heroicon-o-x-circle')
+                    ->color('danger')
+                    ->visible(fn ($record) => $record->status === 'pending')
+                    ->requiresConfirmation()
+                    ->modalHeading('Cancel Dispatch')
+                    ->modalDescription('Are you sure you want to cancel this dispatch?')
+                    ->action(function ($record): void {
+                        $record->update(['status' => 'cancelled']);
+
+                        Notification::make()
+                            ->title('Dispatch cancelled')
+                            ->danger()
+                            ->send();
+                    }),
                 EditAction::make(),
             ])
             ->toolbarActions([

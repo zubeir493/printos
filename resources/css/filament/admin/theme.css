@@ -98,7 +98,7 @@ nav.fi-sidebar-nav::-webkit-scrollbar {
     display: flex;
     margin-inline: auto;
     width: 400px;
-    transform: translateX(-7.5%);
+    transform: translateX(-1.5%);
 }
 
 .fi-topbar .fi-input-wrp {
@@ -265,4 +265,10 @@ h1.fi-simple-header-heading {
 
 .fi-sc-actions .fi-sc-actions-label-ctn .fi-sc-actions-label {
     line-height: var(--text-sm--line-height);
+}
+
+
+.planvactualcolumn>.fi-input-wrp-suffix.fi-input-wrp-suffix-has-label{
+    border: none !important;
+    padding-inline-start: 0 !important;
 }

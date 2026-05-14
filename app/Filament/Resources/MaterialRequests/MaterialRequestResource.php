@@ -2,24 +2,28 @@
 
 namespace App\Filament\Resources\MaterialRequests;
 
-use App\Filament\Support\PanelAccess;
 use App\Filament\Resources\MaterialRequests\Pages\ManageMaterialRequests;
+use App\Filament\Support\PanelAccess;
+use App\Models\JobOrder;
 use App\Models\MaterialRequest;
+use App\Models\Warehouse;
 use App\Services\MaterialIssueService;
 use BackedEnum;
+use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\EditAction;
-use Filament\Actions\ViewAction;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
-use Filament\Infolists\Components\TextEntry;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class MaterialRequestResource extends Resource
 {
@@ -30,7 +34,14 @@ class MaterialRequestResource extends Resource
     public static function getNavigationBadge(): ?string
     {
         $count = static::getModel()::whereColumn('issued_quantity', '<', 'requested_quantity')->count();
+
         return $count > 0 ? (string) $count : null;
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()
+            ->with(['inventoryItem', 'jobOrderTask.jobOrder']);
     }
 
     // public static function canViewAny(): bool
@@ -44,14 +55,18 @@ class MaterialRequestResource extends Resource
             ->components([
                 Grid::make(2)
                     ->schema([
-                        \Filament\Forms\Components\Select::make('job_order_task_id')
+                        Select::make('job_order_task_id')
                             ->label('Production Task')
-                            ->relationship('jobOrderTask', 'name')
-                            ->getOptionLabelFromRecordUsing(fn($record) => "{$record->name} ({$record->jobOrder->job_order_number})")
+                            ->relationship(
+                                'jobOrderTask',
+                                'name',
+                                modifyQueryUsing: fn (Builder $query): Builder => $query->with('jobOrder'),
+                            )
+                            ->getOptionLabelFromRecordUsing(fn ($record) => "{$record->name} ({$record->jobOrder->job_order_number})")
                             ->required()
                             ->searchable()
                             ->preload(),
-                        \Filament\Forms\Components\Select::make('inventory_item_id')
+                        Select::make('inventory_item_id')
                             ->label('Material')
                             ->relationship('inventoryItem', 'name')
                             ->required()
@@ -74,7 +89,12 @@ class MaterialRequestResource extends Resource
                             ->numeric()
                             ->default(0)
                             ->readOnly(),
-                    ])->columnSpanFull()
+                    ])->columnSpanFull(),
+                Textarea::make('reason')
+                    ->label('Reason')
+                    ->required()
+                    ->rows(3)
+                    ->columnSpanFull(),
             ]);
     }
 
@@ -84,7 +104,7 @@ class MaterialRequestResource extends Resource
             ->columns([
                 TextColumn::make('jobOrderTask.name')
                     ->label('Task')
-                    ->description(fn($record) => $record->jobOrderTask->jobOrder->job_order_number)
+                    ->description(fn ($record) => $record->jobOrderTask->jobOrder->job_order_number)
                     ->weight('bold')
                     ->color('primary')
                     ->searchable(),
@@ -95,12 +115,21 @@ class MaterialRequestResource extends Resource
                 TextColumn::make('status')
                     ->badge()
                     ->getStateUsing(function ($record) {
-                        if ($record->pendingIssueApprovals()->exists()) return 'Awaiting Approval';
-                        if ($record->issued_quantity >= $record->requested_quantity) return 'Issued';
-                        if ($record->issued_quantity > 0) return 'Partial';
+                        if ($record->pendingIssueApprovals()->exists()) {
+                            return 'Awaiting Approval';
+                        }
+
+                        if ($record->issued_quantity >= $record->requested_quantity) {
+                            return 'Issued';
+                        }
+
+                        if ($record->issued_quantity > 0) {
+                            return 'Partial';
+                        }
+
                         return 'Pending';
                     })
-                    ->color(fn($state) => match ($state) {
+                    ->color(fn ($state) => match ($state) {
                         'Issued' => 'success',
                         'Awaiting Approval' => 'warning',
                         'Partial' => 'warning',
@@ -112,67 +141,75 @@ class MaterialRequestResource extends Resource
                     ->searchable(),
                 TextColumn::make('requested_quantity')
                     ->label('Qty')
-                    ->formatStateUsing(fn($state, $record) => "{$record->issued_quantity} / {$state}")
+                    ->formatStateUsing(fn ($state, $record) => "{$record->issued_quantity} / {$state}")
                     ->description('Issued / Requested')
                     ->alignEnd(),
             ])
             ->filters([
-                \Filament\Tables\Filters\SelectFilter::make('job_order_id')
+                SelectFilter::make('job_order_id')
                     ->label('Job Order')
-                    ->options(\App\Models\JobOrder::pluck('job_order_number', 'id'))
+                    ->options(JobOrder::pluck('job_order_number', 'id'))
                     ->searchable()
                     ->query(function ($query, array $data) {
                         if ($data['value']) {
-                            $query->whereHas('jobOrderTask', fn($q) => $q->where('job_order_id', $data['value']));
+                            $query->whereHas('jobOrderTask', fn ($q) => $q->where('job_order_id', $data['value']));
                         }
                     }),
-                \Filament\Tables\Filters\SelectFilter::make('status')
+                SelectFilter::make('status')
                     ->options([
                         'pending' => 'Pending',
                         'partial' => 'Partial',
                         'issued' => 'Issued',
                     ])
                     ->query(function ($query, array $data) {
-                        if ($data['value'] === 'pending') $query->where('issued_quantity', 0);
-                        if ($data['value'] === 'partial') $query->where('issued_quantity', '>', 0)->whereColumn('issued_quantity', '<', 'requested_quantity');
-                        if ($data['value'] === 'issued') $query->whereColumn('issued_quantity', '>=', 'requested_quantity');
+                        if ($data['value'] === 'pending') {
+                            $query->where('issued_quantity', 0);
+                        }
+
+                        if ($data['value'] === 'partial') {
+                            $query->where('issued_quantity', '>', 0)->whereColumn('issued_quantity', '<', 'requested_quantity');
+                        }
+
+                        if ($data['value'] === 'issued') {
+                            $query->whereColumn('issued_quantity', '>=', 'requested_quantity');
+                        }
                     }),
             ])
             ->recordActions([
-                \Filament\Actions\Action::make('issue')
+                Action::make('issue')
                     ->label('Issue')
                     ->icon('heroicon-m-archive-box-arrow-down')
                     ->color('warning')
-                    ->visible(fn($record) => PanelAccess::canAccessWarehouseSection() && $record->issued_quantity < $record->requested_quantity && !$record->pendingIssueApprovals()->exists())
+                    ->visible(fn ($record) => PanelAccess::canAccessWarehouseSection() && $record->issued_quantity < $record->requested_quantity && ! $record->pendingIssueApprovals()->exists())
                     ->form([
-                        \Filament\Forms\Components\Select::make('warehouse_id')
+                        Select::make('warehouse_id')
                             ->label('Warehouse')
-                            ->options(\App\Models\Warehouse::pluck('name', 'id'))
-                            ->default(fn() => \App\Models\Warehouse::where('is_default', true)->value('id'))
+                            ->options(Warehouse::pluck('name', 'id'))
+                            ->default(fn () => Warehouse::where('is_default', true)->value('id'))
                             ->required(),
                         TextInput::make('quantity')
                             ->label('Quantity to Issue')
                             ->numeric()
                             ->required()
-                            ->default(fn($record) => $record->requested_quantity - $record->issued_quantity)
-                            ->maxValue(fn($record) => $record->requested_quantity - $record->issued_quantity)
+                            ->default(fn ($record) => $record->requested_quantity - $record->issued_quantity)
+                            ->maxValue(fn ($record) => $record->requested_quantity - $record->issued_quantity)
                             ->helperText('If this quantity exceeds the required amount for the task, it will wait for admin or operations approval before stock is moved.'),
                     ])
                     ->action(function ($record, array $data) {
                         try {
                             \DB::beginTransaction();
-                            if (!$record) {
+                            if (! $record) {
                                 throw new \Exception('Material request not found.');
                             }
                             $result = app(MaterialIssueService::class)->issue($record, (int) $data['warehouse_id'], (float) $data['quantity'], auth()->user());
                             \DB::commit();
-                            \Filament\Notifications\Notification::make()
+                            Notification::make()
                                 ->title($result['status'] === 'pending_approval' ? 'Over-issue sent for approval' : 'Materials Issued')
                                 ->success()
                                 ->send();
                         } catch (\Exception $e) {
                             \DB::rollBack();
-                            \Filament\Notifications\Notification::make()
+                            Notification::make()
                                 ->title('Error Issuing Materials')
                                 ->body($e->getMessage())
                                 ->danger()

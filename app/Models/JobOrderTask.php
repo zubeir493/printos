@@ -83,6 +83,11 @@ class JobOrderTask extends Model
             ->sum('quantity');
     }
 
+    public function getRemainingProductionQuantityAttribute(): int|float
+    {
+        return max(0, (float) $this->quantity - $this->produced_quantity);
+    }
+
     public function getRemainingQuantityAttribute(): int|float
     {
         return $this->produced_quantity - $this->dispatchItems()->sum('quantity');

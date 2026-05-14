@@ -158,7 +158,7 @@ class JobOrderTasksTable
                             ])->columns(2)
                             ->default(fn () => collect($record->paper ?? [])->map(fn ($item, $index) => [
                                 'inventory_item_id' => $item['inventory_item_id'],
-                                'requested_quantity' => ($item['required_quantity'] ?? 0) + ($item['reserve_quantity'] ?? 0),
+                                'requested_quantity' => ($item['required_quantity'] ?? 0),
                                 'paper_index' => $index,
                             ])->toArray()),
                         TextInput::make('reason')
@@ -176,6 +176,7 @@ class JobOrderTasksTable
                                 'inventory_item_id' => $item['inventory_item_id'],
                                 'requested_quantity' => $item['requested_quantity'],
                                 'required_quantity' => $record->paper[$item['paper_index']]['required_quantity'] ?? 0,
+                                'reason' => $data['reason'],
                             ]);
                         }
 
@@ -302,7 +303,7 @@ class JobOrderTasksTable
                                 ->label('Produced Quantity')
                                 ->numeric()
                                 ->required()
-                                ->default(fn ($record) => $record->quantity),
+                                ->default(fn ($record) => $record->remaining_production_quantity),
                             // For internal jobs, allow selecting existing finished goods
                             Select::make('existing_inventory_item_id')
                                 ->label('Select Finished Good')

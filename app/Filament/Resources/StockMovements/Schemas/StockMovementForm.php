@@ -2,7 +2,9 @@
 
 namespace App\Filament\Resources\StockMovements\Schemas;
 
-use Filament\Forms\Components\DatePicker;
+use App\Models\InventoryBalance;
+use App\Models\Warehouse;
+use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Schema;
@@ -21,7 +23,7 @@ class StockMovementForm
                     ->reactive(),
                 Select::make('warehouse_id')
                     ->relationship('warehouse', 'name')
-                    ->default(fn () => \App\Models\Warehouse::where('is_default', true)->value('id'))
+                    ->default(fn () => Warehouse::where('is_default', true)->value('id'))
                     ->required()
                     ->searchable()
                     ->preload()
@@ -43,11 +45,11 @@ class StockMovementForm
                         $warehouseId = $get('warehouse_id');
                         $quantity = (float) $get('quantity');
 
-                        if (!$type || !$itemId || !$warehouseId || $quantity === 0.0) {
+                        if (! $type || ! $itemId || ! $warehouseId || $quantity === 0.0) {
                             return null;
                         }
 
-                        $balance = \App\Models\InventoryBalance::where([
+                        $balance = InventoryBalance::where([
                             'inventory_item_id' => $itemId,
                             'warehouse_id' => $warehouseId,
                         ])->first();
@@ -79,7 +81,9 @@ class StockMovementForm
                 TextInput::make('total_cost')
                     ->numeric()
                     ->suffix(' Birr'),
-                DatePicker::make('movement_date')
+                DateTimePicker::make('movement_date')
+                    ->seconds(false)
+                    ->default(now())
                     ->required(),
             ]);
     }

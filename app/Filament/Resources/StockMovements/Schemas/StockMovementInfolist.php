@@ -30,7 +30,7 @@ class StockMovementInfolist
                     ->suffix(' Birr')
                     ->placeholder('-'),
                 TextEntry::make('movement_date')
-                    ->date(),
+                    ->dateTime('d M Y, h:i A'),
             ]);
     }
 }

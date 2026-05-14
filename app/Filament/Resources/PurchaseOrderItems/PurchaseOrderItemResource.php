@@ -11,6 +11,7 @@ use App\Models\PurchaseOrderItem;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class PurchaseOrderItemResource extends Resource
 {
@@ -34,6 +35,11 @@ class PurchaseOrderItemResource extends Resource
     {
         return PurchaseOrderItemsTable::configure($table)
             ->recordUrl(fn ($record) => static::getUrl('view', ['record' => $record]));
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()->with(['inventoryItem', 'purchaseOrder.partner']);
     }
 
     public static function getRelations(): array

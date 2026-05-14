@@ -3,8 +3,6 @@
 namespace App\Filament\Resources\JobOrderTasks\Schemas;
 
 use App\Models\InventoryItem;
-use App\Models\User;
-use App\UserRole;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
@@ -24,20 +22,6 @@ class JobOrderTaskForm
                 Select::make('job_order_id')
                     ->relationship('jobOrder', 'job_order_number')
                     ->required(),
-                Select::make('designer_id')
-                    ->label('Assigned Designer')
-                    ->options(fn () => User::query()
-                        ->where('role', UserRole::Design->value)
-                        ->orderBy('name')
-                        ->pluck('name', 'id'))
-                    ->searchable()
-                    ->preload()
-                    ->nullable(),
-                Textarea::make('instructions')
-                    ->label('Design Brief / Instructions')
-                    ->placeholder('Describe what needs to be designed, any specific requirements, references, or deadlines...')
-                    ->rows(3)
-                    ->columnSpanFull(),
                 TextInput::make('name')
                     ->required(),
                 TextInput::make('quantity')
@@ -48,6 +32,10 @@ class JobOrderTaskForm
                     ->label('Cost')
                     ->numeric()
                     ->suffix(' birr'),
+                Textarea::make('instructions')
+                    ->label('Design Brief / Instructions')
+                    ->placeholder('Describe what needs to be designed, any specific requirements, references, or deadlines...')
+                    ->rows(3),
                 Placeholder::make('status_display')
                     ->label('Status')
                     ->weight('Bold')

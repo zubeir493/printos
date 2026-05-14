@@ -68,16 +68,30 @@ class StockTransfer extends Model
             }
         });
 
-        static::updated(function ($transfer) {
-            if ($transfer->wasChanged('status') && $transfer->status === 'completed') {
+        static::updating(function ($transfer) {
+            if ($transfer->isDirty('status') && $transfer->status === 'completed') {
+                $transfer->status = $transfer->getOriginal('status');
                 $transfer->post();
+
+                return false;
             }
         });
     }
 
-    public function post()
+    public function post(): void
     {
         DB::transaction(function () {
+            $alreadyPosted = StockMovement::where('reference_type', self::class)
+                ->where('reference_id', $this->id)
+                ->whereIn('type', ['transfer_out', 'transfer_in'])
+                ->exists();
+
+            if ($alreadyPosted) {
+                $this->updateQuietly(['status' => 'completed']);
+
+                return;
+            }
+
             foreach ($this->items as $item) {
                 $balance = InventoryBalance::where([
                     'inventory_item_id' => $item->inventory_item_id,
@@ -121,6 +135,8 @@ class StockTransfer extends Model
                     'movement_date' => $this->transfer_date ?? now(),
                 ]);
             }
+
+            $this->updateQuietly(['status' => 'completed']);
         });
     }
 }

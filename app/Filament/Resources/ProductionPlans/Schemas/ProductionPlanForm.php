@@ -2,8 +2,10 @@
 
 namespace App\Filament\Resources\ProductionPlans\Schemas;
 
+use App\Models\JobOrderTask;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Repeater\TableColumn;
 use Filament\Forms\Components\Select;
@@ -30,14 +32,23 @@ class ProductionPlanForm
                             ->label('Tasks for this machine')
                             ->relationship()
                             ->table([
-                                TableColumn::make('Task')->alignLeft(),
+                                TableColumn::make('Task')->alignLeft()->width('200px'),
                                 TableColumn::make('Qty')->alignLeft(),
                                 TableColumn::make('Plates')->alignLeft(),
                                 TableColumn::make('Rounds')->alignLeft(),
                             ])
                             ->schema([
                                 Select::make('job_order_task_id')
-                                    ->relationship('jobOrderTask', 'name')
+                                    ->relationship(
+                                        'jobOrderTask',
+                                        'name',
+                                        modifyQueryUsing: fn ($query) => $query
+                                            ->where('status', 'production')
+                                            ->with('jobOrder.partner')
+                                    )
+                                    ->getOptionLabelFromRecordUsing(fn (JobOrderTask $record): string => $record->name.' - '.($record->jobOrder?->partner?->name ?? 'Internal'))
+                                    ->searchable()
+                                    ->preload()
                                     ->unique()
                                     ->required(),
                                 TextInput::make('planned_quantity')
@@ -105,13 +116,8 @@ class ProductionPlanForm
                     DatePicker::make('week_end')
                         ->default(now()->addWeek())
                         ->required(),
-                    Select::make('status')
-                        ->options([
-                            'draft' => 'Draft',
-                            'approved' => 'Approved',
-                        ])
-                        ->default('draft')
-                        ->required(),
+                    Hidden::make('status')
+                        ->default('draft'),
                 ])->columnSpan(2),
             ])->columns(7);
     }

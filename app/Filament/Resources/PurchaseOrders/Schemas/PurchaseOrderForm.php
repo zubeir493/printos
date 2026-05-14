@@ -17,6 +17,7 @@ use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Illuminate\Support\Str;
 
 class PurchaseOrderForm
 {
@@ -85,8 +86,8 @@ class PurchaseOrderForm
                                     ->preload()
                                     ->required()
                                     ->live()
-                                    ->getOptionLabelUsing(fn ($value) => \Illuminate\Support\Str::limit(
-                                        \App\Models\InventoryItem::find($value)?->name ?? '',
+                                    ->getOptionLabelUsing(fn ($value) => Str::limit(
+                                        InventoryItem::find($value)?->name ?? '',
                                         30
                                     ))
                                     ->afterStateUpdated(function ($state, callable $set) {
@@ -139,7 +140,12 @@ class PurchaseOrderForm
                                     ->numeric()
                                     ->readOnly()
                                     ->dehydrated()
-                                    ->suffix('Birr'),
+                                    ->suffix('Birr')
+                                    ->afterStateHydrated(function ($set, $get) {
+                                        $set('total', round((float) ($get('quantity') ?? 0) * (float) ($get('unit_price') ?? 0), 2));
+                                        Calculations::updateSubtotal($get, $set, '../../purchaseOrderItems', '../../subtotal');
+                                        Calculations::updateTaxedTotal($get, $set, '../../subtotal', '../../tax_amount', '../../total');
+                                    }),
 
                                 Hidden::make('unit_label')
                                     ->default('unit')
@@ -159,13 +165,7 @@ class PurchaseOrderForm
                             ->live()
                             ->afterStateUpdated(function ($get, $set) {
                                 Calculations::updateSubtotal($get, $set, 'purchaseOrderItems', 'subtotal');
-                                $subtotal = (float) $get('subtotal');
-                                $taxRate = Setting::getSettings()->vat_enabled
-                                    ? (float) Setting::getSettings()->vat_rate / 100
-                                    : 0.0;
-                                $tax = round($subtotal * $taxRate, 2);
-                                $set('tax_amount', $tax);
-                                $set('total', $subtotal + $tax);
+                                Calculations::updateTaxedTotal($get, $set, 'subtotal', 'tax_amount', 'total');
                             })
                             ->deleteAction(
                                 fn ($action) => $action->after(function ($get, $set) {

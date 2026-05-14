@@ -2,8 +2,10 @@
 
 namespace App\Filament\Resources\StockMovements\Tables;
 
+use App\Filament\Exports\StockMovementExporter;
 use Filament\Actions\BulkActionGroup;
-use Filament\Actions\ViewAction;
+use Filament\Actions\ExportAction;
+use Filament\Actions\ExportBulkAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -22,7 +24,7 @@ class StockMovementsTable
                     ->sortable(),
                 TextColumn::make('type')
                     ->badge()
-                    ->color(fn(string $state): string => match ($state) {
+                    ->color(fn (string $state): string => match ($state) {
                         'purchase', 'transfer_in', 'material_return', 'production_output' => 'success',
                         'transfer_out', 'consumption' => 'danger',
                         'dispatch' => 'warning',
@@ -36,8 +38,8 @@ class StockMovementsTable
                     ->color(fn ($state) => $state > 0 ? 'success' : 'danger')
                     ->weight('bold'),
                 TextColumn::make('movement_date')
-                    ->label('Time | Date')
-                    ->dateTime('h:i A | d M')
+                    ->label('Moved At')
+                    ->dateTime('d M Y, h:i A')
                     ->sortable(),
             ])
             ->defaultSort('created_at', 'desc')
@@ -57,13 +59,13 @@ class StockMovementsTable
             ->recordActions([
             ])
             ->headerActions([
-                \Filament\Actions\ExportAction::make()
-                    ->exporter(\App\Filament\Exports\StockMovementExporter::class)
+                ExportAction::make()
+                    ->exporter(StockMovementExporter::class),
             ])
             ->bulkActions([
                 BulkActionGroup::make([
-                    \Filament\Actions\ExportBulkAction::make()
-                        ->exporter(\App\Filament\Exports\StockMovementExporter::class),
+                    ExportBulkAction::make()
+                        ->exporter(StockMovementExporter::class),
                 ]),
             ]);
     }

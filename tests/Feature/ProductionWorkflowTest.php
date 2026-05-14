@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Models\Artwork;
 use App\Models\JobOrder;
 use App\Models\JobOrderTask;
 use App\Models\Machine;
@@ -14,14 +13,13 @@ use App\Models\ProductionReport;
 use App\Models\ProductionReportItem;
 use App\Models\ProductionReportMachine;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
 class ProductionWorkflowTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_job_order_requires_approved_artwork_before_production()
+    public function test_job_order_can_start_without_approved_artwork()
     {
         $partner = Partner::create([
             'name' => 'Production Client',
@@ -40,8 +38,10 @@ class ProductionWorkflowTest extends TestCase
             'advance_amount' => 20000,
         ]);
 
-        $this->expectException(ValidationException::class);
         $jobOrder->update(['status' => 'active']);
+
+        $this->assertEquals('active', (string) $jobOrder->fresh()->status);
+        $this->assertNotNull($jobOrder->fresh()->production_started_at);
     }
 
     public function test_production_plan_and_report_can_be_created_for_approved_job_order()
@@ -61,19 +61,6 @@ class ProductionWorkflowTest extends TestCase
             'submission_date' => now(),
             'total' => 80000,
             'advance_amount' => 15000,
-        ]);
-
-        $task = JobOrderTask::create([
-            'job_order_id' => $jobOrder->id,
-            'name' => 'Design Task',
-            'quantity' => 1,
-            'task_cost' => 5000,
-        ]);
-
-        Artwork::create([
-            'job_order_task_id' => $task->id,
-            'filename' => 'artwork-1.pdf',
-            'is_approved' => true,
         ]);
 
         $jobOrder->update(['status' => 'active']);

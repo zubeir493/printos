@@ -14,7 +14,6 @@ use App\Models\StockMovement;
 use App\Models\Warehouse;
 use App\Services\InventoryService;
 use App\Services\MaterialIssueService;
-use App\States\JobOrder\Active;
 use App\States\JobOrder\Cancelled;
 use App\States\JobOrder\Completed;
 use Filament\Actions;
@@ -27,6 +26,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Support\Colors\Color;
+use Illuminate\Validation\ValidationException;
 
 class ViewJobOrder extends ViewRecord
 {
@@ -44,9 +44,29 @@ class ViewJobOrder extends ViewRecord
                 ->modalHeading('Start this Job Order?')
                 ->modalDescription('This marks the job order as active and signals that work has begun. Make sure all tasks and materials are set up.')
                 ->action(function ($record) {
-                    $record->status->transitionTo(Active::class);
-                    $record->save();
-                    Notification::make()->title('Job order is now active')->success()->send();
+                    try {
+                        $record->update(['status' => 'active']);
+                        $this->record->refresh();
+
+                        Notification::make()
+                            ->title('Job order is now active')
+                            ->success()
+                            ->send();
+                    } catch (ValidationException $exception) {
+                        Notification::make()
+                            ->title('Job order cannot be started')
+                            ->body(collect($exception->errors())->flatten()->implode(' '))
+                            ->danger()
+                            ->persistent()
+                            ->send();
+                    } catch (\Throwable $exception) {
+                        Notification::make()
+                            ->title('Job order could not be started')
+                            ->body($exception->getMessage())
+                            ->danger()
+                            ->persistent()
+                            ->send();
+                    }
                 }),
 
             Action::make('complete')

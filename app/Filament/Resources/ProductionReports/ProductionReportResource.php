@@ -49,6 +49,16 @@ class ProductionReportResource extends Resource
         return false;
     }
 
+    public static function canEdit($record): bool
+    {
+        return $record?->status === 'draft';
+    }
+
+    public static function canDelete($record): bool
+    {
+        return $record?->status === 'draft';
+    }
+
     public static function getPages(): array
     {
         return [

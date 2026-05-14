@@ -4,7 +4,6 @@ namespace App\Observers;
 
 use App\Models\JobOrder;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\ValidationException;
 
 class JobOrderObserver
 {

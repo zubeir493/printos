@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Models\Warehouse;
 use App\Services\MaterialIssueService;
 use App\UserRole;
+use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
@@ -56,13 +57,13 @@ class JobOrderTasksTable
                     })
                     ->sortable()
                     ->searchable(),
-            TextColumn::make('jobOrder.submission_date')
-                ->label('Deadline')
-                ->date()
-                ->sortable()
-                ->since()
-                ->color(fn ($state) => $state && \Carbon\Carbon::parse($state)->isPast() ? 'danger' : null),
-                
+                TextColumn::make('jobOrder.submission_date')
+                    ->label('Deadline')
+                    ->date()
+                    ->sortable()
+                    ->since()
+                    ->color(fn ($state) => $state && Carbon::parse($state)->isPast() ? 'danger' : null),
+
             ])
             ->headerActions([
                 ExportAction::make()
@@ -104,6 +105,7 @@ class JobOrderTasksTable
                     ->color('info')
                     ->visible(fn ($record) => blank($record->designer_id)
                         && ! in_array($record->status, ['completed', 'cancelled'])
+                        && ! in_array($record->jobOrder->status, ['completed', 'draft'])
                         && in_array(Filament::getCurrentPanel()?->getId(), ['admin', 'operations']))
                     ->form([
                         Select::make('designer_id')

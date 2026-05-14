@@ -3,7 +3,6 @@
 namespace App\Filament\Resources\PurchaseOrderItems\Pages;
 
 use App\Filament\Resources\PurchaseOrderItems\PurchaseOrderItemResource;
-use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
 
 class ListPurchaseOrderItems extends ListRecords
@@ -12,8 +11,6 @@ class ListPurchaseOrderItems extends ListRecords
 
     protected function getHeaderActions(): array
     {
-        return [
-            CreateAction::make(),
-        ];
+        return [];
     }
 }

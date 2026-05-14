@@ -17,6 +17,21 @@ class ViewProductionPlan extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('approve')
+                ->label('Approve Plan')
+                ->icon('heroicon-o-check-circle')
+                ->color('success')
+                ->requiresConfirmation()
+                ->visible(fn ($record) => $record->status === 'draft')
+                ->action(function ($record) {
+                    $record->update(['status' => 'approved']);
+                    $this->record->refresh();
+
+                    Notification::make()
+                        ->title('Production plan approved')
+                        ->success()
+                        ->send();
+                }),
             Action::make('report_week')
                 ->label('Report Week')
                 ->icon('heroicon-o-clipboard-document-check')
@@ -51,7 +66,8 @@ class ViewProductionPlan extends ViewRecord
 
                     $this->redirect(ProductionReportResource::getUrl('edit', ['record' => $report]));
                 }),
-            EditAction::make(),
+            EditAction::make()
+                ->visible(fn ($record) => $record->status === 'draft'),
         ];
     }
 }

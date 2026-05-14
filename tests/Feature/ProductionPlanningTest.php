@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Filament\Resources\ProductionPlans\ProductionPlanResource;
+use App\Filament\Resources\ProductionReports\ProductionReportResource;
 use App\Models\JobOrder;
 use App\Models\JobOrderTask;
 use App\Models\Machine;
@@ -105,5 +107,40 @@ class ProductionPlanningTest extends TestCase
 
         $this->assertEquals(1, $report->items()->count());
         $this->assertEquals($machine->id, $report->items->first()->productionPlanItem->machine_id);
+    }
+
+    public function test_approved_plans_and_submitted_reports_are_read_only(): void
+    {
+        $draftPlan = ProductionPlan::create([
+            'week_start' => now()->startOfWeek(),
+            'week_end' => now()->endOfWeek(),
+            'status' => 'draft',
+        ]);
+
+        $approvedPlan = ProductionPlan::create([
+            'week_start' => now()->startOfWeek()->addWeek(),
+            'week_end' => now()->endOfWeek()->addWeek(),
+            'status' => 'approved',
+        ]);
+
+        $draftReport = ProductionReport::create([
+            'production_plan_id' => $approvedPlan->id,
+            'status' => 'draft',
+        ]);
+
+        $submittedReport = ProductionReport::create([
+            'production_plan_id' => $approvedPlan->id,
+            'status' => 'submitted',
+        ]);
+
+        $this->assertTrue(ProductionPlanResource::canEdit($draftPlan));
+        $this->assertTrue(ProductionPlanResource::canDelete($draftPlan));
+        $this->assertFalse(ProductionPlanResource::canEdit($approvedPlan));
+        $this->assertFalse(ProductionPlanResource::canDelete($approvedPlan));
+
+        $this->assertTrue(ProductionReportResource::canEdit($draftReport));
+        $this->assertTrue(ProductionReportResource::canDelete($draftReport));
+        $this->assertFalse(ProductionReportResource::canEdit($submittedReport));
+        $this->assertFalse(ProductionReportResource::canDelete($submittedReport));
     }
 }

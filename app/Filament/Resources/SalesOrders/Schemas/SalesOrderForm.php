@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\SalesOrders\Schemas;
 
 use App\Filament\Support\Calculations;
+use App\Models\InventoryItem;
 use App\Models\Partner;
 use App\Models\SalesOrder;
 use App\Models\Setting;
@@ -24,6 +25,9 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
+use Filament\Support\Colors\Color;
+use Illuminate\Support\Facades\Storage;
+use Livewire\Features\SupportFileUploads\FileUploadConfiguration;
 
 class SalesOrderForm
 {
@@ -80,7 +84,7 @@ class SalesOrderForm
                                 Select::make('payment_mode')
                                     ->label('Payment Type')
                                     ->options([
-                                        'cash'   => 'Cash',
+                                        'cash' => 'Cash',
                                         'credit' => 'Credit',
                                     ])
                                     ->default('cash')
@@ -92,7 +96,7 @@ class SalesOrderForm
                                     Action::make('import_items')
                                         ->label('Import from CSV / Excel')
                                         ->icon('heroicon-o-arrow-up-tray')
-                                        ->color(\Filament\Support\Colors\Color::Indigo)
+                                        ->color(Color::Indigo)
                                         ->visible(fn () => ! request()->routeIs('*.view'))
                                         ->modalHeading('Import Sale Items')
                                         ->modalDescription('Upload a CSV or Excel file. Required columns: name (or sku / inventory_item_id), quantity. Optional: unit_price.')
@@ -114,8 +118,8 @@ class SalesOrderForm
 
                                             try {
                                                 // $path already contains the full relative path (e.g. livewire-tmp/xxxx.csv)
-                                                $disk = \Livewire\Features\SupportFileUploads\FileUploadConfiguration::disk();
-                                                $contents = \Illuminate\Support\Facades\Storage::disk($disk)->get($path);
+                                                $disk = FileUploadConfiguration::disk();
+                                                $contents = Storage::disk($disk)->get($path);
 
                                                 if ($contents === null) {
                                                     throw new \RuntimeException('Could not read the uploaded file. Please try again.');
@@ -139,8 +143,7 @@ class SalesOrderForm
                                                 $existing = collect($get('salesOrderItems') ?? []);
 
                                                 foreach ($imported as $newRow) {
-                                                    $matchIndex = $existing->search(fn ($row) =>
-                                                        (int) ($row['inventory_item_id'] ?? 0) === (int) ($newRow['inventory_item_id'] ?? 0)
+                                                    $matchIndex = $existing->search(fn ($row) => (int) ($row['inventory_item_id'] ?? 0) === (int) ($newRow['inventory_item_id'] ?? 0)
                                                         && (float) ($row['unit_price'] ?? 0) === (float) ($newRow['unit_price'] ?? 0)
                                                     );
 
@@ -168,10 +171,8 @@ class SalesOrderForm
                                                 $set('tax_amount', $tax);
                                                 $set('total', $subtotal + $tax);
 
-                                                $mergedCount = count($imported) - collect($imported)->filter(fn ($r) =>
-                                                    collect($get('salesOrderItems') ?? [])->contains(fn ($e) =>
-                                                        (int) ($e['inventory_item_id'] ?? 0) === (int) ($r['inventory_item_id'] ?? 0)
-                                                    )
+                                                $mergedCount = count($imported) - collect($imported)->filter(fn ($r) => collect($get('salesOrderItems') ?? [])->contains(fn ($e) => (int) ($e['inventory_item_id'] ?? 0) === (int) ($r['inventory_item_id'] ?? 0)
+                                                )
                                                 )->count();
 
                                                 Notification::make()
@@ -209,7 +210,7 @@ class SalesOrderForm
                                     ->required()
                                     ->live()
                                     ->afterStateUpdated(function ($state, callable $set, callable $get) {
-                                        $item = \App\Models\InventoryItem::find($state);
+                                        $item = InventoryItem::find($state);
                                         if (! $item) {
                                             return;
                                         }
@@ -259,7 +260,12 @@ class SalesOrderForm
                                     ->numeric()
                                     ->readOnly()
                                     ->dehydrated()
-                                    ->suffix('Birr'),
+                                    ->suffix('Birr')
+                                    ->afterStateHydrated(function (Set $set, Get $get) {
+                                        $set('total', round((float) ($get('quantity') ?? 0) * (float) ($get('unit_price') ?? 0), 2));
+                                        Calculations::updateSubtotal($get, $set, '../../salesOrderItems', '../../subtotal');
+                                        Calculations::updateTaxedTotal($get, $set, '../../subtotal', '../../tax_amount', '../../total');
+                                    }),
                                 Hidden::make('unit_label')
                                     ->default('unit')
                                     ->dehydrated()
@@ -268,7 +274,7 @@ class SalesOrderForm
                                         if (! $itemId) {
                                             return;
                                         }
-                                        $item = \App\Models\InventoryItem::find($itemId);
+                                        $item = InventoryItem::find($itemId);
                                         if ($item && ! $get('unit_label')) {
                                             $set('unit_label', $item->hasPurchaseUnit() ? $item->purchase_unit : ($item->unit ?? 'unit'));
                                         }
@@ -286,10 +292,10 @@ class SalesOrderForm
                                         $state = $component->getState() ?? [];
                                         $state[] = [
                                             'inventory_item_id' => null,
-                                            'quantity'          => 1,
-                                            'unit_price'        => 0,
-                                            'total'             => 0,
-                                            'unit_label'        => 'unit',
+                                            'quantity' => 1,
+                                            'unit_price' => 0,
+                                            'total' => 0,
+                                            'unit_label' => 'unit',
                                         ];
                                         $component->state($state);
                                     }),
@@ -297,13 +303,7 @@ class SalesOrderForm
                             ->live()
                             ->afterStateUpdated(function (Get $get, Set $set) {
                                 Calculations::updateSubtotal($get, $set, 'salesOrderItems', 'subtotal');
-                                $subtotal = (float) $get('subtotal');
-                                $taxRate = Setting::getSettings()->vat_enabled
-                                    ? (float) Setting::getSettings()->vat_rate / 100
-                                    : 0.0;
-                                $tax = round($subtotal * $taxRate, 2);
-                                $set('tax_amount', $tax);
-                                $set('total', $subtotal + $tax);
+                                Calculations::updateTaxedTotal($get, $set, 'subtotal', 'tax_amount', 'total');
                             })
                             ->deleteAction(
                                 fn ($action) => $action->after(function (Get $get, Set $set) {

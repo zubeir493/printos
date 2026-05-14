@@ -116,7 +116,12 @@ class JobOrderResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()->with(['partner']);
+        return parent::getEloquentQuery()
+            ->with(['partner'])
+            ->withCount([
+                'jobOrderTasks',
+                'jobOrderTasks as completed_job_order_tasks_count' => fn (Builder $query) => $query->where('status', 'completed'),
+            ]);
     }
 
     public static function getGlobalSearchEloquentQuery(): Builder

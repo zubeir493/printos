@@ -2,24 +2,29 @@
 
 namespace App\Filament\Resources\JobOrders\Tables;
 
+use App\Enums\PaymentTransactionType;
 use App\Filament\Exports\JobOrderExporter;
 use App\Filament\Support\PanelAccess;
+use App\Models\Bank;
+use App\Models\Payment;
 use App\Services\InvoiceGeneratorService;
-use Illuminate\Support\Facades\DB;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ExportAction;
 use Filament\Actions\ExportBulkAction;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
+use Filament\Schemas\Components\Grid;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\DB;
 
 class JobOrdersTable
 {
@@ -44,7 +49,7 @@ class JobOrdersTable
                         default => 'gray',
                     })
                     ->formatStateUsing(fn ($state) => ucfirst($state))
-                    ->description(fn ($record) => $record->jobOrderTasks()->where('status', 'completed')->count().' / '.$record->jobOrderTasks()->count().' tasks done.'),
+                    ->description(fn ($record) => $record->completed_job_order_tasks_count.' / '.$record->job_order_tasks_count.' tasks done.'),
                 TextColumn::make('submission_date')
                     ->label('Submission Date')
                     ->date()
@@ -107,39 +112,6 @@ class JobOrdersTable
                                     ->openUrlInNewTab(),
                             ];
 
-                            // Only add email action if partner has email
-                            if ($record->partner && $record->partner->email) {
-                                $actions[] = Action::make('email')
-                                    ->label('Email Invoice')
-                                    ->icon('heroicon-o-envelope')
-                                    ->action(function () use ($record, $result, $invoiceService) {
-                                        $sent = $invoiceService->sendInvoiceEmail(
-                                            $result,
-                                            $record->partner->email
-                                        );
-
-                                        if ($sent) {
-                                            // Update invoice record with email info
-                                            $result['invoice']->update([
-                                                'emailed_at' => now(),
-                                                'email_recipient' => $record->partner->email,
-                                            ]);
-
-                                            Notification::make()
-                                                ->title('Invoice Sent')
-                                                ->body('Invoice emailed to '.$record->partner->email)
-                                                ->success()
-                                                ->send();
-                                        } else {
-                                            Notification::make()
-                                                ->title('Email Failed')
-                                                ->body('Failed to send invoice. Please check email configuration.')
-                                                ->danger()
-                                                ->send();
-                                        }
-                                    });
-                            }
-
                             Notification::make()
                                 ->title('Invoice Generated')
                                 ->body('Invoice '.$result['invoice_data']['invoice_number'].' created successfully.')
@@ -158,32 +130,31 @@ class JobOrdersTable
                     ->label('Recieve Payment')
                     ->icon('heroicon-o-banknotes')
                     ->color('success')
-                    ->visible(fn ($record) => 
-                        $record->balance > 0 && 
+                    ->visible(fn ($record) => $record->balance > 0 &&
                         PanelAccess::canAccessFinanceSection() &&
                         in_array($record->status, ['active', 'completed']) &&
                         $record->production_mode !== 'make_to_stock'
                     )
                     ->schema([
-                        \Filament\Schemas\Components\Grid::make(2)->schema([
-                            \Filament\Forms\Components\Select::make('method')
+                        Grid::make(2)->schema([
+                            Select::make('method')
                                 ->label('Paid Via')
                                 ->options([
-                                    'cash'   => 'Cash',
-                                    'bank'   => 'Bank Transfer',
+                                    'cash' => 'Cash',
+                                    'bank' => 'Bank Transfer',
                                     'cheque' => 'Cheque',
                                 ])
                                 ->default('bank')
                                 ->required()
                                 ->live(),
-                            \Filament\Forms\Components\Select::make('bank_id')
+                            Select::make('bank_id')
                                 ->label('Bank Account')
-                                ->options(\App\Models\Bank::pluck('name', 'id'))
+                                ->options(Bank::pluck('name', 'id'))
                                 ->searchable()
                                 ->preload()
                                 ->visible(fn (callable $get) => $get('method') === 'bank')
                                 ->required(fn (callable $get) => $get('method') === 'bank'),
-                            \Filament\Forms\Components\DatePicker::make('payment_date')
+                            DatePicker::make('payment_date')
                                 ->label('Payment Date')
                                 ->default(now())
                                 ->required(),
@@ -194,7 +165,7 @@ class JobOrdersTable
                                 ->suffix('Birr')
                                 ->default(fn ($record) => $record->balance)
                                 ->helperText(fn ($record) => "Balance: {$record->balance} Birr"),
-                            \Filament\Forms\Components\TextInput::make('reference')
+                            TextInput::make('reference')
                                 ->label('Memo / Reference')
                                 ->placeholder('Receipt number, cheque number, or short note')
                                 ->maxLength(255),
@@ -210,14 +181,14 @@ class JobOrdersTable
                                 throw new \Exception("Cannot allocate more than the remaining balance of {$record->balance} Birr.");
                             }
 
-                            $payment = \App\Models\Payment::create([
-                                'partner_id'       => $record->partner_id,
-                                'payment_date'     => $data['payment_date'],
-                                'transaction_type' => \App\Enums\PaymentTransactionType::CUSTOMER_RECEIPT->value,
-                                'amount'           => $amount,
-                                'method'           => $data['method'],
-                                'bank_id'          => $data['bank_id'] ?? null,
-                                'reference'        => $data['reference'] ?? 'Payment for '.$record->job_order_number,
+                            $payment = Payment::create([
+                                'partner_id' => $record->partner_id,
+                                'payment_date' => $data['payment_date'],
+                                'transaction_type' => PaymentTransactionType::CUSTOMER_RECEIPT->value,
+                                'amount' => $amount,
+                                'method' => $data['method'],
+                                'bank_id' => $data['bank_id'] ?? null,
+                                'reference' => $data['reference'] ?? 'Payment for '.$record->job_order_number,
                             ]);
 
                             $payment->paymentAllocations()->create([

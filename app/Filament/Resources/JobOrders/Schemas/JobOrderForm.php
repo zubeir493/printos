@@ -118,13 +118,11 @@ class JobOrderForm
                                     ->live()
                                     ->afterStateUpdated(function (UtilitiesGet $get, UtilitiesSet $set) {
                                         Calculations::sumRepeater($get, $set, '../../jobOrderTasks', 'subtotal', 'task_cost');
-                                        $subtotal = (float) $get('../../subtotal');
-                                        $taxRate = Setting::getSettings()->vat_enabled
-                                            ? (float) Setting::getSettings()->vat_rate / 100
-                                            : 0.0;
-                                        $tax = round($subtotal * $taxRate, 2);
-                                        $set('../../tax_amount', $tax);
-                                        $set('../../total', $subtotal + $tax);
+                                        Calculations::updateTaxedTotal($get, $set, '../../subtotal', '../../tax_amount', '../../total');
+                                    })
+                                    ->afterStateHydrated(function (UtilitiesGet $get, UtilitiesSet $set) {
+                                        Calculations::sumRepeater($get, $set, '../../jobOrderTasks', 'subtotal', 'task_cost');
+                                        Calculations::updateTaxedTotal($get, $set, '../../subtotal', '../../tax_amount', '../../total');
                                     })
                                     ->hidden(fn () => ! PanelAccess::canSeeMoneyValues())
                                     ->dehydratedWhenHidden(),
@@ -213,13 +211,7 @@ class JobOrderForm
                             ->live() // Required for live total recalculation
                             ->afterStateUpdated(function (UtilitiesGet $get, UtilitiesSet $set) {
                                 Calculations::sumRepeater($get, $set, 'jobOrderTasks', 'subtotal', 'task_cost');
-                                $subtotal = (float) $get('subtotal');
-                                $taxRate = Setting::getSettings()->vat_enabled
-                                    ? (float) Setting::getSettings()->vat_rate / 100
-                                    : 0.0;
-                                $tax = round($subtotal * $taxRate, 2);
-                                $set('tax_amount', $tax);
-                                $set('total', $subtotal + $tax);
+                                Calculations::updateTaxedTotal($get, $set, 'subtotal', 'tax_amount', 'total');
                             })
                             ->deleteAction(
                                 fn ($action) => $action->after(function (UtilitiesGet $get, UtilitiesSet $set) {

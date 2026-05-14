@@ -14,6 +14,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class ProductionPlanResource extends Resource
 {
@@ -26,10 +27,25 @@ class ProductionPlanResource extends Resource
         return ProductionPlanForm::configure($schema);
     }
 
+    public static function canEdit($record): bool
+    {
+        return $record?->status === 'draft';
+    }
+
+    public static function canDelete($record): bool
+    {
+        return $record?->status === 'draft';
+    }
+
     public static function table(Table $table): Table
     {
         return ProductionPlansTable::configure($table)
             ->recordUrl(fn ($record) => static::getUrl('view', ['record' => $record]));
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()->with(['machines.items']);
     }
 
     public static function getRelations(): array

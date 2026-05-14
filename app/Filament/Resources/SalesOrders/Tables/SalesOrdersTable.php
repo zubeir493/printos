@@ -2,23 +2,29 @@
 
 namespace App\Filament\Resources\SalesOrders\Tables;
 
+use App\Enums\PaymentTransactionType;
 use App\Filament\Exports\SalesOrderExporter;
 use App\Filament\Support\PanelAccess;
+use App\Models\Bank;
+use App\Models\Payment;
+use App\Models\StockMovement;
 use App\Models\Warehouse;
-use Illuminate\Support\Facades\DB;
-use App\Services\InvoiceGeneratorService;
 use App\Services\Accounting\VoidPaymentJournalEntry;
+use App\Services\InvoiceGeneratorService;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\ExportAction;
 use Filament\Actions\ExportBulkAction;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
+use Filament\Schemas\Components\Grid;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\DB;
 
 class SalesOrdersTable
 {
@@ -37,8 +43,8 @@ class SalesOrdersTable
                     ->label('Payment Status')
                     ->state(fn ($record) => number_format($record->paid_amount, 2).'/'.number_format($record->total, 2).' Birr')
                     ->color(fn ($record) => $record->balance > 0 ? 'warning' : 'success')
-                    ->description(fn ($record) => $record->paymentAllocations()->count() > 0
-                        ? $record->paymentAllocations()->count().' payment(s)'
+                    ->description(fn ($record) => $record->payment_allocations_count > 0
+                        ? $record->payment_allocations_count.' payment(s)'
                         : 'No payments'),
                 TextColumn::make('status')
                     ->badge()
@@ -73,26 +79,25 @@ class SalesOrdersTable
                     ->label('Recieve Payment')
                     ->icon('heroicon-o-banknotes')
                     ->color('success')
-                    ->visible(fn ($record) => 
-                        $record->balance > 0 && 
+                    ->visible(fn ($record) => $record->balance > 0 &&
                         PanelAccess::canAccessFinanceSection() &&
                         $record->status === 'completed'
                     )
                     ->schema([
-                        \Filament\Schemas\Components\Grid::make(2)->schema([
-                            \Filament\Forms\Components\Select::make('method')
+                        Grid::make(2)->schema([
+                            Select::make('method')
                                 ->label('Paid Via')
                                 ->options([
-                                    'cash'   => 'Cash',
-                                    'bank'   => 'Bank Transfer',
+                                    'cash' => 'Cash',
+                                    'bank' => 'Bank Transfer',
                                     'cheque' => 'Cheque',
                                 ])
                                 ->default('cash')
                                 ->required()
                                 ->live(),
-                            \Filament\Forms\Components\Select::make('bank_id')
+                            Select::make('bank_id')
                                 ->label('Bank Account')
-                                ->options(\App\Models\Bank::pluck('name', 'id'))
+                                ->options(Bank::pluck('name', 'id'))
                                 ->searchable()
                                 ->preload()
                                 ->visible(fn (callable $get) => $get('method') === 'bank')
@@ -104,11 +109,11 @@ class SalesOrdersTable
                                 ->suffix('Birr')
                                 ->default(fn ($record) => $record->balance)
                                 ->helperText(fn ($record) => "Balance: {$record->balance} Birr"),
-                            \Filament\Forms\Components\DatePicker::make('payment_date')
+                            DatePicker::make('payment_date')
                                 ->label('Payment Date')
                                 ->default(now())
                                 ->required(),
-                            \Filament\Forms\Components\TextInput::make('reference')
+                            TextInput::make('reference')
                                 ->label('Memo / Reference')
                                 ->placeholder('Receipt number, cheque number, or short note')
                                 ->maxLength(255),
@@ -124,14 +129,14 @@ class SalesOrdersTable
                                 throw new \Exception("Cannot allocate more than the remaining balance of {$record->balance} Birr.");
                             }
 
-                            $payment = \App\Models\Payment::create([
-                                'partner_id'       => $record->partner_id,
-                                'payment_date'     => $data['payment_date'],
-                                'transaction_type' => \App\Enums\PaymentTransactionType::CUSTOMER_RECEIPT->value,
-                                'amount'           => $amount,
-                                'method'           => $data['method'],
-                                'bank_id'          => $data['bank_id'] ?? null,
-                                'reference'        => $data['reference'] ?? 'Payment for '.$record->order_number,
+                            $payment = Payment::create([
+                                'partner_id' => $record->partner_id,
+                                'payment_date' => $data['payment_date'],
+                                'transaction_type' => PaymentTransactionType::CUSTOMER_RECEIPT->value,
+                                'amount' => $amount,
+                                'method' => $data['method'],
+                                'bank_id' => $data['bank_id'] ?? null,
+                                'reference' => $data['reference'] ?? 'Payment for '.$record->order_number,
                             ]);
 
                             $payment->paymentAllocations()->create([
@@ -175,39 +180,6 @@ class SalesOrdersTable
                                     ->openUrlInNewTab(),
                             ];
 
-                            // Only add email action if partner has email
-                            if ($record->partner && $record->partner->email) {
-                                $actions[] = Action::make('email')
-                                    ->label('Email Invoice')
-                                    ->icon('heroicon-o-envelope')
-                                    ->action(function () use ($record, $result, $invoiceService) {
-                                        $sent = $invoiceService->sendInvoiceEmail(
-                                            $result,
-                                            $record->partner->email
-                                        );
-
-                                        if ($sent) {
-                                            // Update invoice record with email info
-                                            $result['invoice']->update([
-                                                'emailed_at' => now(),
-                                                'email_recipient' => $record->partner->email,
-                                            ]);
-
-                                            Notification::make()
-                                                ->title('Invoice Sent')
-                                                ->body('Invoice emailed to '.$record->partner->email)
-                                                ->success()
-                                                ->send();
-                                        } else {
-                                            Notification::make()
-                                                ->title('Email Failed')
-                                                ->body('Failed to send invoice. Please check email configuration.')
-                                                ->danger()
-                                                ->send();
-                                        }
-                                    });
-                            }
-
                             Notification::make()
                                 ->title('Invoice Generated')
                                 ->body('Invoice '.$result['invoice_data']['invoice_number'].' created successfully.')
@@ -234,12 +206,12 @@ class SalesOrdersTable
                     ->action(function ($record) {
                         try {
                             DB::beginTransaction();
-                            
+
                             // Void all payment allocations and reverse journal entries
                             $record->load('paymentAllocations.payment');
                             foreach ($record->paymentAllocations as $allocation) {
                                 $payment = $allocation->payment;
-                                if ($payment && !$payment->voided_at) {
+                                if ($payment && ! $payment->voided_at) {
                                     try {
                                         app(VoidPaymentJournalEntry::class)->handle($payment, 'Sales order voided');
                                     } catch (\Exception $e) {
@@ -256,7 +228,7 @@ class SalesOrdersTable
                                     }
                                 }
                             }
-                            
+
                             // Return inventory items to stock
                             foreach ($record->salesOrderItems as $item) {
                                 // Prevent duplicate movements
@@ -266,7 +238,7 @@ class SalesOrdersTable
                                     ->where('type', 'sale')
                                     ->exists();
 
-                                if (!$exists) {
+                                if ($exists) {
                                     StockMovement::create([
                                         'inventory_item_id' => $item->inventory_item_id,
                                         'warehouse_id' => $record->warehouse_id,
@@ -278,21 +250,21 @@ class SalesOrdersTable
                                     ]);
                                 }
                             }
-                            
+
                             // Mark order as void
                             $record->update(['status' => 'void']);
-                            
+
                             DB::commit();
-                            
+
                             Notification::make()
                                 ->title('Sales Order Voided')
                                 ->body($record->order_number.' has been voided. All payments, journal entries, and inventory movements have been reversed.')
                                 ->success()
                                 ->send();
-                                
+
                         } catch (\Exception $e) {
                             DB::rollBack();
-                            
+
                             Notification::make()
                                 ->title('Void Failed')
                                 ->body($e->getMessage())
@@ -300,7 +272,7 @@ class SalesOrdersTable
                                 ->send();
                         }
                     }),
-                
+
             ])
             ->headerActions([
                 ExportAction::make()

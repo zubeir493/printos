@@ -43,7 +43,7 @@ class StockMovementResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()->with(['warehouse']);
+        return parent::getEloquentQuery()->with(['inventoryItem', 'warehouse']);
     }
 
     public static function getRelations(): array

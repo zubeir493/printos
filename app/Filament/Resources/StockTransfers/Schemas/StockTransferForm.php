@@ -3,8 +3,11 @@
 namespace App\Filament\Resources\StockTransfers\Schemas;
 
 use App\Models\InventoryBalance;
+use App\Models\InventoryItem;
+use App\Models\StockTransfer;
 use App\Models\Warehouse;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -22,12 +25,13 @@ class StockTransferForm
                         TextInput::make('transfer_number')
                             ->label('Transfer #')
                             ->default(function () {
-                                $lastTransfer = \App\Models\StockTransfer::orderBy('id', 'desc')->first();
+                                $lastTransfer = StockTransfer::orderBy('id', 'desc')->first();
                                 $lastNumber = 0;
                                 if ($lastTransfer && preg_match('/ST-(\d+)/', $lastTransfer->transfer_number, $matches)) {
                                     $lastNumber = (int) $matches[1];
                                 }
-                                return 'ST-' . str_pad($lastNumber + 1, 4, '0', STR_PAD_LEFT);
+
+                                return 'ST-'.str_pad($lastNumber + 1, 4, '0', STR_PAD_LEFT);
                             })
                             ->readOnly()
                             ->columnSpan(2)
@@ -44,7 +48,7 @@ class StockTransferForm
                             ->required(),
                         Select::make('from_warehouse_id')
                             ->relationship('fromWarehouse', 'name')
-                            ->default(fn () => \App\Models\Warehouse::where('is_default', true)->value('id'))
+                            ->default(fn () => Warehouse::where('is_default', true)->value('id'))
                             ->required()
                             ->reactive()
                             ->columnSpan(3),
@@ -53,15 +57,15 @@ class StockTransferForm
                             ->required()
                             ->options(function (callable $get) {
                                 $fromWarehouseId = $get('from_warehouse_id');
-                                if (!$fromWarehouseId) {
+                                if (! $fromWarehouseId) {
                                     return Warehouse::pluck('name', 'id');
                                 }
+
                                 return Warehouse::where('id', '!=', $fromWarehouseId)->pluck('name', 'id');
                             })
                             ->columnSpan(3)
                             ->reactive(),
-                    ])->columns(6)->columnSpan(4)
-,
+                    ])->columns(6)->columnSpan(4),
                 Repeater::make('items')
                     ->relationship('items')
                     ->schema([
@@ -70,17 +74,28 @@ class StockTransferForm
                             ->required()
                             ->searchable()
                             ->preload()
-                            ->reactive(),
+                            ->live()
+                            ->afterStateUpdated(function ($state, callable $set) {
+                                $item = InventoryItem::find($state);
+
+                                $set('unit_label', $item?->displayUnit() ?: 'unit');
+                            })
+                            ->afterStateHydrated(function ($state, callable $set) {
+                                $item = InventoryItem::find($state);
+
+                                $set('unit_label', $item?->displayUnit() ?: 'unit');
+                            }),
                         TextInput::make('quantity')
                             ->numeric()
                             ->required()
                             ->minValue(0.01)
                             ->step(0.01)
+                            ->suffix(fn (callable $get): string => $get('unit_label') ?: 'unit')
                             ->maxValue(function (callable $get, callable $set) {
                                 $inventoryItemId = $get('inventory_item_id');
                                 $fromWarehouseId = $get('../../from_warehouse_id');
 
-                                if (!$inventoryItemId || !$fromWarehouseId) {
+                                if (! $inventoryItemId || ! $fromWarehouseId) {
                                     return null;
                                 }
 
@@ -95,7 +110,7 @@ class StockTransferForm
                                 $inventoryItemId = $get('inventory_item_id');
                                 $fromWarehouseId = $get('../../from_warehouse_id');
 
-                                if (!$inventoryItemId || !$fromWarehouseId) {
+                                if (! $inventoryItemId || ! $fromWarehouseId) {
                                     return 'Select an item and from warehouse to see available quantity';
                                 }
 
@@ -105,9 +120,14 @@ class StockTransferForm
                                 ])->first();
 
                                 $available = $balance ? (float) $balance->quantity_on_hand : 0.0;
-                                return "Available: {$available} units";
+                                $unitLabel = $get('unit_label') ?: 'units';
+
+                                return "Available: {$available} {$unitLabel}";
                             })
                             ->reactive(),
+                        Hidden::make('unit_label')
+                            ->default('unit')
+                            ->dehydrated(false),
                     ])
                     ->columnSpan(4)
                     ->required()

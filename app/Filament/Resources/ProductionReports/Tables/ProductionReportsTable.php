@@ -2,10 +2,10 @@
 
 namespace App\Filament\Resources\ProductionReports\Tables;
 
-use Filament\Tables\Columns\TextColumn;
 use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 
 class ProductionReportsTable
@@ -16,12 +16,12 @@ class ProductionReportsTable
             ->columns([
                 TextColumn::make('productionPlan.id')
                     ->label('Production Plan')
-                    ->formatStateUsing(fn($record) => "Plan: {$record->productionPlan->week_start->format('M d')} - {$record->productionPlan->week_end->format('M d')}")
+                    ->formatStateUsing(fn ($record) => "Plan: {$record->productionPlan->week_start->format('M d')} - {$record->productionPlan->week_end->format('M d')}")
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('status')
                     ->badge()
-                    ->color(fn(string $state): string => match ($state) {
+                    ->color(fn (string $state): string => match ($state) {
                         'draft' => 'gray',
                         'submitted' => 'success',
                         default => 'gray',
@@ -31,19 +31,18 @@ class ProductionReportsTable
                     ->sortable(),
             ])
             ->filters([
-                \Filament\Tables\Filters\SelectFilter::make('status')
+                SelectFilter::make('status')
                     ->options([
                         'draft' => 'Draft',
                         'submitted' => 'Submitted',
                     ]),
             ])
             ->recordActions([
-                EditAction::make(),
+                EditAction::make()
+                    ->visible(fn ($record) => $record->status === 'draft'),
             ])
             ->toolbarActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make(),
-                ]),
+                BulkActionGroup::make([]),
             ]);
     }
 }

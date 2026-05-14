@@ -39,7 +39,8 @@ class ProductionPlansTable
                     ]),
             ])
             ->actions([
-                ActionsEditAction::make(),
+                ActionsEditAction::make()
+                    ->visible(fn ($record) => $record->status === 'draft'),
                 ActionsAction::make('report_week')
                     ->label('Report Week')
                     ->icon('heroicon-o-clipboard-document-check')
@@ -73,7 +74,8 @@ class ProductionPlansTable
                     }),
             ])
             ->recordActions([
-                ActionsEditAction::make(),
+                ActionsEditAction::make()
+                    ->visible(fn ($record) => $record->status === 'draft'),
             ])
             ->bulkActions([]);
     }

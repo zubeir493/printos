@@ -3,9 +3,10 @@
 namespace App\Filament\Resources\StockTransfers\Pages;
 
 use App\Filament\Resources\StockTransfers\StockTransferResource;
+use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
-use Filament\Resources\Pages\EditRecord;
 use Filament\Notifications\Notification;
+use Filament\Resources\Pages\EditRecord;
 
 class EditStockTransfer extends EditRecord
 {
@@ -16,7 +17,7 @@ class EditStockTransfer extends EditRecord
         return [
             DeleteAction::make()
                 ->hidden(fn ($record) => $record->status === 'completed'),
-            \Filament\Actions\Action::make('complete')
+            Action::make('complete')
                 ->label('Complete Transfer')
                 ->color('success')
                 ->icon('heroicon-o-check-circle')
@@ -24,6 +25,7 @@ class EditStockTransfer extends EditRecord
                 ->visible(fn ($record) => $record->status === 'draft')
                 ->action(function ($record) {
                     $record->post();
+                    $this->record->refresh();
                     $this->refreshFormData(['status']);
                     Notification::make()
                         ->title('Transfer Completed Successfully')

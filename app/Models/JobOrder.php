@@ -171,17 +171,6 @@ class JobOrder extends Model
         return $settings->vat_enabled ? (float) $settings->vat_rate / 100 : 0.0;
     }
 
-    public function canStartProduction(): bool
-    {
-        if ($this->artworks()->count() === 0) {
-            return false;
-        }
-
-        return ! $this->artworks()
-            ->where('is_approved', false)
-            ->exists();
-    }
-
     public function issuedQuantityFor($itemId): float
     {
         $sum = (float) StockMovement::where(function ($query) {

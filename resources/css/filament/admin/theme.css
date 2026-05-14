@@ -258,6 +258,8 @@ h1.fi-simple-header-heading {
     -webkit-line-clamp: 1;
     line-clamp: 1;
     -webkit-box-orient: vertical;
+}
+.fi-select-input .fi-select-input-value-label{
     overflow: hidden;
 }
 

@@ -25,6 +25,8 @@ class InventoryItemResource extends Resource
 
     protected static ?string $navigationLabel = 'Inventory';
 
+    protected static ?int $navigationSort = 50;
+
     public static function form(Schema $schema): Schema
     {
         return InventoryItemForm::configure($schema);

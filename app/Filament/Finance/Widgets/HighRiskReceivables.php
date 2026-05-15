@@ -5,6 +5,7 @@ namespace App\Filament\Finance\Widgets;
 use App\Models\Partner;
 use App\Models\SalesOrder;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Notifications\Notification;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -45,11 +46,13 @@ class HighRiskReceivables extends BaseWidget
                     ->sortable(),
             ])
             ->actions([
-                Action::make('remind')
-                    ->label('Send Reminder')
-                    ->icon('heroicon-m-envelope')
-                    ->color('warning')
-                    ->action(fn (Partner $record) => Notification::make()->title('Reminder Sent')->success()->send()),
+                ActionGroup::make([
+                    Action::make('remind')
+                        ->label('Send Reminder')
+                        ->icon('heroicon-m-envelope')
+                        ->color('warning')
+                        ->action(fn (Partner $record) => Notification::make()->title('Reminder Sent')->success()->send()),
+                ]),
             ]);
     }
 }

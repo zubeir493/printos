@@ -22,7 +22,7 @@ class TextFileResource extends Resource
 
     protected static ?string $navigationLabel = 'Text Files';
 
-    protected static ?int $navigationSort = 4;
+    protected static ?int $navigationSort = 150;
 
     public static function form(Schema $schema): Schema
     {

@@ -23,6 +23,8 @@ class StockMovementResource extends Resource
 
     protected static ?string $navigationLabel = 'Movements';
 
+    protected static ?int $navigationSort = 90;
+
     protected static ?string $navigationParentItem = 'Warehouses';
 
     public static function form(Schema $schema): Schema

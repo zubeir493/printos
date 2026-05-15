@@ -10,6 +10,7 @@ use App\Models\Warehouse;
 use App\Services\MaterialIssueService;
 use BackedEnum;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Forms\Components\Select;
@@ -30,6 +31,8 @@ class MaterialRequestResource extends Resource
     protected static ?string $model = MaterialRequest::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedArchiveBoxArrowDown;
+
+    protected static ?int $navigationSort = 120;
 
     public static function getNavigationBadge(): ?string
     {
@@ -176,47 +179,49 @@ class MaterialRequestResource extends Resource
                     }),
             ])
             ->recordActions([
-                Action::make('issue')
-                    ->label('Issue')
-                    ->icon('heroicon-m-archive-box-arrow-down')
-                    ->color('warning')
-                    ->visible(fn ($record) => PanelAccess::canAccessWarehouseSection() && $record->issued_quantity < $record->requested_quantity && ! $record->pendingIssueApprovals()->exists())
-                    ->form([
-                        Select::make('warehouse_id')
-                            ->label('Warehouse')
-                            ->options(Warehouse::pluck('name', 'id'))
-                            ->default(fn () => Warehouse::where('is_default', true)->value('id'))
-                            ->required(),
-                        TextInput::make('quantity')
-                            ->label('Quantity to Issue')
-                            ->numeric()
-                            ->required()
-                            ->default(fn ($record) => $record->requested_quantity - $record->issued_quantity)
-                            ->maxValue(fn ($record) => $record->requested_quantity - $record->issued_quantity)
-                            ->helperText('If this quantity exceeds the required amount for the task, it will wait for admin or operations approval before stock is moved.'),
-                    ])
-                    ->action(function ($record, array $data) {
-                        try {
-                            \DB::beginTransaction();
-                            if (! $record) {
-                                throw new \Exception('Material request not found.');
+                ActionGroup::make([
+                    Action::make('issue')
+                        ->label('Issue')
+                        ->icon('heroicon-m-archive-box-arrow-down')
+                        ->color('warning')
+                        ->visible(fn ($record) => PanelAccess::canAccessWarehouseSection() && $record->issued_quantity < $record->requested_quantity && ! $record->pendingIssueApprovals()->exists())
+                        ->form([
+                            Select::make('warehouse_id')
+                                ->label('Warehouse')
+                                ->options(Warehouse::pluck('name', 'id'))
+                                ->default(fn () => Warehouse::where('is_default', true)->value('id'))
+                                ->required(),
+                            TextInput::make('quantity')
+                                ->label('Quantity to Issue')
+                                ->numeric()
+                                ->required()
+                                ->default(fn ($record) => $record->requested_quantity - $record->issued_quantity)
+                                ->maxValue(fn ($record) => $record->requested_quantity - $record->issued_quantity)
+                                ->helperText('If this quantity exceeds the required amount for the task, it will wait for admin or operations approval before stock is moved.'),
+                        ])
+                        ->action(function ($record, array $data) {
+                            try {
+                                \DB::beginTransaction();
+                                if (! $record) {
+                                    throw new \Exception('Material request not found.');
+                                }
+                                $result = app(MaterialIssueService::class)->issue($record, (int) $data['warehouse_id'], (float) $data['quantity'], auth()->user());
+                                \DB::commit();
+                                Notification::make()
+                                    ->title($result['status'] === 'pending_approval' ? 'Over-issue sent for approval' : 'Materials Issued')
+                                    ->success()
+                                    ->send();
+                            } catch (\Exception $e) {
+                                \DB::rollBack();
+                                Notification::make()
+                                    ->title('Error Issuing Materials')
+                                    ->body($e->getMessage())
+                                    ->danger()
+                                    ->persistent()
+                                    ->send();
                             }
-                            $result = app(MaterialIssueService::class)->issue($record, (int) $data['warehouse_id'], (float) $data['quantity'], auth()->user());
-                            \DB::commit();
-                            Notification::make()
-                                ->title($result['status'] === 'pending_approval' ? 'Over-issue sent for approval' : 'Materials Issued')
-                                ->success()
-                                ->send();
-                        } catch (\Exception $e) {
-                            \DB::rollBack();
-                            Notification::make()
-                                ->title('Error Issuing Materials')
-                                ->body($e->getMessage())
-                                ->danger()
-                                ->persistent()
-                                ->send();
-                        }
-                    }),
+                        }),
+                ]),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

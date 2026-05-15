@@ -2,19 +2,20 @@
 
 namespace App\Filament\Finance\Pages;
 
+use App\Filament\Exports\GeneralLedgerExporter;
 use App\Models\Account;
 use App\Models\JournalItem;
 use BackedEnum;
 use Carbon\Carbon;
+use Filament\Actions\ExportAction;
 use Filament\Forms;
 use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Grid as ComponentsGrid;
+use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
-use Filament\Actions\ExportAction;
 use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Concerns\InteractsWithTable;
@@ -23,20 +24,18 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use UnitEnum;
-use Filament\Schemas\Schema;
-use App\Filament\Exports\GeneralLedgerExporter;
 
-class GeneralLedgerReport extends Page implements HasTable, HasForms
+class GeneralLedgerReport extends Page implements HasForms, HasTable
 {
-    use InteractsWithTable, Forms\Concerns\InteractsWithForms;
+    use Forms\Concerns\InteractsWithForms, InteractsWithTable;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBookOpen;
 
     protected static ?string $navigationLabel = 'General Ledger';
 
-    protected static string|UnitEnum|null $navigationGroup = 'Financial Reports';
+    protected static ?int $navigationSort = 320;
 
-    protected static ?int $navigationSort = 8;
+    protected static string|UnitEnum|null $navigationGroup = 'Financial Reports';
 
     protected string $view = 'filament.finance.pages.general-ledger-report';
 
@@ -116,7 +115,7 @@ class GeneralLedgerReport extends Page implements HasTable, HasForms
                     ->options($this->accountTypeOptions())
                     ->query(fn (Builder $query, array $data) => $query->where('accounts.type', $data['value'])),
             ])
-            ->defaultSort('entry_date')
+            ->defaultSort('entry_date', 'desc')
             ->headerActions([
                 ExportAction::make()
                     ->exporter(GeneralLedgerExporter::class),

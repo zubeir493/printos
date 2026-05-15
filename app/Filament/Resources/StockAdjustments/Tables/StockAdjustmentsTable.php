@@ -2,14 +2,15 @@
 
 namespace App\Filament\Resources\StockAdjustments\Tables;
 
+use App\Models\Warehouse;
 use Filament\Actions\Action as ActionsAction;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\EditAction;
-use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Table;
-use Filament\Actions\Action;
 use Filament\Notifications\Notification;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Table;
 
 class StockAdjustmentsTable
 {
@@ -23,7 +24,7 @@ class StockAdjustmentsTable
                     ->searchable(),
                 TextColumn::make('status')
                     ->badge()
-                    ->color(fn(string $state): string => match ($state) {
+                    ->color(fn (string $state): string => match ($state) {
                         'draft' => 'gray',
                         'posted' => 'success',
                         default => 'gray',
@@ -34,29 +35,32 @@ class StockAdjustmentsTable
                     ->sortable(),
             ])
             ->filters([
-                \Filament\Tables\Filters\SelectFilter::make('status')
+                SelectFilter::make('status')
                     ->options([
                         'draft' => 'Draft',
                         'posted' => 'Posted',
                     ]),
-                \Filament\Tables\Filters\SelectFilter::make('warehouse_id')
+                SelectFilter::make('warehouse_id')
                     ->label('Warehouse')
-                    ->options(\App\Models\Warehouse::pluck('name', 'id')->toArray()),
+                    ->options(Warehouse::pluck('name', 'id')->toArray()),
             ])
+            ->defaultSort('adjustment_date', 'desc')
             ->recordActions([
-                ActionsAction::make('post')
-                    ->label('Post')
-                    ->color('success')
-                    ->icon('heroicon-o-check-circle')
-                    ->requiresConfirmation()
-                    ->visible(fn ($record) => $record->status === 'draft')
-                    ->action(function ($record) {
-                        $record->post();
-                        \Filament\Notifications\Notification::make()
-                            ->title('Adjustment Posted Successfully')
-                            ->success()
-                            ->send();
-                    }),
+                ActionGroup::make([
+                    ActionsAction::make('post')
+                        ->label('Post')
+                        ->color('success')
+                        ->icon('heroicon-o-check-circle')
+                        ->requiresConfirmation()
+                        ->visible(fn ($record) => $record->status === 'draft')
+                        ->action(function ($record) {
+                            $record->post();
+                            Notification::make()
+                                ->title('Adjustment Posted Successfully')
+                                ->success()
+                                ->send();
+                        }),
+                ]),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

@@ -16,10 +16,13 @@ class GoodsReceiptResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedInboxArrowDown;
 
+    protected static ?int $navigationSort = 70;
+
     public static function getNavigationBadge(): ?string
     {
         // Count only draft goods receipts (exclude posted)
         $count = static::getModel()::where('status', 'draft')->count();
+
         return $count > 0 ? (string) $count : null;
     }
 

@@ -7,7 +7,11 @@ use App\Models\Account;
 use App\Services\Accounting\FinancialReportService;
 use BackedEnum;
 use Filament\Actions\ExportAction;
+use Filament\Forms;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Contracts\HasForms;
 use Filament\Pages\Page;
+use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\TextColumn;
@@ -18,21 +22,17 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use UnitEnum;
 
-use Filament\Forms;
-use Filament\Forms\Contracts\HasForms;
-use Filament\Schemas\Schema;
-
-class BalanceSheetReport extends Page implements HasTable, HasForms
+class BalanceSheetReport extends Page implements HasForms, HasTable
 {
-    use InteractsWithTable, Forms\Concerns\InteractsWithForms;
+    use Forms\Concerns\InteractsWithForms, InteractsWithTable;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBuildingLibrary;
 
     protected static ?string $navigationLabel = 'Balance Sheet';
 
-    protected static string|UnitEnum|null $navigationGroup = 'Financial Reports';
+    protected static ?int $navigationSort = 380;
 
-    protected static ?int $navigationSort = 3;
+    protected static string|UnitEnum|null $navigationGroup = 'Financial Reports';
 
     protected string $view = 'filament.finance.pages.balance-sheet-report';
 
@@ -52,7 +52,7 @@ class BalanceSheetReport extends Page implements HasTable, HasForms
     {
         return $form
             ->schema([
-                \Filament\Forms\Components\DatePicker::make('asOfDate')
+                DatePicker::make('asOfDate')
                     ->label('As Of Date')
                     ->live()
                     ->required(),

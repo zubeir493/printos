@@ -3,11 +3,9 @@
 namespace App\Filament\Resources\Banks\Tables;
 
 use Filament\Actions\Action as ActionsAction;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\EditAction;
-use Filament\Actions\ViewAction;
-use Filament\Tables\Actions\Action;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -53,12 +51,14 @@ class BanksTable
                     ]),
             ])
             ->recordActions([
-                ActionsAction::make('recalculate_balance')
-                    ->label('Refresh')
-                    ->icon('heroicon-o-arrow-path')
-                    ->color('warning')
-                    ->requiresConfirmation()
-                    ->action(fn ($record) => $record->updateBalance()),
+                ActionGroup::make([
+                    ActionsAction::make('recalculate_balance')
+                        ->label('Refresh')
+                        ->icon('heroicon-o-arrow-path')
+                        ->color('warning')
+                        ->requiresConfirmation()
+                        ->action(fn ($record) => $record->updateBalance()),
+                ]),
             ])
             ->bulkActions([
                 BulkActionGroup::make([

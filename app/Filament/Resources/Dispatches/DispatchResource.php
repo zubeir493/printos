@@ -23,7 +23,7 @@ class DispatchResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedTruck;
 
-    protected static ?int $navigationSort = 4;
+    protected static ?int $navigationSort = 80;
 
     public static function getNavigationBadge(): ?string
     {

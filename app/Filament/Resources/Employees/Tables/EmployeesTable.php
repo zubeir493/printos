@@ -4,9 +4,7 @@ namespace App\Filament\Resources\Employees\Tables;
 
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\EditAction;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 
@@ -18,7 +16,7 @@ class EmployeesTable
             ->columns([
                 TextColumn::make('full_name')
                     ->label('Name')
-                    ->description(fn($record) => $record->employee_id)
+                    ->description(fn ($record) => $record->employee_id)
                     ->weight('bold')
                     ->searchable(['first_name', 'last_name']),
                 TextColumn::make('department')
@@ -28,7 +26,7 @@ class EmployeesTable
                     ->searchable(),
                 TextColumn::make('status')
                     ->badge()
-                    ->color(fn(string $state): string => match ($state) {
+                    ->color(fn (string $state): string => match ($state) {
                         'active' => 'success',
                         'inactive' => 'warning',
                         'terminated' => 'danger',
@@ -48,6 +46,7 @@ class EmployeesTable
                     ]),
                 SelectFilter::make('department'),
             ])
+            ->defaultSort('hire_date', 'desc')
             ->actions([])
             ->bulkActions([
                 BulkActionGroup::make([

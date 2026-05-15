@@ -22,6 +22,8 @@ class StockTransferResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedArrowsRightLeft;
 
+    protected static ?int $navigationSort = 100;
+
     public static function getNavigationBadge(): ?string
     {
         $count = static::getModel()::whereNotIn('status', ['completed', 'cancelled'])->count();

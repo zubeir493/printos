@@ -296,7 +296,7 @@ class ViewJobOrder extends ViewRecord
             Action::make('generate_po')
                 ->label('Generate PO')
                 ->icon('heroicon-o-shopping-cart')
-                ->color('success')
+                ->color(Color::Indigo)
                 ->visible(fn ($record) => PanelAccess::canManagePurchaseOrders() &&
                     (string) $record->status === 'active' &&
                     collect($record->materials_summary)->where('remaining', '>', 0)->isNotEmpty()

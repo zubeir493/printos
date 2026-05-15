@@ -7,7 +7,12 @@ use App\Models\Account;
 use App\Services\Accounting\FinancialReportService;
 use BackedEnum;
 use Filament\Actions\ExportAction;
+use Filament\Forms;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Contracts\HasForms;
 use Filament\Pages\Page;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\TextColumn;
@@ -18,23 +23,17 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use UnitEnum;
 
-use Filament\Forms;
-use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Contracts\HasForms;
-use Filament\Schemas\Components\Grid;
-use Filament\Schemas\Schema;
-
-class IncomeStatementReport extends Page implements HasTable, HasForms
+class IncomeStatementReport extends Page implements HasForms, HasTable
 {
-    use InteractsWithTable, Forms\Concerns\InteractsWithForms;
+    use Forms\Concerns\InteractsWithForms, InteractsWithTable;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCalculator;
 
     protected static ?string $navigationLabel = 'Income Statement';
 
-    protected static string|UnitEnum|null $navigationGroup = 'Financial Reports';
+    protected static ?int $navigationSort = 360;
 
-    protected static ?int $navigationSort = 2;
+    protected static string|UnitEnum|null $navigationGroup = 'Financial Reports';
 
     protected string $view = 'filament.finance.pages.income-statement-report';
 
@@ -117,8 +116,8 @@ class IncomeStatementReport extends Page implements HasTable, HasForms
                     ->where('journal_entries.status', 'posted');
             })
             ->whereIn('accounts.type', ['Revenue', 'Expense'])
-            ->when($this->startDate, fn($query) => $query->whereDate('journal_entries.date', '>=', $this->startDate))
-            ->when($this->endDate, fn($query) => $query->whereDate('journal_entries.date', '<=', $this->endDate))
+            ->when($this->startDate, fn ($query) => $query->whereDate('journal_entries.date', '>=', $this->startDate))
+            ->when($this->endDate, fn ($query) => $query->whereDate('journal_entries.date', '<=', $this->endDate))
             ->selectRaw('COALESCE(SUM(journal_items.debit), 0) as debit_total')
             ->selectRaw('COALESCE(SUM(journal_items.credit), 0) as credit_total')
             ->selectRaw("

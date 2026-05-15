@@ -6,6 +6,7 @@ use App\Enums\PaymentTransactionType;
 use App\Filament\Support\PanelAccess;
 use App\Models\Bank;
 use App\Models\Payment;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
@@ -92,15 +93,15 @@ class PaymentsRelationManager extends RelationManager
                     ->label('Method')
                     ->badge()
                     ->color(fn ($state) => match ($state) {
-                        'cash'   => 'success',
-                        'bank'   => 'info',
+                        'cash' => 'success',
+                        'bank' => 'info',
                         'cheque' => 'warning',
-                        default  => 'gray',
+                        default => 'gray',
                     })
                     ->formatStateUsing(fn ($state) => match ($state) {
-                        'bank'   => 'Bank Transfer',
+                        'bank' => 'Bank Transfer',
                         'cheque' => 'Cheque',
-                        default  => ucfirst($state ?? ''),
+                        default => ucfirst($state ?? ''),
                     }),
                 TextColumn::make('payment.reference')
                     ->label('Reference')
@@ -154,9 +155,12 @@ class PaymentsRelationManager extends RelationManager
                         });
                     }),
             ])
+            ->defaultSort('payment.payment_date', 'desc')
             ->recordActions([
-                EditAction::make(),
-                DeleteAction::make(),
+                ActionGroup::make([
+                    EditAction::make(),
+                    DeleteAction::make(),
+                ]),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

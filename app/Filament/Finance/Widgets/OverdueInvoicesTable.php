@@ -11,7 +11,7 @@ class OverdueInvoicesTable extends BaseWidget
 {
     protected static ?int $sort = 4;
 
-    protected int | string | array $columnSpan = 'full';
+    protected int|string|array $columnSpan = 'full';
 
     protected static ?string $heading = 'Overdue Invoices';
 
@@ -41,6 +41,7 @@ class OverdueInvoicesTable extends BaseWidget
                     ->formatStateUsing(fn ($state) => number_format((float) $state, 2)),
                 Tables\Columns\TextColumn::make('status')
                     ->badge(),
-            ]);
+            ])
+            ->defaultSort('due_date', 'desc');
     }
 }

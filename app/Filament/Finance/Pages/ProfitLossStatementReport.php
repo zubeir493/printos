@@ -2,18 +2,18 @@
 
 namespace App\Filament\Finance\Pages;
 
-use App\Services\Accounting\FinancialReportService;
+use App\Filament\Exports\ProfitLossStatementExporter;
 use App\Models\Account;
+use App\Services\Accounting\FinancialReportService;
 use BackedEnum;
+use Filament\Actions\ExportAction;
 use Filament\Forms;
 use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\Grid;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Grid as ComponentsGrid;
+use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
-use App\Filament\Exports\ProfitLossStatementExporter;
-use Filament\Actions\ExportAction;
 use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Concerns\InteractsWithTable;
@@ -22,19 +22,18 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use UnitEnum;
-use Filament\Schemas\Schema;
 
-class ProfitLossStatementReport extends Page implements HasTable, HasForms
+class ProfitLossStatementReport extends Page implements HasForms, HasTable
 {
-    use InteractsWithTable, Forms\Concerns\InteractsWithForms;
+    use Forms\Concerns\InteractsWithForms, InteractsWithTable;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedChartBar;
 
     protected static ?string $navigationLabel = 'Profit/Loss Statement';
 
-    protected static string|UnitEnum|null $navigationGroup = 'Financial Reports';
+    protected static ?int $navigationSort = 370;
 
-    protected static ?int $navigationSort = 7;
+    protected static string|UnitEnum|null $navigationGroup = 'Financial Reports';
 
     protected string $view = 'filament.finance.pages.profit-loss-statement-report';
 

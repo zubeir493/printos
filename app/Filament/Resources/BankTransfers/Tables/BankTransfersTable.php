@@ -3,11 +3,9 @@
 namespace App\Filament\Resources\BankTransfers\Tables;
 
 use Filament\Actions\Action as ActionsAction;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\EditAction;
-use Filament\Actions\ViewAction;
-use Filament\Tables\Actions\Action;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -58,29 +56,32 @@ class BankTransfersTable
                         'cancelled' => 'Cancelled',
                     ]),
             ])
+            ->defaultSort('transfer_date', 'desc')
             ->recordActions([
-                ActionsAction::make('complete')
-                    ->label('Approve')
-                    ->icon('heroicon-o-check-circle')
-                    ->color('success')
-                    ->requiresConfirmation()
-                    ->modalHeading('Complete Bank Transfer')
-                    ->modalDescription('This will update the bank balances. Are you sure?')
-                    ->visible(fn ($record) => $record->status === 'pending')
-                    ->action(function ($record) {
-                        $record->complete(auth()->user());
-                    }),
-                ActionsAction::make('cancel')
-                    ->label('Cancel')
-                    ->icon('heroicon-o-x-circle')
-                    ->color('danger')
-                    ->requiresConfirmation()
-                    ->modalHeading('Cancel Bank Transfer')
-                    ->modalDescription('This will cancel the transfer without affecting balances. Are you sure?')
-                    ->visible(fn ($record) => $record->status === 'pending')
-                    ->action(function ($record) {
-                        $record->cancel(auth()->user());
-                    }),
+                ActionGroup::make([
+                    ActionsAction::make('complete')
+                        ->label('Approve')
+                        ->icon('heroicon-o-check-circle')
+                        ->color('success')
+                        ->requiresConfirmation()
+                        ->modalHeading('Complete Bank Transfer')
+                        ->modalDescription('This will update the bank balances. Are you sure?')
+                        ->visible(fn ($record) => $record->status === 'pending')
+                        ->action(function ($record) {
+                            $record->complete(auth()->user());
+                        }),
+                    ActionsAction::make('cancel')
+                        ->label('Cancel')
+                        ->icon('heroicon-o-x-circle')
+                        ->color('danger')
+                        ->requiresConfirmation()
+                        ->modalHeading('Cancel Bank Transfer')
+                        ->modalDescription('This will cancel the transfer without affecting balances. Are you sure?')
+                        ->visible(fn ($record) => $record->status === 'pending')
+                        ->action(function ($record) {
+                            $record->cancel(auth()->user());
+                        }),
+                ]),
             ])
             ->bulkActions([
                 BulkActionGroup::make([

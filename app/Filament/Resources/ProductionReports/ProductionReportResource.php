@@ -21,6 +21,8 @@ class ProductionReportResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedDocumentMagnifyingGlass;
 
+    protected static ?int $navigationSort = 170;
+
     public static function form(Schema $schema): Schema
     {
         return ProductionReportForm::configure($schema);

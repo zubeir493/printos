@@ -20,6 +20,8 @@ class MaterialIssueApprovalResource extends Resource
 
     protected static ?string $navigationLabel = 'Material Approvals';
 
+    protected static ?int $navigationSort = 130;
+
     public static function canViewAny(): bool
     {
         return PanelAccess::canApproveMaterialOverIssues();

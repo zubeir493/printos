@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\ProductionReports\Tables;
 
+use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\TextColumn;
@@ -38,8 +39,10 @@ class ProductionReportsTable
                     ]),
             ])
             ->recordActions([
-                EditAction::make()
-                    ->visible(fn ($record) => $record->status === 'draft'),
+                ActionGroup::make([
+                    EditAction::make()
+                        ->visible(fn ($record) => $record->status === 'draft'),
+                ]),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([]),

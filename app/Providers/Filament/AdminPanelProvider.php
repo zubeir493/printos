@@ -32,6 +32,7 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('/')
             ->viteTheme('resources/css/filament/admin/theme.css')
+            ->font('Albert Sans')
             ->darkMode(false)
             ->defaultThemeMode(ThemeMode::Light)
             ->login()

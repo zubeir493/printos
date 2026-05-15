@@ -44,6 +44,7 @@ class OperationsPanelProvider extends PanelProvider
             ->path('operations')
             ->authGuard('web')
             ->viteTheme('resources/css/filament/admin/theme.css')
+            ->font('Albert Sans')
             ->darkMode(false)
             ->defaultThemeMode(ThemeMode::Light)
             ->databaseNotifications()

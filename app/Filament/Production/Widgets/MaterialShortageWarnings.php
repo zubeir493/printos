@@ -4,6 +4,7 @@ namespace App\Filament\Production\Widgets;
 
 use App\Models\ProductionPlan;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget as BaseWidget;
@@ -43,9 +44,11 @@ class MaterialShortageWarnings extends BaseWidget
                     ->default('Verify material coverage'),
             ])
             ->actions([
-                Action::make('View Plan')
-                    ->url(fn (ProductionPlan $record): string => '/production/production-plans/'.$record->id)
-                    ->icon('heroicon-m-arrow-right'),
+                ActionGroup::make([
+                    Action::make('View Plan')
+                        ->url(fn (ProductionPlan $record): string => '/production/production-plans/'.$record->id)
+                        ->icon('heroicon-m-arrow-right'),
+                ]),
             ]);
     }
 }

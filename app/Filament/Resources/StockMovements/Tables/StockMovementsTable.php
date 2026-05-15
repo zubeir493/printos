@@ -42,7 +42,6 @@ class StockMovementsTable
                     ->dateTime('d M Y, h:i A')
                     ->sortable(),
             ])
-            ->defaultSort('created_at', 'desc')
             ->filters([
                 SelectFilter::make('type')
                     ->options([
@@ -62,6 +61,7 @@ class StockMovementsTable
                 ExportAction::make()
                     ->exporter(StockMovementExporter::class),
             ])
+            ->defaultSort('movement_date', 'desc')
             ->bulkActions([
                 BulkActionGroup::make([
                     ExportBulkAction::make()

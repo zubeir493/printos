@@ -7,7 +7,11 @@ use App\Models\SalesOrder;
 use BackedEnum;
 use Carbon\Carbon;
 use Filament\Actions\ExportAction;
+use Filament\Forms;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Contracts\HasForms;
 use Filament\Pages\Page;
+use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\TextColumn;
@@ -18,21 +22,17 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use UnitEnum;
 
-use Filament\Forms;
-use Filament\Forms\Contracts\HasForms;
-use Filament\Schemas\Schema;
-
-class ReceivablesAgingReport extends Page implements HasTable, HasForms
+class ReceivablesAgingReport extends Page implements HasForms, HasTable
 {
-    use InteractsWithTable, Forms\Concerns\InteractsWithForms;
+    use Forms\Concerns\InteractsWithForms, InteractsWithTable;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedClipboardDocumentList;
 
     protected static ?string $navigationLabel = 'A/R Aging';
 
-    protected static string|UnitEnum|null $navigationGroup = 'Financial Reports';
+    protected static ?int $navigationSort = 340;
 
-    protected static ?int $navigationSort = 5;
+    protected static string|UnitEnum|null $navigationGroup = 'Financial Reports';
 
     protected string $view = 'filament.finance.pages.receivables-aging-report';
 
@@ -63,7 +63,7 @@ class ReceivablesAgingReport extends Page implements HasTable, HasForms
     {
         return $form
             ->schema([
-                \Filament\Forms\Components\DatePicker::make('asOfDate')
+                DatePicker::make('asOfDate')
                     ->label('As Of Date')
                     ->live()
                     ->required(),

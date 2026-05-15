@@ -9,6 +9,7 @@ use App\Models\Bank;
 use App\Models\Payment;
 use App\Services\InvoiceGeneratorService;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -90,131 +91,136 @@ class JobOrdersTable
                     ->query(fn ($query) => $query->late())
                     ->toggle(),
             ])
+            ->defaultSort('submission_date', 'desc')
             ->actions([
-                EditAction::make()
-                    ->visible(fn () => PanelAccess::canManageJobOrders()),
+                ActionGroup::make([
+                    EditAction::make()
+                        ->visible(fn () => PanelAccess::canManageJobOrders()),
+                ]),
             ])
             ->recordActions([
-                Action::make('invoice')
-                    ->label('Invoice')
-                    ->icon('heroicon-o-document-text')
-                    ->color('primary')
-                    ->hidden(fn ($record) => $record->invoices()->exists() || ! PanelAccess::canSeeMoneyValues() || $record->balance <= 0 || $record->production_mode === 'make_to_stock')
-                    ->action(function ($record) {
-                        try {
-                            $invoiceService = app(InvoiceGeneratorService::class);
-                            $result = $invoiceService->generateFromJobOrder($record);
+                ActionGroup::make([
+                    Action::make('invoice')
+                        ->label('Invoice')
+                        ->icon('heroicon-o-document-text')
+                        ->color('primary')
+                        ->hidden(fn ($record) => $record->invoices()->exists() || ! PanelAccess::canSeeMoneyValues() || $record->balance <= 0 || $record->production_mode === 'make_to_stock')
+                        ->action(function ($record) {
+                            try {
+                                $invoiceService = app(InvoiceGeneratorService::class);
+                                $result = $invoiceService->generateFromJobOrder($record);
 
-                            $actions = [
-                                Action::make('download')
-                                    ->label('Download')
-                                    ->url($invoiceService->getInvoicePath($result['filename']))
-                                    ->openUrlInNewTab(),
-                            ];
+                                $actions = [
+                                    Action::make('download')
+                                        ->label('Download')
+                                        ->url($invoiceService->getInvoicePath($result['filename']))
+                                        ->openUrlInNewTab(),
+                                ];
 
-                            Notification::make()
-                                ->title('Invoice Generated')
-                                ->body('Invoice '.$result['invoice_data']['invoice_number'].' created successfully.')
-                                ->success()
-                                ->actions($actions)
-                                ->send();
-                        } catch (\Exception $e) {
-                            Notification::make()
-                                ->title('Invoice Action Failed')
-                                ->body($e->getMessage())
-                                ->danger()
-                                ->send();
-                        }
-                    }),
-                Action::make('pay')
-                    ->label('Recieve Payment')
-                    ->icon('heroicon-o-banknotes')
-                    ->color('success')
-                    ->visible(fn ($record) => $record->balance > 0 &&
-                        PanelAccess::canAccessFinanceSection() &&
-                        in_array($record->status, ['active', 'completed']) &&
-                        $record->production_mode !== 'make_to_stock'
-                    )
-                    ->schema([
-                        Grid::make(2)->schema([
-                            Select::make('method')
-                                ->label('Paid Via')
-                                ->options([
-                                    'cash' => 'Cash',
-                                    'bank' => 'Bank Transfer',
-                                    'cheque' => 'Cheque',
-                                ])
-                                ->default('bank')
-                                ->required()
-                                ->live(),
-                            Select::make('bank_id')
-                                ->label('Bank Account')
-                                ->options(Bank::pluck('name', 'id'))
-                                ->searchable()
-                                ->preload()
-                                ->visible(fn (callable $get) => $get('method') === 'bank')
-                                ->required(fn (callable $get) => $get('method') === 'bank'),
-                            DatePicker::make('payment_date')
-                                ->label('Payment Date')
-                                ->default(now())
-                                ->required(),
-                            TextInput::make('allocated_amount')
-                                ->label('Amount to Allocate')
-                                ->required()
-                                ->numeric()
-                                ->suffix('Birr')
-                                ->default(fn ($record) => $record->balance)
-                                ->helperText(fn ($record) => "Balance: {$record->balance} Birr"),
-                            TextInput::make('reference')
-                                ->label('Memo / Reference')
-                                ->placeholder('Receipt number, cheque number, or short note')
-                                ->maxLength(255),
-                        ]),
-                    ])
-                    ->action(function ($record, array $data) {
-                        try {
-                            DB::beginTransaction();
-
-                            $amount = (float) $data['allocated_amount'];
-
-                            if ($amount > $record->balance) {
-                                throw new \Exception("Cannot allocate more than the remaining balance of {$record->balance} Birr.");
+                                Notification::make()
+                                    ->title('Invoice Generated')
+                                    ->body('Invoice '.$result['invoice_data']['invoice_number'].' created successfully.')
+                                    ->success()
+                                    ->actions($actions)
+                                    ->send();
+                            } catch (\Exception $e) {
+                                Notification::make()
+                                    ->title('Invoice Action Failed')
+                                    ->body($e->getMessage())
+                                    ->danger()
+                                    ->send();
                             }
+                        }),
+                    Action::make('pay')
+                        ->label('Recieve Payment')
+                        ->icon('heroicon-o-banknotes')
+                        ->color('success')
+                        ->visible(fn ($record) => $record->balance > 0 &&
+                            PanelAccess::canAccessFinanceSection() &&
+                            in_array($record->status, ['active', 'completed']) &&
+                            $record->production_mode !== 'make_to_stock'
+                        )
+                        ->schema([
+                            Grid::make(2)->schema([
+                                Select::make('method')
+                                    ->label('Paid Via')
+                                    ->options([
+                                        'cash' => 'Cash',
+                                        'bank' => 'Bank Transfer',
+                                        'cheque' => 'Cheque',
+                                    ])
+                                    ->default('bank')
+                                    ->required()
+                                    ->live(),
+                                Select::make('bank_id')
+                                    ->label('Bank Account')
+                                    ->options(Bank::pluck('name', 'id'))
+                                    ->searchable()
+                                    ->preload()
+                                    ->visible(fn (callable $get) => $get('method') === 'bank')
+                                    ->required(fn (callable $get) => $get('method') === 'bank'),
+                                DatePicker::make('payment_date')
+                                    ->label('Payment Date')
+                                    ->default(now())
+                                    ->required(),
+                                TextInput::make('allocated_amount')
+                                    ->label('Amount to Allocate')
+                                    ->required()
+                                    ->numeric()
+                                    ->suffix('Birr')
+                                    ->default(fn ($record) => $record->balance)
+                                    ->helperText(fn ($record) => "Balance: {$record->balance} Birr"),
+                                TextInput::make('reference')
+                                    ->label('Memo / Reference')
+                                    ->placeholder('Receipt number, cheque number, or short note')
+                                    ->maxLength(255),
+                            ]),
+                        ])
+                        ->action(function ($record, array $data) {
+                            try {
+                                DB::beginTransaction();
 
-                            $payment = Payment::create([
-                                'partner_id' => $record->partner_id,
-                                'payment_date' => $data['payment_date'],
-                                'transaction_type' => PaymentTransactionType::CUSTOMER_RECEIPT->value,
-                                'amount' => $amount,
-                                'method' => $data['method'],
-                                'bank_id' => $data['bank_id'] ?? null,
-                                'reference' => $data['reference'] ?? 'Payment for '.$record->job_order_number,
-                            ]);
+                                $amount = (float) $data['allocated_amount'];
 
-                            $payment->paymentAllocations()->create([
-                                'allocatable_id' => $record->id,
-                                'allocatable_type' => get_class($record),
-                                'allocated_amount' => $amount,
-                            ]);
+                                if ($amount > $record->balance) {
+                                    throw new \Exception("Cannot allocate more than the remaining balance of {$record->balance} Birr.");
+                                }
 
-                            DB::commit();
+                                $payment = Payment::create([
+                                    'partner_id' => $record->partner_id,
+                                    'payment_date' => $data['payment_date'],
+                                    'transaction_type' => PaymentTransactionType::CUSTOMER_RECEIPT->value,
+                                    'amount' => $amount,
+                                    'method' => $data['method'],
+                                    'bank_id' => $data['bank_id'] ?? null,
+                                    'reference' => $data['reference'] ?? 'Payment for '.$record->job_order_number,
+                                ]);
 
-                            Notification::make()
-                                ->title('Payment Recorded')
-                                ->body("{$amount} Birr received for {$record->job_order_number}.")
-                                ->success()
-                                ->send();
+                                $payment->paymentAllocations()->create([
+                                    'allocatable_id' => $record->id,
+                                    'allocatable_type' => get_class($record),
+                                    'allocated_amount' => $amount,
+                                ]);
 
-                        } catch (\Exception $e) {
-                            DB::rollBack();
+                                DB::commit();
 
-                            Notification::make()
-                                ->title('Payment Failed')
-                                ->body($e->getMessage())
-                                ->danger()
-                                ->send();
-                        }
-                    }),
+                                Notification::make()
+                                    ->title('Payment Recorded')
+                                    ->body("{$amount} Birr received for {$record->job_order_number}.")
+                                    ->success()
+                                    ->send();
+
+                            } catch (\Exception $e) {
+                                DB::rollBack();
+
+                                Notification::make()
+                                    ->title('Payment Failed')
+                                    ->body($e->getMessage())
+                                    ->danger()
+                                    ->send();
+                            }
+                        }),
+                ]),
             ])
             ->bulkActions([
                 BulkActionGroup::make([

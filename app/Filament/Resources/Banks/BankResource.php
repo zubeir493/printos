@@ -22,6 +22,8 @@ class BankResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCreditCard;
 
+    protected static ?int $navigationSort = 250;
+
     public static function form(Schema $schema): Schema
     {
         return BankForm::configure($schema);

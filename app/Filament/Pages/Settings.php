@@ -26,7 +26,7 @@ class Settings extends Page implements HasForms
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCog6Tooth;
 
-    protected static ?int $navigationSort = 100;
+    protected static ?int $navigationSort = 1000;
 
     protected string $view = 'filament.pages.settings';
 
@@ -45,18 +45,28 @@ class Settings extends Page implements HasForms
                 Section::make('Company Information')
                     ->description('Basic company details used in invoices and emails')
                     ->schema([
-                        TextInput::make('company_name')
-                            ->label('Company Name')
-                            ->required()
-                            ->placeholder('Your Company Name'),
-                        FileUpload::make('company_logo')
-                            ->label('Company Logo')
-                            ->image()
-                            ->disk('public')
-                            ->directory('logos')
-                            ->visibility('public')
-                            ->imagePreviewHeight('80')
-                            ->helperText('Used on invoices and receipts. Recommended: square PNG, max 200×200px.'),
+                        Grid::make()
+                            ->schema([
+                                Grid::make()
+                                    ->columns(1)
+                                    ->schema([
+                                        TextInput::make('company_name')
+                                            ->label('Company Name')
+                                            ->required()
+                                            ->placeholder('Your Company Name'),
+                                        TextInput::make('company_tax_id')
+                                            ->label('Tax ID / VAT Number')
+                                            ->placeholder('TAX-123456789'),
+                                    ]),
+                                FileUpload::make('company_logo')
+                                    ->label('Company Logo')
+                                    ->image()
+                                    ->disk('public')
+                                    ->directory('logos')
+                                    ->visibility('public')
+                                    ->imagePreviewHeight('80')
+                                    ->helperText('Used on invoices and receipts. Recommended: square PNG, max 200×200px.'),
+                            ]),
                         Textarea::make('company_address')
                             ->label('Address')
                             ->rows(3)
@@ -77,9 +87,6 @@ class Settings extends Page implements HasForms
                                     ->url()
                                     ->placeholder('www.company.com'),
                             ]),
-                        TextInput::make('company_tax_id')
-                            ->label('Tax ID / VAT Number')
-                            ->placeholder('TAX-123456789'),
                     ]),
 
                 Section::make('Tax & VAT Settings')

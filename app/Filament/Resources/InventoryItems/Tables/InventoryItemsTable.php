@@ -2,11 +2,13 @@
 
 namespace App\Filament\Resources\InventoryItems\Tables;
 
-use App\Filament\Support\PanelAccess;
+use App\Filament\Exports\InventoryItemExporter;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
-use Filament\Tables\Columns\IconColumn;
+use Filament\Actions\ExportAction;
+use Filament\Actions\ExportBulkAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -19,14 +21,14 @@ class InventoryItemsTable
             ->columns([
                 TextColumn::make('name')
                     ->label('Item')
-                    ->description(fn($record) => $record->sku)
+                    ->description(fn ($record) => $record->sku)
                     ->searchable()
                     ->sortable()
                     ->weight('bold')
                     ->color('primary'),
                 TextColumn::make('type')
                     ->badge()
-                    ->color(fn(string $state): string => match ($state) {
+                    ->color(fn (string $state): string => match ($state) {
                         'raw_material' => 'gray',
                         'finished_good' => 'success',
                         'wip' => 'info',
@@ -34,7 +36,7 @@ class InventoryItemsTable
                         'spare_parts' => 'primary',
                         default => 'gray',
                     })
-                    ->formatStateUsing(fn(string $state): string => match ($state) {
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
                         'raw_material' => 'Raw Material',
                         'finished_good' => 'Finished Good',
                         'wip' => 'WIP',
@@ -45,7 +47,7 @@ class InventoryItemsTable
                 TextColumn::make('category')
                     ->label('Category')
                     ->badge()
-                    ->color(fn($state) => match($state) {
+                    ->color(fn ($state) => match ($state) {
                         'printing' => 'primary',
                         'design' => 'info',
                         'binding' => 'warning',
@@ -56,7 +58,7 @@ class InventoryItemsTable
                         'other' => 'gray',
                         default => 'gray',
                     })
-                    ->formatStateUsing(fn($state) => match($state) {
+                    ->formatStateUsing(fn ($state) => match ($state) {
                         'printing' => 'Printing',
                         'design' => 'Design',
                         'binding' => 'Binding',
@@ -67,7 +69,7 @@ class InventoryItemsTable
                         'other' => 'Other',
                         default => ucfirst($state ?? 'N/A'),
                     })
-                    ->visible(fn($record) => $record?->type === 'finished_good'),
+                    ->visible(fn ($record) => $record?->type === 'finished_good'),
                 TextColumn::make('unit')
                     ->label('Unit')
                     ->badge()
@@ -82,7 +84,7 @@ class InventoryItemsTable
                         'tools' => 'Tools',
                         'spare_parts' => 'Spare Parts',
                     ]),
-                \Filament\Tables\Filters\SelectFilter::make('category')
+                SelectFilter::make('category')
                     ->label('Category')
                     ->options([
                         'printing' => 'Printing Services',
@@ -96,17 +98,19 @@ class InventoryItemsTable
                     ]),
             ])
             ->recordActions([
-                EditAction::make(),
+                ActionGroup::make([
+                    EditAction::make(),
+                ]),
             ])
             ->headerActions([
-                \Filament\Actions\ExportAction::make()
-                    ->exporter(\App\Filament\Exports\InventoryItemExporter::class)
+                ExportAction::make()
+                    ->exporter(InventoryItemExporter::class),
             ])
             ->bulkActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make(),
-                    \Filament\Actions\ExportBulkAction::make()
-                        ->exporter(\App\Filament\Exports\InventoryItemExporter::class)
+                    ExportBulkAction::make()
+                        ->exporter(InventoryItemExporter::class),
                 ]),
             ]);
     }

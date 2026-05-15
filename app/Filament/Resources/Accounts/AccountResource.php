@@ -25,6 +25,8 @@ class AccountResource extends Resource
 
     protected static ?string $navigationLabel = 'Chart of Accounts';
 
+    protected static ?int $navigationSort = 240;
+
     public static function form(Schema $schema): Schema
     {
         return AccountForm::configure($schema);
@@ -76,9 +78,9 @@ class AccountResource extends Resource
         ];
     }
 
-    public static function getGlobalSearchEloquentQuery(): \Illuminate\Database\Eloquent\Builder
+    public static function getGlobalSearchEloquentQuery(): Builder
     {
-        if (!PanelAccess::canAccessFinanceSection()) {
+        if (! PanelAccess::canAccessFinanceSection()) {
             return static::getModel()::query()->whereRaw('1 = 0');
         }
 

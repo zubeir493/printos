@@ -40,6 +40,7 @@ class WarehousePanelProvider extends PanelProvider
             ->path('warehouse')
             ->authGuard('web')
             ->viteTheme('resources/css/filament/admin/theme.css')
+            ->font('Albert Sans')
             ->darkMode(false)
             ->defaultThemeMode(ThemeMode::Light)
             ->databaseNotifications()

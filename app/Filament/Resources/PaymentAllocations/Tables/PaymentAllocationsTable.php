@@ -2,11 +2,13 @@
 
 namespace App\Filament\Resources\PaymentAllocations\Tables;
 
+use App\Filament\Exports\PaymentAllocationExporter;
 use App\Models\JobOrder;
 use App\Models\PurchaseOrder;
 use App\Models\SalesOrder;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\ExportAction;
 use Filament\Actions\ExportBulkAction;
 use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\TextColumn;
@@ -30,30 +32,30 @@ class PaymentAllocationsTable
                     ->label('Type')
                     ->badge()
                     ->color(fn ($state) => match ($state) {
-                        JobOrder::class      => 'info',
-                        SalesOrder::class    => 'success',
+                        JobOrder::class => 'info',
+                        SalesOrder::class => 'success',
                         PurchaseOrder::class => 'warning',
-                        default              => 'gray',
+                        default => 'gray',
                     })
                     ->formatStateUsing(fn ($state) => match ($state) {
-                        JobOrder::class      => 'Job Order',
-                        SalesOrder::class    => 'Sales Order',
+                        JobOrder::class => 'Job Order',
+                        SalesOrder::class => 'Sales Order',
                         PurchaseOrder::class => 'Purchase Order',
-                        default              => class_basename($state),
+                        default => class_basename($state),
                     }),
                 TextColumn::make('payment.method')
                     ->label('Method')
                     ->badge()
                     ->color(fn ($state) => match ($state) {
-                        'cash'   => 'success',
-                        'bank'   => 'info',
+                        'cash' => 'success',
+                        'bank' => 'info',
                         'cheque' => 'warning',
-                        default  => 'gray',
+                        default => 'gray',
                     })
                     ->formatStateUsing(fn ($state) => match ($state) {
-                        'bank'   => 'Bank Transfer',
+                        'bank' => 'Bank Transfer',
                         'cheque' => 'Cheque',
-                        default  => ucfirst($state ?? ''),
+                        default => ucfirst($state ?? ''),
                     }),
                 TextColumn::make('payment.payment_date')
                     ->label('Date')
@@ -72,28 +74,28 @@ class PaymentAllocationsTable
                 SelectFilter::make('allocatable_type')
                     ->label('Type')
                     ->options([
-                        JobOrder::class      => 'Job Order',
-                        SalesOrder::class    => 'Sales Order',
+                        JobOrder::class => 'Job Order',
+                        SalesOrder::class => 'Sales Order',
                         PurchaseOrder::class => 'Purchase Order',
                     ]),
                 SelectFilter::make('method')
                     ->label('Method')
                     ->relationship('payment', 'method')
                     ->options([
-                        'cash'   => 'Cash',
-                        'bank'   => 'Bank Transfer',
+                        'cash' => 'Cash',
+                        'bank' => 'Bank Transfer',
                         'cheque' => 'Cheque',
                     ]),
             ])
             ->headerActions([
-                \Filament\Actions\ExportAction::make()
-                    ->exporter(\App\Filament\Exports\PaymentAllocationExporter::class),
+                ExportAction::make()
+                    ->exporter(PaymentAllocationExporter::class),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make(),
                     ExportBulkAction::make()
-                        ->exporter(\App\Filament\Exports\PaymentAllocationExporter::class),
+                        ->exporter(PaymentAllocationExporter::class),
                 ]),
             ]);
     }

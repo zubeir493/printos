@@ -3,14 +3,6 @@
 namespace App\Filament\Resources\PurchaseOrders\RelationManagers;
 
 use App\Filament\Support\PanelAccess;
-use Filament\Actions\AssociateAction;
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\CreateAction;
-use Filament\Actions\DeleteAction;
-use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\DissociateAction;
-use Filament\Actions\DissociateBulkAction;
-use Filament\Actions\EditAction;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
@@ -51,16 +43,17 @@ class GoodsReceiptsRelationManager extends RelationManager
                     ->sortable(),
                 TextColumn::make('status')
                     ->badge()
-                    ->color(fn(string $state): string => match ($state) {
+                    ->color(fn (string $state): string => match ($state) {
                         'draft' => 'gray',
                         'posted' => 'success',
                         'cancelled' => 'danger',
                         default => 'primary',
-                    })
+                    }),
             ])
             ->filters([
                 //
             ])
+            ->defaultSort('receipt_date', 'desc')
             ->headerActions([
                 //
             ])

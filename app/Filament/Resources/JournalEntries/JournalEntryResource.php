@@ -2,13 +2,12 @@
 
 namespace App\Filament\Resources\JournalEntries;
 
-use App\Filament\Support\PanelAccess;
 use App\Filament\Resources\JournalEntries\Pages\CreateJournalEntry;
 use App\Filament\Resources\JournalEntries\Pages\ListJournalEntries;
 use App\Filament\Resources\JournalEntries\Pages\ViewJournalEntry;
 use App\Filament\Resources\JournalEntries\Schemas\JournalEntryForm;
-use App\Filament\Resources\JournalEntries\Schemas\JournalEntryInfolist;
 use App\Filament\Resources\JournalEntries\Tables\JournalEntriesTable;
+use App\Filament\Support\PanelAccess;
 use App\Models\JournalEntry;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -22,6 +21,8 @@ class JournalEntryResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCurrencyPound;
 
+    protected static ?int $navigationSort = 230;
+
     public static function form(Schema $schema): Schema
     {
         return JournalEntryForm::configure($schema);
@@ -32,12 +33,10 @@ class JournalEntryResource extends Resource
         return PanelAccess::canAccessFinanceSection();
     }
 
-
-
     public static function table(Table $table): Table
     {
         return JournalEntriesTable::configure($table)
-            ->recordUrl(fn($record) => static::getUrl('view', ['record' => $record]));
+            ->recordUrl(fn ($record) => static::getUrl('view', ['record' => $record]));
     }
 
     public static function getRelations(): array

@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Invoices\Tables;
 
 use App\Services\InvoiceGeneratorService;
 use Filament\Actions\Action as ActionsAction;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup as ActionsBulkActionGroup;
 use Filament\Actions\DeleteBulkAction as ActionsDeleteBulkAction;
 use Filament\Forms\Components\Textarea;
@@ -91,83 +92,86 @@ class InvoicesTable
                     ->query(fn ($query) => $query->where('status', '!=', 'paid'))
                     ->toggle(),
             ])
+            ->defaultSort('due_date', 'desc')
             ->actions([
+                ActionGroup::make([
 
-                ActionsAction::make('download')
-                    ->label('Download')
-                    ->icon('heroicon-o-arrow-down-tray')
-                    ->url(function ($record) {
-                        $invoiceService = app(InvoiceGeneratorService::class);
-
-                        return $invoiceService->getInvoicePath($record->filename);
-                    })
-                    ->openUrlInNewTab(),
-
-                ActionsAction::make('email')
-                    ->label('Email Invoice')
-                    ->icon('heroicon-o-envelope')
-                    ->color('primary')
-                    ->form([
-                        TextInput::make('email')
-                            ->label('Email Address')
-                            ->email()
-                            ->required()
-                            ->default(fn ($record) => $record->partner?->email ?? $record->email_recipient)
-                            ->placeholder('Enter email address'),
-                        Textarea::make('message')
-                            ->label('Message (Optional)')
-                            ->placeholder('Add a custom message...')
-                            ->rows(3),
-                    ])
-                    ->action(function (array $data, $record) {
-                        try {
+                    ActionsAction::make('download')
+                        ->label('Download')
+                        ->icon('heroicon-o-arrow-down-tray')
+                        ->url(function ($record) {
                             $invoiceService = app(InvoiceGeneratorService::class);
-                            $sent = $invoiceService->sendInvoiceEmail(
-                                [
-                                    'filename' => $record->filename,
-                                    'path' => $record->file_path,
-                                    'invoice_data' => [
-                                        'invoice_number' => $record->invoice_number,
-                                        'invoice_date' => $record->invoice_date?->format('Y-m-d'),
-                                        'partner' => $record->partner,
-                                        'order' => (object) ['partner' => $record->partner],
-                                        'due_date' => $record->due_date?->format('Y-m-d'),
-                                        'total_amount' => $record->total_amount,
-                                        'balance_due' => $record->balance_due,
-                                        'message' => $data['message'] ?? null,
-                                        'company_info' => config('invoice.company', [
-                                            'name' => config('app.name', 'PrintOS'),
-                                        ]),
-                                    ],
-                                ],
-                                $data['email']
-                            );
 
-                            if ($sent) {
-                                $record->update([
-                                    'emailed_at' => now(),
-                                    'email_recipient' => $data['email'],
-                                ]);
-                                Notification::make()
-                                    ->title('Invoice Sent')
-                                    ->body('Invoice sent to '.$data['email'])
-                                    ->success()
-                                    ->send();
-                            } else {
+                            return $invoiceService->getInvoicePath($record->filename);
+                        })
+                        ->openUrlInNewTab(),
+
+                    ActionsAction::make('email')
+                        ->label('Email Invoice')
+                        ->icon('heroicon-o-envelope')
+                        ->color('primary')
+                        ->form([
+                            TextInput::make('email')
+                                ->label('Email Address')
+                                ->email()
+                                ->required()
+                                ->default(fn ($record) => $record->partner?->email ?? $record->email_recipient)
+                                ->placeholder('Enter email address'),
+                            Textarea::make('message')
+                                ->label('Message (Optional)')
+                                ->placeholder('Add a custom message...')
+                                ->rows(3),
+                        ])
+                        ->action(function (array $data, $record) {
+                            try {
+                                $invoiceService = app(InvoiceGeneratorService::class);
+                                $sent = $invoiceService->sendInvoiceEmail(
+                                    [
+                                        'filename' => $record->filename,
+                                        'path' => $record->file_path,
+                                        'invoice_data' => [
+                                            'invoice_number' => $record->invoice_number,
+                                            'invoice_date' => $record->invoice_date?->format('Y-m-d'),
+                                            'partner' => $record->partner,
+                                            'order' => (object) ['partner' => $record->partner],
+                                            'due_date' => $record->due_date?->format('Y-m-d'),
+                                            'total_amount' => $record->total_amount,
+                                            'balance_due' => $record->balance_due,
+                                            'message' => $data['message'] ?? null,
+                                            'company_info' => config('invoice.company', [
+                                                'name' => config('app.name', 'PrintOS'),
+                                            ]),
+                                        ],
+                                    ],
+                                    $data['email']
+                                );
+
+                                if ($sent) {
+                                    $record->update([
+                                        'emailed_at' => now(),
+                                        'email_recipient' => $data['email'],
+                                    ]);
+                                    Notification::make()
+                                        ->title('Invoice Sent')
+                                        ->body('Invoice sent to '.$data['email'])
+                                        ->success()
+                                        ->send();
+                                } else {
+                                    Notification::make()
+                                        ->title('Email Failed')
+                                        ->body('Failed to send invoice')
+                                        ->danger()
+                                        ->send();
+                                }
+                            } catch (\Exception $e) {
                                 Notification::make()
                                     ->title('Email Failed')
-                                    ->body('Failed to send invoice')
+                                    ->body($e->getMessage())
                                     ->danger()
                                     ->send();
                             }
-                        } catch (\Exception $e) {
-                            Notification::make()
-                                ->title('Email Failed')
-                                ->body($e->getMessage())
-                                ->danger()
-                                ->send();
-                        }
-                    }),
+                        }),
+                ]),
             ])
             ->bulkActions([
                 ActionsBulkActionGroup::make([

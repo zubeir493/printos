@@ -11,7 +11,7 @@ class UnallocatedPaymentsTable extends BaseWidget
 {
     protected static ?int $sort = 3;
 
-    protected int | string | array $columnSpan = 'full';
+    protected int|string|array $columnSpan = 'full';
 
     protected static ?string $heading = 'Unallocated Payments';
 
@@ -48,6 +48,7 @@ class UnallocatedPaymentsTable extends BaseWidget
                     ->alignEnd()
                     ->formatStateUsing(fn ($state) => number_format((float) $state, 2))
                     ->color('warning'),
-            ]);
+            ])
+            ->defaultSort('payment_date', 'desc');
     }
 }

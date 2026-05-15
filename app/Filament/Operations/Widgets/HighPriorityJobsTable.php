@@ -39,6 +39,7 @@ class HighPriorityJobsTable extends BaseWidget
                     ->label('Value')
                     ->alignEnd()
                     ->formatStateUsing(fn ($state) => number_format((float) $state, 2)),
-            ]);
+            ])
+            ->defaultSort('submission_date', 'desc');
     }
 }

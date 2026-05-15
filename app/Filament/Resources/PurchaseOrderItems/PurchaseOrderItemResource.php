@@ -19,6 +19,8 @@ class PurchaseOrderItemResource extends Resource
 
     protected static ?string $navigationLabel = 'Items';
 
+    protected static ?int $navigationSort = 190;
+
     protected static ?string $navigationParentItem = 'Purchase Orders';
 
     public static function canCreate(): bool

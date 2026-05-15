@@ -2,9 +2,11 @@
 
 namespace App\Filament\Resources\JobOrders\RelationManagers;
 
+use App\Enums\PaymentTransactionType;
 use App\Filament\Support\PanelAccess;
 use App\Models\Bank;
 use App\Models\Payment;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
@@ -104,15 +106,15 @@ class PaymentsRelationManager extends RelationManager
                     ->label('Method')
                     ->badge()
                     ->color(fn ($state) => match ($state) {
-                        'cash'   => 'success',
-                        'bank'   => 'info',
+                        'cash' => 'success',
+                        'bank' => 'info',
                         'cheque' => 'warning',
-                        default  => 'gray',
+                        default => 'gray',
                     })
                     ->formatStateUsing(fn ($state) => match ($state) {
-                        'bank'   => 'Bank Transfer',
+                        'bank' => 'Bank Transfer',
                         'cheque' => 'Cheque',
-                        default  => ucfirst($state ?? ''),
+                        default => ucfirst($state ?? ''),
                     }),
                 TextColumn::make('payment.reference')
                     ->label('Reference')
@@ -151,25 +153,28 @@ class PaymentsRelationManager extends RelationManager
                             $jobOrder = $this->getOwnerRecord();
 
                             $payment = Payment::create([
-                                'partner_id'       => $jobOrder->partner_id,
-                                'amount'           => $data['allocated_amount'],
-                                'transaction_type' => \App\Enums\PaymentTransactionType::CUSTOMER_RECEIPT->value,
-                                'method'           => $data['method'],
-                                'bank_id'          => $data['bank_id'] ?? null,
-                                'reference'        => $data['reference'] ?? null,
-                                'payment_date'     => $data['payment_date'],
+                                'partner_id' => $jobOrder->partner_id,
+                                'amount' => $data['allocated_amount'],
+                                'transaction_type' => PaymentTransactionType::CUSTOMER_RECEIPT->value,
+                                'method' => $data['method'],
+                                'bank_id' => $data['bank_id'] ?? null,
+                                'reference' => $data['reference'] ?? null,
+                                'payment_date' => $data['payment_date'],
                             ]);
 
                             return $jobOrder->paymentAllocations()->create([
-                                'payment_id'       => $payment->id,
+                                'payment_id' => $payment->id,
                                 'allocated_amount' => $data['allocated_amount'],
                             ]);
                         });
                     }),
             ])
+            ->defaultSort('payment.payment_date', 'desc')
             ->recordActions([
-                EditAction::make(),
-                DeleteAction::make(),
+                ActionGroup::make([
+                    EditAction::make(),
+                    DeleteAction::make(),
+                ]),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

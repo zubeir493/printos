@@ -7,26 +7,25 @@ use App\Models\Account;
 use App\Services\Accounting\FinancialReportService;
 use BackedEnum;
 use Filament\Actions\ExportAction;
+use Filament\Forms;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Contracts\HasForms;
 use Filament\Pages\Page;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
-use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use UnitEnum;
 
-use Filament\Forms;
-use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Contracts\HasForms;
-use Filament\Schemas\Components\Grid;
-use Filament\Schemas\Schema;
-
-class TrialBalanceReport extends Page implements HasTable, HasForms
+class TrialBalanceReport extends Page implements HasForms, HasTable
 {
-    use InteractsWithTable, Forms\Concerns\InteractsWithForms;
+    use Forms\Concerns\InteractsWithForms, InteractsWithTable;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedScale;
 
@@ -37,9 +36,9 @@ class TrialBalanceReport extends Page implements HasTable, HasForms
 
     protected static ?string $navigationLabel = 'Trial Balance';
 
-    protected static string|UnitEnum|null $navigationGroup = 'Financial Reports';
+    protected static ?int $navigationSort = 310;
 
-    protected static ?int $navigationSort = 1;
+    protected static string|UnitEnum|null $navigationGroup = 'Financial Reports';
 
     protected string $view = 'filament.finance.pages.trial-balance-report';
 
@@ -57,6 +56,7 @@ class TrialBalanceReport extends Page implements HasTable, HasForms
     {
         return app(FinancialReportService::class)->trialBalance($this->startDate, $this->endDate);
     }
+
     public function form(Schema $form): Schema
     {
         return $form
@@ -120,8 +120,8 @@ class TrialBalanceReport extends Page implements HasTable, HasForms
                 $join->on('journal_entries.id', '=', 'journal_items.journal_entry_id')
                     ->where('journal_entries.status', 'posted');
             })
-            ->when($this->startDate, fn($query) => $query->whereDate('journal_entries.date', '>=', $this->startDate))
-            ->when($this->endDate, fn($query) => $query->whereDate('journal_entries.date', '<=', $this->endDate))
+            ->when($this->startDate, fn ($query) => $query->whereDate('journal_entries.date', '>=', $this->startDate))
+            ->when($this->endDate, fn ($query) => $query->whereDate('journal_entries.date', '<=', $this->endDate))
             ->selectRaw('COALESCE(SUM(journal_items.debit), 0) as debit_total')
             ->selectRaw('COALESCE(SUM(journal_items.credit), 0) as credit_total')
             ->selectRaw('COALESCE(SUM(journal_items.debit), 0) - COALESCE(SUM(journal_items.credit), 0) as balance')

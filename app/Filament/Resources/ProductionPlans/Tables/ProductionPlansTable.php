@@ -5,6 +5,7 @@ namespace App\Filament\Resources\ProductionPlans\Tables;
 use App\Filament\Resources\ProductionReports\ProductionReportResource;
 use App\Models\ProductionReport;
 use Filament\Actions\Action as ActionsAction;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\EditAction as ActionsEditAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -38,44 +39,49 @@ class ProductionPlansTable
                         'approved' => 'Approved',
                     ]),
             ])
+            ->defaultSort('due_date', 'desc')
             ->actions([
-                ActionsEditAction::make()
-                    ->visible(fn ($record) => $record->status === 'draft'),
-                ActionsAction::make('report_week')
-                    ->label('Report Week')
-                    ->icon('heroicon-o-clipboard-document-check')
-                    ->color('success')
-                    ->visible(fn ($record) => $record->status === 'approved' && ! ProductionReport::where('production_plan_id', $record->id)->exists())
-                    ->action(function ($record) {
-                        $report = ProductionReport::create([
-                            'production_plan_id' => $record->id,
-                            'status' => 'draft',
-                        ]);
-
-                        foreach ($record->machines as $planMachine) {
-                            $reportMachine = $report->machines()->create([
-                                'production_plan_machine_id' => $planMachine->id,
+                ActionGroup::make([
+                    ActionsEditAction::make()
+                        ->visible(fn ($record) => $record->status === 'draft'),
+                    ActionsAction::make('report_week')
+                        ->label('Report Week')
+                        ->icon('heroicon-o-clipboard-document-check')
+                        ->color('success')
+                        ->visible(fn ($record) => $record->status === 'approved' && ! ProductionReport::where('production_plan_id', $record->id)->exists())
+                        ->action(function ($record) {
+                            $report = ProductionReport::create([
+                                'production_plan_id' => $record->id,
+                                'status' => 'draft',
                             ]);
 
-                            foreach ($planMachine->items as $item) {
-                                $reportMachine->items()->create([
-                                    'production_plan_item_id' => $item->id,
-                                    'date' => now(),
-                                    'actual_quantity' => $item->planned_quantity,
-                                    'plates_used' => $item->planned_plates,
-                                    'rounds' => $item->planned_rounds,
+                            foreach ($record->machines as $planMachine) {
+                                $reportMachine = $report->machines()->create([
+                                    'production_plan_machine_id' => $planMachine->id,
                                 ]);
-                            }
-                        }
 
-                        return new RedirectResponse(
-                            ProductionReportResource::getUrl('edit', ['record' => $report])
-                        );
-                    }),
+                                foreach ($planMachine->items as $item) {
+                                    $reportMachine->items()->create([
+                                        'production_plan_item_id' => $item->id,
+                                        'date' => now(),
+                                        'actual_quantity' => $item->planned_quantity,
+                                        'plates_used' => $item->planned_plates,
+                                        'rounds' => $item->planned_rounds,
+                                    ]);
+                                }
+                            }
+
+                            return new RedirectResponse(
+                                ProductionReportResource::getUrl('edit', ['record' => $report])
+                            );
+                        }),
+                ]),
             ])
             ->recordActions([
-                ActionsEditAction::make()
-                    ->visible(fn ($record) => $record->status === 'draft'),
+                ActionGroup::make([
+                    ActionsEditAction::make()
+                        ->visible(fn ($record) => $record->status === 'draft'),
+                ]),
             ])
             ->bulkActions([]);
     }

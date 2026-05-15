@@ -24,6 +24,8 @@ class StockOverview extends Page implements HasForms, HasTable
 {
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedPresentationChartLine;
 
+    protected static ?int $navigationSort = 65;
+
     protected string $view = 'filament.pages.stock-overview';
 
     use Forms\Concerns\InteractsWithForms;

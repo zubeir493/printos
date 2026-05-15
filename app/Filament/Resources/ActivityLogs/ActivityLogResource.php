@@ -20,6 +20,8 @@ class ActivityLogResource extends Resource
 
     protected static ?string $navigationLabel = 'Activity Log';
 
+    protected static ?int $navigationSort = 920;
+
     protected static ?string $slug = 'activity-logs';
 
     public static function canCreate(): bool

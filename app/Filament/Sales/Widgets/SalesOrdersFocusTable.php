@@ -44,6 +44,7 @@ class SalesOrdersFocusTable extends BaseWidget
                 Tables\Columns\TextColumn::make('status')
                     ->badge(),
             ])
+            ->defaultSort('due_date', 'desc')
             ->paginated(false);
     }
 }

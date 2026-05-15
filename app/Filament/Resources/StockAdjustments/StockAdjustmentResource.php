@@ -2,12 +2,13 @@
 
 namespace App\Filament\Resources\StockAdjustments;
 
-use App\Filament\Support\PanelAccess;
 use App\Filament\Resources\StockAdjustments\Pages\CreateStockAdjustment;
 use App\Filament\Resources\StockAdjustments\Pages\EditStockAdjustment;
 use App\Filament\Resources\StockAdjustments\Pages\ListStockAdjustments;
+use App\Filament\Resources\StockAdjustments\Pages\ViewStockAdjustment;
 use App\Filament\Resources\StockAdjustments\Schemas\StockAdjustmentForm;
 use App\Filament\Resources\StockAdjustments\Tables\StockAdjustmentsTable;
+use App\Filament\Support\PanelAccess;
 use App\Models\StockAdjustment;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -21,9 +22,12 @@ class StockAdjustmentResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedPencilSquare;
 
+    protected static ?int $navigationSort = 110;
+
     public static function getNavigationBadge(): ?string
     {
         $count = static::getModel()::whereNotIn('status', ['posted', 'cancelled'])->count();
+
         return $count > 0 ? (string) $count : null;
     }
 
@@ -37,12 +41,10 @@ class StockAdjustmentResource extends Resource
         return PanelAccess::canAccessWarehouseSection();
     }
 
-
-
     public static function table(Table $table): Table
     {
         return StockAdjustmentsTable::configure($table)
-            ->recordUrl(fn($record) => static::getUrl('view', ['record' => $record]));
+            ->recordUrl(fn ($record) => static::getUrl('view', ['record' => $record]));
     }
 
     public static function getRelations(): array
@@ -57,7 +59,7 @@ class StockAdjustmentResource extends Resource
         return [
             'index' => ListStockAdjustments::route('/'),
             'create' => CreateStockAdjustment::route('/create'),
-            'view' => \App\Filament\Resources\StockAdjustments\Pages\ViewStockAdjustment::route('/{record}'),
+            'view' => ViewStockAdjustment::route('/{record}'),
             'edit' => EditStockAdjustment::route('/{record}/edit'),
         ];
     }

@@ -11,7 +11,7 @@ class SalaryRevisionHistoryTable extends BaseWidget
 {
     protected static ?int $sort = 3;
 
-    protected int | string | array $columnSpan = 1;
+    protected int|string|array $columnSpan = 1;
 
     protected static ?string $heading = 'Salary Revision History';
 
@@ -38,6 +38,7 @@ class SalaryRevisionHistoryTable extends BaseWidget
                     ->label('Reason')
                     ->wrap(),
             ])
+            ->defaultSort('effective_date', 'desc')
             ->paginated(false);
     }
 }

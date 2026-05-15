@@ -3,18 +3,25 @@
 namespace App\Filament\Resources\JobOrderTasks\RelationManagers;
 
 use App\Support\PrivateStorage;
-use Filament\Actions\AssociateAction;
+use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\DissociateAction;
-use Filament\Actions\DissociateBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\BaseFileUpload;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\Toggle;
 use Filament\Resources\RelationManagers\RelationManager;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Filament\Support\Enums\IconSize;
+use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Auth;
 
@@ -26,14 +33,14 @@ class ArtworksRelationManager extends RelationManager
     {
         return $schema
             ->components([
-                \Filament\Schemas\Components\Section::make('Artwork Details')
+                Section::make('Artwork Details')
                     ->description('Upload and manage creative assets for this job.')
                     ->schema([
                         FileUpload::make('filename')
                             ->label('Artwork File')
                             ->disk('s3')
                             ->visibility('private')
-                            ->getUploadedFileUsing(fn (\Filament\Forms\Components\BaseFileUpload $component, string $file, string | array | null $storedFileNames): ?array => PrivateStorage::uploadedFileInfo($component, $file, $storedFileNames))
+                            ->getUploadedFileUsing(fn (BaseFileUpload $component, string $file, string|array|null $storedFileNames): ?array => PrivateStorage::uploadedFileInfo($component, $file, $storedFileNames))
                             ->getOpenableFileUrlUsing(fn (string $file): ?string => PrivateStorage::url($file))
                             ->getDownloadableFileUrlUsing(fn (string $file): ?string => PrivateStorage::downloadUrl($file))
                             ->directory('artworks')
@@ -43,17 +50,17 @@ class ArtworksRelationManager extends RelationManager
                             ->previewable(false)
                             ->columnSpanFull()
                             ->required(),
-                        \Filament\Schemas\Components\Grid::make(2)
+                        Grid::make(2)
                             ->schema([
-                                \Filament\Forms\Components\Toggle::make('is_approved')
+                                Toggle::make('is_approved')
                                     ->label('Approved for Production')
                                     ->default(false)
                                     ->onColor('success')
                                     ->offColor('danger'),
-                                \Filament\Forms\Components\Hidden::make('uploaded_by')
-                                    ->default(fn() => Auth::id()),
-                            ])
-                    ])
+                                Hidden::make('uploaded_by')
+                                    ->default(fn () => Auth::id()),
+                            ]),
+                    ]),
             ]);
     }
 
@@ -62,7 +69,7 @@ class ArtworksRelationManager extends RelationManager
         return $table
             ->recordTitleAttribute('filename')
             ->columns([
-                \Filament\Tables\Columns\IconColumn::make('type')
+                IconColumn::make('type')
                     ->label('Type')
                     ->getStateUsing(fn ($record) => strtolower(pathinfo($record->filename, PATHINFO_EXTENSION)))
                     ->icon(fn ($state) => match ($state) {
@@ -79,27 +86,27 @@ class ArtworksRelationManager extends RelationManager
                         'zip', 'rar' => 'info',
                         default => 'gray',
                     })
-                    ->size(\Filament\Support\Enums\IconSize::Large),
-                \Filament\Tables\Columns\TextColumn::make('filename')
+                    ->size(IconSize::Large),
+                TextColumn::make('filename')
                     ->label('File Name')
                     ->formatStateUsing(fn ($state) => basename($state))
-                    ->description(fn($record) => $record->uploader?->name ? "Uploaded by {$record->uploader->name}" : 'Unknown Uploader')
+                    ->description(fn ($record) => $record->uploader?->name ? "Uploaded by {$record->uploader->name}" : 'Unknown Uploader')
                     ->searchable(),
-                \Filament\Tables\Columns\IconColumn::make('is_approved')
+                IconColumn::make('is_approved')
                     ->label('Status')
                     ->boolean()
                     ->trueIcon('heroicon-o-check-circle')
                     ->falseIcon('heroicon-o-clock')
                     ->trueColor('success')
                     ->falseColor('warning'),
-                \Filament\Tables\Columns\TextColumn::make('created_at')
+                TextColumn::make('created_at')
                     ->label('Date')
                     ->dateTime()
                     ->since()
                     ->color('gray'),
             ])
             ->filters([
-                \Filament\Tables\Filters\TernaryFilter::make('is_approved')
+                TernaryFilter::make('is_approved')
                     ->label('Approval Status'),
             ])
             ->headerActions([
@@ -108,14 +115,16 @@ class ArtworksRelationManager extends RelationManager
                     ->icon('heroicon-m-plus'),
             ])
             ->recordActions([
-                EditAction::make(),
-                \Filament\Actions\Action::make('approve')
-                    ->label('Approve')
-                    ->icon('heroicon-m-check-badge')
-                    ->color('success')
-                    ->hidden(fn($record) => $record->is_approved)
-                    ->action(fn($record) => $record->update(['is_approved' => true])),
-                DeleteAction::make(),
+                ActionGroup::make([
+                    EditAction::make(),
+                    Action::make('approve')
+                        ->label('Approve')
+                        ->icon('heroicon-m-check-badge')
+                        ->color('success')
+                        ->hidden(fn ($record) => $record->is_approved)
+                        ->action(fn ($record) => $record->update(['is_approved' => true])),
+                    DeleteAction::make(),
+                ]),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

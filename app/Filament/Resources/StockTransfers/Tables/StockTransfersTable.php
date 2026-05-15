@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\StockTransfers\Tables;
 
+use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -38,8 +39,11 @@ class StockTransfersTable
             ->filters([
                 //
             ])
+            ->defaultSort('transfer_date', 'desc')
             ->recordActions([
-                EditAction::make(),
+                ActionGroup::make([
+                    EditAction::make(),
+                ]),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

@@ -19,6 +19,8 @@ class PaymentAllocationResource extends Resource
 
     protected static ?string $navigationLabel = 'Allocations';
 
+    protected static ?int $navigationSort = 220;
+
     public static function canCreate(): bool
     {
         return false;

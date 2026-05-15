@@ -67,6 +67,7 @@ class PaymentsTable
                         'check' => 'Check',
                     ]),
             ])
+            ->defaultSort('payment_date', 'desc')
             ->actions([
             ])
             ->bulkActions([

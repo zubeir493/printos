@@ -25,6 +25,8 @@ class JobOrderTaskResource extends Resource
 
     protected static ?string $navigationLabel = 'Tasks';
 
+    protected static ?int $navigationSort = 30;
+
     protected static ?string $navigationParentItem = 'Job Orders';
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBriefcase;

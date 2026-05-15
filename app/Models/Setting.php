@@ -70,7 +70,7 @@ class Setting extends Model
             'tax_configuration' => [
                 ['name' => 'VAT', 'rate' => 0.15],
             ],
-            'invoice_terms' => "1. Payment is due within 30 days of invoice date.\n2. Late payments are subject to a 1.5% monthly interest charge.\n3. All prices are inclusive of applicable taxes unless otherwise stated.\n4. Goods remain the property of the company until paid in full.\n5. Please quote invoice number when making payment.",
+            'invoice_terms' => "1. Payment is due within 30 days of invoice date.\n2. All prices are inclusive of applicable taxes unless otherwise stated.\n3. Goods remain the property of the company until paid in full.\n4. Please quote invoice number when making payment.",
             'invoice_due_days' => 30,
             'invoice_prefix' => 'INV',
             'receipt_prefix' => 'RCP',

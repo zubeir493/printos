@@ -5,26 +5,29 @@ namespace App\Filament\Resources\EmailLogs;
 use App\Filament\Resources\EmailLogs\Pages\ManageEmailLogs;
 use App\Models\EmailLog;
 use BackedEnum;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\DateTimePicker;
-use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
-
-
+use Illuminate\Database\Eloquent\Builder;
 
 class EmailLogResource extends Resource
 {
-    
     protected static ?string $model = EmailLog::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedEnvelope;
 
     protected static ?string $navigationLabel = 'Emails';
+
+    protected static ?int $navigationSort = 910;
 
     protected static ?string $recordTitleAttribute = 'recipient_email';
 
@@ -95,27 +98,27 @@ class EmailLogResource extends Resource
                     ->sortable(),
             ])
             ->filters([
-                \Filament\Tables\Filters\SelectFilter::make('sent_by')
+                SelectFilter::make('sent_by')
                     ->label('Sender')
                     ->relationship('sender', 'name')
                     ->searchable()
                     ->preload(),
-                \Filament\Tables\Filters\Filter::make('sent_at')
+                Filter::make('sent_at')
                     ->form([
-                        \Filament\Forms\Components\DatePicker::make('sent_from'),
-                        \Filament\Forms\Components\DatePicker::make('sent_until'),
+                        DatePicker::make('sent_from'),
+                        DatePicker::make('sent_until'),
                     ])
-                    ->query(function (\Illuminate\Database\Eloquent\Builder $query, array $data): \Illuminate\Database\Eloquent\Builder {
+                    ->query(function (Builder $query, array $data): Builder {
                         return $query
                             ->when(
                                 $data['sent_from'],
-                                fn(\Illuminate\Database\Eloquent\Builder $query, $date): \Illuminate\Database\Eloquent\Builder => $query->whereDate('sent_at', '>=', $date),
+                                fn (Builder $query, $date): Builder => $query->whereDate('sent_at', '>=', $date),
                             )
                             ->when(
                                 $data['sent_until'],
-                                fn(\Illuminate\Database\Eloquent\Builder $query, $date): \Illuminate\Database\Eloquent\Builder => $query->whereDate('sent_at', '<=', $date),
+                                fn (Builder $query, $date): Builder => $query->whereDate('sent_at', '<=', $date),
                             );
-                    })
+                    }),
             ])
             ->recordActions([])
             ->toolbarActions([]);

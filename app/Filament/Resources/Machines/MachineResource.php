@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Machines;
 use App\Filament\Resources\Machines\Pages\CreateMachine;
 use App\Filament\Resources\Machines\Pages\EditMachine;
 use App\Filament\Resources\Machines\Pages\ListMachines;
+use App\Filament\Resources\Machines\Pages\ViewMachine;
 use App\Filament\Resources\Machines\Schemas\MachineForm;
 use App\Filament\Resources\Machines\Tables\MachinesTable;
 use App\Models\Machine;
@@ -20,17 +21,17 @@ class MachineResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCubeTransparent;
 
+    protected static ?int $navigationSort = 280;
+
     public static function form(Schema $schema): Schema
     {
         return MachineForm::configure($schema);
     }
 
-
-
     public static function table(Table $table): Table
     {
         return MachinesTable::configure($table)
-            ->recordUrl(fn($record) => static::getUrl('view', ['record' => $record]));
+            ->recordUrl(fn ($record) => static::getUrl('view', ['record' => $record]));
     }
 
     public static function getRelations(): array
@@ -45,7 +46,7 @@ class MachineResource extends Resource
         return [
             'index' => ListMachines::route('/'),
             'create' => CreateMachine::route('/create'),
-            'view' => \App\Filament\Resources\Machines\Pages\ViewMachine::route('/{record}'),
+            'view' => ViewMachine::route('/{record}'),
             'edit' => EditMachine::route('/{record}/edit'),
         ];
     }

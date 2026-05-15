@@ -45,6 +45,12 @@
     }
 }
 
+@media screen and (max-width: 760px) {
+    .fi-global-search-ctn {
+        display: none !important;
+    }
+}
+
 .fi-sidebar {
     width: 15rem !important;
     background: var(--color-gray-100);
@@ -97,7 +103,9 @@ nav.fi-sidebar-nav::-webkit-scrollbar {
     align-items: center;
     display: flex;
     margin-inline: auto;
-    width: 400px;
+    max-width: 400px;
+    width: 100%;
+    padding-left: calc(var(--spacing) * 4);
     transform: translateX(-1.5%);
 }
 
@@ -206,7 +214,7 @@ nav.fi-sidebar-nav::-webkit-scrollbar {
 
 
 .fi-user-menu-trigger-name {
-    font-family: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
+    font-family: var(--font-family);
     font-size: 0.8rem;
     font-weight: 600;
     color: var(--color-gray-200);
@@ -271,4 +279,11 @@ h1.fi-simple-header-heading {
 .planvactualcolumn>.fi-input-wrp-suffix.fi-input-wrp-suffix-has-label{
     border: none !important;
     padding-inline-start: 0 !important;
+}
+
+/* Partenr form align toggles to bottom */
+.fi-grid-col>.fi-sc-component:has(.alignbottomtoggles){
+    display: flex;
+    align-items: end;
+    padding-bottom: 5px;
 }

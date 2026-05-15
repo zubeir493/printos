@@ -8,7 +8,13 @@ use App\Models\JournalItem;
 use BackedEnum;
 use Carbon\Carbon;
 use Filament\Actions\ExportAction;
+use Filament\Forms;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Contracts\HasForms;
 use Filament\Pages\Page;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\TextColumn;
@@ -19,24 +25,17 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use UnitEnum;
 
-use Filament\Forms;
-use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Contracts\HasForms;
-use Filament\Schemas\Components\Grid;
-use Filament\Schemas\Schema;
-
-class AccountStatementReport extends Page implements HasTable, HasForms
+class AccountStatementReport extends Page implements HasForms, HasTable
 {
-    use InteractsWithTable, Forms\Concerns\InteractsWithForms;
+    use Forms\Concerns\InteractsWithForms, InteractsWithTable;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedDocumentText;
 
     protected static ?string $navigationLabel = 'Account Statements';
 
-    protected static string|UnitEnum|null $navigationGroup = 'Financial Reports';
+    protected static ?int $navigationSort = 330;
 
-    protected static ?int $navigationSort = 4;
+    protected static string|UnitEnum|null $navigationGroup = 'Financial Reports';
 
     protected string $view = 'filament.finance.pages.account-statement-report';
 
@@ -68,7 +67,7 @@ class AccountStatementReport extends Page implements HasTable, HasForms
             ->join('journal_entries', 'journal_entries.id', '=', 'journal_items.journal_entry_id')
             ->where('journal_entries.status', 'posted')
             ->where('journal_items.account_id', $this->accountId)
-            ->when($this->startDate, fn($query) => $query->whereDate('journal_entries.date', '<', Carbon::parse($this->startDate)->toDateString()))
+            ->when($this->startDate, fn ($query) => $query->whereDate('journal_entries.date', '<', Carbon::parse($this->startDate)->toDateString()))
             ->sum(DB::raw('journal_items.debit - journal_items.credit'));
     }
 
@@ -81,7 +80,7 @@ class AccountStatementReport extends Page implements HasTable, HasForms
             'opening_balance' => $openingBalance,
             'total_debit' => (float) $statementRows->sum('debit'),
             'total_credit' => (float) $statementRows->sum('credit'),
-            'closing_balance' => $openingBalance + (float) $statementRows->sum(fn($row) => $row->debit - $row->credit),
+            'closing_balance' => $openingBalance + (float) $statementRows->sum(fn ($row) => $row->debit - $row->credit),
         ];
     }
 
@@ -124,7 +123,7 @@ class AccountStatementReport extends Page implements HasTable, HasForms
                     ->suffix(' Birr')
                     ->sortable(),
             ])
-            ->defaultSort('entry_date')
+            ->defaultSort('entry_date', 'desc')
             ->headerActions([
                 ExportAction::make()
                     ->exporter(AccountStatementExporter::class),
@@ -141,18 +140,18 @@ class AccountStatementReport extends Page implements HasTable, HasForms
             ->join('journal_entries', 'journal_entries.id', '=', 'journal_items.journal_entry_id')
             ->where('journal_entries.status', 'posted')
             ->where('journal_items.account_id', $this->accountId)
-            ->when($this->startDate, fn($query) => $query->whereDate('journal_entries.date', '>=', Carbon::parse($this->startDate)->toDateString()))
-            ->when($this->endDate, fn($query) => $query->whereDate('journal_entries.date', '<=', Carbon::parse($this->endDate)->toDateString()))
+            ->when($this->startDate, fn ($query) => $query->whereDate('journal_entries.date', '>=', Carbon::parse($this->startDate)->toDateString()))
+            ->when($this->endDate, fn ($query) => $query->whereDate('journal_entries.date', '<=', Carbon::parse($this->endDate)->toDateString()))
             ->select('journal_items.*')
             ->selectRaw('journal_entries.date as entry_date')
             ->selectRaw('journal_entries.reference as entry_reference')
             ->selectRaw('journal_entries.narration as entry_narration')
-            ->selectRaw("
+            ->selectRaw('
                 SUM(journal_items.debit - journal_items.credit) OVER (
                     ORDER BY journal_entries.date, journal_entries.id, journal_items.id
                     ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
                 ) as running_balance
-            ")
+            ')
             ->orderBy('journal_entries.date')
             ->orderBy('journal_entries.id')
             ->orderBy('journal_items.id');

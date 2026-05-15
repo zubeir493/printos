@@ -5,6 +5,7 @@ namespace App\Filament\Resources\TextFiles\Tables;
 use App\Models\JobOrderTask;
 use App\Support\PrivateStorage;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Tables\Columns\TextColumn;
@@ -50,11 +51,13 @@ class TextFilesTable
                     ->preload(),
             ])
             ->recordActions([
-                Action::make('download')
-                    ->label('Download')
-                    ->icon('heroicon-m-arrow-down-tray')
-                    ->url(fn ($record): ?string => PrivateStorage::downloadUrl($record->filename, now()->addMinutes(60)))
-                    ->openUrlInNewTab(),
+                ActionGroup::make([
+                    Action::make('download')
+                        ->label('Download')
+                        ->icon('heroicon-m-arrow-down-tray')
+                        ->url(fn ($record): ?string => PrivateStorage::downloadUrl($record->filename, now()->addMinutes(60)))
+                        ->openUrlInNewTab(),
+                ]),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

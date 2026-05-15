@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Partners\RelationManagers;
 
+use Filament\Actions\ActionGroup;
 use Filament\Actions\AssociateAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
@@ -84,14 +85,17 @@ class JobOrdersRelationManager extends RelationManager
             ->filters([
                 //
             ])
+            ->defaultSort('submission_date', 'desc')
             ->headerActions([
                 CreateAction::make(),
                 AssociateAction::make(),
             ])
             ->recordActions([
-                EditAction::make(),
-                DissociateAction::make(),
-                DeleteAction::make(),
+                ActionGroup::make([
+                    EditAction::make(),
+                    DissociateAction::make(),
+                    DeleteAction::make(),
+                ]),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

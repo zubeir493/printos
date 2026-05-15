@@ -2,12 +2,16 @@
 
 namespace App\Filament\Resources\Partners\Tables;
 
+use App\Filament\Exports\PartnerExporter;
+use App\Filament\Support\PanelAccess;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
-use App\Filament\Support\PanelAccess;
-use Filament\Tables\Columns\IconColumn;
+use Filament\Actions\ExportAction;
+use Filament\Actions\ExportBulkAction;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 
 class PartnersTable
@@ -24,7 +28,10 @@ class PartnersTable
                 TextColumn::make('type')
                     ->badge()
                     ->getStateUsing(function ($record) {
-                        if ($record->is_customer && $record->is_supplier) return 'Both';
+                        if ($record->is_customer && $record->is_supplier) {
+                            return 'Both';
+                        }
+
                         return $record->is_customer ? 'Customer' : 'Supplier';
                     })
                     ->color(fn ($state) => match ($state) {
@@ -35,7 +42,7 @@ class PartnersTable
                     }),
             ])
             ->filters([
-                \Filament\Tables\Filters\SelectFilter::make('partner_type')
+                SelectFilter::make('partner_type')
                     ->label('Type')
                     ->options([
                         'supplier' => 'Supplier',
@@ -52,20 +59,22 @@ class PartnersTable
                     }),
             ])
             ->recordActions([
-                EditAction::make()
-                    ->visible(fn () => PanelAccess::canManagePartners()),
+                ActionGroup::make([
+                    EditAction::make()
+                        ->visible(fn () => PanelAccess::canManagePartners()),
+                ]),
             ])
             ->headerActions([
-                \Filament\Actions\ExportAction::make()
-                    ->exporter(\App\Filament\Exports\PartnerExporter::class)
+                ExportAction::make()
+                    ->exporter(PartnerExporter::class),
             ])
             ->bulkActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make()
                         ->visible(fn () => PanelAccess::canManagePartners()),
-                    \Filament\Actions\ExportBulkAction::make()
-                        ->exporter(\App\Filament\Exports\PartnerExporter::class)
-                        ->visible(fn () => PanelAccess::canManagePartners())
+                    ExportBulkAction::make()
+                        ->exporter(PartnerExporter::class)
+                        ->visible(fn () => PanelAccess::canManagePartners()),
                 ]),
             ]);
     }

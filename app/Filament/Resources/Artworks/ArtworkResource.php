@@ -19,7 +19,7 @@ class ArtworkResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedFolderArrowDown;
 
-    protected static ?int $navigationSort = 3;
+    protected static ?int $navigationSort = 140;
 
     public static function form(Schema $schema): Schema
     {

@@ -25,6 +25,8 @@ class PurchaseOrderResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedDocumentCurrencyPound;
 
+    protected static ?int $navigationSort = 180;
+
     public static function canCreate(): bool
     {
         return PanelAccess::canManagePurchaseOrders();

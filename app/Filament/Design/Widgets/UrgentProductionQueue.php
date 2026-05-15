@@ -4,6 +4,7 @@ namespace App\Filament\Design\Widgets;
 
 use App\Models\JobOrder;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget as BaseWidget;
@@ -35,10 +36,13 @@ class UrgentProductionQueue extends BaseWidget
                     ->date()
                     ->label('Submitted'),
             ])
+            ->defaultSort('submission_date', 'desc')
             ->actions([
-                Action::make('View')
-                    ->url(fn (JobOrder $record): string => '/admin/job-orders/'.$record->id)
-                    ->icon('heroicon-m-eye'),
+                ActionGroup::make([
+                    Action::make('View')
+                        ->url(fn (JobOrder $record): string => '/admin/job-orders/'.$record->id)
+                        ->icon('heroicon-m-eye'),
+                ]),
             ]);
     }
 }

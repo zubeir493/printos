@@ -3,6 +3,7 @@
 namespace App\Filament\Finance\Widgets;
 
 use App\Models\Payment;
+use App\Support\Money;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget as BaseWidget;
@@ -37,16 +38,16 @@ class UnallocatedPaymentsTable extends BaseWidget
                     ->date(),
                 Tables\Columns\TextColumn::make('amount')
                     ->alignEnd()
-                    ->formatStateUsing(fn ($state) => number_format((float) $state, 2)),
+                    ->formatStateUsing(fn ($state) => Money::format($state)),
                 Tables\Columns\TextColumn::make('allocated_total')
                     ->label('Allocated')
                     ->alignEnd()
-                    ->formatStateUsing(fn ($state) => number_format((float) $state, 2)),
+                    ->formatStateUsing(fn ($state) => Money::format($state)),
                 Tables\Columns\TextColumn::make('unallocated_balance')
                     ->label('Open Balance')
                     ->state(fn ($record) => (float) $record->amount - (float) $record->allocated_total)
                     ->alignEnd()
-                    ->formatStateUsing(fn ($state) => number_format((float) $state, 2))
+                    ->formatStateUsing(fn ($state) => Money::format($state))
                     ->color('warning'),
             ])
             ->defaultSort('payment_date', 'desc');

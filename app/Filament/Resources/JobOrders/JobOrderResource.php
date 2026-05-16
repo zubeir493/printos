@@ -13,6 +13,7 @@ use App\Filament\Resources\JobOrders\Tables\JobOrdersTable;
 use App\Filament\Support\PanelAccess;
 use App\Models\JobOrder;
 use App\Models\JobOrderTask;
+use App\Support\Money;
 use BackedEnum;
 use Filament\GlobalSearch\Actions\Action;
 use Filament\Resources\Resource;
@@ -112,7 +113,7 @@ class JobOrderResource extends Resource
         return [
             'Customer' => $record->partner?->name,
             'Status' => ucfirst((string) $record->status),
-            'Total' => number_format($record->total, 2).' Birr',
+            'Total' => Money::format($record->total),
         ];
     }
 

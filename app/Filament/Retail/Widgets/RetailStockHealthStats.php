@@ -4,6 +4,7 @@ namespace App\Filament\Retail\Widgets;
 
 use App\Models\InventoryBalance;
 use App\Models\SalesOrder;
+use App\Support\Money;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 
@@ -33,10 +34,10 @@ class RetailStockHealthStats extends BaseWidget
                 ->description('Cash orders not yet closed')
                 ->descriptionIcon('heroicon-m-clock')
                 ->color($unpaidRetailOrders > 0 ? 'warning' : 'success'),
-            Stat::make('Avg Ticket Size', number_format((float) SalesOrder::query()
+            Stat::make('Avg Ticket Size', Money::abbreviate(SalesOrder::query()
                 ->where('payment_mode', 'cash')
                 ->where('order_date', '>=', now()->subDays(30))
-                ->avg('total'), 2))
+                ->avg('total'), precision: 2))
                 ->description('Cash sales, last 30 days')
                 ->descriptionIcon('heroicon-m-chart-bar')
                 ->color('primary'),

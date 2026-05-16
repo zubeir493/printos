@@ -10,6 +10,8 @@ use Illuminate\Support\Number;
 
 class PayablesAgingExporter extends Exporter
 {
+    use RunsExportsSynchronously;
+
     protected static ?string $model = PurchaseOrder::class;
 
     public static function getColumns(): array
@@ -26,6 +28,6 @@ class PayablesAgingExporter extends Exporter
 
     public static function getCompletedNotificationBody(Export $export): string
     {
-        return 'Your payables aging export has completed and ' . Number::format($export->successful_rows) . ' ' . str('row')->plural($export->successful_rows) . ' exported.';
+        return 'Your payables aging export has completed and '.Number::format($export->successful_rows).' '.str('row')->plural($export->successful_rows).' exported.';
     }
 }

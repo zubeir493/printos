@@ -86,7 +86,7 @@ class InvoiceForm
                             ->schema([
                                 TextInput::make('subtotal')
                                     ->label('Subtotal')
-                                    ->prefix('ETB')
+                                    ->suffix('Birr')
                                     ->numeric()
                                     ->step(0.01)
                                     ->live(onBlur: true)
@@ -100,14 +100,14 @@ class InvoiceForm
 
                                 TextInput::make('tax_amount')
                                     ->label('Tax (15%)')
-                                    ->prefix('ETB')
+                                    ->suffix('Birr')
                                     ->numeric()
                                     ->step(0.01)
                                     ->readOnly(),
 
                                 TextInput::make('total_amount')
                                     ->label('Total')
-                                    ->prefix('ETB')
+                                    ->suffix('Birr')
                                     ->numeric()
                                     ->step(0.01)
                                     ->readOnly(),

@@ -9,7 +9,6 @@ use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ExportAction;
 use Filament\Actions\ExportBulkAction;
-use Filament\Tables\Columns\SelectColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -34,14 +33,14 @@ class PurchaseOrderItemsTable
                     ->label('Order Qty')
                     ->numeric()
                     ->sortable(),
-                SelectColumn::make('status')
-                    ->options([
-                        'pending' => 'Pending',
-                        'partially_received' => 'Partially Received',
-                        'received' => 'Received',
-                        'cancelled' => 'Cancelled',
-                    ])
-                    ->sortable()
+                TextColumn::make('status')
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'pending' => 'warning',
+                        'partially_received' => 'primary',
+                        'received' => 'success',
+                        'cancelled' => 'danger',
+                    })
                     ->searchable(),
             ])
             ->headerActions([

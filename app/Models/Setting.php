@@ -74,7 +74,7 @@ class Setting extends Model
             'invoice_due_days' => 30,
             'invoice_prefix' => 'INV',
             'receipt_prefix' => 'RCP',
-            'currency_code' => 'ETB',
+            'currency_code' => 'Birr',
             'currency_symbol' => 'Birr',
         ]);
     }
@@ -91,10 +91,27 @@ class Setting extends Model
             'email' => $this->company_email,
             'website' => $this->company_website,
             'tax_id' => $this->company_tax_id,
-            'logo' => $this->company_logo
-                ? Storage::disk('public')->url($this->company_logo)
-                : null,
+            'logo' => $this->getCompanyLogoPath(),
+            'logo_url' => $this->getCompanyLogoUrl(),
         ];
+    }
+
+    public function getCompanyLogoPath(): ?string
+    {
+        if (! $this->company_logo || ! Storage::disk('public')->exists($this->company_logo)) {
+            return null;
+        }
+
+        return Storage::disk('public')->path($this->company_logo);
+    }
+
+    public function getCompanyLogoUrl(): ?string
+    {
+        if (! $this->company_logo) {
+            return null;
+        }
+
+        return Storage::disk('public')->url($this->company_logo);
     }
 
     /**

@@ -4,6 +4,7 @@ namespace App\Filament\Finance\Pages;
 
 use App\Filament\Exports\ReceivablesAgingExporter;
 use App\Models\SalesOrder;
+use App\Support\Money;
 use BackedEnum;
 use Carbon\Carbon;
 use Filament\Actions\ExportAction;
@@ -78,7 +79,7 @@ class ReceivablesAgingReport extends Page implements HasForms, HasTable
                 TextColumn::make('order_number')->label('Document #')->searchable(),
                 TextColumn::make('partner.name')->label('Customer')->searchable(),
                 TextColumn::make('order_date')->label('Date')->date(),
-                TextColumn::make('balance')->label('Outstanding')->suffix(' Birr')->sortable()->summarize(Sum::make()->label('Total Outstanding')->extraAttributes(['class' => 'fi-font-semibold fi-text-base'])),
+                TextColumn::make('balance')->label('Outstanding')->formatStateUsing(fn ($state) => Money::format($state))->sortable()->summarize(Sum::make()->label('Total Outstanding')->extraAttributes(['class' => 'fi-font-semibold fi-text-base'])),
                 TextColumn::make('age_days')
                     ->label('Age (Days)')
                     ->state(fn ($record) => $this->ageDays($record)),

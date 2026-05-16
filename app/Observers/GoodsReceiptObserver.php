@@ -3,6 +3,7 @@
 namespace App\Observers;
 
 use App\Models\GoodsReceipt;
+use App\Models\PurchaseOrderItem;
 use App\Services\InventoryService;
 use Illuminate\Support\Facades\DB;
 
@@ -31,7 +32,10 @@ class GoodsReceiptObserver
             $inventoryService = app(InventoryService::class);
 
             foreach ($locked->items as $item) {
-                $poItem = $item->purchaseOrderItem;
+                $poItem = PurchaseOrderItem::query()
+                    ->lockForUpdate()
+                    ->find($item->purchase_order_item_id);
+
                 if (! $poItem) {
                     continue;
                 }
@@ -45,19 +49,28 @@ class GoodsReceiptObserver
                     $locked->id
                 );
 
-                $poItem->increment('received_quantity', $item->quantity_received);
+                $receivedQuantity = (float) $poItem->received_quantity + (float) $item->quantity_received;
+
+                $poItem->update([
+                    'received_quantity' => $receivedQuantity,
+                    'status' => match (true) {
+                        $receivedQuantity >= (float) $poItem->quantity => 'received',
+                        $receivedQuantity > 0 => 'partially_received',
+                        default => 'pending',
+                    },
+                ]);
             }
 
             // Stamp posted_at last — this is the idempotency sentinel.
             $locked->updateQuietly(['posted_at' => now()]);
-            
+
             // Auto-mark purchase order as received if all items are fully received
             $purchaseOrder = $locked->purchaseOrder;
             if ($purchaseOrder && $purchaseOrder->status === 'approved') {
                 $allItemsFullyReceived = $purchaseOrder->purchaseOrderItems()
                     ->whereRaw('received_quantity >= quantity')
                     ->count() === $purchaseOrder->purchaseOrderItems()->count();
-                    
+
                 if ($allItemsFullyReceived) {
                     $purchaseOrder->update(['status' => 'received']);
                 }

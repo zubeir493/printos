@@ -27,6 +27,7 @@ use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Support\Colors\Color;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Livewire\Features\SupportFileUploads\FileUploadConfiguration;
 
 class SalesOrderForm
@@ -290,7 +291,7 @@ class SalesOrderForm
                                     ->icon('heroicon-o-plus')
                                     ->action(function (Repeater $component) {
                                         $state = $component->getState() ?? [];
-                                        $state[] = [
+                                        $state[(string) Str::uuid()] = [
                                             'inventory_item_id' => null,
                                             'quantity' => 1,
                                             'unit_price' => 0,

@@ -3,6 +3,7 @@
 namespace App\Filament\Widgets;
 
 use App\Models\JobOrder;
+use App\Support\Money;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget as BaseWidget;
@@ -44,7 +45,7 @@ class AdminExceptionsTable extends BaseWidget
                 Tables\Columns\TextColumn::make('total')
                     ->label('Value')
                     ->alignEnd()
-                    ->formatStateUsing(fn ($state) => number_format((float) $state, 2)),
+                    ->formatStateUsing(fn ($state) => Money::format($state)),
                 Tables\Columns\TextColumn::make('status')
                     ->badge(),
             ])

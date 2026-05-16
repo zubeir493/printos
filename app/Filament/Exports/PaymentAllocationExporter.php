@@ -10,6 +10,8 @@ use Illuminate\Support\Number;
 
 class PaymentAllocationExporter extends Exporter
 {
+    use RunsExportsSynchronously;
+
     protected static ?string $model = PaymentAllocation::class;
 
     public static function getColumns(): array
@@ -27,7 +29,7 @@ class PaymentAllocationExporter extends Exporter
                 ->label('Payment Method'),
             ExportColumn::make('allocatable_type')
                 ->label('Allocated To (Type)')
-                ->formatStateUsing(fn($state) => class_basename($state)),
+                ->formatStateUsing(fn ($state) => class_basename($state)),
             ExportColumn::make('allocatable_id')
                 ->label('Document ID'),
             ExportColumn::make('allocated_amount')
@@ -37,10 +39,10 @@ class PaymentAllocationExporter extends Exporter
 
     public static function getCompletedNotificationBody(Export $export): string
     {
-        $body = 'Your payment allocation export has completed and ' . Number::format($export->successful_rows) . ' ' . str('row')->plural($export->successful_rows) . ' exported.';
+        $body = 'Your payment allocation export has completed and '.Number::format($export->successful_rows).' '.str('row')->plural($export->successful_rows).' exported.';
 
         if ($failedRowsCount = $export->getFailedRowsCount()) {
-            $body .= ' ' . Number::format($failedRowsCount) . ' ' . str('row')->plural($failedRowsCount) . ' failed to export.';
+            $body .= ' '.Number::format($failedRowsCount).' '.str('row')->plural($failedRowsCount).' failed to export.';
         }
 
         return $body;

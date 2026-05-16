@@ -3,6 +3,7 @@
 namespace App\Filament\Sales\Widgets;
 
 use App\Models\SalesOrder;
+use App\Support\Money;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget as BaseWidget;
@@ -40,7 +41,7 @@ class SalesOrdersFocusTable extends BaseWidget
                     ->color(fn ($state) => $state && $state->isPast() ? 'danger' : 'warning'),
                 Tables\Columns\TextColumn::make('total')
                     ->alignEnd()
-                    ->formatStateUsing(fn ($state) => number_format((float) $state, 2)),
+                    ->formatStateUsing(fn ($state) => Money::format($state)),
                 Tables\Columns\TextColumn::make('status')
                     ->badge(),
             ])

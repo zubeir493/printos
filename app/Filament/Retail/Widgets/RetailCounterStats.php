@@ -4,6 +4,7 @@ namespace App\Filament\Retail\Widgets;
 
 use App\Models\InventoryBalance;
 use App\Models\SalesOrder;
+use App\Support\Money;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 
@@ -33,7 +34,7 @@ class RetailCounterStats extends BaseWidget
             ->avg('total');
 
         return [
-            Stat::make('Counter Sales Today', number_format($cashSales, 2))
+            Stat::make('Counter Sales Today', Money::abbreviate($cashSales, precision: 2))
                 ->description('Cash sales booked today')
                 ->descriptionIcon('heroicon-m-banknotes')
                 ->color($cashSales > 0 ? 'success' : 'gray')
@@ -46,7 +47,7 @@ class RetailCounterStats extends BaseWidget
                 ->description('Sellable items below 10 units')
                 ->descriptionIcon('heroicon-m-exclamation-triangle')
                 ->color($lowSellable > 0 ? 'warning' : 'success'),
-            Stat::make('Avg Ticket Size', number_format($averageTicket, 2))
+            Stat::make('Avg Ticket Size', Money::abbreviate($averageTicket, precision: 2))
                 ->description('Cash sales, last 30 days')
                 ->descriptionIcon('heroicon-m-chart-bar')
                 ->color('primary'),

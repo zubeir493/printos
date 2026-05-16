@@ -5,6 +5,7 @@ namespace App\Filament\Finance\Pages;
 use App\Filament\Exports\FinancialAccountExporter;
 use App\Models\Account;
 use App\Services\Accounting\FinancialReportService;
+use App\Support\Money;
 use BackedEnum;
 use Filament\Actions\ExportAction;
 use Filament\Forms;
@@ -85,9 +86,9 @@ class TrialBalanceReport extends Page implements HasForms, HasTable
                     ->searchable(['code', 'name'])
                     ->formatStateUsing(fn (?string $state, $record) => "{$record->code} - {$record->name}"),
                 TextColumn::make('type')->label('Type')->badge(),
-                TextColumn::make('debit_total')->label('Debit')->suffix(' Birr')->summarize(Sum::make()->label('Total Debit')->extraAttributes(['class' => 'fi-font-semibold fi-text-base'])),
-                TextColumn::make('credit_total')->label('Credit')->suffix(' Birr')->summarize(Sum::make()->label('Total Credit')->extraAttributes(['class' => 'fi-font-semibold fi-text-base'])),
-                TextColumn::make('balance')->label('Balance')->suffix(' Birr')->summarize(Sum::make()->label('Total Balance')->extraAttributes(['class' => 'fi-font-semibold fi-text-base'])),
+                TextColumn::make('debit_total')->label('Debit')->formatStateUsing(fn ($state) => Money::format($state))->summarize(Sum::make()->label('Total Debit')->extraAttributes(['class' => 'fi-font-semibold fi-text-base'])),
+                TextColumn::make('credit_total')->label('Credit')->formatStateUsing(fn ($state) => Money::format($state))->summarize(Sum::make()->label('Total Credit')->extraAttributes(['class' => 'fi-font-semibold fi-text-base'])),
+                TextColumn::make('balance')->label('Balance')->formatStateUsing(fn ($state) => Money::format($state))->summarize(Sum::make()->label('Total Balance')->extraAttributes(['class' => 'fi-font-semibold fi-text-base'])),
             ])
             ->filters([
                 SelectFilter::make('type')

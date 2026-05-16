@@ -2,12 +2,12 @@
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
         <div class="bg-gray-50 rounded-lg p-3">
             <div class="text-gray-500 text-xs uppercase tracking-wider">Total Amount</div>
-            <div class="font-semibold text-gray-900">{{ number_format($total_amount, 2) }} Birr</div>
+            <div class="font-semibold text-gray-900">{{ \App\Support\Money::format($total_amount) }}</div>
         </div>
         
         <div class="bg-green-50 rounded-lg p-3">
             <div class="text-green-600 text-xs uppercase tracking-wider">Total Paid</div>
-            <div class="font-semibold text-green-700">{{ number_format($total_paid, 2) }} Birr</div>
+            <div class="font-semibold text-green-700">{{ \App\Support\Money::format($total_paid) }}</div>
             <div class="text-green-600 text-xs">{{ $payment_count }} payment{{ $payment_count != 1 ? 's' : '' }}</div>
         </div>
         
@@ -16,7 +16,7 @@
                 {{ $balance_due > 0 ? 'Balance Due' : 'Fully Paid' }}
             </div>
             <div class="font-semibold {{ $balance_due > 0 ? 'text-red-700' : 'text-blue-700' }}">
-                {{ number_format($balance_due, 2) }} Birr
+                {{ \App\Support\Money::format($balance_due) }}
             </div>
         </div>
         

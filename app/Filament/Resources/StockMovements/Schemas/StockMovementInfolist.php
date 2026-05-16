@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\StockMovements\Schemas;
 
+use App\Support\Money;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Schema;
 
@@ -24,10 +25,10 @@ class StockMovementInfolist
                 TextEntry::make('quantity')
                     ->numeric(),
                 TextEntry::make('unit_cost')
-                    ->suffix(' Birr')
+                    ->formatStateUsing(fn ($state) => $state === null ? null : Money::format($state))
                     ->placeholder('-'),
                 TextEntry::make('total_cost')
-                    ->suffix(' Birr')
+                    ->formatStateUsing(fn ($state) => $state === null ? null : Money::format($state))
                     ->placeholder('-'),
                 TextEntry::make('movement_date')
                     ->dateTime('d M Y, h:i A'),

@@ -10,6 +10,8 @@ use Illuminate\Support\Number;
 
 class InventoryBalanceExporter extends Exporter
 {
+    use RunsExportsSynchronously;
+
     protected static ?string $model = InventoryBalance::class;
 
     public static function getColumns(): array

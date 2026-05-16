@@ -3,6 +3,7 @@
 namespace App\Filament\Widgets;
 
 use App\Models\Bank;
+use App\Support\Money;
 use Filament\Widgets\ChartWidget;
 
 class BankBalancesChart extends ChartWidget
@@ -15,7 +16,7 @@ class BankBalancesChart extends ChartWidget
             ->where('status', 'active')
             ->sum('current_balance');
 
-        return 'Current Bank Balance - '.number_format((float) $totalBalance, 2).' Birr';
+        return 'Current Bank Balance - '.Money::abbreviate($totalBalance, precision: 2);
     }
 
     protected function getData(): array

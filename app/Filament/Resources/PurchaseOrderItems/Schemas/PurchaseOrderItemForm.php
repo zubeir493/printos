@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\PurchaseOrderItems\Schemas;
 
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Schema;
@@ -24,17 +25,13 @@ class PurchaseOrderItemForm
                 TextInput::make('unit_price')
                     ->required()
                     ->numeric()
-                    ->suffix(' birr'),
+                    ->suffix('Birr'),
                 TextInput::make('total')
                     ->required()
                     ->numeric(),
-                TextInput::make('received_quantity')
-                    ->required()
-                    ->numeric()
-                    ->default(0),
-                TextInput::make('status')
-                    ->required()
-                    ->default('pending'),
+                Placeholder::make('received_quantity')
+                    ->label('Received Quantity')
+                    ->content(fn ($record): string => number_format((float) ($record?->received_quantity ?? 0), 2)),
             ]);
     }
 }

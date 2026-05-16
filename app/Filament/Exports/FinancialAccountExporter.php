@@ -10,6 +10,8 @@ use Illuminate\Support\Number;
 
 class FinancialAccountExporter extends Exporter
 {
+    use RunsExportsSynchronously;
+
     protected static ?string $model = Account::class;
 
     public static function getColumns(): array
@@ -27,6 +29,6 @@ class FinancialAccountExporter extends Exporter
 
     public static function getCompletedNotificationBody(Export $export): string
     {
-        return 'Your finance report export has completed and ' . Number::format($export->successful_rows) . ' ' . str('row')->plural($export->successful_rows) . ' exported.';
+        return 'Your finance report export has completed and '.Number::format($export->successful_rows).' '.str('row')->plural($export->successful_rows).' exported.';
     }
 }

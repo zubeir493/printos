@@ -188,7 +188,7 @@ class PurchaseOrderForm
                                     ->icon('heroicon-o-plus')
                                     ->action(function (Repeater $component) {
                                         $state = $component->getState() ?? [];
-                                        $state[] = [
+                                        $state[(string) Str::uuid()] = [
                                             'inventory_item_id' => null,
                                             'quantity' => 0,
                                             'unit_price' => 0,

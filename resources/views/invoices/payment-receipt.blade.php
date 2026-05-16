@@ -74,7 +74,7 @@
                         Reference: {{ $receipt_data['payment']->reference }}
                     @endif
                 </td>
-                <td class="text-right">{{ number_format($receipt_data['payment']->amount, 2) }}</td>
+                <td class="text-right">{{ \App\Support\Money::format($receipt_data['payment']->amount) }}</td>
             </tr>
 
             @if($receipt_data['options']['show_allocated_orders'] && $receipt_data['allocations']->count() > 0)
@@ -92,7 +92,7 @@
                         Order #{{ $allocation->allocatable_id }}
                     @endif
                 </td>
-                <td class="text-right">{{ number_format($allocation->allocated_amount, 2) }}</td>
+                <td class="text-right">{{ \App\Support\Money::format($allocation->allocated_amount) }}</td>
             </tr>
             @endforeach
             @endif
@@ -102,7 +102,7 @@
                     <table style="width: 300px; float: right;">
                         <tr class="total">
                             <td><strong>Total Received:</strong></td>
-                            <td class="text-right"><strong>{{ number_format($receipt_data['payment']->amount, 2) }}</strong></td>
+                            <td class="text-right"><strong>{{ \App\Support\Money::format($receipt_data['payment']->amount) }}</strong></td>
                         </tr>
                     </table>
                 </td>

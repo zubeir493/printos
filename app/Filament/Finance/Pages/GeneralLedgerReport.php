@@ -5,6 +5,7 @@ namespace App\Filament\Finance\Pages;
 use App\Filament\Exports\GeneralLedgerExporter;
 use App\Models\Account;
 use App\Models\JournalItem;
+use App\Support\Money;
 use BackedEnum;
 use Carbon\Carbon;
 use Filament\Actions\ExportAction;
@@ -105,9 +106,9 @@ class GeneralLedgerReport extends Page implements HasForms, HasTable
                 TextColumn::make('account_type')->label('Account Type')->badge(),
                 TextColumn::make('entry_reference')->label('Reference')->searchable(),
                 TextColumn::make('entry_date')->label('Date')->date()->sortable(),
-                TextColumn::make('debit')->label('Debit')->suffix(' Birr')->sortable()->summarize(Sum::make()->label('Total Debit')->extraAttributes(['class' => 'fi-font-semibold fi-text-base'])),
-                TextColumn::make('credit')->label('Credit')->suffix(' Birr')->sortable()->summarize(Sum::make()->label('Total Credit')->extraAttributes(['class' => 'fi-font-semibold fi-text-base'])),
-                TextColumn::make('running_balance')->label('Running Balance')->suffix(' Birr')->sortable(),
+                TextColumn::make('debit')->label('Debit')->formatStateUsing(fn ($state) => Money::format($state))->sortable()->summarize(Sum::make()->label('Total Debit')->extraAttributes(['class' => 'fi-font-semibold fi-text-base'])),
+                TextColumn::make('credit')->label('Credit')->formatStateUsing(fn ($state) => Money::format($state))->sortable()->summarize(Sum::make()->label('Total Credit')->extraAttributes(['class' => 'fi-font-semibold fi-text-base'])),
+                TextColumn::make('running_balance')->label('Running Balance')->formatStateUsing(fn ($state) => Money::format($state))->sortable(),
             ])
             ->filters([
                 SelectFilter::make('account_type')

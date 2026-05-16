@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Banks\Tables;
 
+use App\Support\Money;
 use Filament\Actions\Action as ActionsAction;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
@@ -28,7 +29,7 @@ class BanksTable
                     ->copyMessageDuration(1500),
                 TextColumn::make('calculated_balance')
                     ->label('Balance')
-                    ->suffix(' Birr')
+                    ->formatStateUsing(fn ($state) => Money::format($state))
                     ->sortable()
                     ->color(fn ($record) => $record->calculated_balance < 0 ? 'danger' : 'success')
                     ->tooltip('Calculated from all payments and transfers'),

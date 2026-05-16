@@ -22,7 +22,6 @@ class PartnerForm
                 TextInput::make('email')
                     ->email(),
                 Grid::make(2)
-                    ->extraAttributes(['class' => 'alignbottomtoggles'])
                     ->schema([
                         Toggle::make('is_supplier')
                             ->required(),

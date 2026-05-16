@@ -10,6 +10,7 @@ use App\Filament\Resources\Payments\Schemas\PaymentForm;
 use App\Filament\Resources\Payments\Tables\PaymentsTable;
 use App\Filament\Support\PanelAccess;
 use App\Models\Payment;
+use App\Support\Money;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -52,7 +53,7 @@ class PaymentResource extends Resource
     {
         return [
             'Partner' => $record->partner?->name,
-            'Amount' => number_format($record->amount, 2).' Birr',
+            'Amount' => Money::format($record->amount),
             'Date' => $record->payment_date?->format('M j, Y'),
         ];
     }

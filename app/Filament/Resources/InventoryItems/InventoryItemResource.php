@@ -10,6 +10,7 @@ use App\Filament\Resources\InventoryItems\Schemas\InventoryItemForm;
 use App\Filament\Resources\InventoryItems\Tables\InventoryItemsTable;
 use App\Filament\Support\PanelAccess;
 use App\Models\InventoryItem;
+use App\Support\Money;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -71,7 +72,7 @@ class InventoryItemResource extends Resource
             'SKU' => $record->sku,
             'Type' => ucfirst($record->type),
             'Unit' => $record->unit,
-            'Price' => number_format($record->price, 2).' Birr',
+            'Price' => Money::format($record->price),
         ];
     }
 

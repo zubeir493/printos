@@ -10,6 +10,7 @@ use App\Filament\Resources\Invoices\Schemas\InvoiceForm;
 use App\Filament\Resources\Invoices\Tables\InvoicesTable;
 use App\Filament\Support\PanelAccess;
 use App\Models\Invoice;
+use App\Support\Money;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -48,7 +49,7 @@ class InvoiceResource extends Resource
         return [
             'Partner' => $record->partner?->name,
             'Status' => ucfirst($record->status),
-            'Total' => number_format($record->total_amount, 2).' Birr',
+            'Total' => Money::format($record->total_amount),
         ];
     }
 

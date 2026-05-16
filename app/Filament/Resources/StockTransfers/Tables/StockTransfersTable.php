@@ -16,14 +16,14 @@ class StockTransfersTable
         return $table
             ->columns([
                 TextColumn::make('transfer_number')
+                    ->label('Transfer')
+                    ->weight('bold')
+                    ->description(fn ($record) => $record->transfer_date)
                     ->searchable(),
                 TextColumn::make('fromWarehouse.name')
                     ->searchable(),
                 TextColumn::make('toWarehouse.name')
                     ->searchable(),
-                TextColumn::make('transfer_date')
-                    ->date()
-                    ->sortable(),
                 TextColumn::make('items_count')
                     ->label('Items')
                     ->counts('items'),

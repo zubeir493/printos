@@ -8,6 +8,7 @@ use App\Filament\Support\PanelAccess;
 use App\Models\Bank;
 use App\Models\Partner;
 use App\Models\Payment;
+use App\Support\Money;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
@@ -48,12 +49,12 @@ class PurchaseOrdersTable
                         }
                         $percentage = round(($paid / $total) * 100, 1);
 
-                        return "{$percentage}% ({$paid}/{$total} ETB)";
+                        return "{$percentage}% (".Money::format($paid).'/'.Money::format($total).')';
                     })
                     ->description(function ($record) {
                         $balance = $record->balance ?? 0;
 
-                        return $balance > 0 ? "Balance: {$balance} ETB" : 'Paid in full';
+                        return $balance > 0 ? 'Balance: '.Money::format($balance) : 'Paid in full';
                     })
                     ->color(function ($record) {
                         $total = $record->total ?? 0;
@@ -143,7 +144,7 @@ class PurchaseOrdersTable
                                     ->numeric()
                                     ->suffix('Birr')
                                     ->default(fn ($record) => $record->balance)
-                                    ->helperText(fn ($record) => "Balance: {$record->balance} Birr"),
+                                    ->helperText(fn ($record) => 'Balance: '.Money::format($record->balance)),
                                 DatePicker::make('payment_date')
                                     ->label('Payment Date')
                                     ->default(now())
@@ -161,7 +162,7 @@ class PurchaseOrdersTable
                                 $amount = (float) $data['allocated_amount'];
 
                                 if ($amount > $record->balance) {
-                                    throw new \Exception("Cannot allocate more than the remaining balance of {$record->balance} Birr.");
+                                    throw new \Exception('Cannot allocate more than the remaining balance of '.Money::format($record->balance).'.');
                                 }
 
                                 $payment = Payment::create([
@@ -184,7 +185,7 @@ class PurchaseOrdersTable
 
                                 Notification::make()
                                     ->title('Payment Recorded')
-                                    ->body("{$amount} Birr paid against {$record->po_number}.")
+                                    ->body(Money::format($amount).' paid against '.$record->po_number.'.')
                                     ->success()
                                     ->send();
 

@@ -8,6 +8,7 @@ use App\Filament\Support\PanelAccess;
 use App\Models\Bank;
 use App\Models\Payment;
 use App\Services\InvoiceGeneratorService;
+use App\Support\Money;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
@@ -59,7 +60,7 @@ class JobOrdersTable
                     ->description(fn ($record) => $record->submission_date && $record->submission_date->isBefore(today()) && ! in_array($record->status, ['completed', 'cancelled']) ? 'Late' : null),
                 TextColumn::make('total')
                     ->label('Payment Progress')
-                    ->formatStateUsing(fn ($record) => number_format($record->paid_amount, 2).'/'.number_format($record->total, 2).' birr')
+                    ->formatStateUsing(fn ($record) => Money::format($record->paid_amount).'/'.Money::format($record->total))
                     ->visible(fn () => PanelAccess::canSeeMoneyValues())
                     ->sortable(),
             ])
@@ -169,7 +170,7 @@ class JobOrdersTable
                                     ->numeric()
                                     ->suffix('Birr')
                                     ->default(fn ($record) => $record->balance)
-                                    ->helperText(fn ($record) => "Balance: {$record->balance} Birr"),
+                                    ->helperText(fn ($record) => 'Balance: '.Money::format($record->balance)),
                                 TextInput::make('reference')
                                     ->label('Memo / Reference')
                                     ->placeholder('Receipt number, cheque number, or short note')
@@ -183,7 +184,7 @@ class JobOrdersTable
                                 $amount = (float) $data['allocated_amount'];
 
                                 if ($amount > $record->balance) {
-                                    throw new \Exception("Cannot allocate more than the remaining balance of {$record->balance} Birr.");
+                                    throw new \Exception('Cannot allocate more than the remaining balance of '.Money::format($record->balance).'.');
                                 }
 
                                 $payment = Payment::create([
@@ -206,7 +207,7 @@ class JobOrdersTable
 
                                 Notification::make()
                                     ->title('Payment Recorded')
-                                    ->body("{$amount} Birr received for {$record->job_order_number}.")
+                                    ->body(Money::format($amount)." received for {$record->job_order_number}.")
                                     ->success()
                                     ->send();
 

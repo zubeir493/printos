@@ -3,6 +3,7 @@
 namespace App\Filament\Finance\Widgets;
 
 use App\Models\SalesInvoice;
+use App\Support\Money;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget as BaseWidget;
@@ -38,7 +39,7 @@ class OverdueInvoicesTable extends BaseWidget
                 Tables\Columns\TextColumn::make('total_amount')
                     ->label('Total')
                     ->alignEnd()
-                    ->formatStateUsing(fn ($state) => number_format((float) $state, 2)),
+                    ->formatStateUsing(fn ($state) => Money::format($state)),
                 Tables\Columns\TextColumn::make('status')
                     ->badge(),
             ])

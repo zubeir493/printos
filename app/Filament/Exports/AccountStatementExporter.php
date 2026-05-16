@@ -10,6 +10,8 @@ use Illuminate\Support\Number;
 
 class AccountStatementExporter extends Exporter
 {
+    use RunsExportsSynchronously;
+
     protected static ?string $model = JournalItem::class;
 
     public static function getColumns(): array
@@ -26,6 +28,6 @@ class AccountStatementExporter extends Exporter
 
     public static function getCompletedNotificationBody(Export $export): string
     {
-        return 'Your account statement export has completed and ' . Number::format($export->successful_rows) . ' ' . str('row')->plural($export->successful_rows) . ' exported.';
+        return 'Your account statement export has completed and '.Number::format($export->successful_rows).' '.str('row')->plural($export->successful_rows).' exported.';
     }
 }

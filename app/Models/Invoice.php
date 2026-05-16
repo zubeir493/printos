@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\Money;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -166,7 +167,7 @@ class Invoice extends Model
      */
     public function getFormattedTotalAttribute(): string
     {
-        return number_format($this->total_amount, 2).' ETB';
+        return Money::format($this->total_amount);
     }
 
     /**
@@ -174,6 +175,6 @@ class Invoice extends Model
      */
     public function getFormattedBalanceAttribute(): string
     {
-        return number_format($this->balance_due, 2).' ETB';
+        return Money::format($this->balance_due);
     }
 }

@@ -27,6 +27,7 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get as UtilitiesGet;
 use Filament\Schemas\Components\Utilities\Set as UtilitiesSet;
 use Filament\Schemas\Schema;
+use Illuminate\Support\Str;
 
 class JobOrderForm
 {
@@ -170,7 +171,7 @@ class JobOrderForm
                                             ->icon('heroicon-o-plus')
                                             ->action(function (Repeater $component) {
                                                 $state = $component->getState() ?? [];
-                                                $state[] = [
+                                                $state[(string) Str::uuid()] = [
                                                     'inventory_item_id' => null,
                                                     'required_quantity' => 0,
                                                     'reserve_quantity' => 0,
@@ -190,13 +191,13 @@ class JobOrderForm
                                     ->icon('heroicon-o-plus')
                                     ->action(function (Repeater $component) {
                                         $state = $component->getState() ?? [];
-                                        $state[] = [
+                                        $state[(string) Str::uuid()] = [
                                             'name' => '',
                                             'quantity' => 0,
                                             'size' => null,
                                             'task_cost' => 0,
                                             'paper' => [
-                                                [
+                                                (string) Str::uuid() => [
                                                     'inventory_item_id' => null,
                                                     'required_quantity' => 0,
                                                     'reserve_quantity' => 0,

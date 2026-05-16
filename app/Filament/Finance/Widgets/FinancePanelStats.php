@@ -5,6 +5,7 @@ namespace App\Filament\Finance\Widgets;
 use App\Models\Payment;
 use App\Models\PaymentAllocation;
 use App\Models\SalesInvoice;
+use App\Support\Money;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 
@@ -33,15 +34,15 @@ class FinancePanelStats extends StatsOverviewWidget
         $unallocatedFunds = max(0, (float) Payment::query()->sum('amount') - (float) PaymentAllocation::query()->sum('allocated_amount'));
 
         return [
-            Stat::make('Net Cash Flow', number_format($incoming - $outgoing, 2))
+            Stat::make('Net Cash Flow', Money::abbreviate($incoming - $outgoing, precision: 2))
                 ->description('Inbound less outbound, last 30 days')
                 ->descriptionIcon('heroicon-m-banknotes')
                 ->color(($incoming - $outgoing) >= 0 ? 'success' : 'danger'),
-            Stat::make('Outstanding Receivables', number_format(max(0, $receivables - $allocated), 2))
+            Stat::make('Outstanding Receivables', Money::abbreviate(max(0, $receivables - $allocated), precision: 2))
                 ->description('Sales invoices less allocations')
                 ->descriptionIcon('heroicon-m-credit-card')
                 ->color('warning'),
-            Stat::make('Unallocated Funds', number_format($unallocatedFunds, 2))
+            Stat::make('Unallocated Funds', Money::abbreviate($unallocatedFunds, precision: 2))
                 ->description('Payments not linked to orders')
                 ->descriptionIcon('heroicon-m-scale')
                 ->color($unallocatedFunds > 0 ? 'warning' : 'success'),

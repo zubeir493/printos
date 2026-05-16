@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\BankTransfers\Tables;
 
+use App\Support\Money;
 use Filament\Actions\Action as ActionsAction;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
@@ -31,7 +32,7 @@ class BankTransfersTable
                     ->searchable(),
                 TextColumn::make('amount')
                     ->label('Amount')
-                    ->suffix(' Birr')
+                    ->formatStateUsing(fn ($state) => Money::format($state))
                     ->sortable()
                     ->weight('bold'),
                 TextColumn::make('transfer_date')

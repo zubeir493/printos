@@ -3,9 +3,9 @@
 namespace App\Filament\Widgets;
 
 use App\Models\Payment;
-use Filament\Widgets\StatsOverviewWidget\Stat;
+use App\Support\Money;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
-use Carbon\Carbon;
+use Filament\Widgets\StatsOverviewWidget\Stat;
 
 class PaymentsStatsWidget extends BaseWidget
 {
@@ -25,7 +25,7 @@ class PaymentsStatsWidget extends BaseWidget
                 ->description('All time payments')
                 ->descriptionIcon('heroicon-m-banknotes')
                 ->color('info'),
-            Stat::make('Total Amount', number_format($totalAmount, 2) . ' ETB')
+            Stat::make('Total Amount', Money::abbreviate($totalAmount, precision: 2))
                 ->description('Cumulative payment value')
                 ->descriptionIcon('heroicon-m-currency-dollar')
                 ->color('success'),
@@ -34,7 +34,7 @@ class PaymentsStatsWidget extends BaseWidget
                 ->descriptionIcon('heroicon-m-calendar-days')
                 ->color('primary')
                 ->chart($paymentsChart),
-            Stat::make('Amount Today', number_format($amountToday, 2) . ' ETB')
+            Stat::make('Amount Today', Money::abbreviate($amountToday, precision: 2))
                 ->description('Value processed today')
                 ->descriptionIcon('heroicon-m-chart-bar')
                 ->color('success')

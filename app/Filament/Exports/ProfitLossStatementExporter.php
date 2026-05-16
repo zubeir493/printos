@@ -10,6 +10,8 @@ use Illuminate\Support\Number;
 
 class ProfitLossStatementExporter extends Exporter
 {
+    use RunsExportsSynchronously;
+
     protected static ?string $model = Account::class;
 
     public static function getColumns(): array
@@ -26,6 +28,6 @@ class ProfitLossStatementExporter extends Exporter
 
     public static function getCompletedNotificationBody(Export $export): string
     {
-        return 'Your profit and loss export has completed and ' . Number::format($export->successful_rows) . ' ' . str('row')->plural($export->successful_rows) . ' exported.';
+        return 'Your profit and loss export has completed and '.Number::format($export->successful_rows).' '.str('row')->plural($export->successful_rows).' exported.';
     }
 }

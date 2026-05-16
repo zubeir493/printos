@@ -3,6 +3,7 @@
 namespace App\Filament\Sales\Widgets;
 
 use App\Models\SalesOrder;
+use App\Support\Money;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 
@@ -26,7 +27,7 @@ class SalesPanelStats extends BaseWidget
             ->count();
 
         return [
-            Stat::make('Today\'s Bookings', number_format($todayRevenue, 2))
+            Stat::make('Today\'s Bookings', Money::abbreviate($todayRevenue, precision: 2))
                 ->description('Sales order value booked today')
                 ->descriptionIcon('heroicon-m-banknotes')
                 ->color($todayRevenue > 0 ? 'success' : 'gray')

@@ -10,6 +10,8 @@ use Illuminate\Support\Number;
 
 class JobOrderExporter extends Exporter
 {
+    use RunsExportsSynchronously;
+
     protected static ?string $model = JobOrder::class;
 
     public static function getColumns(): array

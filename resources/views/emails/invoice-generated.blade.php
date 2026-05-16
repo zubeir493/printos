@@ -124,12 +124,12 @@
                 </tr>
                 <tr>
                     <td>Total Amount</td>
-                    <td>{{ number_format($invoiceData['invoice_data']['total_amount'], 2) }}</td>
+                    <td>{{ \App\Support\Money::format($invoiceData['invoice_data']['total_amount']) }}</td>
                 </tr>
                 @if($invoiceData['invoice_data']['balance_due'] > 0)
                 <tr>
                     <td>Balance Due</td>
-                    <td>{{ number_format($invoiceData['invoice_data']['balance_due'], 2) }}</td>
+                    <td>{{ \App\Support\Money::format($invoiceData['invoice_data']['balance_due']) }}</td>
                 </tr>
                 @endif
             </table>
@@ -154,7 +154,7 @@
                 </tr>
                 <tr>
                     <td>Amount Received</td>
-                    <td>{{ number_format($invoiceData['receipt_data']['payment']->amount, 2) }}</td>
+                    <td>{{ \App\Support\Money::format($invoiceData['receipt_data']['payment']->amount) }}</td>
                 </tr>
             </table>
         </div>
@@ -174,12 +174,11 @@
         <p>Thank you for your business!</p>
         
         <p>Best regards,<br>
-        The {{ $companyName }} Team</p>
+        {{ $companyName }}</p>
     </div>
 
     <div class="footer">
         <p>{{ trim(implode(' | ', array_filter([$companyName, $companyWebsite]))) }}</p>
-        <p>This email was sent automatically. Please do not reply to this email.</p>
     </div>
 </body>
 </html>

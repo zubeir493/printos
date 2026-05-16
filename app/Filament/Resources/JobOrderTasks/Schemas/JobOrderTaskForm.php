@@ -12,6 +12,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Schema;
+use Illuminate\Support\Str;
 
 class JobOrderTaskForm
 {
@@ -31,7 +32,7 @@ class JobOrderTaskForm
                     ->required()
                     ->label('Cost')
                     ->numeric()
-                    ->suffix(' birr'),
+                    ->suffix('Birr'),
                 Textarea::make('instructions')
                     ->label('Design Brief / Instructions')
                     ->placeholder('Describe what needs to be designed, any specific requirements, references, or deadlines...')
@@ -88,7 +89,7 @@ class JobOrderTaskForm
                             ->icon('heroicon-o-plus')
                             ->action(function (Repeater $component) {
                                 $state = $component->getState() ?? [];
-                                $state[] = [
+                                $state[(string) Str::uuid()] = [
                                     'inventory_item_id' => null,
                                     'required_quantity' => 0,
                                     'reserve_quantity' => 0,

@@ -4,6 +4,7 @@ namespace App\Filament\Widgets;
 
 use App\Models\InventoryBalance;
 use App\Models\Warehouse;
+use App\Support\Money;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 
@@ -53,7 +54,7 @@ class StockOverviewStats extends BaseWidget
                 ->descriptionIcon('heroicon-m-cube')
                 ->color('info')
                 ->chart($itemsChart),
-            Stat::make('Warehouse Valuation', number_format($totalValue, 2).' ETB')
+            Stat::make('Warehouse Valuation', Money::abbreviate($totalValue, precision: 2))
                 ->description('Total value of stock on hand')
                 ->descriptionIcon('heroicon-m-banknotes')
                 ->color('success')

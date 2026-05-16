@@ -4,6 +4,7 @@ namespace App\Filament\Finance\Widgets;
 
 use App\Models\Partner;
 use App\Models\SalesOrder;
+use App\Support\Money;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Notifications\Notification;
@@ -41,7 +42,7 @@ class HighRiskReceivables extends BaseWidget
                     ->label('Contact'),
                 Tables\Columns\TextColumn::make('total_balance')
                     ->label('Outstanding Balance')
-                    ->money('ETB')
+                    ->formatStateUsing(fn ($state) => Money::format($state))
                     ->color('danger')
                     ->sortable(),
             ])

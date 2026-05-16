@@ -5,6 +5,7 @@ namespace App\Filament\Finance\Pages;
 use App\Filament\Exports\AccountStatementExporter;
 use App\Models\Account;
 use App\Models\JournalItem;
+use App\Support\Money;
 use BackedEnum;
 use Carbon\Carbon;
 use Filament\Actions\ExportAction;
@@ -116,11 +117,11 @@ class AccountStatementReport extends Page implements HasForms, HasTable
                 TextColumn::make('entry_date')->label('Date')->date()->sortable(),
                 TextColumn::make('entry_reference')->label('Reference')->searchable(),
                 TextColumn::make('entry_narration')->label('Narration')->wrap()->searchable(),
-                TextColumn::make('debit')->label('Debit')->suffix(' Birr')->summarize(Sum::make()->label('Total Debit')->extraAttributes(['class' => 'fi-font-semibold fi-text-base'])),
-                TextColumn::make('credit')->label('Credit')->suffix(' Birr')->summarize(Sum::make()->label('Total Credit')->extraAttributes(['class' => 'fi-font-semibold fi-text-base'])),
+                TextColumn::make('debit')->label('Debit')->formatStateUsing(fn ($state) => Money::format($state))->summarize(Sum::make()->label('Total Debit')->extraAttributes(['class' => 'fi-font-semibold fi-text-base'])),
+                TextColumn::make('credit')->label('Credit')->formatStateUsing(fn ($state) => Money::format($state))->summarize(Sum::make()->label('Total Credit')->extraAttributes(['class' => 'fi-font-semibold fi-text-base'])),
                 TextColumn::make('running_balance')
                     ->label('Running Balance')
-                    ->suffix(' Birr')
+                    ->formatStateUsing(fn ($state) => Money::format($state))
                     ->sortable(),
             ])
             ->defaultSort('entry_date', 'desc')

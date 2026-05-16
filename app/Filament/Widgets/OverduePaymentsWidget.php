@@ -3,9 +3,9 @@
 namespace App\Filament\Widgets;
 
 use App\Models\Invoice;
+use App\Support\Money;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
-use Illuminate\Support\Facades\DB;
 
 class OverduePaymentsWidget extends BaseWidget
 {
@@ -22,10 +22,10 @@ class OverduePaymentsWidget extends BaseWidget
 
         // Get aging breakdown
         $aging = [
-            '1-30' => $overdueInvoices->filter(fn($inv) => $inv->due_date->diffInDays(now()) <= 30)->count(),
-            '31-60' => $overdueInvoices->filter(fn($inv) => $inv->due_date->diffInDays(now()) > 30 && $inv->due_date->diffInDays(now()) <= 60)->count(),
-            '61-90' => $overdueInvoices->filter(fn($inv) => $inv->due_date->diffInDays(now()) > 60 && $inv->due_date->diffInDays(now()) <= 90)->count(),
-            '90+' => $overdueInvoices->filter(fn($inv) => $inv->due_date->diffInDays(now()) > 90)->count(),
+            '1-30' => $overdueInvoices->filter(fn ($inv) => $inv->due_date->diffInDays(now()) <= 30)->count(),
+            '31-60' => $overdueInvoices->filter(fn ($inv) => $inv->due_date->diffInDays(now()) > 30 && $inv->due_date->diffInDays(now()) <= 60)->count(),
+            '61-90' => $overdueInvoices->filter(fn ($inv) => $inv->due_date->diffInDays(now()) > 60 && $inv->due_date->diffInDays(now()) <= 90)->count(),
+            '90+' => $overdueInvoices->filter(fn ($inv) => $inv->due_date->diffInDays(now()) > 90)->count(),
         ];
 
         return [
@@ -39,7 +39,7 @@ class OverduePaymentsWidget extends BaseWidget
                 ->description('Total amount overdue')
                 ->color('danger')
                 ->icon('heroicon-o-currency-dollar')
-                ->formatStateUsing(fn ($state) => number_format($state, 2) . ' Birr'),
+                ->formatStateUsing(fn ($state) => Money::abbreviate($state, precision: 2)),
 
             Stat::make('1-30 Days', $aging['1-30'])
                 ->description('Invoices overdue 1-30 days')

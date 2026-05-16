@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\JournalEntries\Tables;
 
 use App\Filament\Exports\JournalEntryExporter;
+use App\Support\Money;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
@@ -21,7 +22,8 @@ class JournalEntriesTable
             ->columns([
                 TextColumn::make('reference')
                     ->searchable(),
-                TextColumn::make('total_debit')->suffix(' Birr')
+                TextColumn::make('total_debit')
+                    ->formatStateUsing(fn ($state) => Money::format($state))
                     ->label('Transferred Amount'),
                 TextColumn::make('status')
                     ->badge()

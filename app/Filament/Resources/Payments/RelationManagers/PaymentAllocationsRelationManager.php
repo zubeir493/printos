@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Payments\RelationManagers;
 use App\Models\JobOrder;
 use App\Models\PurchaseOrder;
 use App\Models\SalesOrder;
+use App\Support\Money;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Resources\RelationManagers\RelationManager;
@@ -61,7 +62,7 @@ class PaymentAllocationsRelationManager extends RelationManager
                     ->description(fn ($record) => $record->allocatable?->partner?->name),
                 TextColumn::make('allocated_amount')
                     ->label('Amount')
-                    ->suffix(' Birr')
+                    ->formatStateUsing(fn ($state) => Money::format($state))
                     ->weight('bold')
                     ->color('success'),
             ])

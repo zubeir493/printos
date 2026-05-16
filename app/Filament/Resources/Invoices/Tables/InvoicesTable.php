@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Invoices\Tables;
 
 use App\Services\InvoiceGeneratorService;
+use App\Support\Money;
 use Filament\Actions\Action as ActionsAction;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup as ActionsBulkActionGroup;
@@ -58,7 +59,7 @@ class InvoicesTable
                         $total = (float) $record->total_amount;
                         $paid = $total - (float) $record->balance_due;
 
-                        return number_format($paid, 2).'/'.number_format($total, 2);
+                        return Money::format($paid).'/'.Money::format($total);
                     }),
             ])
             ->filters([

@@ -74,9 +74,9 @@
             @foreach($invoiceData['items'] as $item)
             <tr class="item {{ $loop->last ? 'last' : '' }}">
                 <td>{{ $item->inventoryItem->name }}</td>
-                <td class="text-right">{{ number_format($item->unit_price, 2) }}</td>
+                <td class="text-right">{{ \App\Support\Money::format($item->unit_price) }}</td>
                 <td class="text-right">{{ $item->quantity }}</td>
-                <td class="text-right">{{ number_format($item->total, 2) }}</td>
+                <td class="text-right">{{ \App\Support\Money::format($item->total) }}</td>
             </tr>
             @endforeach
 
@@ -85,33 +85,33 @@
                     <table style="width: 300px; float: right;">
                         <tr class="total">
                             <td>Subtotal:</td>
-                            <td class="text-right">{{ number_format($invoiceData['subtotal'], 2) }}</td>
+                            <td class="text-right">{{ \App\Support\Money::format($invoiceData['subtotal']) }}</td>
                         </tr>
                         @if(!empty($invoiceData['options']['show_tax_breakdown']) && !empty($invoiceData['tax_calculations']['breakdown']))
                             @foreach($invoiceData['tax_calculations']['breakdown'] as $taxType => $amount)
                             <tr class="total">
                                 <td>{{ $taxType }}:</td>
-                                <td class="text-right">{{ number_format($amount, 2) }}</td>
+                                <td class="text-right">{{ \App\Support\Money::format($amount) }}</td>
                             </tr>
                             @endforeach
                         @elseif($invoiceData['tax_amount'] > 0)
                         <tr class="total">
                             <td>Tax:</td>
-                            <td class="text-right">{{ number_format($invoiceData['tax_amount'], 2) }}</td>
+                            <td class="text-right">{{ \App\Support\Money::format($invoiceData['tax_amount']) }}</td>
                         </tr>
                         @endif
                         <tr class="total">
                             <td><strong>Total Amount:</strong></td>
-                            <td class="text-right"><strong>{{ number_format($invoiceData['total_amount'], 2) }}</strong></td>
+                            <td class="text-right"><strong>{{ \App\Support\Money::format($invoiceData['total_amount']) }}</strong></td>
                         </tr>
                         @if(!empty($invoiceData['options']['show_payment_status']))
                         <tr class="total">
                             <td>Paid Amount:</td>
-                            <td class="text-right">{{ number_format($invoiceData['order']->paid_amount, 2) }}</td>
+                            <td class="text-right">{{ \App\Support\Money::format($invoiceData['order']->paid_amount) }}</td>
                         </tr>
                         <tr class="total">
                             <td><strong>Balance Due:</strong></td>
-                            <td class="text-right"><strong>{{ number_format($invoiceData['balance_due'], 2) }}</strong></td>
+                            <td class="text-right"><strong>{{ \App\Support\Money::format($invoiceData['balance_due']) }}</strong></td>
                         </tr>
                         @endif
                     </table>

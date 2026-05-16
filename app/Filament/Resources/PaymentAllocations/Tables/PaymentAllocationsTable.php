@@ -6,6 +6,7 @@ use App\Filament\Exports\PaymentAllocationExporter;
 use App\Models\JobOrder;
 use App\Models\PurchaseOrder;
 use App\Models\SalesOrder;
+use App\Support\Money;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\ExportAction;
@@ -63,11 +64,15 @@ class PaymentAllocationsTable
                     ->sortable(),
                 TextColumn::make('allocated_amount')
                     ->label('Amount')
-                    ->suffix(' Birr')
+                    ->formatStateUsing(fn ($state) => Money::format($state))
                     ->weight('bold')
                     ->color(fn ($record) => $record->payment?->direction === 'inbound' ? 'success' : 'danger')
                     ->sortable()
-                    ->summarize(Sum::make()->label('Total')->suffix(' Birr')),
+                    ->summarize(
+                        Sum::make()
+                            ->label('Total')
+                            ->formatStateUsing(fn ($state) => Money::format($state))
+                    ),
             ])
             ->defaultSort('payment.payment_date', 'desc')
             ->filters([

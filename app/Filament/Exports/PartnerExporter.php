@@ -10,6 +10,8 @@ use Illuminate\Support\Number;
 
 class PartnerExporter extends Exporter
 {
+    use RunsExportsSynchronously;
+
     protected static ?string $model = Partner::class;
 
     public static function getColumns(): array
@@ -23,19 +25,19 @@ class PartnerExporter extends Exporter
                 ->label('Address'),
             ExportColumn::make('is_customer')
                 ->label('Is Customer')
-                ->state(fn($record) => $record->is_customer ? 'Yes' : 'No'),
+                ->state(fn ($record) => $record->is_customer ? 'Yes' : 'No'),
             ExportColumn::make('is_supplier')
                 ->label('Is Supplier')
-                ->state(fn($record) => $record->is_supplier ? 'Yes' : 'No'),
+                ->state(fn ($record) => $record->is_supplier ? 'Yes' : 'No'),
         ];
     }
 
     public static function getCompletedNotificationBody(Export $export): string
     {
-        $body = 'Your partner export has completed and ' . Number::format($export->successful_rows) . ' ' . str('row')->plural($export->successful_rows) . ' exported.';
+        $body = 'Your partner export has completed and '.Number::format($export->successful_rows).' '.str('row')->plural($export->successful_rows).' exported.';
 
         if ($failedRowsCount = $export->getFailedRowsCount()) {
-            $body .= ' ' . Number::format($failedRowsCount) . ' ' . str('row')->plural($failedRowsCount) . ' failed to export.';
+            $body .= ' '.Number::format($failedRowsCount).' '.str('row')->plural($failedRowsCount).' failed to export.';
         }
 
         return $body;

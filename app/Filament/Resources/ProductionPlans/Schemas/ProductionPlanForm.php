@@ -12,6 +12,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Illuminate\Support\Str;
 
 class ProductionPlanForm
 {
@@ -76,7 +77,7 @@ class ProductionPlanForm
                                     ->icon('heroicon-o-plus')
                                     ->action(function (Repeater $component) {
                                         $state = $component->getState() ?? [];
-                                        $state[] = [
+                                        $state[(string) Str::uuid()] = [
                                             'job_order_task_id' => null,
                                             'planned_quantity' => 0,
                                             'planned_plates' => 0,
@@ -95,10 +96,10 @@ class ProductionPlanForm
                             ->icon('heroicon-o-plus')
                             ->action(function (Repeater $component) {
                                 $state = $component->getState() ?? [];
-                                $state[] = [
+                                $state[(string) Str::uuid()] = [
                                     'machine_id' => null,
                                     'items' => [
-                                        [
+                                        (string) Str::uuid() => [
                                             'job_order_task_id' => null,
                                             'planned_quantity' => 0,
                                             'planned_plates' => 0,

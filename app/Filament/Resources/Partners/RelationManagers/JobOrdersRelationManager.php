@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Partners\RelationManagers;
 
+use App\Support\Money;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\AssociateAction;
 use Filament\Actions\BulkActionGroup;
@@ -71,7 +72,7 @@ class JobOrdersRelationManager extends RelationManager
                     ->getStateUsing(fn ($record) => $record->paymentAllocations()->exists())
                     ->label('Adv. Paid'),
                 TextColumn::make('total')
-                    ->suffix(' Birr')
+                    ->formatStateUsing(fn ($state) => Money::format($state))
                     ->sortable(),
                 TextColumn::make('status')
                     ->badge()

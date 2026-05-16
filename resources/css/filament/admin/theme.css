@@ -280,10 +280,3 @@ h1.fi-simple-header-heading {
     border: none !important;
     padding-inline-start: 0 !important;
 }
-
-/* Partenr form align toggles to bottom */
-.fi-grid-col>.fi-sc-component:has(.alignbottomtoggles){
-    display: flex;
-    align-items: end;
-    padding-bottom: 5px;
-}

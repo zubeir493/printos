@@ -80,7 +80,7 @@ class InvoiceGeneratorService
             'balance_due' => $order->balance,
             'status' => $this->getInvoiceStatus($order),
             'terms' => $settings->invoice_terms,
-            'currency_code' => $settings->currency_code ?? 'ETB',
+            'currency_code' => $settings->currency_code ?? 'Birr',
             'currency_symbol' => $settings->currency_symbol ?? 'Birr',
             'options' => array_merge([
                 'show_tax_breakdown' => true,
@@ -215,7 +215,7 @@ class InvoiceGeneratorService
             'balance_due' => $order->balance,
             'status' => $this->getInvoiceStatus($order),
             'terms' => $settings->invoice_terms,
-            'currency_code' => $settings->currency_code ?? 'ETB',
+            'currency_code' => $settings->currency_code ?? 'Birr',
             'currency_symbol' => $settings->currency_symbol ?? 'Birr',
             'options' => array_merge([
                 'show_tax_breakdown' => true,
@@ -332,7 +332,7 @@ class InvoiceGeneratorService
             'status' => $this->getInvoiceStatus($order),
             'notes' => $order->remarks ?? null,
             'terms' => $settings->invoice_terms,
-            'currency_code' => $settings->currency_code ?? 'ETB',
+            'currency_code' => $settings->currency_code ?? 'Birr',
             'currency_symbol' => $settings->currency_symbol ?? 'Birr',
             'options' => array_merge([
                 'show_service_details' => true,
@@ -417,7 +417,7 @@ class InvoiceGeneratorService
             'tax_amount' => $taxCalculations['total_tax'],
             'total_amount' => $totalSubtotal + $taxCalculations['total_tax'],
             'terms' => $settings->invoice_terms,
-            'currency_code' => $settings->currency_code ?? 'ETB',
+            'currency_code' => $settings->currency_code ?? 'Birr',
             'currency_symbol' => $settings->currency_symbol ?? 'Birr',
             'options' => array_merge([
                 'show_order_breakdown' => true,

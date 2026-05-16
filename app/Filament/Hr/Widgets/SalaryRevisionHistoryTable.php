@@ -3,6 +3,7 @@
 namespace App\Filament\Hr\Widgets;
 
 use App\Models\EmployeeSalaryHistory;
+use App\Support\Money;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget as BaseWidget;
@@ -33,7 +34,7 @@ class SalaryRevisionHistoryTable extends BaseWidget
                 Tables\Columns\TextColumn::make('basic_salary')
                     ->label('Basic Salary')
                     ->alignEnd()
-                    ->formatStateUsing(fn ($state) => number_format((float) $state, 2)),
+                    ->formatStateUsing(fn ($state) => Money::format($state)),
                 Tables\Columns\TextColumn::make('change_reason')
                     ->label('Reason')
                     ->wrap(),

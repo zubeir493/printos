@@ -6,6 +6,7 @@ use App\Enums\PaymentTransactionType;
 use App\Filament\Support\PanelAccess;
 use App\Models\Bank;
 use App\Models\Payment;
+use App\Support\Money;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
@@ -56,7 +57,7 @@ class PaymentsRelationManager extends RelationManager
                         $currentAllocation = $record ? $record->allocated_amount : 0;
                         $remaining = $owner->total - ($owner->paid_amount - $currentAllocation);
 
-                        return 'Remaining balance to allocate: '.number_format($remaining, 2).' Birr';
+                        return 'Remaining balance to allocate: '.Money::format($remaining);
                     }),
 
                 Select::make('method')
@@ -126,7 +127,7 @@ class PaymentsRelationManager extends RelationManager
                     ->sortable(),
                 TextColumn::make('allocated_amount')
                     ->label('Amount')
-                    ->suffix(' Birr')
+                    ->formatStateUsing(fn ($state) => Money::format($state))
                     ->weight('bold')
                     ->color('success')
                     ->sortable()
@@ -135,11 +136,11 @@ class PaymentsRelationManager extends RelationManager
                             ->label('Total Paid')
                             ->formatStateUsing(function ($state) {
                                 $owner = $this->getOwnerRecord();
-                                $paid = number_format($state ?? 0, 2);
-                                $total = number_format($owner->total ?? 0, 2);
-                                $balance = number_format(max(0, ($owner->total ?? 0) - ($state ?? 0)), 2);
+                                $paid = Money::format($state);
+                                $total = Money::format($owner->total);
+                                $balance = Money::format(max(0, ($owner->total ?? 0) - ($state ?? 0)));
 
-                                return "{$paid} / {$total} Birr — Balance: {$balance} Birr";
+                                return "{$paid} / {$total} - Balance: {$balance}";
                             })
                     ),
             ])

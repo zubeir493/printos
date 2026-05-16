@@ -6,6 +6,7 @@ use App\Models\Bank;
 use App\Models\BankTransfer;
 use App\Models\Payment;
 use App\Models\User;
+use App\Support\Money;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -61,7 +62,7 @@ class BankService
 
             // Check sufficient balance
             if ($fromBank->calculated_balance < $transfer->amount) {
-                throw new \Exception("Insufficient balance in {$fromBank->name}. Available: ₱" . number_format($fromBank->calculated_balance, 2));
+                throw new \Exception("Insufficient balance in {$fromBank->name}. Available: ".Money::format($fromBank->calculated_balance));
             }
 
             // Update balances
@@ -111,7 +112,7 @@ class BankService
      */
     public function processPayment(Payment $payment): void
     {
-        if (!$payment->bank_id || $payment->method !== 'bank') {
+        if (! $payment->bank_id || $payment->method !== 'bank') {
             return;
         }
 
@@ -121,7 +122,7 @@ class BankService
             if ($payment->direction === 'outbound') {
                 // Check sufficient balance for outbound payments
                 if ($bank->calculated_balance < $payment->amount) {
-                    throw new \Exception("Insufficient balance in {$bank->name}. Available: ₱" . number_format($bank->calculated_balance, 2));
+                    throw new \Exception("Insufficient balance in {$bank->name}. Available: ".Money::format($bank->calculated_balance));
                 }
                 $bank->decrement('current_balance', $payment->amount);
             } else {

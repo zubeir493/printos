@@ -10,6 +10,8 @@ use Illuminate\Support\Number;
 
 class InventoryItemExporter extends Exporter
 {
+    use RunsExportsSynchronously;
+
     protected static ?string $model = InventoryItem::class;
 
     public static function getColumns(): array
@@ -30,10 +32,10 @@ class InventoryItemExporter extends Exporter
 
     public static function getCompletedNotificationBody(Export $export): string
     {
-        $body = 'Your inventory item export has completed and ' . Number::format($export->successful_rows) . ' ' . str('row')->plural($export->successful_rows) . ' exported.';
+        $body = 'Your inventory item export has completed and '.Number::format($export->successful_rows).' '.str('row')->plural($export->successful_rows).' exported.';
 
         if ($failedRowsCount = $export->getFailedRowsCount()) {
-            $body .= ' ' . Number::format($failedRowsCount) . ' ' . str('row')->plural($failedRowsCount) . ' failed to export.';
+            $body .= ' '.Number::format($failedRowsCount).' '.str('row')->plural($failedRowsCount).' failed to export.';
         }
 
         return $body;

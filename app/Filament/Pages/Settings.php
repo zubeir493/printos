@@ -18,6 +18,7 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
 
 class Settings extends Page implements HasForms
@@ -141,7 +142,7 @@ class Settings extends Page implements HasForms
                             ->schema([
                                 TextInput::make('currency_code')
                                     ->label('Currency Code')
-                                    ->placeholder('ETB')
+                                    ->placeholder('Birr')
                                     ->required()
                                     ->maxLength(3),
                                 TextInput::make('currency_symbol')
@@ -194,13 +195,23 @@ class Settings extends Page implements HasForms
             $data['tax_configuration'] = $nonVatTaxes;
         }
 
+        if (array_key_exists('company_logo', $data) && is_array($data['company_logo'])) {
+            $data['company_logo'] = Arr::first($data['company_logo']);
+        }
+
+        if (blank($data['company_logo'] ?? null) && filled($existingSettings?->company_logo)) {
+            $data['company_logo'] = $existingSettings->company_logo;
+        }
+
         if ($existingSettings) {
             $existingSettings->update($data);
+            $settings = $existingSettings->fresh();
         } else {
-            Setting::create($data);
+            $settings = Setting::create($data);
         }
 
         Cache::forget('app_settings');
+        $this->form->fill($settings->toArray());
 
         Notification::make()
             ->title('Settings saved')

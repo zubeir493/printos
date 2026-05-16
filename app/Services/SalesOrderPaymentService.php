@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\PaymentTransactionType;
 use App\Models\Payment;
 use App\Models\SalesOrder;
+use App\Support\Money;
 use Illuminate\Support\Facades\DB;
 
 class SalesOrderPaymentService
@@ -58,7 +59,7 @@ class SalesOrderPaymentService
 
             // Validate total payments don't exceed order total
             if ($totalPayments > $salesOrder->total) {
-                throw new \Exception("Total payments ({$totalPayments} Birr) exceed order total ({$salesOrder->total} Birr)");
+                throw new \Exception('Total payments ('.Money::format($totalPayments).') exceed order total ('.Money::format($salesOrder->total).')');
             }
 
             foreach ($paymentsData as $paymentData) {

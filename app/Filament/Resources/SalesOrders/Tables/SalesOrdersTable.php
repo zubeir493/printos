@@ -11,6 +11,7 @@ use App\Models\StockMovement;
 use App\Models\Warehouse;
 use App\Services\Accounting\VoidPaymentJournalEntry;
 use App\Services\InvoiceGeneratorService;
+use App\Support\Money;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
@@ -42,7 +43,7 @@ class SalesOrdersTable
                     ->color('primary'),
                 TextColumn::make('paid_amount')
                     ->label('Payment Status')
-                    ->state(fn ($record) => number_format($record->paid_amount, 2).'/'.number_format($record->total, 2).' Birr')
+                    ->state(fn ($record) => Money::format($record->paid_amount).'/'.Money::format($record->total))
                     ->color(fn ($record) => $record->balance > 0 ? 'warning' : 'success')
                     ->description(fn ($record) => $record->payment_allocations_count > 0
                         ? $record->payment_allocations_count.' payment(s)'
@@ -111,7 +112,7 @@ class SalesOrdersTable
                                     ->numeric()
                                     ->suffix('Birr')
                                     ->default(fn ($record) => $record->balance)
-                                    ->helperText(fn ($record) => "Balance: {$record->balance} Birr"),
+                                    ->helperText(fn ($record) => 'Balance: '.Money::format($record->balance)),
                                 DatePicker::make('payment_date')
                                     ->label('Payment Date')
                                     ->default(now())
@@ -129,7 +130,7 @@ class SalesOrdersTable
                                 $amount = (float) $data['allocated_amount'];
 
                                 if ($amount > $record->balance) {
-                                    throw new \Exception("Cannot allocate more than the remaining balance of {$record->balance} Birr.");
+                                    throw new \Exception('Cannot allocate more than the remaining balance of '.Money::format($record->balance).'.');
                                 }
 
                                 $payment = Payment::create([
@@ -152,7 +153,7 @@ class SalesOrdersTable
 
                                 Notification::make()
                                     ->title('Payment Recorded')
-                                    ->body("{$amount} Birr received for {$record->order_number}.")
+                                    ->body(Money::format($amount).' received for '.$record->order_number.'.')
                                     ->success()
                                     ->send();
 

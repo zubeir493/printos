@@ -4,6 +4,7 @@ namespace App\Filament\Sales\Widgets;
 
 use App\Models\Partner;
 use App\Models\SalesOrder;
+use App\Support\Money;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 
@@ -31,7 +32,7 @@ class SalesConversionStats extends BaseWidget
                 ->description('Customers created in the last 30 days')
                 ->descriptionIcon('heroicon-m-user-plus')
                 ->color('info'),
-            Stat::make('Average Order Value', number_format((float) SalesOrder::query()->avg('total'), 2))
+            Stat::make('Average Order Value', Money::abbreviate(SalesOrder::query()->avg('total'), precision: 2))
                 ->description('Across all sales orders')
                 ->descriptionIcon('heroicon-m-calculator')
                 ->color('primary'),

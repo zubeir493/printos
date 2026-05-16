@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Payments\Tables;
 
 use App\Enums\PaymentTransactionType;
 use App\Filament\Exports\PaymentExporter;
+use App\Support\Money;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\ExportAction;
@@ -27,7 +28,7 @@ class PaymentsTable
                     ->formatStateUsing(function ($state, $record) {
                         $prefix = $record->direction === 'inbound' ? '+' : '-';
 
-                        return $prefix.number_format($state, 2);
+                        return $prefix.Money::format($state);
                     })
                     ->description(fn ($record) => 'via '.ucfirst($record->method))
                     ->color(fn ($record) => $record->direction === 'inbound' ? 'success' : 'danger')

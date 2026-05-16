@@ -6,6 +6,7 @@ use App\Filament\Exports\InventoryBalanceExporter;
 use App\Filament\Widgets\StockOverviewStats;
 use App\Models\InventoryBalance;
 use App\Models\Warehouse;
+use App\Support\Money;
 use BackedEnum;
 use Filament\Actions\ExportAction;
 use Filament\Forms;
@@ -114,7 +115,7 @@ class StockOverview extends Page implements HasForms, HasTable
                         return (float) $record->quantity_on_hand * $baseUnitCost;
                     })
                     ->placeholder('-')
-                    ->suffix(fn ($state) => $state === null ? '' : ' Birr')
+                    ->formatStateUsing(fn ($state) => $state === null ? null : Money::format($state))
                     ->color('success')
                     ->label('Total Value')
                     ->summarize(
@@ -139,7 +140,7 @@ class StockOverview extends Page implements HasForms, HasTable
                                         )
                                     '))
                             )
-                            ->numeric()
+                            ->formatStateUsing(fn ($state) => Money::format($state))
                     ),
             ])
             ->headerActions([

@@ -3,6 +3,7 @@
 namespace App\Filament\Hr\Widgets;
 
 use App\Models\Employee;
+use App\Support\Money;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 
@@ -26,7 +27,7 @@ class HrPanelStats extends StatsOverviewWidget
             Stat::make('Active Headcount', $activeHeadcount)
                 ->description('Employees with active status')
                 ->color('success'),
-            Stat::make('Monthly Payroll Liability', number_format($monthlyPayrollLiability, 2))
+            Stat::make('Monthly Payroll Liability', Money::abbreviate($monthlyPayrollLiability, precision: 2))
                 ->description('Active employees basic salary total')
                 ->color('warning'),
             Stat::make('Recent Hires', $recentHires)

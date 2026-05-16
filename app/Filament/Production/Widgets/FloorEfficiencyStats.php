@@ -36,7 +36,7 @@ class FloorEfficiencyStats extends BaseWidget
             ->count();
 
         // 3. Job Tasks in Queue
-        $pendingTasks = JobOrderTask::where('status', 'pending')->count();
+        $pendingTasks = JobOrderTask::whereIn('status', ['pending', 'production'])->count();
         $openMaterialRequests = MaterialRequest::query()
             ->whereColumn('issued_quantity', '<', 'requested_quantity')
             ->count();

@@ -2,11 +2,11 @@
 
 namespace App\Filament\Resources\StockTransfers\Schemas;
 
-use App\Models\InventoryBalance;
 use App\Models\InventoryItem;
 use App\Models\StockTransfer;
 use App\Models\Warehouse;
-use Filament\Forms\Components\DatePicker;
+use App\Support\StockTransferQuantity;
+use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
@@ -35,10 +35,11 @@ class StockTransferForm
                             })
                             ->readOnly()
                             ->columnSpan(2)
-                            ->required(),
-                        DatePicker::make('transfer_date')
+                            ->dehydrated(false),
+                        DateTimePicker::make('transfer_date')
                             ->columnSpan(2)
-                            ->default(today())
+                            ->seconds(false)
+                            ->default(now())
                             ->required(),
                         TextInput::make('status')
                             ->default('Draft')
@@ -68,6 +69,9 @@ class StockTransferForm
                     ])->columns(6)->columnSpan(4),
                 Repeater::make('items')
                     ->relationship('items')
+                    ->mutateRelationshipDataBeforeFillUsing(fn (array $data): array => StockTransferQuantity::convertRepeaterDataToDisplayUnits($data))
+                    ->mutateRelationshipDataBeforeCreateUsing(fn (array $data): array => StockTransferQuantity::convertRepeaterDataToBaseUnits($data))
+                    ->mutateRelationshipDataBeforeSaveUsing(fn (array $data): array => StockTransferQuantity::convertRepeaterDataToBaseUnits($data))
                     ->schema([
                         Select::make('inventory_item_id')
                             ->relationship('inventoryItem', 'name')
@@ -78,12 +82,13 @@ class StockTransferForm
                             ->afterStateUpdated(function ($state, callable $set) {
                                 $item = InventoryItem::find($state);
 
-                                $set('unit_label', $item?->displayUnit() ?: 'unit');
+                                $set('unit_label', StockTransferQuantity::unitLabel($item));
+                                $set('quantity', null);
                             })
                             ->afterStateHydrated(function ($state, callable $set) {
                                 $item = InventoryItem::find($state);
 
-                                $set('unit_label', $item?->displayUnit() ?: 'unit');
+                                $set('unit_label', StockTransferQuantity::unitLabel($item));
                             }),
                         TextInput::make('quantity')
                             ->numeric()
@@ -91,20 +96,11 @@ class StockTransferForm
                             ->minValue(0.01)
                             ->step(0.01)
                             ->suffix(fn (callable $get): string => $get('unit_label') ?: 'unit')
-                            ->maxValue(function (callable $get, callable $set) {
+                            ->maxValue(function (callable $get) {
                                 $inventoryItemId = $get('inventory_item_id');
                                 $fromWarehouseId = $get('../../from_warehouse_id');
 
-                                if (! $inventoryItemId || ! $fromWarehouseId) {
-                                    return null;
-                                }
-
-                                $balance = InventoryBalance::where([
-                                    'inventory_item_id' => $inventoryItemId,
-                                    'warehouse_id' => $fromWarehouseId,
-                                ])->first();
-
-                                return $balance ? (float) $balance->quantity_on_hand : 0.0;
+                                return StockTransferQuantity::availableDisplayQuantity($inventoryItemId, $fromWarehouseId);
                             })
                             ->helperText(function (callable $get) {
                                 $inventoryItemId = $get('inventory_item_id');
@@ -114,12 +110,7 @@ class StockTransferForm
                                     return 'Select an item and from warehouse to see available quantity';
                                 }
 
-                                $balance = InventoryBalance::where([
-                                    'inventory_item_id' => $inventoryItemId,
-                                    'warehouse_id' => $fromWarehouseId,
-                                ])->first();
-
-                                $available = $balance ? (float) $balance->quantity_on_hand : 0.0;
+                                $available = StockTransferQuantity::availableDisplayQuantity($inventoryItemId, $fromWarehouseId) ?? 0.0;
                                 $unitLabel = $get('unit_label') ?: 'units';
 
                                 return "Available: {$available} {$unitLabel}";

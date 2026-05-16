@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\SequentialNumber;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -119,11 +120,14 @@ class SalesOrder extends Model
                 return;
             }
 
-            DB::transaction(function () use ($salesOrder): void {
-                $last = self::lockForUpdate()->orderBy('id', 'desc')->first();
-                $nextId = $last ? $last->id + 1 : 1;
-                $salesOrder->order_number = 'SO-'.str_pad($nextId, 5, '0', STR_PAD_LEFT);
-            });
+            $salesOrder->order_number = SequentialNumber::next(
+                lockName: 'sales_orders',
+                modelClass: self::class,
+                column: 'order_number',
+                prefix: 'SO-',
+                padding: 5,
+                likePattern: 'SO-%',
+            );
         });
 
         static::updating(function ($salesOrder) {
@@ -136,7 +140,7 @@ class SalesOrder extends Model
                     if (
                         $inventoryItem
                         && $inventoryItem->hasPurchaseUnit()
-                        && $item->unit_label === $inventoryItem->purchase_unit
+                        && $item->usesPurchaseUnit()
                     ) {
                         $requiredBase = $inventoryItem->toBaseUnits((float) $item->quantity);
                     }
@@ -148,7 +152,7 @@ class SalesOrder extends Model
 
                     if ($qty < $requiredBase) {
                         $itemName = $inventoryItem ? $inventoryItem->name : 'Unknown Item';
-                        $availableDisplay = $inventoryItem && $inventoryItem->hasPurchaseUnit() && $item->unit_label === $inventoryItem->purchase_unit
+                        $availableDisplay = $inventoryItem && $item->usesPurchaseUnit()
                             ? round($inventoryItem->toPurchaseUnits($qty), 4).' '.$inventoryItem->purchase_unit
                             : $qty.' '.($inventoryItem?->unit ?? 'units');
                         throw new \Exception("Insufficient stock for item {$itemName}. Available: {$availableDisplay}, Required: {$item->quantity} {$item->unit_label}.");
@@ -168,26 +172,16 @@ class SalesOrder extends Model
                             ->exists();
 
                         if (! $exists) {
-                            $inventoryItem = $item->inventoryItem;
-                            $baseQty = (float) $item->quantity;
-
-                            // Convert to base units if the item was sold in purchase units
-                            if (
-                                $inventoryItem
-                                && $inventoryItem->hasPurchaseUnit()
-                                && $item->unit_label === $inventoryItem->purchase_unit
-                            ) {
-                                $baseQty = $inventoryItem->toBaseUnits($baseQty);
-                            }
+                            $baseQty = $item->baseQuantityForStockMovement();
 
                             StockMovement::create([
                                 'inventory_item_id' => $item->inventory_item_id,
-                                'warehouse_id'      => $salesOrder->warehouse_id,
-                                'type'              => 'sale',
-                                'reference_type'    => self::class,
-                                'reference_id'      => $salesOrder->id,
-                                'quantity'          => -abs($baseQty),
-                                'movement_date'     => now(),
+                                'warehouse_id' => $salesOrder->warehouse_id,
+                                'type' => 'sale',
+                                'reference_type' => self::class,
+                                'reference_id' => $salesOrder->id,
+                                'quantity' => -abs($baseQty),
+                                'movement_date' => now(),
                             ]);
                         }
                     }

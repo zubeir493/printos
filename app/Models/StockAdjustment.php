@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\SequentialNumber;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -60,12 +61,14 @@ class StockAdjustment extends Model
     {
         static::creating(function ($model) {
             if (empty($model->adjustment_number)) {
-                $lastAdjustment = static::orderBy('id', 'desc')->first();
-                $lastNumber = 0;
-                if ($lastAdjustment && preg_match('/ADJ-(\d+)/', $lastAdjustment->adjustment_number, $matches)) {
-                    $lastNumber = (int) $matches[1];
-                }
-                $model->adjustment_number = 'ADJ-'.str_pad($lastNumber + 1, 4, '0', STR_PAD_LEFT);
+                $model->adjustment_number = SequentialNumber::next(
+                    lockName: 'stock_adjustments',
+                    modelClass: self::class,
+                    column: 'adjustment_number',
+                    prefix: 'ADJ-',
+                    padding: 4,
+                    likePattern: 'ADJ-%',
+                );
             }
         });
 

@@ -23,6 +23,7 @@ class HighPriorityJobsTable extends BaseWidget
                 JobOrder::query()
                     ->with('partner')
                     ->where('advance_paid', true)
+                    ->whereNotIn('status', ['completed', 'cancelled'])
                     ->orderBy('submission_date')
             )
             ->columns([

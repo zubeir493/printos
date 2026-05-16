@@ -35,7 +35,7 @@ class StockAdjustmentForm
                                 return 'ADJ-'.str_pad($lastNumber + 1, 4, '0', STR_PAD_LEFT);
                             })
                             ->readOnly()
-                            ->required(),
+                            ->dehydrated(false),
                         Select::make('warehouse_id')
                             ->relationship('warehouse', 'name')
                             ->default(fn () => Warehouse::where('is_default', true)->value('id'))

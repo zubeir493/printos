@@ -3,7 +3,7 @@
 namespace App\Observers;
 
 use App\Models\JobOrder;
-use Illuminate\Support\Facades\DB;
+use App\Support\SequentialNumber;
 
 class JobOrderObserver
 {
@@ -13,14 +13,14 @@ class JobOrderObserver
             return;
         }
 
-        DB::transaction(function () use ($jobOrder): void {
-            $last = JobOrder::lockForUpdate()->orderBy('id', 'desc')->first();
-            $lastNumber = 0;
-            if ($last && preg_match('/JO-(\d+)/', $last->job_order_number, $matches)) {
-                $lastNumber = (int) $matches[1];
-            }
-            $jobOrder->job_order_number = 'JO-'.str_pad($lastNumber + 1, 4, '0', STR_PAD_LEFT);
-        });
+        $jobOrder->job_order_number = SequentialNumber::next(
+            lockName: 'job_orders',
+            modelClass: JobOrder::class,
+            column: 'job_order_number',
+            prefix: 'JO-',
+            padding: 4,
+            likePattern: 'JO-%',
+        );
     }
 
     public function updating(JobOrder $jobOrder): void

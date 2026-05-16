@@ -21,6 +21,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Grid;
+use Filament\Support\Enums\FontWeight;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
@@ -50,6 +51,7 @@ class JobOrdersTable
                         'cancelled' => 'danger',
                         default => 'gray',
                     })
+                    ->weight(FontWeight::SemiBold)
                     ->formatStateUsing(fn ($state) => ucfirst($state))
                     ->description(fn ($record) => $record->completed_job_order_tasks_count.' / '.$record->job_order_tasks_count.' tasks done.'),
                 TextColumn::make('submission_date')
@@ -60,7 +62,19 @@ class JobOrdersTable
                     ->description(fn ($record) => $record->submission_date && $record->submission_date->isBefore(today()) && ! in_array($record->status, ['completed', 'cancelled']) ? 'Late' : null),
                 TextColumn::make('total')
                     ->label('Payment Progress')
+                    ->weight('bold')
                     ->formatStateUsing(fn ($record) => Money::format($record->paid_amount).'/'.Money::format($record->total))
+                    ->description(fn ($record) => $record->balance > 0
+                        ? 'Balance: '.Money::format($record->balance)
+                        : 'Paid in full')
+                    ->color(fn ($record): string => match (true) {
+                        $record->balance <= 0 => 'success',
+                        $record->paid_amount > 0 => 'warning',
+                        default => 'danger',
+                    })
+                    ->weight(fn ($record): FontWeight => $record->balance <= 0
+                        ? FontWeight::Bold
+                        : FontWeight::SemiBold)
                     ->visible(fn () => PanelAccess::canSeeMoneyValues())
                     ->sortable(),
             ])

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\SequentialNumber;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -36,7 +37,7 @@ class StockTransfer extends Model
             'id' => 'integer',
             'from_warehouse_id' => 'integer',
             'to_warehouse_id' => 'integer',
-            'transfer_date' => 'date',
+            'transfer_date' => 'datetime',
         ];
     }
 
@@ -59,12 +60,14 @@ class StockTransfer extends Model
     {
         static::creating(function ($transfer) {
             if (! $transfer->transfer_number) {
-                $lastTransfer = static::orderBy('id', 'desc')->first();
-                $lastNumber = 0;
-                if ($lastTransfer && preg_match('/ST-(\d+)/', $lastTransfer->transfer_number, $matches)) {
-                    $lastNumber = (int) $matches[1];
-                }
-                $transfer->transfer_number = 'ST-'.str_pad($lastNumber + 1, 4, '0', STR_PAD_LEFT);
+                $transfer->transfer_number = SequentialNumber::next(
+                    lockName: 'stock_transfers',
+                    modelClass: self::class,
+                    column: 'transfer_number',
+                    prefix: 'ST-',
+                    padding: 4,
+                    likePattern: 'ST-%',
+                );
             }
         });
 

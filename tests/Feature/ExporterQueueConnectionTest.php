@@ -1,5 +1,8 @@
 <?php
 
+use App\Filament\Exports\JobOrderExporter;
+use App\Filament\Exports\PurchaseOrderExporter;
+use App\Filament\Exports\SalesOrderExporter;
 use Filament\Actions\Exports\Exporter;
 use Illuminate\Support\Facades\File;
 
@@ -15,3 +18,19 @@ test('filament exporters complete synchronously so download notifications are se
             ->toContain('use RunsExportsSynchronously;');
     });
 });
+
+test('order exporters include financial totals and payment balances', function (string $exporterClass): void {
+    $columnNames = collect($exporterClass::getColumns())
+        ->map(fn ($column): string => $column->getName());
+
+    expect($columnNames)
+        ->toContain('subtotal')
+        ->toContain('tax_amount')
+        ->toContain('total')
+        ->toContain('paid_amount')
+        ->toContain('balance');
+})->with([
+    'sales orders' => SalesOrderExporter::class,
+    'purchase orders' => PurchaseOrderExporter::class,
+    'job orders' => JobOrderExporter::class,
+]);

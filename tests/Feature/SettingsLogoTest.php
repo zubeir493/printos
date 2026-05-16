@@ -24,7 +24,48 @@ test('company logo uses a local file path for invoice rendering and a public url
     $companyInfo = $settings->getCompanyInfo();
 
     expect($companyInfo['logo'])->toBe(Storage::disk('public')->path('logos/company.png'))
-        ->and($companyInfo['logo_url'])->toBe(Storage::disk('public')->url('logos/company.png'));
+        ->and($companyInfo['logo_url'])->toBe(Storage::disk('public')->url('logos/company.png'))
+        ->and($companyInfo['logo_data_uri'])->toStartWith('data:');
+});
+
+test('invoice templates use embedded logo data when available', function (): void {
+    $html = view('invoices.sales-order', [
+        'invoiceData' => [
+            'invoice_number' => 'INV-2026-000001',
+            'invoice_date' => '2026-05-16',
+            'due_date' => '2026-05-30',
+            'order' => (object) [
+                'partner' => (object) [
+                    'name' => 'Customer',
+                    'address' => null,
+                    'phone' => null,
+                    'email' => null,
+                ],
+                'paid_amount' => 0,
+            ],
+            'items' => [],
+            'company_info' => [
+                'name' => 'PrintOS',
+                'address' => null,
+                'phone' => null,
+                'email' => null,
+                'tax_id' => null,
+                'logo' => '/storage/logos/company.png',
+                'logo_data_uri' => 'data:image/png;base64,'.base64_encode('logo image contents'),
+            ],
+            'tax_calculations' => [],
+            'subtotal' => 0,
+            'tax_amount' => 0,
+            'total_amount' => 0,
+            'balance_due' => 0,
+            'status' => 'unpaid',
+            'options' => [],
+        ],
+    ])->render();
+
+    expect($html)
+        ->toContain('data:image/png;base64,')
+        ->not->toContain('src="/storage/logos/company.png"');
 });
 
 test('settings page stores a single logo path and reloads it after saving', function (): void {

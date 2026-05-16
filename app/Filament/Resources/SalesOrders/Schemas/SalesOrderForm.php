@@ -27,6 +27,7 @@ use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Support\Colors\Color;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\HtmlString;
 use Illuminate\Support\Str;
 use Livewire\Features\SupportFileUploads\FileUploadConfiguration;
 
@@ -53,8 +54,7 @@ class SalesOrderForm
                                         return 'SO-'.str_pad($lastNumber + 1, 4, '0', STR_PAD_LEFT);
                                     })
                                     ->readOnly()
-                                    ->required()
-                                    ->unique(ignoreRecord: true),
+                                    ->dehydrated(false),
                                 Select::make('partner_id')
                                     ->label('Customer')
                                     ->relationship('partner', 'name', modifyQueryUsing: fn ($query) => $query->where('is_customer', true))
@@ -100,7 +100,9 @@ class SalesOrderForm
                                         ->color(Color::Indigo)
                                         ->visible(fn () => ! request()->routeIs('*.view'))
                                         ->modalHeading('Import Sale Items')
-                                        ->modalDescription('Upload a CSV or Excel file. Required columns: name (or sku / inventory_item_id), quantity. Optional: unit_price.')
+                                        ->modalDescription(new HtmlString(
+                                            'Use the <a href="'.asset('import-templates/sales-order-items.csv').'" download class="font-medium text-primary-600 hover:underline dark:text-primary-400">example CSV template</a> to see the supported columns.'
+                                        ))
                                         ->modalWidth('lg')
                                         ->schema([
                                             FileUpload::make('import_file')
@@ -141,26 +143,8 @@ class SalesOrderForm
                                                 // - Same item + same price → sum quantities
                                                 // - Same item + different price → keep as separate row (user resolves)
                                                 // - New item → append
-                                                $existing = collect($get('salesOrderItems') ?? []);
+                                                $rows = self::mergeImportedRows($get('salesOrderItems') ?? [], $imported);
 
-                                                foreach ($imported as $newRow) {
-                                                    $matchIndex = $existing->search(fn ($row) => (int) ($row['inventory_item_id'] ?? 0) === (int) ($newRow['inventory_item_id'] ?? 0)
-                                                        && (float) ($row['unit_price'] ?? 0) === (float) ($newRow['unit_price'] ?? 0)
-                                                    );
-
-                                                    if ($matchIndex !== false) {
-                                                        // Same item, same price — merge quantities
-                                                        $merged = $existing[$matchIndex];
-                                                        $merged['quantity'] = (float) $merged['quantity'] + (float) $newRow['quantity'];
-                                                        $merged['total'] = round($merged['quantity'] * (float) $merged['unit_price'], 2);
-                                                        $existing[$matchIndex] = $merged;
-                                                    } else {
-                                                        // New item or same item with different price — append
-                                                        $existing->push($newRow);
-                                                    }
-                                                }
-
-                                                $rows = $existing->values()->toArray();
                                                 $set('salesOrderItems', $rows);
 
                                                 $subtotal = collect($rows)->sum('total');
@@ -171,10 +155,6 @@ class SalesOrderForm
                                                 $set('subtotal', $subtotal);
                                                 $set('tax_amount', $tax);
                                                 $set('total', $subtotal + $tax);
-
-                                                $mergedCount = count($imported) - collect($imported)->filter(fn ($r) => collect($get('salesOrderItems') ?? [])->contains(fn ($e) => (int) ($e['inventory_item_id'] ?? 0) === (int) ($r['inventory_item_id'] ?? 0)
-                                                )
-                                                )->count();
 
                                                 Notification::make()
                                                     ->title(count($imported).' item(s) imported')
@@ -354,5 +334,36 @@ class SalesOrderForm
                     ]),
             ])
             ->columns(4);
+    }
+
+    /**
+     * @param  array<int|string, array<string, mixed>>  $existingRows
+     * @param  array<int|string, array<string, mixed>>  $importedRows
+     * @return array<int, array<string, mixed>>
+     */
+    public static function mergeImportedRows(array $existingRows, array $importedRows): array
+    {
+        $rows = collect($existingRows)
+            ->filter(fn ($row): bool => is_array($row) && filled($row['inventory_item_id'] ?? null))
+            ->values();
+
+        foreach ($importedRows as $newRow) {
+            $matchIndex = $rows->search(fn ($row): bool => (int) ($row['inventory_item_id'] ?? 0) === (int) ($newRow['inventory_item_id'] ?? 0)
+                && (float) ($row['unit_price'] ?? 0) === (float) ($newRow['unit_price'] ?? 0)
+            );
+
+            if ($matchIndex !== false) {
+                $merged = $rows[$matchIndex];
+                $merged['quantity'] = (float) $merged['quantity'] + (float) $newRow['quantity'];
+                $merged['total'] = round($merged['quantity'] * (float) $merged['unit_price'], 2);
+                $rows[$matchIndex] = $merged;
+
+                continue;
+            }
+
+            $rows->push($newRow);
+        }
+
+        return $rows->values()->toArray();
     }
 }

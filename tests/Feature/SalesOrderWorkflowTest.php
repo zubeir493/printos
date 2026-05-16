@@ -232,4 +232,132 @@ class SalesOrderWorkflowTest extends TestCase
         // Balance is the full order total (subtotal + VAT from default settings)
         $this->assertEqualsWithDelta($salesOrder->fresh()->total, $salesOrder->fresh()->balance, 0.001);
     }
+
+    public function test_purchase_unit_sales_and_void_returns_use_base_stock_quantities(): void
+    {
+        $warehouse = Warehouse::create([
+            'name' => 'Purchase Unit Sales Warehouse',
+            'code' => 'PUSW',
+        ]);
+
+        $customer = Partner::create([
+            'name' => 'Purchase Unit Customer',
+            'is_customer' => true,
+        ]);
+
+        $item = InventoryItem::create([
+            'name' => 'DP70100',
+            'sku' => 'DP70100',
+            'unit' => 'Sheet',
+            'purchase_unit' => 'Ream',
+            'conversion_factor' => 500,
+            'type' => 'finished_good',
+            'is_sellable' => true,
+            'price' => 500.00,
+            'average_cost' => 1.00,
+        ]);
+
+        InventoryBalance::create([
+            'inventory_item_id' => $item->id,
+            'warehouse_id' => $warehouse->id,
+            'quantity_on_hand' => 1000,
+        ]);
+
+        $salesOrder = SalesOrder::create([
+            'warehouse_id' => $warehouse->id,
+            'partner_id' => $customer->id,
+            'order_date' => now(),
+            'payment_mode' => 'credit',
+            'status' => 'draft',
+        ]);
+
+        $salesOrderItem = SalesOrderItem::create([
+            'sales_order_id' => $salesOrder->id,
+            'inventory_item_id' => $item->id,
+            'quantity' => 1,
+            'unit_label' => 'Ream',
+            'unit_price' => 500.00,
+            'total' => 500.00,
+        ]);
+
+        $salesOrder->update(['status' => 'completed']);
+
+        $this->assertSame(500.0, $salesOrderItem->fresh()->baseQuantityForStockMovement());
+
+        $this->assertDatabaseHas('stock_movements', [
+            'reference_type' => SalesOrder::class,
+            'reference_id' => $salesOrder->id,
+            'inventory_item_id' => $item->id,
+            'warehouse_id' => $warehouse->id,
+            'quantity' => -500.00,
+            'type' => 'sale',
+        ]);
+
+        $this->assertStringContainsString(
+            'baseQuantityForStockMovement()',
+            file_get_contents(base_path('app/Filament/Resources/SalesOrders/Tables/SalesOrdersTable.php')),
+        );
+    }
+
+    public function test_purchase_unit_sales_conversion_tolerates_legacy_unit_label_casing(): void
+    {
+        $warehouse = Warehouse::create([
+            'name' => 'Legacy Unit Warehouse',
+            'code' => 'LUW',
+        ]);
+
+        $customer = Partner::create([
+            'name' => 'Legacy Unit Customer',
+            'is_customer' => true,
+        ]);
+
+        $item = InventoryItem::create([
+            'name' => 'Case Sensitive Ream',
+            'sku' => 'CASE-REAM',
+            'unit' => 'Sheet',
+            'purchase_unit' => 'Ream',
+            'conversion_factor' => 500,
+            'type' => 'finished_good',
+            'is_sellable' => true,
+            'price' => 500.00,
+            'average_cost' => 1.00,
+        ]);
+
+        InventoryBalance::create([
+            'inventory_item_id' => $item->id,
+            'warehouse_id' => $warehouse->id,
+            'quantity_on_hand' => 1000,
+        ]);
+
+        $salesOrder = SalesOrder::create([
+            'warehouse_id' => $warehouse->id,
+            'partner_id' => $customer->id,
+            'order_date' => now(),
+            'payment_mode' => 'credit',
+            'status' => 'draft',
+        ]);
+
+        $salesOrderItem = SalesOrderItem::create([
+            'sales_order_id' => $salesOrder->id,
+            'inventory_item_id' => $item->id,
+            'quantity' => 1,
+            'unit_label' => ' ream ',
+            'unit_price' => 500.00,
+            'total' => 500.00,
+        ]);
+
+        $salesOrder->update(['status' => 'completed']);
+
+        $this->assertTrue($salesOrderItem->fresh()->usesPurchaseUnit());
+        $this->assertSame(500.0, $salesOrderItem->fresh()->baseQuantityForStockMovement());
+
+        $this->assertDatabaseHas('stock_movements', [
+            'reference_type' => SalesOrder::class,
+            'reference_id' => $salesOrder->id,
+            'inventory_item_id' => $item->id,
+            'warehouse_id' => $warehouse->id,
+            'quantity' => -500.00,
+            'type' => 'sale',
+        ]);
+    }
 }

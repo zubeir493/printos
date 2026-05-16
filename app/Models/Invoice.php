@@ -3,11 +3,11 @@
 namespace App\Models;
 
 use App\Support\Money;
+use App\Support\SequentialNumber;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Support\Facades\DB;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 
@@ -85,12 +85,14 @@ class Invoice extends Model
                     default => 'INV-',
                 };
 
-                // Wrap in a transaction so lockForUpdate is effective.
-                DB::transaction(function () use ($invoice, $prefix): void {
-                    $last = self::lockForUpdate()->orderBy('id', 'desc')->first();
-                    $nextId = $last ? $last->id + 1 : 1;
-                    $invoice->invoice_number = $prefix.str_pad($nextId, 6, '0', STR_PAD_LEFT);
-                });
+                $invoice->invoice_number = SequentialNumber::next(
+                    lockName: 'invoices:'.$prefix,
+                    modelClass: self::class,
+                    column: 'invoice_number',
+                    prefix: $prefix,
+                    padding: 6,
+                    likePattern: $prefix.'%',
+                );
             }
 
             if (is_null($invoice->balance_due)) {

@@ -212,7 +212,7 @@ class SalesOrdersTable
                                 DB::beginTransaction();
 
                                 // Void all payment allocations and reverse journal entries
-                                $record->load('paymentAllocations.payment');
+                                $record->load(['paymentAllocations.payment', 'salesOrderItems.inventoryItem']);
                                 foreach ($record->paymentAllocations as $allocation) {
                                     $payment = $allocation->payment;
                                     if ($payment && ! $payment->voided_at) {
@@ -249,7 +249,7 @@ class SalesOrdersTable
                                             'type' => 'sale_return',
                                             'reference_type' => get_class($record),
                                             'reference_id' => $record->id,
-                                            'quantity' => abs($item->quantity),
+                                            'quantity' => abs($item->baseQuantityForStockMovement()),
                                             'movement_date' => now(),
                                         ]);
                                     }

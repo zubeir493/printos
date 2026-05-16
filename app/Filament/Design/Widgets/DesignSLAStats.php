@@ -3,7 +3,7 @@
 namespace App\Filament\Design\Widgets;
 
 use App\Models\Artwork;
-use App\Models\JobOrder;
+use App\Models\JobOrderTask;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use Illuminate\Support\Facades\DB;
@@ -25,11 +25,20 @@ class DesignSLAStats extends BaseWidget
             ->selectRaw($approvalTimeExpression)
             ->value('avg_days') ?? 0;
 
-        // 2. Count of open Job Orders.
-        $designQueueCount = JobOrder::where('status', 'active')->count();
+        // 2. Count of active design tasks that still need design/artwork work.
+        $designQueueCount = JobOrderTask::query()
+            ->whereNotIn('status', ['completed', 'cancelled'])
+            ->where(function ($query) {
+                $query
+                    ->whereIn('status', ['pending', 'draft', 'design'])
+                    ->orWhereDoesntHave('artworks');
+            })
+            ->count();
 
-        // 3. Pending Approvals
-        $pendingApprovals = Artwork::where('is_approved', false)->count();
+        // 3. Recently approved work, separate from the pipeline distribution chart.
+        $approvedThisWeek = Artwork::where('is_approved', true)
+            ->where('updated_at', '>=', now()->subDays(7)->startOfDay())
+            ->count();
 
         return [
             Stat::make('Avg Approval Time', round($avgApprovalDays, 1).' Days')
@@ -42,9 +51,10 @@ class DesignSLAStats extends BaseWidget
                 ->descriptionIcon('heroicon-m-paint-brush')
                 ->color($designQueueCount > 10 ? 'danger' : 'success'),
 
-            Stat::make('Pending Internal Approval', $pendingApprovals)
-                ->description('Artworks awaiting sign-off')
-                ->color('primary'),
+            Stat::make('Approved This Week', $approvedThisWeek)
+                ->description('Artwork approvals in the last 7 days')
+                ->descriptionIcon('heroicon-m-check-circle')
+                ->color($approvedThisWeek > 0 ? 'success' : 'gray'),
         ];
     }
 }

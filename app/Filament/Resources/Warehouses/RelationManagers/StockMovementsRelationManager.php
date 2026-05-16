@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\Warehouses\RelationManagers;
 
+use App\Support\DateTimeDisplay;
+use App\Support\StockTransferQuantity;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -20,7 +22,7 @@ class StockMovementsRelationManager extends RelationManager
             ->columns([
                 TextColumn::make('movement_date')
                     ->label('Moved At')
-                    ->dateTime('d M Y, h:i A')
+                    ->formatStateUsing(fn ($state) => DateTimeDisplay::dateOrDateTime($state))
                     ->sortable(),
 
                 TextColumn::make('inventoryItem.name')
@@ -42,7 +44,7 @@ class StockMovementsRelationManager extends RelationManager
 
                 TextColumn::make('quantity')
                     ->label('Quantity')
-                    ->numeric()
+                    ->formatStateUsing(fn ($state, $record): string => StockTransferQuantity::formattedQuantity($record->inventoryItem, $state))
                     ->alignEnd()
                     ->sortable()
                     ->color(fn ($state) => $state > 0 ? 'success' : 'danger')

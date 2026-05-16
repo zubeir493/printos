@@ -233,6 +233,32 @@ class JobOrder extends Model
         return ($totalIssued / $totalRequired) * 100;
     }
 
+    public function syncCompletionStatus(): void
+    {
+        if (in_array((string) $this->status, ['completed', 'cancelled'], true)) {
+            return;
+        }
+
+        if (! $this->isFullyPaid() || ! $this->allTasksCompleted()) {
+            return;
+        }
+
+        $this->updateQuietly(['status' => 'completed']);
+    }
+
+    public function isFullyPaid(): bool
+    {
+        return $this->balance <= 0.001;
+    }
+
+    public function allTasksCompleted(): bool
+    {
+        return $this->jobOrderTasks()->exists()
+            && ! $this->jobOrderTasks()
+                ->where('status', '!=', 'completed')
+                ->exists();
+    }
+
     public function getMaterialsSummaryAttribute(): array
     {
         if (! $this->relationLoaded('jobOrderTasks')) {

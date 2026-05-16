@@ -3,6 +3,8 @@
 namespace App\Filament\Warehouse\Widgets;
 
 use App\Models\StockMovement;
+use App\Support\DateTimeDisplay;
+use App\Support\StockTransferQuantity;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget as BaseWidget;
@@ -11,7 +13,7 @@ class RecentStockMovementsTable extends BaseWidget
 {
     protected static ?int $sort = 3;
 
-    protected int | string | array $columnSpan = 'full';
+    protected int|string|array $columnSpan = 'full';
 
     protected static ?string $heading = 'Recent Stock Movements';
 
@@ -32,13 +34,13 @@ class RecentStockMovementsTable extends BaseWidget
                     ->badge(),
                 Tables\Columns\TextColumn::make('quantity')
                     ->alignEnd()
-                    ->formatStateUsing(fn ($state) => number_format((float) $state, 2)),
+                    ->formatStateUsing(fn ($state, $record): string => StockTransferQuantity::formattedQuantity($record->inventoryItem, $state)),
                 Tables\Columns\TextColumn::make('warehouse.name')
                     ->label('Warehouse')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('movement_date')
                     ->label('Moved At')
-                    ->dateTime(),
+                    ->formatStateUsing(fn ($state) => DateTimeDisplay::dateOrDateTime($state)),
             ])
             ->paginated(false);
     }

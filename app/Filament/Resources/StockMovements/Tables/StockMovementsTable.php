@@ -3,6 +3,8 @@
 namespace App\Filament\Resources\StockMovements\Tables;
 
 use App\Filament\Exports\StockMovementExporter;
+use App\Support\DateTimeDisplay;
+use App\Support\StockTransferQuantity;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\ExportAction;
 use Filament\Actions\ExportBulkAction;
@@ -33,13 +35,13 @@ class StockMovementsTable
                     })
                     ->searchable(),
                 TextColumn::make('quantity')
-                    ->numeric()
+                    ->formatStateUsing(fn ($state, $record): string => StockTransferQuantity::formattedQuantity($record->inventoryItem, $state))
                     ->sortable()
                     ->color(fn ($state) => $state > 0 ? 'success' : 'danger')
                     ->weight('bold'),
                 TextColumn::make('movement_date')
                     ->label('Moved At')
-                    ->dateTime('d M Y, h:i A')
+                    ->formatStateUsing(fn ($state) => DateTimeDisplay::dateOrDateTime($state))
                     ->sortable(),
             ])
             ->filters([

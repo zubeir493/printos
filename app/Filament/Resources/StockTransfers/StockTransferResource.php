@@ -49,7 +49,7 @@ class StockTransferResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
-            ->with(['fromWarehouse', 'toWarehouse'])
+            ->with(['fromWarehouse', 'toWarehouse', 'items.inventoryItem'])
             ->withCount('items');
     }
 

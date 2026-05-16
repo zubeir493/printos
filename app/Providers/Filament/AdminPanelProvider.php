@@ -4,6 +4,7 @@ namespace App\Providers\Filament;
 
 use App\Filament\AvatarProviders\PrimaryColorAvatarProvider;
 use App\Filament\Widgets\AdminHealthStats;
+use App\Filament\Widgets\BankBalancesChart;
 use App\Filament\Widgets\ProfitabilityMarginChart;
 use App\Filament\Widgets\SystemBottlenecksChart;
 use App\Http\Middleware\RedirectToCorrectPanel;
@@ -51,6 +52,7 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->widgets([
                 AdminHealthStats::class,
+                BankBalancesChart::class,
                 ProfitabilityMarginChart::class,
                 SystemBottlenecksChart::class,
             ])

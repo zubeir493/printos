@@ -108,6 +108,8 @@ class PaymentAllocationObserver
                 'advance_paid' => $totalAllocated > 0,
                 'advance_amount' => $totalAllocated,
             ]);
+
+            $allocatable->refresh()->syncCompletionStatus();
         }
 
         // Synchronize related invoices if they exist

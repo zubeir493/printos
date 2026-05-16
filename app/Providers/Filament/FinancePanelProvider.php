@@ -27,6 +27,7 @@ use App\Filament\Resources\Payments\PaymentResource;
 use App\Filament\Resources\PurchaseOrderItems\PurchaseOrderItemResource;
 use App\Filament\Resources\PurchaseOrders\PurchaseOrderResource;
 use App\Filament\Resources\SalesOrders\SalesOrderResource;
+use App\Filament\Widgets\BankBalancesChart;
 use Filament\Enums\ThemeMode;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -92,6 +93,7 @@ class FinancePanelProvider extends PanelProvider
             ])
             ->widgets([
                 FinancePanelStats::class,
+                BankBalancesChart::class,
                 UnallocatedPaymentsTable::class,
                 OverdueInvoicesTable::class,
             ])

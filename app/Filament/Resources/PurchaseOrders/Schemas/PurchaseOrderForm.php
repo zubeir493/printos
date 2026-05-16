@@ -42,9 +42,7 @@ class PurchaseOrderForm
                                         return 'PO-'.str_pad($lastNumber + 1, 4, '0', STR_PAD_LEFT);
                                     })
                                     ->readOnly()
-                                    ->required()
-                                    ->unique(ignoreRecord: true)
-                                    ->dehydrated(),
+                                    ->dehydrated(false),
 
                                 Select::make('partner_id')
                                     ->label('Supplier')

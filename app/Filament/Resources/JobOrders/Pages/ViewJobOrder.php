@@ -320,16 +320,7 @@ class ViewJobOrder extends ViewRecord
                             throw new \Exception('No missing materials found.');
                         }
 
-                        // Replicate PO Number generation logic
-                        $lastPO = PurchaseOrder::orderBy('id', 'desc')->first();
-                        $lastNumber = 0;
-                        if ($lastPO && preg_match('/PO-(\d+)/', $lastPO->po_number, $matches)) {
-                            $lastNumber = (int) $matches[1];
-                        }
-                        $poNumber = 'PO-'.str_pad($lastNumber + 1, 4, '0', STR_PAD_LEFT);
-
                         $po = PurchaseOrder::create([
-                            'po_number' => $poNumber,
                             'partner_id' => $data['partner_id'],
                             'order_date' => now(),
                             'status' => 'draft',

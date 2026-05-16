@@ -25,8 +25,16 @@ class JobOrderExporter extends Exporter
                 ->label('Type'),
             ExportColumn::make('submission_date')
                 ->label('Submission Date'),
+            ExportColumn::make('subtotal')
+                ->label('Subtotal (Birr)'),
+            ExportColumn::make('tax_amount')
+                ->label('Tax Amount (Birr)'),
             ExportColumn::make('total')
-                ->label('Total Price (Birr)'),
+                ->label('Total (Birr)'),
+            ExportColumn::make('paid_amount')
+                ->label('Paid Amount (Birr)'),
+            ExportColumn::make('balance')
+                ->label('Balance (Birr)'),
             ExportColumn::make('status')
                 ->label('Status'),
             ExportColumn::make('production_started_at'),

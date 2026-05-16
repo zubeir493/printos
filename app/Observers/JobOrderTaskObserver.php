@@ -2,6 +2,7 @@
 
 namespace App\Observers;
 
+use App\Models\JobOrder;
 use App\Models\JobOrderTask;
 use App\Notifications\DesignerAssignedToTask;
 
@@ -42,10 +43,11 @@ class JobOrderTaskObserver
         }
     }
 
-    private function syncJobOrderStatus(?\App\Models\JobOrder $jobOrder): void
+    private function syncJobOrderStatus(?JobOrder $jobOrder): void
     {
         if ($jobOrder) {
             $jobOrder->recalculateTotal();
+            $jobOrder->refresh()->syncCompletionStatus();
         }
     }
 }

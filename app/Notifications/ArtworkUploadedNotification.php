@@ -19,7 +19,7 @@ class ArtworkUploadedNotification extends Notification
     {
         return FilamentNotification::make()
             ->title('New Artwork Uploaded')
-            ->body("New artwork has been uploaded for task '{$this->artwork->jobOrderTask->name}' on job {$this->artwork->jobOrder->job_order_number}.")
+            ->body("New artwork has been uploaded for task '{$this->artwork->jobOrderTask->name}' on job {$this->artwork->jobOrder->job_order_number}. Please review and approve it.")
             ->icon('heroicon-o-photo')
             ->iconColor('primary')
             ->getDatabaseMessage();

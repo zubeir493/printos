@@ -25,6 +25,14 @@ class PurchaseOrderExporter extends Exporter
                 ->label('Order Date'),
             ExportColumn::make('subtotal')
                 ->label('Subtotal (Birr)'),
+            ExportColumn::make('tax_amount')
+                ->label('Tax Amount (Birr)'),
+            ExportColumn::make('total')
+                ->label('Total (Birr)'),
+            ExportColumn::make('paid_amount')
+                ->label('Paid Amount (Birr)'),
+            ExportColumn::make('balance')
+                ->label('Balance (Birr)'),
             ExportColumn::make('status')
                 ->label('Status'),
         ];

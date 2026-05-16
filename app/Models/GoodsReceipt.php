@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Observers\GoodsReceiptObserver;
+use App\Support\SequentialNumber;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -53,5 +54,23 @@ class GoodsReceipt extends Model
     public function items(): HasMany
     {
         return $this->hasMany(GoodsReceiptItem::class);
+    }
+
+    protected static function booted(): void
+    {
+        static::creating(function (self $receipt): void {
+            if (! empty($receipt->receipt_number)) {
+                return;
+            }
+
+            $receipt->receipt_number = SequentialNumber::next(
+                lockName: 'goods_receipts',
+                modelClass: self::class,
+                column: 'receipt_number',
+                prefix: 'GR-',
+                padding: 5,
+                likePattern: 'GR-%',
+            );
+        });
     }
 }

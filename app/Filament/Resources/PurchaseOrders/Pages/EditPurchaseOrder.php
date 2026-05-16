@@ -2,17 +2,22 @@
 
 namespace App\Filament\Resources\PurchaseOrders\Pages;
 
-use App\Filament\Support\PanelAccess;
 use App\Filament\Resources\PurchaseOrders\PurchaseOrderResource;
+use App\Filament\Support\PanelAccess;
+use App\Models\GoodsReceipt;
 use App\Models\PurchaseOrder;
+use App\Models\Warehouse;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Repeater\TableColumn;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
+use Filament\Schemas\Components\Grid;
 
 class EditPurchaseOrder extends EditRecord
 {
@@ -30,17 +35,17 @@ class EditPurchaseOrder extends EditRecord
                 ->label('Receive Items')
                 ->icon('heroicon-o-truck')
                 ->color('success')
-                ->visible(fn(PurchaseOrder $record) => PanelAccess::canAccessWarehouseSection() && !in_array($record->status, ['draft', 'cancelled']))
-                ->form([                    
-                    \Filament\Schemas\Components\Grid::make(2)->schema([
-                        \Filament\Forms\Components\Select::make('warehouse_id')
+                ->visible(fn (PurchaseOrder $record) => PanelAccess::canAccessWarehouseSection() && ! in_array($record->status, ['draft', 'cancelled']))
+                ->form([
+                    Grid::make(2)->schema([
+                        Select::make('warehouse_id')
                             ->label('Receiving Warehouse')
-                            ->options(\App\Models\Warehouse::pluck('name', 'id'))
-                            ->default(fn () => \App\Models\Warehouse::where('is_default', true)->value('id'))
+                            ->options(Warehouse::pluck('name', 'id'))
+                            ->default(fn () => Warehouse::where('is_default', true)->value('id'))
                             ->searchable()
                             ->preload()
                             ->required(),
-                        \Filament\Forms\Components\DatePicker::make('receipt_date')
+                        DatePicker::make('receipt_date')
                             ->label('Receipt Date')
                             ->default(now())
                             ->required(),
@@ -86,6 +91,7 @@ class EditPurchaseOrder extends EditRecord
                             'quantity_to_receive' => max(0, $item->quantity - ($item->received_quantity ?? 0)),
                         ];
                     })->toArray();
+
                     return ['items' => $items];
                 })
                 ->action(function (array $data, PurchaseOrder $record) {
@@ -94,12 +100,12 @@ class EditPurchaseOrder extends EditRecord
                     });
 
                     if ($itemsToReceive->isEmpty()) {
-                        \Filament\Notifications\Notification::make()->title('No items to receive')->warning()->send();
+                        Notification::make()->title('No items to receive')->warning()->send();
+
                         return;
                     }
 
-                    $receipt = \App\Models\GoodsReceipt::create([
-                        'receipt_number' => 'GR-' . time(),
+                    $receipt = GoodsReceipt::create([
                         'purchase_order_id' => $record->id,
                         'warehouse_id' => $data['warehouse_id'],
                         'receipt_date' => now(),
@@ -127,7 +133,7 @@ class EditPurchaseOrder extends EditRecord
                         $record->update(['status' => 'received']);
                     }
 
-                    \Filament\Notifications\Notification::make()->title('Items received successfully')->success()->send();
+                    Notification::make()->title('Items received successfully')->success()->send();
                 }),
             DeleteAction::make(),
         ];

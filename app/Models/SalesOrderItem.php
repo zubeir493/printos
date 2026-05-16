@@ -40,4 +40,31 @@ class SalesOrderItem extends Model
     {
         return $this->belongsTo(InventoryItem::class);
     }
+
+    public function baseQuantityForStockMovement(): float
+    {
+        $inventoryItem = $this->inventoryItem;
+        $quantity = (float) $this->quantity;
+
+        if (
+            $inventoryItem
+            && $inventoryItem->hasPurchaseUnit()
+            && $this->usesPurchaseUnit()
+        ) {
+            return $inventoryItem->toBaseUnits($quantity);
+        }
+
+        return $quantity;
+    }
+
+    public function usesPurchaseUnit(): bool
+    {
+        $inventoryItem = $this->inventoryItem;
+
+        if (! $inventoryItem || ! $inventoryItem->hasPurchaseUnit()) {
+            return false;
+        }
+
+        return mb_strtolower(trim((string) $this->unit_label)) === mb_strtolower(trim((string) $inventoryItem->purchase_unit));
+    }
 }

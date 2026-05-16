@@ -11,9 +11,9 @@ class PendingPickListTable extends BaseWidget
 {
     protected static ?int $sort = 4;
 
-    protected int | string | array $columnSpan = 1;
+    protected int|string|array $columnSpan = 1;
 
-    protected static ?string $heading = 'Pending Dispathces';
+    protected static ?string $heading = 'WIP Ready for Dispatch';
 
     public function table(Table $table): Table
     {

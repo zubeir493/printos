@@ -37,8 +37,7 @@ class RetailCounterStats extends BaseWidget
             Stat::make('Counter Sales Today', Money::abbreviate($cashSales, precision: 2))
                 ->description('Cash sales booked today')
                 ->descriptionIcon('heroicon-m-banknotes')
-                ->color($cashSales > 0 ? 'success' : 'gray')
-                ->chart($this->cashSalesTrend()),
+                ->color($cashSales > 0 ? 'success' : 'gray'),
             Stat::make('Tickets Today', $tickets)
                 ->description('Retail orders processed')
                 ->descriptionIcon('heroicon-m-receipt-percent')
@@ -52,15 +51,5 @@ class RetailCounterStats extends BaseWidget
                 ->descriptionIcon('heroicon-m-chart-bar')
                 ->color('primary'),
         ];
-    }
-
-    private function cashSalesTrend(): array
-    {
-        return collect(range(6, 0))
-            ->map(fn (int $daysAgo) => (float) SalesOrder::query()
-                ->where('payment_mode', 'cash')
-                ->whereDate('order_date', today()->subDays($daysAgo))
-                ->sum('total'))
-            ->all();
     }
 }

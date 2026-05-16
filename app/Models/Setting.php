@@ -48,6 +48,10 @@ class Setting extends Model
      */
     public static function getSettings(): self
     {
+        if (config('cache.default') === 'array') {
+            return static::first() ?? static::createDefault();
+        }
+
         return Cache::remember('app_settings', 3600, function () {
             return static::first() ?? static::createDefault();
         });
@@ -93,6 +97,7 @@ class Setting extends Model
             'tax_id' => $this->company_tax_id,
             'logo' => $this->getCompanyLogoPath(),
             'logo_url' => $this->getCompanyLogoUrl(),
+            'logo_data_uri' => $this->getCompanyLogoDataUri(),
         ];
     }
 
@@ -112,6 +117,22 @@ class Setting extends Model
         }
 
         return Storage::disk('public')->url($this->company_logo);
+    }
+
+    public function getCompanyLogoDataUri(): ?string
+    {
+        if (! $this->company_logo || ! Storage::disk('public')->exists($this->company_logo)) {
+            return null;
+        }
+
+        $mimeType = Storage::disk('public')->mimeType($this->company_logo);
+        $contents = Storage::disk('public')->get($this->company_logo);
+
+        if (! $mimeType || $contents === false) {
+            return null;
+        }
+
+        return 'data:'.$mimeType.';base64,'.base64_encode($contents);
     }
 
     /**

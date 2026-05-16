@@ -19,8 +19,8 @@
                     <table>
                         <tr>
                             <td class="title">
-                                @if(!empty($invoiceData['company_info']['logo']))
-                                    <img src="{{ $invoiceData['company_info']['logo'] }}" style="width:100%; max-width:100px;">
+                                @if(!empty($invoiceData['company_info']['logo_data_uri']) || !empty($invoiceData['company_info']['logo']))
+                                    <img src="{{ $invoiceData['company_info']['logo_data_uri'] ?? $invoiceData['company_info']['logo'] }}" style="width:100%; max-width:100px;">
                                 @else
                                     <strong style="font-size:24px;">{{ $invoiceData['company_info']['name'] ?? config('app.name') }}</strong>
                                 @endif

@@ -22,7 +22,11 @@ class SalesOrderExporter extends Exporter
             ExportColumn::make('warehouse.name')->label('Warehouse'),
             ExportColumn::make('order_date')->label('Order Date'),
             ExportColumn::make('payment_mode')->label('Payment Type'),
+            ExportColumn::make('subtotal')->label('Subtotal (Birr)'),
+            ExportColumn::make('tax_amount')->label('Tax Amount (Birr)'),
             ExportColumn::make('total')->label('Total (Birr)'),
+            ExportColumn::make('paid_amount')->label('Paid Amount (Birr)'),
+            ExportColumn::make('balance')->label('Balance (Birr)'),
             ExportColumn::make('status')->label('Status'),
         ];
     }

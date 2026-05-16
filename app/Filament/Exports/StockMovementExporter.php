@@ -3,6 +3,7 @@
 namespace App\Filament\Exports;
 
 use App\Models\StockMovement;
+use App\Support\DateTimeDisplay;
 use Filament\Actions\Exports\ExportColumn;
 use Filament\Actions\Exports\Exporter;
 use Filament\Actions\Exports\Models\Export;
@@ -30,7 +31,8 @@ class StockMovementExporter extends Exporter
             ExportColumn::make('total_cost')
                 ->label('Total Cost'),
             ExportColumn::make('movement_date')
-                ->label('Date'),
+                ->label('Moved At')
+                ->formatStateUsing(fn ($state) => DateTimeDisplay::dateOrDateTime($state)),
         ];
     }
 

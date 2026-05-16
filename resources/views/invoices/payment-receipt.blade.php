@@ -18,8 +18,8 @@
                     <table>
                         <tr>
                             <td class="title">
-                                @if(!empty($receipt_data['company_info']['logo']))
-                                    <img src="{{ $receipt_data['company_info']['logo'] }}" style="width:100%; max-width:100px;">
+                                @if(!empty($receipt_data['company_info']['logo_data_uri']) || !empty($receipt_data['company_info']['logo']))
+                                    <img src="{{ $receipt_data['company_info']['logo_data_uri'] ?? $receipt_data['company_info']['logo'] }}" style="width:100%; max-width:100px;">
                                 @else
                                     <strong style="font-size:24px;">{{ $receipt_data['company_info']['name'] ?? config('app.name') }}</strong>
                                 @endif

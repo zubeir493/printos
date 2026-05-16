@@ -2,13 +2,13 @@
 
 namespace App\Models;
 
+use App\Support\SequentialNumber;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Support\Facades\DB;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 
@@ -110,14 +110,14 @@ class Payment extends Model
                 return;
             }
 
-            DB::transaction(function () use ($payment): void {
-                $last = self::lockForUpdate()->orderBy('id', 'desc')->first();
-                $lastNumber = 0;
-                if ($last && preg_match('/PAY-(?:\w+-)?(\d+)/', $last->payment_number, $m)) {
-                    $lastNumber = (int) $m[1];
-                }
-                $payment->payment_number = 'PAY-'.str_pad($lastNumber + 1, 6, '0', STR_PAD_LEFT);
-            });
+            $payment->payment_number = SequentialNumber::next(
+                lockName: 'payments',
+                modelClass: self::class,
+                column: 'payment_number',
+                prefix: 'PAY-',
+                padding: 6,
+                likePattern: 'PAY-%',
+            );
         });
     }
 }

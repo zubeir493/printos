@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\SequentialNumber;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -116,12 +117,14 @@ class BankTransfer extends Model
 
         static::creating(function ($model) {
             if (! $model->transfer_number) {
-                $lastTransfer = static::orderBy('id', 'desc')->first();
-                $lastNumber = 0;
-                if ($lastTransfer && preg_match('/BT-(\d+)/', $lastTransfer->transfer_number, $matches)) {
-                    $lastNumber = (int) $matches[1];
-                }
-                $model->transfer_number = 'BT-'.str_pad($lastNumber + 1, 4, '0', STR_PAD_LEFT);
+                $model->transfer_number = SequentialNumber::next(
+                    lockName: 'bank_transfers',
+                    modelClass: self::class,
+                    column: 'transfer_number',
+                    prefix: 'BT-',
+                    padding: 4,
+                    likePattern: 'BT-%',
+                );
             }
         });
 

@@ -28,6 +28,7 @@ use App\Observers\StockMovementObserver;
 use App\Policies\PaymentAllocationPolicy;
 use App\Policies\PaymentPolicy;
 use Filament\Actions\CreateAction;
+use Filament\Support\Facades\FilamentTimezone;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\URL;
@@ -59,6 +60,7 @@ class AppServiceProvider extends ServiceProvider
         }
 
         CreateAction::configureUsing(fn (CreateAction $action) => $action->createAnother(false));
+        FilamentTimezone::set(config('app.timezone'));
 
         Livewire::componentHook(ExceptionHandlerHook::class);
 

@@ -11,29 +11,16 @@ use App\Models\PurchaseOrder;
 use App\Models\SalesOrder;
 use App\Models\Setting;
 use App\Support\PrivateStorage;
+use App\Support\SequentialNumber;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 
 class InvoiceGeneratorService
 {
-    private array $taxConfig;
-
-    private array $companyInfo;
-
-    private string $storageDisk;
-
-    public function __construct()
-    {
-        $this->taxConfig = $this->loadTaxConfiguration();
-        $this->companyInfo = $this->loadCompanyInformation();
-        $this->storageDisk = PrivateStorage::diskName();
-    }
-
     /**
      * Generate invoice from SalesOrder
      */
@@ -72,7 +59,7 @@ class InvoiceGeneratorService
             'order' => $order,
             'items' => $order->salesOrderItems,
             'payments' => $order->paymentAllocations,
-            'company_info' => $this->companyInfo,
+            'company_info' => $this->loadCompanyInformation(),
             'tax_calculations' => $taxCalculations,
             'subtotal' => $subtotal,
             'tax_amount' => $taxAmount,
@@ -99,7 +86,7 @@ class InvoiceGeneratorService
         $filename = "invoice-{$invoiceNumber}.pdf";
         $path = "invoices/{$filename}";
 
-        Storage::disk($this->storageDisk)->put($path, $pdf->output());
+        Storage::disk(PrivateStorage::diskName())->put($path, $pdf->output());
 
         // Save invoice to database
         $invoice = Invoice::create([
@@ -142,7 +129,7 @@ class InvoiceGeneratorService
             'receipt_date' => $payment->payment_date->format('Y-m-d'),
             'payment' => $payment,
             'allocations' => $payment->paymentAllocations,
-            'company_info' => $this->companyInfo,
+            'company_info' => $this->loadCompanyInformation(),
             'options' => array_merge([
                 'show_payment_method' => true,
                 'show_allocated_orders' => true,
@@ -159,7 +146,7 @@ class InvoiceGeneratorService
         $filename = "receipt-{$receiptNumber}.pdf";
         $path = "receipts/{$filename}";
 
-        Storage::disk($this->storageDisk)->put($path, $pdf->output());
+        Storage::disk(PrivateStorage::diskName())->put($path, $pdf->output());
 
         return [
             'filename' => $filename,
@@ -207,7 +194,7 @@ class InvoiceGeneratorService
             'order' => $order,
             'items' => $order->purchaseOrderItems,
             'payments' => $order->paymentAllocations,
-            'company_info' => $this->companyInfo,
+            'company_info' => $this->loadCompanyInformation(),
             'tax_calculations' => $taxCalculations,
             'subtotal' => $subtotal,
             'tax_amount' => $taxAmount,
@@ -234,7 +221,7 @@ class InvoiceGeneratorService
         $filename = "purchase-invoice-{$invoiceNumber}.pdf";
         $path = "invoices/{$filename}";
 
-        Storage::disk($this->storageDisk)->put($path, $pdf->output());
+        Storage::disk(PrivateStorage::diskName())->put($path, $pdf->output());
 
         // Save invoice to database
         $invoice = Invoice::create([
@@ -317,7 +304,7 @@ class InvoiceGeneratorService
             'order' => $order,
             'items' => $items,
             'payments' => $order->paymentAllocations,
-            'company_info' => $this->companyInfo,
+            'company_info' => $this->loadCompanyInformation(),
             'customer_info' => [
                 'name' => $order->partner?->name ?? 'Internal Job',
                 'address' => $order->partner?->address ?? '',
@@ -350,7 +337,7 @@ class InvoiceGeneratorService
         $filename = "service-invoice-{$invoiceNumber}.pdf";
         $path = "invoices/{$filename}";
 
-        Storage::disk($this->storageDisk)->put($path, $pdf->output());
+        Storage::disk(PrivateStorage::diskName())->put($path, $pdf->output());
 
         // Save invoice to database
         $invoice = Invoice::create([
@@ -411,7 +398,7 @@ class InvoiceGeneratorService
             'due_date' => Carbon::now()->addDays($settings->invoice_due_days ?? 30)->format('Y-m-d'),
             'orders' => $orders,
             'items' => $allItems,
-            'company_info' => $this->companyInfo,
+            'company_info' => $this->loadCompanyInformation(),
             'tax_calculations' => $taxCalculations,
             'subtotal' => $totalSubtotal,
             'tax_amount' => $taxCalculations['total_tax'],
@@ -435,7 +422,7 @@ class InvoiceGeneratorService
         $filename = "batch-invoice-{$invoiceNumber}.pdf";
         $path = "invoices/{$filename}";
 
-        Storage::disk($this->storageDisk)->put($path, $pdf->output());
+        Storage::disk(PrivateStorage::diskName())->put($path, $pdf->output());
 
         return [
             'filename' => $filename,
@@ -452,7 +439,7 @@ class InvoiceGeneratorService
     {
         try {
             Mail::to($recipientEmail)
-                ->send(new InvoiceGenerated($invoiceData, $options));
+                ->queue(new InvoiceGenerated($invoiceData, $options));
 
             $invoiceNumber = $invoiceData['invoice_data']['invoice_number']
                 ?? $invoiceData['receipt_data']['receipt_number']
@@ -467,7 +454,7 @@ class InvoiceGeneratorService
                 'sent_at' => now(),
             ]);
 
-            Log::info('Invoice sent successfully', [
+            Log::info('Invoice email queued successfully', [
                 'invoice_number' => $invoiceNumber,
                 'recipient' => $recipientEmail,
             ]);
@@ -539,7 +526,7 @@ class InvoiceGeneratorService
             $itemTotal = $quantity * $unitPrice;
         }
 
-        foreach ($this->taxConfig as $taxType => $rate) {
+        foreach ($this->loadTaxConfiguration() as $taxType => $rate) {
             if ($this->isTaxApplicable($item, $taxType)) {
                 $tax = $itemTotal * $rate;
                 $taxAmount += $tax;
@@ -599,28 +586,16 @@ class InvoiceGeneratorService
             throw new \InvalidArgumentException('Invalid prefix or year format');
         }
 
-        return DB::transaction(function () use ($prefix, $year): int {
-            // Lock the last invoice row for this prefix+year so concurrent
-            // requests queue up rather than racing to the same sequence.
-            $pattern = "{$prefix}-{$year}-%";
+        $number = SequentialNumber::next(
+            lockName: "invoices:{$prefix}:{$year}",
+            modelClass: Invoice::class,
+            column: 'invoice_number',
+            prefix: "{$prefix}-{$year}-",
+            padding: 6,
+            likePattern: "{$prefix}-{$year}-%",
+        );
 
-            // The prefix string we actually strip is "{prefix}-{year}-" (no wildcard).
-            $stripPrefix = "{$prefix}-{$year}-";
-            $stripLength = strlen($stripPrefix) + 1; // SUBSTR is 1-indexed
-
-            $lastInvoice = Invoice::where('invoice_number', 'like', $pattern)
-                ->lockForUpdate()
-                ->orderByRaw('CAST(SUBSTR(invoice_number, ?) AS UNSIGNED) DESC', [$stripLength])
-                ->first();
-
-            if ($lastInvoice) {
-                $parts = explode('-', $lastInvoice->invoice_number);
-
-                return (int) end($parts) + 1;
-            }
-
-            return 1;
-        });
+        return (int) str($number)->afterLast('-')->value();
     }
 
     /**
@@ -687,7 +662,7 @@ class InvoiceGeneratorService
             ->setOption('fontCache', public_path('fonts'))
             ->setOption('isRemoteEnabled', true);
 
-        return Storage::disk($this->storageDisk)->put($invoice->file_path, $pdf->output());
+        return Storage::disk(PrivateStorage::diskName())->put($invoice->file_path, $pdf->output());
     }
 
     /**
@@ -717,7 +692,7 @@ class InvoiceGeneratorService
             'order' => $order,
             'items' => $items,
             'payments' => $order->paymentAllocations,
-            'company_info' => $this->companyInfo,
+            'company_info' => $this->loadCompanyInformation(),
             'tax_calculations' => $invoice->tax_calculations,
             'subtotal' => $invoice->subtotal,
             'tax_amount' => $invoice->tax_amount,
@@ -751,6 +726,6 @@ class InvoiceGeneratorService
      */
     public function deleteInvoice(string $filename): bool
     {
-        return Storage::disk($this->storageDisk)->delete("invoices/{$filename}");
+        return Storage::disk(PrivateStorage::diskName())->delete("invoices/{$filename}");
     }
 }

@@ -39,7 +39,7 @@ class ReceivingDiscrepancies extends BaseWidget
                     ->badge()
                     ->color('warning'),
                 Tables\Columns\TextColumn::make('created_at')
-                    ->date(),
+                    ->dateTime(),
             ]);
     }
 }

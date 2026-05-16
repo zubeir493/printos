@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\SequentialNumber;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -109,6 +110,21 @@ class PurchaseOrder extends Model
 
     protected static function booted()
     {
+        static::creating(function ($po): void {
+            if (! empty($po->po_number)) {
+                return;
+            }
+
+            $po->po_number = SequentialNumber::next(
+                lockName: 'purchase_orders',
+                modelClass: self::class,
+                column: 'po_number',
+                prefix: 'PO-',
+                padding: 4,
+                likePattern: 'PO-%',
+            );
+        });
+
         static::updating(function ($po) {
             //
         });

@@ -5,6 +5,7 @@ namespace App\Filament\Pages;
 use App\Models\Setting;
 use BackedEnum;
 use Filament\Actions\Action;
+use Filament\Forms\Components\BaseFileUpload;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -20,6 +21,7 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Storage;
 
 class Settings extends Page implements HasForms
 {
@@ -66,6 +68,7 @@ class Settings extends Page implements HasForms
                                     ->directory('logos')
                                     ->visibility('public')
                                     ->imagePreviewHeight('80')
+                                    ->getUploadedFileUsing(fn (BaseFileUpload $component, string $file, string|array|null $storedFileNames): ?array => $this->getCompanyLogoUploadInfo($component, $file, $storedFileNames))
                                     ->helperText('Used on invoices and receipts. Recommended: square PNG, max 200×200px.'),
                             ]),
                         Textarea::make('company_address')
@@ -233,5 +236,24 @@ class Settings extends Page implements HasForms
     protected function getFormActions(): array
     {
         return [];
+    }
+
+    /**
+     * @return array{name: string, size: int, type: string|null, url: string}|null
+     */
+    private function getCompanyLogoUploadInfo(BaseFileUpload $component, string $file, string|array|null $storedFileNames): ?array
+    {
+        $storage = Storage::disk($component->getDiskName());
+
+        if (! $storage->exists($file)) {
+            return null;
+        }
+
+        return [
+            'name' => is_array($storedFileNames) ? ($storedFileNames[$file] ?? basename($file)) : ($storedFileNames ?? basename($file)),
+            'size' => $storage->size($file),
+            'type' => $storage->mimeType($file),
+            'url' => '/storage/'.ltrim($file, '/'),
+        ];
     }
 }

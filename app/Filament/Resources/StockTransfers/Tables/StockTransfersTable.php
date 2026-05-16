@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\StockTransfers\Tables;
 
+use App\Support\DateTimeDisplay;
+use App\Support\StockTransferQuantity;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
@@ -18,7 +20,7 @@ class StockTransfersTable
                 TextColumn::make('transfer_number')
                     ->label('Transfer')
                     ->weight('bold')
-                    ->description(fn ($record) => $record->transfer_date)
+                    ->description(fn ($record) => DateTimeDisplay::dateOrDateTime($record->transfer_date))
                     ->searchable(),
                 TextColumn::make('fromWarehouse.name')
                     ->searchable(),
@@ -27,6 +29,12 @@ class StockTransfersTable
                 TextColumn::make('items_count')
                     ->label('Items')
                     ->counts('items'),
+                TextColumn::make('items_summary')
+                    ->label('Quantities')
+                    ->state(fn ($record): string => $record->items
+                        ->map(fn ($item): string => StockTransferQuantity::formattedQuantity($item->inventoryItem, $item->quantity).' '.$item->inventoryItem?->name)
+                        ->join(', '))
+                    ->wrap(),
                 TextColumn::make('status')
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {

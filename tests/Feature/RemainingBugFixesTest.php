@@ -5,6 +5,7 @@ use App\Models\GoodsReceiptItem;
 use App\Models\InventoryItem;
 use App\Models\Invoice;
 use App\Models\JobOrder;
+use App\Models\JobOrderTask;
 use App\Models\Partner;
 use App\Models\Payment;
 use App\Models\PaymentAllocation;
@@ -293,6 +294,90 @@ test('job order advance_amount updates correctly when an allocation is deleted',
     $jo->refresh();
     expect((float) $jo->advance_amount)->toBe(200.0);
     expect($jo->advance_paid)->toBeTrue();
+});
+
+test('job order completes when final payment is allocated after all tasks are completed', function () {
+    $partner = Partner::create(['name' => 'Completion Customer', 'is_customer' => true]);
+
+    $jo = JobOrder::factory()->create([
+        'partner_id' => $partner->id,
+        'status' => 'active',
+        'subtotal' => 1000.00,
+        'tax_amount' => 0.00,
+        'total' => 1000.00,
+    ]);
+
+    JobOrderTask::create([
+        'job_order_id' => $jo->id,
+        'name' => 'Print',
+        'quantity' => 100,
+        'task_cost' => 1000.00,
+        'status' => 'completed',
+    ]);
+
+    $jo->refresh();
+
+    $payment = Payment::create([
+        'partner_id' => $partner->id,
+        'payment_date' => now(),
+        'amount' => $jo->total,
+        'direction' => 'inbound',
+        'transaction_type' => 'customer_receipt',
+        'method' => 'cash',
+    ]);
+
+    PaymentAllocation::create([
+        'payment_id' => $payment->id,
+        'allocatable_type' => JobOrder::class,
+        'allocatable_id' => $jo->id,
+        'allocated_amount' => $jo->total,
+    ]);
+
+    expect((string) $jo->fresh()->status)->toBe('completed');
+});
+
+test('job order completes when final task is completed after payment is fully allocated', function () {
+    $partner = Partner::create(['name' => 'Task Completion Customer', 'is_customer' => true]);
+
+    $jo = JobOrder::factory()->create([
+        'partner_id' => $partner->id,
+        'status' => 'active',
+        'subtotal' => 1000.00,
+        'tax_amount' => 0.00,
+        'total' => 1000.00,
+    ]);
+
+    $task = JobOrderTask::create([
+        'job_order_id' => $jo->id,
+        'name' => 'Bind',
+        'quantity' => 100,
+        'task_cost' => 1000.00,
+        'status' => 'production',
+    ]);
+
+    $jo->refresh();
+
+    $payment = Payment::create([
+        'partner_id' => $partner->id,
+        'payment_date' => now(),
+        'amount' => $jo->total,
+        'direction' => 'inbound',
+        'transaction_type' => 'customer_receipt',
+        'method' => 'cash',
+    ]);
+
+    PaymentAllocation::create([
+        'payment_id' => $payment->id,
+        'allocatable_type' => JobOrder::class,
+        'allocatable_id' => $jo->id,
+        'allocated_amount' => $jo->total,
+    ]);
+
+    expect((string) $jo->fresh()->status)->toBe('active');
+
+    $task->update(['status' => 'completed']);
+
+    expect((string) $jo->fresh()->status)->toBe('completed');
 });
 
 // ---------------------------------------------------------------------------

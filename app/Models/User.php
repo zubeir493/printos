@@ -7,17 +7,20 @@ use App\UserRole;
 use Database\Factories\UserFactory;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\HasDatabaseNotifications;
 use Illuminate\Notifications\Notifiable;
+use NotificationChannels\WebPush\HasPushSubscriptions;
+use NotificationChannels\WebPush\PushSubscription;
 
 class User extends Authenticatable implements FilamentUser
 {
     /** @use HasFactory<UserFactory> */
-    use HasDatabaseNotifications, HasFactory, Notifiable;
+    use HasDatabaseNotifications, HasFactory, HasPushSubscriptions, Notifiable;
 
     /**
      * The attributes that are mass assignable.
@@ -80,5 +83,13 @@ class User extends Authenticatable implements FilamentUser
     public function warehouses(): BelongsToMany
     {
         return $this->belongsToMany(Warehouse::class)->withTimestamps();
+    }
+
+    /**
+     * @return Collection<int, PushSubscription>
+     */
+    public function routeNotificationForWebPush(): Collection
+    {
+        return $this->pushSubscriptions()->get();
     }
 }

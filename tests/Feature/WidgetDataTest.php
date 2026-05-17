@@ -143,8 +143,8 @@ test('bank balances widget reports active bank balances and is registered on adm
 
     expect($widget->getHeading())->toContain('4.00K');
     expect($data['datasets'][0]['data'])->toBe([2500.0, 1500.0]);
-    expect($data['labels'][0])->toContain('CBE - Savings');
-    expect($data['labels'][1])->toContain('Awash - Main');
+    expect($data['labels'][0])->toContain('Savings');
+    expect($data['labels'][1])->toContain('Main');
 
     expect(file_get_contents(app_path('Providers/Filament/AdminPanelProvider.php')))->toContain(BankBalancesChart::class);
     expect(file_get_contents(app_path('Providers/Filament/FinancePanelProvider.php')))->toContain(BankBalancesChart::class);

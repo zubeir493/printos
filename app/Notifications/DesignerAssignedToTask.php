@@ -3,19 +3,25 @@
 namespace App\Notifications;
 
 use App\Models\JobOrderTask;
+use App\Notifications\Concerns\SendsWebPushNotifications;
 use Filament\Notifications\Notification as FilamentNotification;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueueAfterCommit;
 use Illuminate\Notifications\Notification;
 
-class DesignerAssignedToTask extends Notification
+class DesignerAssignedToTask extends Notification implements ShouldQueueAfterCommit
 {
+    use Queueable;
+    use SendsWebPushNotifications;
+
     public function __construct(protected JobOrderTask $task) {}
 
-    public function via(object $notifiable): array
+    protected function webPushTitle(): string
     {
-        return ['database'];
+        return 'Design Task Assigned';
     }
 
-    public function toDatabase(object $notifiable): array
+    protected function webPushBody(): string
     {
         $body = "You have been assigned to task '{$this->task->name}' for job {$this->task->jobOrder->job_order_number}.\n";
 
@@ -23,9 +29,14 @@ class DesignerAssignedToTask extends Notification
             $body .= "\n\nBrief: {$this->task->instructions}";
         }
 
+        return $body;
+    }
+
+    public function toDatabase(object $notifiable): array
+    {
         return FilamentNotification::make()
-            ->title('Design Task Assigned')
-            ->body($body)
+            ->title($this->webPushTitle())
+            ->body($this->webPushBody())
             ->icon('heroicon-o-paint-brush')
             ->iconColor('primary')
             ->getDatabaseMessage();

@@ -14,6 +14,7 @@ use App\Filament\Finance\Pages\TrialBalanceReport;
 use App\Filament\Finance\Widgets\FinancePanelStats;
 use App\Filament\Finance\Widgets\OverdueInvoicesTable;
 use App\Filament\Finance\Widgets\UnallocatedPaymentsTable;
+use App\Filament\Pages\Auth\EditProfile;
 use App\Filament\Resources\Accounts\AccountResource;
 use App\Filament\Resources\Banks\BankResource;
 use App\Filament\Resources\BankTransfers\BankTransferResource;
@@ -58,7 +59,7 @@ class FinancePanelProvider extends PanelProvider
             ->defaultThemeMode(ThemeMode::Light)
             ->databaseNotifications()
             ->defaultAvatarProvider(PrimaryColorAvatarProvider::class)
-            ->profile()
+            ->profile(EditProfile::class)
             ->brandLogo(asset('images/logo.svg')) // TODO: Place logo in public/images/logo.svg
             ->brandLogoHeight('2rem')
             ->colors([

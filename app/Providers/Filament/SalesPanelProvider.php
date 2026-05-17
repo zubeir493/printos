@@ -3,6 +3,7 @@
 namespace App\Providers\Filament;
 
 use App\Filament\AvatarProviders\PrimaryColorAvatarProvider;
+use App\Filament\Pages\Auth\EditProfile;
 use App\Filament\Resources\SalesOrders\SalesOrderResource;
 use App\Filament\Sales\Widgets\SalesOrdersFocusTable;
 use App\Filament\Sales\Widgets\SalesPanelStats;
@@ -37,7 +38,7 @@ class SalesPanelProvider extends PanelProvider
             ->defaultThemeMode(ThemeMode::Light)
             ->databaseNotifications()
             ->defaultAvatarProvider(PrimaryColorAvatarProvider::class)
-            ->profile()
+            ->profile(EditProfile::class)
             ->brandLogo(asset('images/logo.svg')) // TODO: Place logo in public/images/logo.svg
             ->brandLogoHeight('2rem')
             ->colors([

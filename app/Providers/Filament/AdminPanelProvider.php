@@ -3,6 +3,7 @@
 namespace App\Providers\Filament;
 
 use App\Filament\AvatarProviders\PrimaryColorAvatarProvider;
+use App\Filament\Pages\Auth\EditProfile;
 use App\Filament\Widgets\AdminHealthStats;
 use App\Filament\Widgets\BankBalancesChart;
 use App\Filament\Widgets\ProfitabilityMarginChart;
@@ -37,7 +38,7 @@ class AdminPanelProvider extends PanelProvider
             ->darkMode(false)
             ->defaultThemeMode(ThemeMode::Light)
             ->login()
-            ->profile()
+            ->profile(EditProfile::class)
             ->databaseNotifications()
             ->defaultAvatarProvider(PrimaryColorAvatarProvider::class)
             ->brandLogo(asset('images/logo.svg')) // TODO: Place logo in public/images/logo.svg

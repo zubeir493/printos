@@ -6,6 +6,7 @@ use App\Filament\AvatarProviders\PrimaryColorAvatarProvider;
 use App\Filament\Design\Widgets\ArtworkPipelineChart;
 use App\Filament\Design\Widgets\DesignSLAStats;
 use App\Filament\Design\Widgets\MyActiveTasksTable;
+use App\Filament\Pages\Auth\EditProfile;
 use App\Filament\Resources\Artworks\ArtworkResource;
 use App\Filament\Resources\EmailLogs\EmailLogResource;
 use App\Filament\Resources\JobOrders\JobOrderResource;
@@ -41,7 +42,7 @@ class DesignPanelProvider extends PanelProvider
             ->defaultThemeMode(ThemeMode::Light)
             ->databaseNotifications()
             ->defaultAvatarProvider(PrimaryColorAvatarProvider::class)
-            ->profile()
+            ->profile(EditProfile::class)
             ->brandLogo(asset('images/logo.svg')) // TODO: Place logo in public/images/logo.svg
             ->brandLogoHeight('2rem')
             ->colors([

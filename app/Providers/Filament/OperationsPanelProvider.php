@@ -6,6 +6,7 @@ use App\Filament\AvatarProviders\PrimaryColorAvatarProvider;
 use App\Filament\Operations\Widgets\HighPriorityJobsTable;
 use App\Filament\Operations\Widgets\OperationsJobStatusChart;
 use App\Filament\Operations\Widgets\OperationsPanelStats;
+use App\Filament\Pages\Auth\EditProfile;
 use App\Filament\Resources\Artworks\ArtworkResource;
 use App\Filament\Resources\Dispatches\DispatchResource;
 use App\Filament\Resources\EmailLogs\EmailLogResource;
@@ -49,7 +50,7 @@ class OperationsPanelProvider extends PanelProvider
             ->defaultThemeMode(ThemeMode::Light)
             ->databaseNotifications()
             ->defaultAvatarProvider(PrimaryColorAvatarProvider::class)
-            ->profile()
+            ->profile(EditProfile::class)
             ->brandLogo(asset('images/logo.svg')) // TODO: Place logo in public/images/logo.svg
             ->brandLogoHeight('2rem')
             ->colors([

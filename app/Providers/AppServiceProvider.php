@@ -29,11 +29,18 @@ use App\Policies\PaymentAllocationPolicy;
 use App\Policies\PaymentPolicy;
 use Filament\Actions\CreateAction;
 use Filament\Support\Facades\FilamentTimezone;
+use Filament\Support\Facades\FilamentView;
+use Filament\View\PanelsRenderHook;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 use Livewire\Livewire;
+use NotificationChannels\WebPush\Events\NotificationFailed as WebPushNotificationFailed;
+use NotificationChannels\WebPush\Events\NotificationSent as WebPushNotificationSent;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -61,6 +68,31 @@ class AppServiceProvider extends ServiceProvider
 
         CreateAction::configureUsing(fn (CreateAction $action) => $action->createAnother(false));
         FilamentTimezone::set(config('app.timezone'));
+
+        FilamentView::registerRenderHook(
+            PanelsRenderHook::SCRIPTS_AFTER,
+            fn (): string => Blade::render('@include(\'filament.webpush\')'),
+        );
+
+        Event::listen(WebPushNotificationSent::class, function (WebPushNotificationSent $event): void {
+            Log::info('Web push notification sent', [
+                'subscription_id' => $event->subscription->id,
+                'subscribable_type' => $event->subscription->subscribable_type,
+                'subscribable_id' => $event->subscription->subscribable_id,
+                'endpoint' => str($event->subscription->endpoint)->limit(80)->toString(),
+            ]);
+        });
+
+        Event::listen(WebPushNotificationFailed::class, function (WebPushNotificationFailed $event): void {
+            Log::warning('Web push notification failed', [
+                'subscription_id' => $event->subscription->id,
+                'subscribable_type' => $event->subscription->subscribable_type,
+                'subscribable_id' => $event->subscription->subscribable_id,
+                'endpoint' => str($event->subscription->endpoint)->limit(80)->toString(),
+                'reason' => $event->report->getReason(),
+                'status_code' => $event->report->getResponse()?->getStatusCode(),
+            ]);
+        });
 
         Livewire::componentHook(ExceptionHandlerHook::class);
 

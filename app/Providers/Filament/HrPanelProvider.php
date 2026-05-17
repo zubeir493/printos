@@ -6,6 +6,7 @@ use App\Filament\AvatarProviders\PrimaryColorAvatarProvider;
 use App\Filament\Hr\Widgets\HrPanelStats;
 use App\Filament\Hr\Widgets\SalaryRevisionHistoryTable;
 use App\Filament\Hr\Widgets\WorkforceCompositionChart;
+use App\Filament\Pages\Auth\EditProfile;
 use App\Filament\Resources\Employees\EmployeeResource;
 use Filament\Enums\ThemeMode;
 use Filament\Http\Middleware\Authenticate;
@@ -37,7 +38,7 @@ class HrPanelProvider extends PanelProvider
             ->defaultThemeMode(ThemeMode::Light)
             ->databaseNotifications()
             ->defaultAvatarProvider(PrimaryColorAvatarProvider::class)
-            ->profile()
+            ->profile(EditProfile::class)
             ->brandLogo(asset('images/logo.svg')) // TODO: Place logo in public/images/logo.svg
             ->brandLogoHeight('2rem')
             ->colors([

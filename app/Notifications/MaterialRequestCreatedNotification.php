@@ -3,26 +3,37 @@
 namespace App\Notifications;
 
 use App\Models\MaterialRequest;
+use App\Notifications\Concerns\SendsWebPushNotifications;
 use Filament\Notifications\Notification as FilamentNotification;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueueAfterCommit;
 use Illuminate\Notifications\Notification;
 
-class MaterialRequestCreatedNotification extends Notification
+class MaterialRequestCreatedNotification extends Notification implements ShouldQueueAfterCommit
 {
+    use Queueable;
+    use SendsWebPushNotifications;
+
     public function __construct(protected MaterialRequest $materialRequest) {}
 
-    public function via(object $notifiable): array
+    protected function webPushTitle(): string
     {
-        return ['database'];
+        return 'New Material Request';
     }
 
-    public function toDatabase(object $notifiable): array
+    protected function webPushBody(): string
     {
         $task = $this->materialRequest->jobOrderTask;
         $jobOrder = $task->jobOrder;
 
+        return "Task '{$task->name}' on job {$jobOrder->job_order_number} requires {$this->materialRequest->requested_quantity} of {$this->materialRequest->inventoryItem->name}.";
+    }
+
+    public function toDatabase(object $notifiable): array
+    {
         return FilamentNotification::make()
-            ->title('New Material Request')
-            ->body("Task '{$task->name}' on job {$jobOrder->job_order_number} requires {$this->materialRequest->requested_quantity} of {$this->materialRequest->inventoryItem->name}.")
+            ->title($this->webPushTitle())
+            ->body($this->webPushBody())
             ->icon('heroicon-o-archive-box-arrow-down')
             ->iconColor('primary')
             ->getDatabaseMessage();

@@ -22,7 +22,7 @@ class MyActiveTasksTable extends BaseWidget
                 JobOrderTask::query()
                     ->with(['jobOrder.partner'])
                     ->where('designer_id', auth()->id())
-                    ->whereNotIn('status', ['completed', 'cancelled'])
+                    ->where('status', 'design')
                     ->orderBy('created_at')
             )
             ->searchable(false)

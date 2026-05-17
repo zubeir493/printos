@@ -69,7 +69,7 @@ class BankBalancesChart extends ChartWidget
                 ],
             ],
             'labels' => $banks
-                ->map(fn (Bank $bank) => "{$bank->bank_name} - {$bank->name}: ".Money::abbreviate((float) $bank->current_balance, precision: 2))
+                ->map(fn (Bank $bank) => "{$bank->name}: ".Money::abbreviate((float) $bank->current_balance, precision: 2))
                 ->all(),
         ];
     }

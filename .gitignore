@@ -11,6 +11,10 @@
 /.phpunit.cache
 /.vscode
 /.zed
+/.codex
+/.github/skills
+/.agents/skills
+/.kiro
 /auth.json
 /node_modules
 /public/build

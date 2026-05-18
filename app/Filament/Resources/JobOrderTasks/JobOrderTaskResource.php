@@ -2,7 +2,6 @@
 
 namespace App\Filament\Resources\JobOrderTasks;
 
-use App\Filament\Resources\JobOrderTasks\Pages\CreateJobOrderTask;
 use App\Filament\Resources\JobOrderTasks\Pages\EditJobOrderTask;
 use App\Filament\Resources\JobOrderTasks\Pages\ListJobOrderTasks;
 use App\Filament\Resources\JobOrderTasks\Pages\ViewJobOrderTask;
@@ -35,7 +34,7 @@ class JobOrderTaskResource extends Resource
 
     public static function canCreate(): bool
     {
-        return PanelAccess::canManageJobOrderTasks();
+        return false;
     }
 
     public static function canEdit($record): bool
@@ -102,7 +101,6 @@ class JobOrderTaskResource extends Resource
     {
         return [
             'index' => ListJobOrderTasks::route('/'),
-            'create' => CreateJobOrderTask::route('/create'),
             'view' => ViewJobOrderTask::route('/{record}'),
             'edit' => EditJobOrderTask::route('/{record}/edit'),
         ];

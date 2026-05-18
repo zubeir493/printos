@@ -2,10 +2,12 @@
 
 namespace App\Filament\Resources\BankTransfers\Schemas;
 
+use App\Models\BankTransfer;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Schema;
 
 class BankTransferForm
@@ -16,9 +18,23 @@ class BankTransferForm
             ->components([
                 TextInput::make('transfer_number')
                     ->label('Transfer Number')
-                    ->disabled()
+                    ->default(function (): string {
+                        $lastTransfer = BankTransfer::query()->latest('id')->first();
+                        $lastNumber = 0;
+
+                        if ($lastTransfer && preg_match('/BT-(\d+)/', $lastTransfer->transfer_number, $matches)) {
+                            $lastNumber = (int) $matches[1];
+                        }
+
+                        return 'BT-'.str_pad($lastNumber + 1, 4, '0', STR_PAD_LEFT);
+                    })
+                    ->readOnly()
+                    ->dehydrated(false)
                     ->helperText('Auto-generated transfer reference'),
-                
+
+                Hidden::make('status')
+                    ->default('pending'),
+
                 Select::make('from_bank_id')
                     ->label('From Bank')
                     ->relationship('fromBank', 'name')
@@ -28,7 +44,7 @@ class BankTransferForm
                     ->reactive()
                     ->afterStateUpdated(fn ($state, callable $set) => $set('to_bank_id', null))
                     ->helperText('Select the source bank account'),
-                
+
                 Select::make('to_bank_id')
                     ->label('To Bank')
                     ->relationship('toBank', 'name', function ($query, callable $get) {
@@ -37,9 +53,9 @@ class BankTransferForm
                     ->searchable()
                     ->preload()
                     ->required()
-                    ->disabled(fn (callable $get) => !$get('from_bank_id'))
+                    ->disabled(fn (callable $get) => ! $get('from_bank_id'))
                     ->helperText('Select the destination bank account'),
-                
+
                 TextInput::make('amount')
                     ->label('Transfer Amount')
                     ->required()
@@ -47,29 +63,18 @@ class BankTransferForm
                     ->suffix(' Birr')
                     ->rules(['min:0.01'])
                     ->helperText('Amount to transfer between banks'),
-                
+
                 DatePicker::make('transfer_date')
                     ->label('Transfer Date')
                     ->required()
                     ->default(now())
                     ->helperText('Date when the transfer occurred'),
-                
-                Select::make('status')
-                    ->label('Transfer Status')
-                    ->options([
-                        'pending' => 'Pending',
-                        'completed' => 'Completed',
-                        'cancelled' => 'Cancelled',
-                    ])
-                    ->default('pending')
-                    ->required()
-                    ->helperText('Current status of this transfer'),
-                
+
                 TextInput::make('reference')
                     ->label('Reference Number')
                     ->maxLength(255)
                     ->helperText('Optional reference or transaction ID from bank'),
-                
+
                 Textarea::make('description')
                     ->label('Description')
                     ->rows(3)

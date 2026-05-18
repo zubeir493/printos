@@ -7,6 +7,7 @@ use Filament\Actions\Action as ActionsAction;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
+use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -69,7 +70,21 @@ class BankTransfersTable
                         ->modalDescription('This will update the bank balances. Are you sure?')
                         ->visible(fn ($record) => $record->status === 'pending')
                         ->action(function ($record) {
-                            $record->complete(auth()->user());
+                            try {
+                                $record->complete(auth()->user());
+
+                                Notification::make()
+                                    ->title('Bank transfer completed')
+                                    ->success()
+                                    ->send();
+                            } catch (\Throwable $exception) {
+                                Notification::make()
+                                    ->title('Bank transfer could not be completed')
+                                    ->body($exception->getMessage())
+                                    ->danger()
+                                    ->persistent()
+                                    ->send();
+                            }
                         }),
                     ActionsAction::make('cancel')
                         ->label('Cancel')
@@ -80,7 +95,21 @@ class BankTransfersTable
                         ->modalDescription('This will cancel the transfer without affecting balances. Are you sure?')
                         ->visible(fn ($record) => $record->status === 'pending')
                         ->action(function ($record) {
-                            $record->cancel(auth()->user());
+                            try {
+                                $record->cancel(auth()->user());
+
+                                Notification::make()
+                                    ->title('Bank transfer cancelled')
+                                    ->success()
+                                    ->send();
+                            } catch (\Throwable $exception) {
+                                Notification::make()
+                                    ->title('Bank transfer could not be cancelled')
+                                    ->body($exception->getMessage())
+                                    ->danger()
+                                    ->persistent()
+                                    ->send();
+                            }
                         }),
                 ]),
             ])

@@ -137,6 +137,8 @@ class AccountStatementReport extends Page implements HasForms, HasTable
             return JournalItem::query()->whereRaw('1 = 0');
         }
 
+        $openingBalance = $this->openingBalance();
+
         return JournalItem::query()
             ->join('journal_entries', 'journal_entries.id', '=', 'journal_items.journal_entry_id')
             ->where('journal_entries.status', 'posted')
@@ -148,11 +150,11 @@ class AccountStatementReport extends Page implements HasForms, HasTable
             ->selectRaw('journal_entries.reference as entry_reference')
             ->selectRaw('journal_entries.narration as entry_narration')
             ->selectRaw('
-                SUM(journal_items.debit - journal_items.credit) OVER (
+                ? + SUM(journal_items.debit - journal_items.credit) OVER (
                     ORDER BY journal_entries.date, journal_entries.id, journal_items.id
                     ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
                 ) as running_balance
-            ')
+            ', [$openingBalance])
             ->orderBy('journal_entries.date')
             ->orderBy('journal_entries.id')
             ->orderBy('journal_items.id');

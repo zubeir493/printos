@@ -72,5 +72,7 @@ test('profile page renders browser notification settings', function () {
         ->get(route('filament.admin.auth.profile'))
         ->assertSuccessful()
         ->assertSee('Enable push notifications?')
+        ->assertSee('form.email', false)
+        ->assertDontSee('form.name', false)
         ->assertDontSee('fi-simple-layout-header', false);
 });

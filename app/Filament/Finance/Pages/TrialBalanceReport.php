@@ -117,15 +117,15 @@ class TrialBalanceReport extends Page implements HasForms, HasTable
         return Account::query()
             ->select('accounts.*')
             ->leftJoin('journal_items', 'journal_items.account_id', '=', 'accounts.id')
-            ->leftJoin('journal_entries', function ($join) {
+            ->leftJoin('journal_entries', function ($join): void {
                 $join->on('journal_entries.id', '=', 'journal_items.journal_entry_id')
-                    ->where('journal_entries.status', 'posted');
+                    ->where('journal_entries.status', 'posted')
+                    ->when($this->startDate, fn ($query) => $query->whereDate('journal_entries.date', '>=', $this->startDate))
+                    ->when($this->endDate, fn ($query) => $query->whereDate('journal_entries.date', '<=', $this->endDate));
             })
-            ->when($this->startDate, fn ($query) => $query->whereDate('journal_entries.date', '>=', $this->startDate))
-            ->when($this->endDate, fn ($query) => $query->whereDate('journal_entries.date', '<=', $this->endDate))
-            ->selectRaw('COALESCE(SUM(journal_items.debit), 0) as debit_total')
-            ->selectRaw('COALESCE(SUM(journal_items.credit), 0) as credit_total')
-            ->selectRaw('COALESCE(SUM(journal_items.debit), 0) - COALESCE(SUM(journal_items.credit), 0) as balance')
+            ->selectRaw('COALESCE(SUM(CASE WHEN journal_entries.id IS NULL THEN 0 ELSE journal_items.debit END), 0) as debit_total')
+            ->selectRaw('COALESCE(SUM(CASE WHEN journal_entries.id IS NULL THEN 0 ELSE journal_items.credit END), 0) as credit_total')
+            ->selectRaw('COALESCE(SUM(CASE WHEN journal_entries.id IS NULL THEN 0 ELSE journal_items.debit - journal_items.credit END), 0) as balance')
             ->groupBy('accounts.id', 'accounts.code', 'accounts.name', 'accounts.type')
             ->orderBy('accounts.code');
     }

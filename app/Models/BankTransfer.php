@@ -79,17 +79,6 @@ class BankTransfer extends Model
                 throw new \Exception('Only pending transfers can be completed');
             }
 
-            $fromBank = $this->fromBank;
-            $toBank = $this->toBank;
-
-            if ($fromBank->current_balance < $this->amount) {
-                throw new \Exception("Insufficient balance in {$fromBank->name}");
-            }
-
-            // Update balances
-            $fromBank->decrement('current_balance', $this->amount);
-            $toBank->increment('current_balance', $this->amount);
-
             $this->update([
                 'status' => 'completed',
                 'completed_by' => $user?->id,

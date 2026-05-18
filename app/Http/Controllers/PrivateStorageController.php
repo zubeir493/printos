@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use RuntimeException;
 use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -43,9 +44,27 @@ class PrivateStorageController extends Controller
             }
         }, 200, array_filter([
             'Content-Type' => $mimeType,
-            'Content-Disposition' => (new ResponseHeaderBag)->makeDisposition($disposition, $name),
+            'Content-Disposition' => (new ResponseHeaderBag)->makeDisposition($disposition, $name, $this->fallbackName($name)),
             'Cache-Control' => 'private, max-age=0, no-store',
         ]));
+    }
+
+    private function fallbackName(string $name): string
+    {
+        $filename = (string) Str::of(pathinfo($name, PATHINFO_FILENAME))
+            ->ascii()
+            ->replaceMatches('/[^A-Za-z0-9._-]+/', '-')
+            ->trim('-._');
+
+        $extension = (string) Str::of(pathinfo($name, PATHINFO_EXTENSION))
+            ->ascii()
+            ->replaceMatches('/[^A-Za-z0-9]+/', '');
+
+        if ($filename === '') {
+            $filename = 'download';
+        }
+
+        return $extension === '' ? $filename : "{$filename}.{$extension}";
     }
 
     private function mimeTypeFromPath(string $path): string

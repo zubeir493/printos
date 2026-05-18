@@ -74,6 +74,14 @@ class VoidPaymentJournalEntry
                 'void_reason' => $reason,
             ]);
 
+            if ($payment->bank_id && in_array($payment->method, ['bank', 'bank_transfer'], true)) {
+                if ($payment->direction === 'outbound') {
+                    $payment->bank()->increment('current_balance', $payment->amount);
+                } else {
+                    $payment->bank()->decrement('current_balance', $payment->amount);
+                }
+            }
+
             return $reversalJournal;
         });
     }

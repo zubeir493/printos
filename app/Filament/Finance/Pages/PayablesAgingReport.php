@@ -105,8 +105,8 @@ class PayablesAgingReport extends Page implements HasForms, HasTable
         return PurchaseOrder::query()
             ->with('partner')
             ->select('purchase_orders.*')
-            ->selectRaw('(COALESCE(purchase_orders.subtotal, 0) - COALESCE((SELECT SUM(payment_allocations.allocated_amount) FROM payment_allocations JOIN payments ON payments.id = payment_allocations.payment_id WHERE payment_allocations.allocatable_type = ? AND payment_allocations.allocatable_id = purchase_orders.id AND payments.payment_date <= ?), 0)) as balance', [PurchaseOrder::class, $this->asOfDate])
-            ->whereRaw('(COALESCE(purchase_orders.subtotal, 0) - COALESCE((SELECT SUM(payment_allocations.allocated_amount) FROM payment_allocations JOIN payments ON payments.id = payment_allocations.payment_id WHERE payment_allocations.allocatable_type = ? AND payment_allocations.allocatable_id = purchase_orders.id AND payments.payment_date <= ?), 0)) > 0', [PurchaseOrder::class, $this->asOfDate])
+            ->selectRaw('(COALESCE(purchase_orders.total, 0) - COALESCE((SELECT SUM(payment_allocations.allocated_amount) FROM payment_allocations JOIN payments ON payments.id = payment_allocations.payment_id WHERE payment_allocations.allocatable_type = ? AND payment_allocations.allocatable_id = purchase_orders.id AND payments.payment_date <= ?), 0)) as balance', [PurchaseOrder::class, $this->asOfDate])
+            ->whereRaw('(COALESCE(purchase_orders.total, 0) - COALESCE((SELECT SUM(payment_allocations.allocated_amount) FROM payment_allocations JOIN payments ON payments.id = payment_allocations.payment_id WHERE payment_allocations.allocatable_type = ? AND payment_allocations.allocatable_id = purchase_orders.id AND payments.payment_date <= ?), 0)) > 0', [PurchaseOrder::class, $this->asOfDate])
             ->when($this->asOfDate, fn ($query) => $query->whereDate('purchase_orders.order_date', '<=', Carbon::parse($this->asOfDate)->toDateString()))
             ->orderByDesc('purchase_orders.order_date');
     }

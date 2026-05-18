@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Livewire\ExceptionHandlerHook;
 use App\Models\Artwork;
+use App\Models\BankTransfer;
 use App\Models\Employee;
 use App\Models\InventoryItem;
 use App\Models\JobOrderTask;
@@ -15,6 +16,7 @@ use App\Models\PurchaseOrderItem;
 use App\Models\SalesOrder;
 use App\Models\StockMovement;
 use App\Observers\ArtworkObserver;
+use App\Observers\BankTransferObserver;
 use App\Observers\EmployeeObserver;
 use App\Observers\InventoryItemObserver;
 use App\Observers\JobOrderTaskObserver;
@@ -100,6 +102,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(PaymentAllocation::class, PaymentAllocationPolicy::class);
 
         Payment::observe(PaymentObserver::class);
+        BankTransfer::observe(BankTransferObserver::class);
         PaymentAllocation::observe(PaymentAllocationObserver::class);
         StockMovement::observe(StockMovementObserver::class);
 

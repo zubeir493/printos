@@ -3,10 +3,12 @@
 namespace App\Observers;
 
 use App\Enums\PaymentTransactionType;
+use App\Models\Bank;
 use App\Models\JournalEntry;
 use App\Models\Partner;
 use App\Models\Payment;
 use App\Services\Accounting\CreatePaymentJournalEntry;
+use App\Support\Money;
 
 class PaymentObserver
 {
@@ -28,14 +30,38 @@ class PaymentObserver
         if (! $payment->payment_type) {
             $payment->payment_type = 'standard';
         }
+
+        if ($this->isBankPayment($payment) && $payment->direction === 'outbound') {
+            $bank = Bank::query()->find($payment->bank_id);
+
+            if (! $bank || (float) $bank->current_balance < (float) $payment->amount) {
+                throw new \RuntimeException(sprintf(
+                    'Insufficient balance in %s. Available: %s.',
+                    $bank?->name ?? 'the selected bank',
+                    Money::format($bank?->current_balance ?? 0)
+                ));
+            }
+        }
     }
 
-    public function created(Payment $payment)
+    public function created(Payment $payment): void
     {
         app(CreatePaymentJournalEntry::class)->handle($payment);
+
+        if (! $this->isBankPayment($payment)) {
+            return;
+        }
+
+        if ($payment->direction === 'outbound') {
+            $payment->bank()->decrement('current_balance', $payment->amount);
+
+            return;
+        }
+
+        $payment->bank()->increment('current_balance', $payment->amount);
     }
 
-    public function updating(Payment $payment)
+    public function updating(Payment $payment): void
     {
         $hasJournalEntries = JournalEntry::where('source_type', Payment::class)
             ->where('source_id', $payment->id)
@@ -57,6 +83,11 @@ class PaymentObserver
                 ? PaymentTransactionType::SUPPLIER_PAYMENT->value
                 : PaymentTransactionType::CUSTOMER_RECEIPT->value,
         };
+    }
+
+    private function isBankPayment(Payment $payment): bool
+    {
+        return $payment->bank_id && in_array($payment->method, ['bank', 'bank_transfer'], true);
     }
 
     protected function resolveInternalPartnerId(): int

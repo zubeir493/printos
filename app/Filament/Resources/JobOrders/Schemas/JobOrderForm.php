@@ -139,13 +139,18 @@ class JobOrderForm
                                     ->schema([
                                         Select::make('inventory_item_id')
                                             ->label('Material')
-                                            ->options(InventoryItem::pluck('name', 'id'))
+                                            ->options(fn (): array => InventoryItem::query()
+                                                ->rawMaterials()
+                                                ->pluck('name', 'id')
+                                                ->all())
                                             ->searchable()
                                             ->required()
                                             ->preload()
                                             ->live()
                                             ->afterStateUpdated(function ($state, callable $set) {
-                                                $item = InventoryItem::find($state);
+                                                $item = InventoryItem::query()
+                                                    ->rawMaterials()
+                                                    ->find($state);
                                                 $set('base_unit', $item?->unit);
                                             }),
                                         TextInput::make('required_quantity')

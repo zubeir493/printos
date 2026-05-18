@@ -6,7 +6,6 @@ use App\Models\Bank;
 use App\Models\BankTransfer;
 use App\Models\Payment;
 use App\Models\User;
-use App\Support\Money;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -52,38 +51,15 @@ class BankService
      */
     public function completeTransfer(BankTransfer $transfer, ?User $user = null): void
     {
-        DB::transaction(function () use ($transfer, $user) {
-            if ($transfer->status !== 'pending') {
-                throw new \Exception('Only pending transfers can be completed');
-            }
+        $transfer->complete($user);
 
-            $fromBank = $transfer->fromBank;
-            $toBank = $transfer->toBank;
-
-            // Check sufficient balance
-            if ($fromBank->calculated_balance < $transfer->amount) {
-                throw new \Exception("Insufficient balance in {$fromBank->name}. Available: ".Money::format($fromBank->calculated_balance));
-            }
-
-            // Update balances
-            $fromBank->decrement('current_balance', $transfer->amount);
-            $toBank->increment('current_balance', $transfer->amount);
-
-            // Update transfer status
-            $transfer->update([
-                'status' => 'completed',
-                'completed_by' => $user?->id,
-                'completed_at' => now(),
-            ]);
-
-            Log::info('Bank transfer completed', [
-                'transfer_id' => $transfer->id,
-                'from_bank' => $fromBank->code,
-                'to_bank' => $toBank->code,
-                'amount' => $transfer->amount,
-                'completed_by' => $user?->id,
-            ]);
-        });
+        Log::info('Bank transfer completed', [
+            'transfer_id' => $transfer->id,
+            'from_bank' => $transfer->fromBank?->code,
+            'to_bank' => $transfer->toBank?->code,
+            'amount' => $transfer->amount,
+            'completed_by' => $user?->id,
+        ]);
     }
 
     /**
@@ -116,27 +92,12 @@ class BankService
             return;
         }
 
-        DB::transaction(function () use ($payment) {
-            $bank = $payment->bank;
-
-            if ($payment->direction === 'outbound') {
-                // Check sufficient balance for outbound payments
-                if ($bank->calculated_balance < $payment->amount) {
-                    throw new \Exception("Insufficient balance in {$bank->name}. Available: ".Money::format($bank->calculated_balance));
-                }
-                $bank->decrement('current_balance', $payment->amount);
-            } else {
-                // Inbound payment increases balance
-                $bank->increment('current_balance', $payment->amount);
-            }
-
-            Log::info('Payment processed for bank', [
-                'payment_id' => $payment->id,
-                'bank_id' => $bank->id,
-                'amount' => $payment->amount,
-                'direction' => $payment->direction,
-            ]);
-        });
+        Log::info('Payment processed for bank', [
+            'payment_id' => $payment->id,
+            'bank_id' => $payment->bank_id,
+            'amount' => $payment->amount,
+            'direction' => $payment->direction,
+        ]);
     }
 
     /**

@@ -6,7 +6,6 @@ use App\Filament\Exports\JournalEntryExporter;
 use App\Support\Money;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\ExportAction;
 use Filament\Actions\ExportBulkAction;
 use Filament\Actions\ViewAction;
@@ -60,7 +59,6 @@ class JournalEntriesTable
             ])
             ->bulkActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
                     ExportBulkAction::make()
                         ->exporter(JournalEntryExporter::class),
                 ]),

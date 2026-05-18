@@ -8,6 +8,8 @@ use Filament\Schemas\Schema;
 
 class EditProfile extends BaseEditProfile
 {
+    protected bool $hasTopbar = false;
+
     public function form(Schema $schema): Schema
     {
         return $schema

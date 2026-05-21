@@ -3,10 +3,10 @@
 namespace App\Services\Accounting;
 
 use App\Enums\PaymentTransactionType;
-use App\Models\Payment;
+use App\Models\Account;
 use App\Models\JournalEntry;
 use App\Models\JournalItem;
-use App\Models\Account;
+use App\Models\Payment;
 
 class CreatePaymentJournalEntry
 {
@@ -16,7 +16,7 @@ class CreatePaymentJournalEntry
         if ($amount <= 0) {
             return;
         }
-        
+
         $transactionType = $payment->transaction_type
             ? PaymentTransactionType::tryFrom($payment->transaction_type) ?? $this->legacyTransactionType($payment->payment_type, $payment->direction)
             : $this->legacyTransactionType($payment->payment_type, $payment->direction);
@@ -31,10 +31,10 @@ class CreatePaymentJournalEntry
 
         $journalEntry = JournalEntry::create([
             'date' => $payment->payment_date ?? now(),
-            'reference' => 'Payment #' . $payment->payment_number,
+            'reference' => 'Payment #'.$payment->payment_number,
             'source_type' => Payment::class,
             'source_id' => $payment->id,
-            'narration' => $payment->reference ?? 'Payment #' . $payment->payment_number . ' (' . $transactionType->label() . ')',
+            'narration' => $payment->reference ?? 'Payment #'.$payment->payment_number.' ('.$transactionType->label().')',
             'total_debit' => $amount,
             'total_credit' => $amount,
             'status' => 'posted',
@@ -47,6 +47,7 @@ class CreatePaymentJournalEntry
             PaymentTransactionType::DIRECT_EXPENSE => $this->createItems($journalEntry->id, $expenseAccountId, $sourceAccountId, $amount),
             PaymentTransactionType::PETTY_CASH_FUNDING => $this->createItems($journalEntry->id, $pettyCashAccountId, $sourceAccountId, $amount),
             PaymentTransactionType::PETTY_CASH_EXPENSE => $this->createItems($journalEntry->id, $expenseAccountId, $pettyCashAccountId, $amount),
+            PaymentTransactionType::PAYROLL_PAYMENT => $this->createItems($journalEntry->id, Account::getSystemAccount('2150', 'Payroll Payable', 'Liability')->id, $sourceAccountId, $amount),
         };
     }
 

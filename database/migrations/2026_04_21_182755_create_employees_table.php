@@ -21,15 +21,12 @@ return new class extends Migration
             $table->string('status')->default('active'); // active, inactive, terminated
             $table->string('department')->nullable();
             $table->string('position')->nullable();
-            
-            // Payroll related fields (Architecture for future use)
             $table->decimal('basic_salary', 15, 2)->default(0); // Monthly rate
-            $table->decimal('hourly_overtime_rate', 15, 2)->default(0);
-            $table->decimal('holiday_overtime_rate', 15, 2)->default(0);
+            $table->decimal('overtime_multiplier', 8, 4)->default(1);
             $table->string('payment_method')->nullable(); // Cash, Bank Transfer, etc.
             $table->string('bank_name')->nullable();
             $table->string('account_number')->nullable();
-            
+
             $table->timestamps();
             $table->softDeletes();
         });

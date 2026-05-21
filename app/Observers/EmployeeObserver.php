@@ -3,6 +3,7 @@
 namespace App\Observers;
 
 use App\Models\Employee;
+use Illuminate\Support\Facades\Storage;
 
 class EmployeeObserver
 {
@@ -19,22 +20,21 @@ class EmployeeObserver
      */
     public function updated(Employee $employee): void
     {
-        if ($employee->wasChanged(['basic_salary', 'hourly_overtime_rate', 'holiday_overtime_rate'])) {
+        if ($employee->wasChanged(['basic_salary', 'overtime_multiplier'])) {
             $this->recordSalaryHistory($employee, 'Rate update');
         }
 
         // Cleanup old image from S3 if it was changed
         if ($employee->wasChanged('image') && $employee->getOriginal('image')) {
-            \Illuminate\Support\Facades\Storage::disk('s3')->delete($employee->getOriginal('image'));
+            Storage::disk('s3')->delete($employee->getOriginal('image'));
         }
     }
 
     protected function recordSalaryHistory(Employee $employee, string $reason): void
     {
         $employee->salaryHistories()->create([
-            'basic_salary' => $employee->basic_salary,
-            'hourly_overtime_rate' => $employee->hourly_overtime_rate,
-            'holiday_overtime_rate' => $employee->holiday_overtime_rate,
+            'basic_salary' => $employee->basic_salary ?? 0,
+            'overtime_multiplier' => $employee->overtime_multiplier ?? 1,
             'effective_date' => now(),
             'change_reason' => $reason,
         ]);
@@ -50,7 +50,7 @@ class EmployeeObserver
         }
 
         if ($employee->image) {
-            \Illuminate\Support\Facades\Storage::disk('s3')->delete($employee->image);
+            Storage::disk('s3')->delete($employee->image);
         }
     }
 

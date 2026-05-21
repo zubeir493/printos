@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Filament\Resources\AttendanceSegments\Pages\ManageAttendanceSegments;
 use App\Livewire\ExceptionHandlerHook;
 use App\Models\Artwork;
 use App\Models\BankTransfer;
@@ -11,6 +12,7 @@ use App\Models\JobOrderTask;
 use App\Models\MaterialRequest;
 use App\Models\Payment;
 use App\Models\PaymentAllocation;
+use App\Models\PayrollRunEmployee;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderItem;
 use App\Models\SalesOrder;
@@ -23,6 +25,7 @@ use App\Observers\JobOrderTaskObserver;
 use App\Observers\MaterialRequestObserver;
 use App\Observers\PaymentAllocationObserver;
 use App\Observers\PaymentObserver;
+use App\Observers\PayrollRunEmployeeObserver;
 use App\Observers\PurchaseOrderItemObserver;
 use App\Observers\PurchaseOrderObserver;
 use App\Observers\SalesOrderObserver;
@@ -32,6 +35,7 @@ use App\Policies\PaymentPolicy;
 use Filament\Actions\CreateAction;
 use Filament\Support\Facades\FilamentTimezone;
 use Filament\Support\Facades\FilamentView;
+use Filament\Tables\View\TablesRenderHook;
 use Filament\View\PanelsRenderHook;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Blade;
@@ -76,6 +80,12 @@ class AppServiceProvider extends ServiceProvider
             fn (): string => Blade::render('@include(\'filament.webpush\')'),
         );
 
+        FilamentView::registerRenderHook(
+            TablesRenderHook::TOOLBAR_SEARCH_AFTER,
+            fn (): string => view('filament.tables.attendance-employee-selector')->render(),
+            ManageAttendanceSegments::class,
+        );
+
         Event::listen(WebPushNotificationSent::class, function (WebPushNotificationSent $event): void {
             Log::info('Web push notification sent', [
                 'subscription_id' => $event->subscription->id,
@@ -115,6 +125,7 @@ class AppServiceProvider extends ServiceProvider
         SalesOrder::observe(SalesOrderObserver::class);
 
         Employee::observe(EmployeeObserver::class);
+        PayrollRunEmployee::observe(PayrollRunEmployeeObserver::class);
         InventoryItem::observe(InventoryItemObserver::class);
         Artwork::observe(ArtworkObserver::class);
         MaterialRequest::observe(MaterialRequestObserver::class);

@@ -16,24 +16,29 @@ class Employee extends Model
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly(['employee_id', 'first_name', 'last_name', 'phone', 'hire_date', 'status', 'department', 'position', 'basic_salary', 'hourly_overtime_rate', 'holiday_overtime_rate', 'payment_method'])
+            ->logOnly(['employee_id', 'attendance_device_id', 'first_name', 'last_name', 'phone', 'hire_date', 'status', 'employment_type', 'department', 'position', 'tax_id', 'pension_enabled', 'employee_pension_rate', 'employer_pension_rate', 'basic_salary', 'overtime_multiplier', 'payment_method'])
             ->logOnlyDirty()
             ->useLogName('employee');
     }
 
     protected $fillable = [
         'employee_id',
+        'attendance_device_id',
         'first_name',
         'last_name',
         'image',
         'phone',
         'hire_date',
         'status',
+        'employment_type',
         'department',
         'position',
+        'tax_id',
+        'pension_enabled',
+        'employee_pension_rate',
+        'employer_pension_rate',
         'basic_salary',
-        'hourly_overtime_rate',
-        'holiday_overtime_rate',
+        'overtime_multiplier',
         'payment_method',
         'bank_name',
         'account_number',
@@ -43,15 +48,52 @@ class Employee extends Model
     {
         return [
             'hire_date' => 'date',
+            'pension_enabled' => 'boolean',
+            'employee_pension_rate' => 'decimal:2',
+            'employer_pension_rate' => 'decimal:2',
             'basic_salary' => 'decimal:2',
-            'hourly_overtime_rate' => 'decimal:2',
-            'holiday_overtime_rate' => 'decimal:2',
+            'overtime_multiplier' => 'decimal:4',
         ];
     }
 
     public function salaryHistories(): HasMany
     {
         return $this->hasMany(EmployeeSalaryHistory::class);
+    }
+
+    public function scheduleAssignments(): HasMany
+    {
+        return $this->hasMany(EmployeeScheduleAssignment::class);
+    }
+
+    public function attendanceLogs(): HasMany
+    {
+        return $this->hasMany(AttendanceLog::class);
+    }
+
+    public function attendanceDailySummaries(): HasMany
+    {
+        return $this->hasMany(AttendanceDailySummary::class);
+    }
+
+    public function attendancePeriodSummaries(): HasMany
+    {
+        return $this->hasMany(AttendancePeriodSummary::class);
+    }
+
+    public function attendanceSegments(): HasMany
+    {
+        return $this->hasMany(AttendanceSegment::class);
+    }
+
+    public function leaveRequests(): HasMany
+    {
+        return $this->hasMany(LeaveRequest::class);
+    }
+
+    public function loans(): HasMany
+    {
+        return $this->hasMany(EmployeeLoan::class);
     }
 
     public function getFullNameAttribute()

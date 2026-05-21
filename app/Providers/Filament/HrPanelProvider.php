@@ -7,7 +7,16 @@ use App\Filament\Hr\Widgets\HrPanelStats;
 use App\Filament\Hr\Widgets\SalaryRevisionHistoryTable;
 use App\Filament\Hr\Widgets\WorkforceCompositionChart;
 use App\Filament\Pages\Auth\EditProfile;
+use App\Filament\Resources\AttendanceImports\AttendanceImportResource;
+use App\Filament\Resources\AttendanceSegments\AttendanceSegmentResource;
+use App\Filament\Resources\EmployeeLoans\EmployeeLoanResource;
 use App\Filament\Resources\Employees\EmployeeResource;
+use App\Filament\Resources\Holidays\HolidayResource;
+use App\Filament\Resources\LeaveRequests\LeaveRequestResource;
+use App\Filament\Resources\LeaveTypes\LeaveTypeResource;
+use App\Filament\Resources\PayrollRuns\PayrollRunResource;
+use App\Filament\Resources\Shifts\ShiftResource;
+use App\Filament\Resources\WorkSchedules\WorkScheduleResource;
 use Filament\Enums\ThemeMode;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -45,7 +54,16 @@ class HrPanelProvider extends PanelProvider
                 'primary' => Color::Indigo,
             ])
             ->resources([
+                AttendanceImportResource::class,
+                AttendanceSegmentResource::class,
+                EmployeeLoanResource::class,
                 EmployeeResource::class,
+                HolidayResource::class,
+                LeaveRequestResource::class,
+                LeaveTypeResource::class,
+                PayrollRunResource::class,
+                ShiftResource::class,
+                WorkScheduleResource::class,
             ])
             ->pages([
                 Dashboard::class,

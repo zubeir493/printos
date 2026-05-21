@@ -111,6 +111,23 @@ class Settings extends Page implements HasForms
                             ]),
                     ]),
 
+                Section::make('Payroll Settings')
+                    ->description('Company-wide payroll defaults')
+                    ->schema([
+                        Grid::make()
+                            ->columns(2)
+                            ->schema([
+                                Toggle::make('workers_union_enabled')
+                                    ->label('Workers Union Enabled')
+                                    ->live(),
+                                TextInput::make('workers_union_rate')
+                                    ->label('Workers Union Rate (%)')
+                                    ->numeric()
+                                    ->suffix('%')
+                                    ->visible(fn (Get $get) => $get('workers_union_enabled')),
+                            ]),
+                    ]),
+
                 Section::make('Invoice Settings')
                     ->description('Default invoice configuration')
                     ->schema([

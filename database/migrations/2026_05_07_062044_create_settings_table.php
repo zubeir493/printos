@@ -24,6 +24,8 @@ return new class extends Migration
             // VAT/Tax Settings
             $table->decimal('vat_rate', 5, 2)->default(15.00);
             $table->boolean('vat_enabled')->default(true);
+            $table->boolean('workers_union_enabled')->default(true);
+            $table->decimal('workers_union_rate', 5, 2)->default(1);
             $table->json('tax_configuration')->nullable();
             // Invoice Settings
             $table->text('invoice_terms')->nullable();

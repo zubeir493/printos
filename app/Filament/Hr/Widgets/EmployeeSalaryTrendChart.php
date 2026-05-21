@@ -28,20 +28,17 @@ class EmployeeSalaryTrendChart extends ChartWidget
 
         $labels = [];
         $basicSalary = [];
-        $hourlyOvertimeRate = [];
-        $holidayOvertimeRate = [];
+        $overtimeMultiplier = [];
 
         if ($histories->isEmpty()) {
             $labels[] = 'Current';
             $basicSalary[] = (float) $this->record->basic_salary;
-            $hourlyOvertimeRate[] = (float) $this->record->hourly_overtime_rate;
-            $holidayOvertimeRate[] = (float) $this->record->holiday_overtime_rate;
+            $overtimeMultiplier[] = (float) $this->record->overtime_multiplier;
         } else {
             foreach ($histories as $history) {
                 $labels[] = Carbon::parse($history->effective_date)->format('M d, Y');
                 $basicSalary[] = (float) $history->basic_salary;
-                $hourlyOvertimeRate[] = (float) $history->hourly_overtime_rate;
-                $holidayOvertimeRate[] = (float) $history->holiday_overtime_rate;
+                $overtimeMultiplier[] = (float) $history->overtime_multiplier;
             }
         }
 
@@ -56,18 +53,10 @@ class EmployeeSalaryTrendChart extends ChartWidget
                     'tension' => 0.3,
                 ],
                 [
-                    'label' => 'Hourly Overtime Rate',
-                    'data' => $hourlyOvertimeRate,
+                    'label' => 'Overtime Multiplier',
+                    'data' => $overtimeMultiplier,
                     'borderColor' => '#0ea5e9',
                     'backgroundColor' => 'rgba(14, 165, 233, 0.15)',
-                    'fill' => false,
-                    'tension' => 0.3,
-                ],
-                [
-                    'label' => 'Holiday Overtime Rate',
-                    'data' => $holidayOvertimeRate,
-                    'borderColor' => '#0d9488',
-                    'backgroundColor' => 'rgba(13, 148, 136, 0.15)',
                     'fill' => false,
                     'tension' => 0.3,
                 ],

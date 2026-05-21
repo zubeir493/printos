@@ -32,7 +32,7 @@ class SalaryRevisionHistoryTable extends BaseWidget
                 Tables\Columns\TextColumn::make('effective_date')
                     ->date(),
                 Tables\Columns\TextColumn::make('basic_salary')
-                    ->label('Basic Salary')
+                    ->label('Monthly Rate')
                     ->alignEnd()
                     ->formatStateUsing(fn ($state) => Money::format($state)),
                 Tables\Columns\TextColumn::make('change_reason')

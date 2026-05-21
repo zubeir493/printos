@@ -9,6 +9,7 @@ enum PaymentTransactionType: string
     case DIRECT_EXPENSE = 'direct_expense';
     case PETTY_CASH_FUNDING = 'petty_cash_funding';
     case PETTY_CASH_EXPENSE = 'petty_cash_expense';
+    case PAYROLL_PAYMENT = 'payroll_payment';
 
     public function label(): string
     {
@@ -18,6 +19,7 @@ enum PaymentTransactionType: string
             self::DIRECT_EXPENSE => 'Direct Expense',
             self::PETTY_CASH_FUNDING => 'Petty Cash Funding',
             self::PETTY_CASH_EXPENSE => 'Petty Cash Expense',
+            self::PAYROLL_PAYMENT => 'Payroll Payment',
         };
     }
 
@@ -29,6 +31,7 @@ enum PaymentTransactionType: string
             self::DIRECT_EXPENSE => 'Normal operating expense paid from cash/bank. Debits an expense account.',
             self::PETTY_CASH_FUNDING => 'Moves money into petty cash. Debits petty cash and credits cash/bank.',
             self::PETTY_CASH_EXPENSE => 'Expense paid out of petty cash. Debits expense and credits petty cash.',
+            self::PAYROLL_PAYMENT => 'Salary payment. Debits payroll payable and credits cash/bank.',
         };
     }
 

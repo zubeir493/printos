@@ -2,16 +2,19 @@
 
 namespace App\Filament\Resources\Employees\Schemas;
 
+use App\Models\Employee;
 use App\Support\PrivateStorage;
+use Filament\Forms\Components\BaseFileUpload;
 use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\Select;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Placeholder;
+use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
-use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Illuminate\Support\HtmlString;
 
 class EmployeeForm
 {
@@ -26,14 +29,18 @@ class EmployeeForm
                                 TextInput::make('employee_id')
                                     ->label('Employee ID')
                                     ->default(function () {
-                                        $lastEmployee = \App\Models\Employee::orderBy('id', 'desc')->first();
+                                        $lastEmployee = Employee::orderBy('id', 'desc')->first();
                                         $lastNumber = 0;
                                         if ($lastEmployee && preg_match('/EMP-(\d+)/', $lastEmployee->employee_id, $matches)) {
                                             $lastNumber = (int) $matches[1];
                                         }
-                                        return 'EMP-' . str_pad($lastNumber + 1, 4, '0', STR_PAD_LEFT);
+
+                                        return 'EMP-'.str_pad($lastNumber + 1, 4, '0', STR_PAD_LEFT);
                                     })
                                     ->required()
+                                    ->unique(ignoreRecord: true),
+                                TextInput::make('attendance_device_id')
+                                    ->label('Punch Machine AC No')
                                     ->unique(ignoreRecord: true),
                                 TextInput::make('first_name')
                                     ->required(),
@@ -44,29 +51,59 @@ class EmployeeForm
                                     ->tel(),
                                 TextInput::make('department'),
                                 TextInput::make('position'),
-                                TextInput::make('basic_salary')
-                                    ->label('Basic Salary (Monthly)')
-                                    ->numeric()
-                                    ->suffix('Birr')
-                                    ->default(0),
-                                TextInput::make('hourly_overtime_rate')
-                                    ->label('Hourly Overtime Rate')
-                                    ->numeric()
-                                    ->suffix('Birr')
-                                    ->default(0),
-                                TextInput::make('holiday_overtime_rate')
-                                    ->label('Holiday Overtime Rate')
-                                    ->numeric()
-                                    ->suffix('Birr')
-                                    ->default(0),
-                                Select::make('payment_method')
+                                Select::make('employment_type')
+                                    ->label('Employment Type')
                                     ->options([
-                                        'cash' => 'Cash',
-                                        'bank_transfer' => 'Bank Transfer',
-                                        'check' => 'Check',
-                                    ]),
+                                        'permanent' => 'Permanent',
+                                        'contract' => 'Contract',
+                                        'temporary' => 'Temporary',
+                                        'part_time' => 'Part-time',
+                                    ])
+                                    ->default('permanent')
+                                    ->required(),
+                                TextInput::make('tax_id')
+                                    ->label('Tax ID'),
+                                Select::make('pension_enabled')
+                                    ->label('Pension')
+                                    ->options([
+                                        true => 'Enabled',
+                                        false => 'Disabled',
+                                    ])
+                                    ->default(true)
+                                    ->required(),
+                                TextInput::make('employee_pension_rate')
+                                    ->label('Employee Pension %')
+                                    ->numeric()
+                                    ->default(7),
+                                TextInput::make('employer_pension_rate')
+                                    ->label('Employer Pension %')
+                                    ->numeric()
+                                    ->default(11),
+                                TextInput::make('basic_salary')
+                                    ->label('Monthly Rate')
+                                    ->numeric()
+                                    ->suffix('Birr')
+                                    ->default(0),
+                                TextInput::make('overtime_multiplier')
+                                    ->label('Overtime Multiplier')
+                                    ->numeric()
+                                    ->default(1),
                                 TextInput::make('bank_name'),
                                 TextInput::make('account_number'),
+                                Repeater::make('scheduleAssignments')
+                                    ->relationship()
+                                    ->label('Schedule Assignments')
+                                    ->schema([
+                                        Select::make('work_schedule_id')
+                                            ->label('Schedule')
+                                            ->relationship('workSchedule', 'name')
+                                            ->required(),
+                                        DatePicker::make('effective_from')
+                                            ->required(),
+                                        DatePicker::make('effective_until'),
+                                    ])
+                                    ->columns(3)
+                                    ->columnSpanFull(),
                             ])->columnSpan(3)->columns(2),
 
                         Section::make()
@@ -78,10 +115,11 @@ class EmployeeForm
                                         $name = $record?->full_name ?? 'Employee';
 
                                         if (! $record || ! $record->image) {
-                                            return new \Illuminate\Support\HtmlString('<img src="https://ui-avatars.com/api/?name=' . urlencode($name) . '&color=FFFFFF&background=020617" class="w-full aspect-square rounded-xl object-cover shadow-sm" />');
+                                            return new HtmlString('<img src="https://ui-avatars.com/api/?name='.urlencode($name).'&color=FFFFFF&background=020617" class="w-full aspect-square rounded-xl object-cover shadow-sm" />');
                                         }
                                         $url = PrivateStorage::url($record->image, now()->addMinutes(10));
-                                        return new \Illuminate\Support\HtmlString('<img src="' . $url . '" class="w-full aspect-square rounded-xl object-cover shadow-sm" />');
+
+                                        return new HtmlString('<img src="'.$url.'" class="w-full aspect-square rounded-xl object-cover shadow-sm" />');
                                     })
                                     ->columnSpan(5),
                                 FileUpload::make('image')
@@ -93,7 +131,7 @@ class EmployeeForm
                                     ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
                                     ->disk('s3')
                                     ->visibility('private')
-                                    ->getUploadedFileUsing(fn (\Filament\Forms\Components\BaseFileUpload $component, string $file, string | array | null $storedFileNames): ?array => PrivateStorage::uploadedFileInfo($component, $file, $storedFileNames))
+                                    ->getUploadedFileUsing(fn (BaseFileUpload $component, string $file, string|array|null $storedFileNames): ?array => PrivateStorage::uploadedFileInfo($component, $file, $storedFileNames))
                                     ->getOpenableFileUrlUsing(fn (string $file): ?string => PrivateStorage::url($file))
                                     ->getDownloadableFileUrlUsing(fn (string $file): ?string => PrivateStorage::downloadUrl($file))
                                     ->directory('employees/photos')

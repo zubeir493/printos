@@ -15,8 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('employee_id')->constrained()->cascadeOnDelete();
             $table->decimal('basic_salary', 15, 2);
-            $table->decimal('hourly_overtime_rate', 15, 2);
-            $table->decimal('holiday_overtime_rate', 15, 2);
+            $table->decimal('overtime_multiplier', 8, 4)->default(1);
             $table->date('effective_date');
             $table->text('change_reason')->nullable();
             $table->timestamps();

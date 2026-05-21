@@ -221,6 +221,12 @@ nav.fi-sidebar-nav::-webkit-scrollbar {
     white-space: nowrap;
 }
 
+.fi-topbar-open-sidebar-btn>svg{
+    color: white;
+    width: 28px;
+    height: 28px;
+}
+
 /* Buttons */
 
 .fi-ac-btn-action.fi-color-primary {
@@ -279,4 +285,69 @@ h1.fi-simple-header-heading {
 .planvactualcolumn>.fi-input-wrp-suffix.fi-input-wrp-suffix-has-label{
     border: none !important;
     padding-inline-start: 0 !important;
+}
+
+
+.payrollTable {
+    max-width: 100%;
+    overflow-x: auto;
+}
+
+.payrollTable table {
+    min-width: max-content;
+}
+
+.payrollTable th,
+.payrollTable td {
+    white-space: nowrap;
+}
+
+.payrollTable th{
+    text-align: left;
+}
+
+.payrollTable th:nth-child(1),
+.payrollTable td:nth-child(1) {
+    min-width: 12rem;
+}
+
+.payrollTable th:nth-child(2),
+.payrollTable th:nth-child(5),
+.payrollTable th:nth-child(6),
+.payrollTable th:nth-child(7),
+.payrollTable th:nth-child(9),
+.payrollTable th:nth-child(12),
+.payrollTable th:nth-child(14),
+.payrollTable th:nth-child(15),
+.payrollTable th:nth-child(16),
+.payrollTable td:nth-child(17) {
+    min-width: 5rem;
+}
+
+.payrollTable th:nth-child(10),
+.payrollTable td:nth-child(10),
+.payrollTable th:nth-child(11),
+.payrollTable td:nth-child(11),
+.payrollTable th:nth-child(18),
+.payrollTable td:nth-child(18),
+.payrollTable th:nth-child(19),
+.payrollTable td:nth-child(19) {
+    min-width: 9rem;
+}
+
+.payrollTable th:nth-child(3),
+.payrollTable td:nth-child(3),
+.payrollTable th:nth-child(8),
+.payrollTable td:nth-child(8),
+.payrollTable th:nth-child(13),
+.payrollTable td:nth-child(13) {
+    min-width: 7.5rem;
+}
+
+.payrollTable .payroll-register-number-input {
+    min-width: 7rem;
+}
+
+.payrollTable .payroll-register-employee-field {
+    min-width: 17rem;
 }

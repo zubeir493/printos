@@ -23,6 +23,7 @@ class DatabaseSeeder extends Seeder
             MachineSeeder::class,
             PartnerSeeder::class,
             UserSeeder::class,
+            PayrollTaxRuleSeeder::class,
         ]);
     }
 }

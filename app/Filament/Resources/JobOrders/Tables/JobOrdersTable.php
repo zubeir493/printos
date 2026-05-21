@@ -115,6 +115,12 @@ class JobOrdersTable
             ])
             ->recordActions([
                 ActionGroup::make([
+                    Action::make('print_job_order')
+                        ->label('Print Job Order')
+                        ->icon('heroicon-o-printer')
+                        ->color('gray')
+                        ->url(fn ($record): string => route('job-orders.print', $record))
+                        ->openUrlInNewTab(),
                     Action::make('invoice')
                         ->label('Invoice')
                         ->icon('heroicon-o-document-text')

@@ -53,18 +53,18 @@ class SalesInvoice extends Model
         return $this->hasMany(SalesInvoiceItem::class);
     }
 
-    public function paymentAllocations(): MorphMany
+    public function payments(): MorphMany
     {
-        return $this->morphMany(PaymentAllocation::class, 'allocatable');
+        return $this->morphMany(Payment::class, 'payable');
     }
 
-    public function getAllocatedAmountAttribute(): float
+    public function getPaidAmountAttribute(): float
     {
-        return (float) $this->paymentAllocations()->sum('allocated_amount');
+        return (float) $this->payments()->whereNull('voided_at')->sum('amount');
     }
 
     public function getOutstandingAmountAttribute(): float
     {
-        return max(0, (float) $this->total_amount - $this->allocated_amount);
+        return max(0, (float) $this->total_amount - $this->paid_amount);
     }
 }

@@ -26,6 +26,7 @@ class RecentStockMovementsTable extends BaseWidget
                     ->latest('movement_date')
                     ->limit(10)
             )
+            ->searchable(false)
             ->columns([
                 Tables\Columns\TextColumn::make('inventoryItem.name')
                     ->label('Item')

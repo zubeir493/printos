@@ -184,8 +184,8 @@ class JobOrdersTable
                                     ->label('Payment Date')
                                     ->default(now())
                                     ->required(),
-                                TextInput::make('allocated_amount')
-                                    ->label('Amount to Allocate')
+                                TextInput::make('amount')
+                                    ->label('Payment Amount')
                                     ->required()
                                     ->numeric()
                                     ->suffix('Birr')
@@ -201,13 +201,13 @@ class JobOrdersTable
                             try {
                                 DB::beginTransaction();
 
-                                $amount = (float) $data['allocated_amount'];
+                                $amount = (float) $data['amount'];
 
                                 if ($amount > $record->balance) {
-                                    throw new \Exception('Cannot allocate more than the remaining balance of '.Money::format($record->balance).'.');
+                                    throw new \Exception('Cannot pay more than the remaining balance of '.Money::format($record->balance).'.');
                                 }
 
-                                $payment = Payment::create([
+                                Payment::create([
                                     'partner_id' => $record->partner_id,
                                     'payment_date' => $data['payment_date'],
                                     'transaction_type' => PaymentTransactionType::CUSTOMER_RECEIPT->value,
@@ -215,13 +215,15 @@ class JobOrdersTable
                                     'method' => $data['method'],
                                     'bank_id' => $data['bank_id'] ?? null,
                                     'reference' => $data['reference'] ?? 'Payment for '.$record->job_order_number,
+                                    'payable_type' => get_class($record),
+                                    'payable_id' => $record->id,
                                 ]);
 
-                                $payment->paymentAllocations()->create([
-                                    'allocatable_id' => $record->id,
-                                    'allocatable_type' => get_class($record),
-                                    'allocated_amount' => $amount,
+                                $record->updateQuietly([
+                                    'advance_paid' => true,
+                                    'advance_amount' => $record->paid_amount + $amount,
                                 ]);
+                                $record->refresh()->syncCompletionStatus();
 
                                 DB::commit();
 

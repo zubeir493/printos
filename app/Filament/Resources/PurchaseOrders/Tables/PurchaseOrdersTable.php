@@ -138,8 +138,8 @@ class PurchaseOrdersTable
                                     ->preload()
                                     ->visible(fn (callable $get) => $get('method') === 'bank')
                                     ->required(fn (callable $get) => $get('method') === 'bank'),
-                                TextInput::make('allocated_amount')
-                                    ->label('Amount to Allocate')
+                                TextInput::make('amount')
+                                    ->label('Payment Amount')
                                     ->required()
                                     ->numeric()
                                     ->suffix('Birr')
@@ -159,13 +159,13 @@ class PurchaseOrdersTable
                             try {
                                 DB::beginTransaction();
 
-                                $amount = (float) $data['allocated_amount'];
+                                $amount = (float) $data['amount'];
 
                                 if ($amount > $record->balance) {
-                                    throw new \Exception('Cannot allocate more than the remaining balance of '.Money::format($record->balance).'.');
+                                    throw new \Exception('Cannot pay more than the remaining balance of '.Money::format($record->balance).'.');
                                 }
 
-                                $payment = Payment::create([
+                                Payment::create([
                                     'partner_id' => $record->partner_id,
                                     'payment_date' => $data['payment_date'],
                                     'transaction_type' => PaymentTransactionType::SUPPLIER_PAYMENT->value,
@@ -173,12 +173,8 @@ class PurchaseOrdersTable
                                     'method' => $data['method'],
                                     'bank_id' => $data['bank_id'] ?? null,
                                     'reference' => $data['reference'] ?? 'Payment for '.$record->po_number,
-                                ]);
-
-                                $payment->paymentAllocations()->create([
-                                    'allocatable_id' => $record->id,
-                                    'allocatable_type' => get_class($record),
-                                    'allocated_amount' => $amount,
+                                    'payable_type' => get_class($record),
+                                    'payable_id' => $record->id,
                                 ]);
 
                                 DB::commit();

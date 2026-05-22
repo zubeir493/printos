@@ -3,16 +3,19 @@
 namespace App\Filament\Resources\StockAdjustments\Schemas;
 
 use App\Models\InventoryBalance;
+use App\Models\InventoryItem;
 use App\Models\StockAdjustment;
 use App\Models\Warehouse;
+use App\Support\StockTransferQuantity;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
-use Filament\Forms\Components\Repeater; // Using Form instead of Schema if that's what Filament expects, but let's stick to what works. Actually the resource uses Schema.
+use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Repeater\TableColumn;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Form;
 use Filament\Schemas\Components\Section as ComponentsSection;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 
 class StockAdjustmentForm
@@ -55,6 +58,9 @@ class StockAdjustmentForm
 
                 Repeater::make('items')
                     ->relationship()
+                    ->mutateRelationshipDataBeforeFillUsing(fn (array $data): array => self::convertRepeaterDataToDisplayUnits($data))
+                    ->mutateRelationshipDataBeforeCreateUsing(fn (array $data): array => self::convertRepeaterDataToBaseUnits($data))
+                    ->mutateRelationshipDataBeforeSaveUsing(fn (array $data): array => self::convertRepeaterDataToBaseUnits($data))
                     ->table([
                         TableColumn::make('Inventory Item')->width('300px')->alignLeft(),
                         TableColumn::make('Adjustment')->alignLeft(),
@@ -69,13 +75,15 @@ class StockAdjustmentForm
                             ->searchable()
                             ->preload()
                             ->reactive()
-                            ->afterStateUpdated(function ($state, $set, $get) {
+                            ->afterStateUpdated(function ($state, Set $set, Get $get): void {
                                 $warehouseId = $get('../../warehouse_id');
+
                                 if ($state && $warehouseId) {
+                                    $item = InventoryItem::find($state);
                                     $balance = InventoryBalance::where('inventory_item_id', $state)
                                         ->where('warehouse_id', $warehouseId)
                                         ->first();
-                                    $system = $balance ? (float) $balance->quantity_on_hand : 0;
+                                    $system = StockTransferQuantity::displayQuantity($item, $balance?->quantity_on_hand ?? 0);
                                     $set('system_quantity', $system);
 
                                     $adj = (float) $get('adjustment_quantity');
@@ -88,28 +96,31 @@ class StockAdjustmentForm
                             ->numeric()
                             ->required()
                             ->reactive()
-                            ->afterStateUpdated(function ($state, $set, $get) {
+                            ->suffix(fn (Get $get): string => self::unitPrefixForItemId($get('inventory_item_id')))
+                            ->afterStateUpdated(function ($state, Set $set, Get $get): void {
                                 $system = (float) $get('system_quantity');
                                 $adj = (float) $state;
                                 $set('new_quantity', $system + $adj);
                                 $set('difference', $adj);
                             })
-                            ->helperText(fn ($get) => (float) $get('system_quantity') + (float) $get('adjustment_quantity') < 0
+                            ->helperText(fn (Get $get) => (float) $get('system_quantity') + (float) $get('adjustment_quantity') < 0
                                 ? 'This adjustment will create negative stock. Please lower the negative quantity or correct the system quantity.'
                                 : null)
                             ->disabled(fn ($get) => $get('../../status') === 'posted'),
                         TextInput::make('system_quantity')
                             ->numeric()
+                            ->suffix(fn (Get $get): string => self::unitPrefixForItemId($get('inventory_item_id')))
                             ->disabled()
                             ->dehydrated()
                             ->required(),
                         TextInput::make('new_quantity')
                             ->numeric()
+                            ->suffix(fn (Get $get): string => self::unitPrefixForItemId($get('inventory_item_id')))
                             ->disabled()
                             ->dehydrated()
                             ->required()
                             ->default(0)
-                            ->helperText(fn ($get) => (float) $get('new_quantity') < 0
+                            ->helperText(fn (Get $get) => (float) $get('new_quantity') < 0
                                 ? 'Resulting stock would be negative. This adjustment cannot be posted.'
                                 : null),
                         Hidden::make('difference')
@@ -121,5 +132,40 @@ class StockAdjustmentForm
                     ->disabled(fn ($record) => $record?->status === 'posted')
                     ->columnSpanFull(),
             ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    public static function convertRepeaterDataToDisplayUnits(array $data): array
+    {
+        $item = InventoryItem::find($data['inventory_item_id'] ?? null);
+
+        foreach (['system_quantity', 'adjustment_quantity', 'new_quantity', 'difference'] as $quantityField) {
+            $data[$quantityField] = StockTransferQuantity::displayQuantity($item, $data[$quantityField] ?? 0);
+        }
+
+        return $data;
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    public static function convertRepeaterDataToBaseUnits(array $data): array
+    {
+        $item = InventoryItem::find($data['inventory_item_id'] ?? null);
+
+        foreach (['system_quantity', 'adjustment_quantity', 'new_quantity', 'difference'] as $quantityField) {
+            $data[$quantityField] = StockTransferQuantity::baseQuantity($item, $data[$quantityField] ?? 0);
+        }
+
+        return $data;
+    }
+
+    public static function unitPrefixForItemId(int|string|null $inventoryItemId): string
+    {
+        return StockTransferQuantity::unitLabel(InventoryItem::find($inventoryItemId));
     }
 }

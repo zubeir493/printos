@@ -61,11 +61,6 @@ class Employee extends Model
         return $this->hasMany(EmployeeSalaryHistory::class);
     }
 
-    public function scheduleAssignments(): HasMany
-    {
-        return $this->hasMany(EmployeeScheduleAssignment::class);
-    }
-
     public function attendanceLogs(): HasMany
     {
         return $this->hasMany(AttendanceLog::class);

@@ -10,6 +10,7 @@ use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
+use Filament\Support\Colors\Color;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -27,13 +28,19 @@ class UsersTable
                     ->searchable(),
                 TextColumn::make('role')
                     ->badge()
-                    ->color(function ($state): string {
+                    ->color(function ($state): string|array {
                         $roleValue = is_string($state) ? $state : ($state instanceof UserRole ? $state->value : (string) $state);
 
                         return match ($roleValue) {
-                            'admin' => 'danger',
-                            'sales', 'retail' => 'success',
-                            'finance', 'hr' => 'warning',
+                            'admin' => Color::Indigo,
+                            'operations' => 'info',
+                            'finance' => 'warning',
+                            'sales' => 'success',
+                            'retail' => Color::Lime,
+                            'hr' => Color::Purple,
+                            'design' => Color::Pink,
+                            'production' => Color::Orange,
+                            'warehouse' => Color::Cyan,
                             default => 'gray',
                         };
                     })

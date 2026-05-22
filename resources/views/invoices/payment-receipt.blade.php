@@ -77,24 +77,24 @@
                 <td class="text-right">{{ \App\Support\Money::format($receipt_data['payment']->amount) }}</td>
             </tr>
 
-            @if($receipt_data['options']['show_allocated_orders'] && $receipt_data['allocations']->count() > 0)
+            @if($receipt_data['options']['show_paid_document'] && $receipt_data['payable'])
             <tr class="heading">
-                <td colspan="2">Allocated To Orders</td>
+                <td colspan="2">Paid Document</td>
             </tr>
-            @foreach($receipt_data['allocations'] as $allocation)
-            <tr class="item {{ $loop->last ? 'last' : '' }}">
+            <tr class="item last">
                 <td>
-                    @if($allocation->allocatable_type === 'App\\Models\\SalesOrder')
-                        Sales Order: {{ $allocation->allocatable->order_number }}
-                    @elseif($allocation->allocatable_type === 'App\\Models\\JobOrder')
-                        Job Order: {{ $allocation->allocatable->job_order_number }}
+                    @if($receipt_data['payable'] instanceof \App\Models\SalesOrder)
+                        Sales Order: {{ $receipt_data['payable']->order_number }}
+                    @elseif($receipt_data['payable'] instanceof \App\Models\JobOrder)
+                        Job Order: {{ $receipt_data['payable']->job_order_number }}
+                    @elseif($receipt_data['payable'] instanceof \App\Models\PurchaseOrder)
+                        Purchase Order: {{ $receipt_data['payable']->po_number }}
                     @else
-                        Order #{{ $allocation->allocatable_id }}
+                        {{ class_basename($receipt_data['payment']->payable_type) }} #{{ $receipt_data['payment']->payable_id }}
                     @endif
                 </td>
-                <td class="text-right">{{ \App\Support\Money::format($allocation->allocated_amount) }}</td>
+                <td class="text-right">{{ \App\Support\Money::format($receipt_data['payment']->amount) }}</td>
             </tr>
-            @endforeach
             @endif
 
             <tr>

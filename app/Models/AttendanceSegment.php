@@ -14,6 +14,7 @@ class AttendanceSegment extends Model
         'attendance_import_id',
         'attendance_import_row_id',
         'employee_id',
+        'shift_id',
         'date',
         'fp_no',
         'schedule_name',
@@ -54,5 +55,10 @@ class AttendanceSegment extends Model
     public function employee(): BelongsTo
     {
         return $this->belongsTo(Employee::class);
+    }
+
+    public function shift(): BelongsTo
+    {
+        return $this->belongsTo(Shift::class);
     }
 }

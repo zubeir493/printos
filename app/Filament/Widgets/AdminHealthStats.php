@@ -19,17 +19,18 @@ class AdminHealthStats extends BaseWidget
     protected function getStats(): array
     {
         $cashConversionExpression = match (DB::connection()->getDriverName()) {
-            'mysql', 'mariadb' => 'AVG(TIMESTAMPDIFF(DAY, sales_orders.created_at, payment_allocations.created_at)) as avg_days',
-            'pgsql' => 'AVG(EXTRACT(DAY FROM payment_allocations.created_at - sales_orders.created_at)) as avg_days',
-            default => 'AVG(JULIANDAY(payment_allocations.created_at) - JULIANDAY(sales_orders.created_at)) as avg_days',
+            'mysql', 'mariadb' => 'AVG(TIMESTAMPDIFF(DAY, sales_orders.created_at, payments.created_at)) as avg_days',
+            'pgsql' => 'AVG(EXTRACT(DAY FROM payments.created_at - sales_orders.created_at)) as avg_days',
+            default => 'AVG(JULIANDAY(payments.created_at) - JULIANDAY(sales_orders.created_at)) as avg_days',
         };
 
         // 1. Avg Cash Conversion Cycle (Approx: Order Date to Payment Date)
-        // Calculating average days between SalesOrder created_at and its latest PaymentAllocation
+        // Calculating average days between SalesOrder created_at and its direct payment.
         $cashConversionDays = SalesOrder::where('status', 'completed')
-            ->join('payment_allocations', function ($join) {
-                $join->on('sales_orders.id', '=', 'payment_allocations.allocatable_id')
-                    ->where('payment_allocations.allocatable_type', '=', SalesOrder::class);
+            ->join('payments', function ($join) {
+                $join->on('sales_orders.id', '=', 'payments.payable_id')
+                    ->where('payments.payable_type', '=', SalesOrder::class)
+                    ->whereNull('payments.voided_at');
             })
             ->selectRaw($cashConversionExpression)
             ->value('avg_days') ?? 0;

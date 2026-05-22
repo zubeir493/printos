@@ -11,7 +11,7 @@ class AwaitingYourUploadTable extends BaseWidget
 {
     protected static ?int $sort = 3;
 
-    protected int | string | array $columnSpan = 'full';
+    protected int|string|array $columnSpan = 'full';
 
     protected static ?string $heading = 'Awaiting Your Upload';
 
@@ -24,6 +24,7 @@ class AwaitingYourUploadTable extends BaseWidget
                     ->whereDoesntHave('artworks')
                     ->latest()
             )
+            ->searchable(false)
             ->columns([
                 Tables\Columns\TextColumn::make('jobOrder.job_order_number')
                     ->label('Job Order')

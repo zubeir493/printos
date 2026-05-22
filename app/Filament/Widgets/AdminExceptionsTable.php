@@ -27,6 +27,7 @@ class AdminExceptionsTable extends BaseWidget
                     ->orderBy('due_date')
                     ->limit(8)
             )
+            ->searchable(false)
             ->columns([
                 Tables\Columns\TextColumn::make('job_order_number')
                     ->label('Job Order')

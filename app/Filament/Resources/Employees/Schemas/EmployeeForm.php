@@ -8,7 +8,6 @@ use Filament\Forms\Components\BaseFileUpload;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Placeholder;
-use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Group;
@@ -90,20 +89,6 @@ class EmployeeForm
                                     ->default(1),
                                 TextInput::make('bank_name'),
                                 TextInput::make('account_number'),
-                                Repeater::make('scheduleAssignments')
-                                    ->relationship()
-                                    ->label('Schedule Assignments')
-                                    ->schema([
-                                        Select::make('work_schedule_id')
-                                            ->label('Schedule')
-                                            ->relationship('workSchedule', 'name')
-                                            ->required(),
-                                        DatePicker::make('effective_from')
-                                            ->required(),
-                                        DatePicker::make('effective_until'),
-                                    ])
-                                    ->columns(3)
-                                    ->columnSpanFull(),
                             ])->columnSpan(3)->columns(2),
 
                         Section::make()

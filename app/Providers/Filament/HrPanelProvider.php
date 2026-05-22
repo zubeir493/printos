@@ -16,7 +16,6 @@ use App\Filament\Resources\LeaveRequests\LeaveRequestResource;
 use App\Filament\Resources\LeaveTypes\LeaveTypeResource;
 use App\Filament\Resources\PayrollRuns\PayrollRunResource;
 use App\Filament\Resources\Shifts\ShiftResource;
-use App\Filament\Resources\WorkSchedules\WorkScheduleResource;
 use Filament\Enums\ThemeMode;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -63,7 +62,6 @@ class HrPanelProvider extends PanelProvider
                 LeaveTypeResource::class,
                 PayrollRunResource::class,
                 ShiftResource::class,
-                WorkScheduleResource::class,
             ])
             ->pages([
                 Dashboard::class,

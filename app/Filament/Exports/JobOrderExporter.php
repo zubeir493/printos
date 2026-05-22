@@ -41,7 +41,7 @@ class JobOrderExporter extends Exporter
             ExportColumn::make('materials_fully_issued_at'),
             ExportColumn::make('advance_paid')
                 ->label('Advance Paid')
-                ->getStateUsing(fn ($record) => $record->paymentAllocations()->exists() ? 'Yes' : 'No'),
+                ->getStateUsing(fn ($record) => $record->payments()->whereNull('voided_at')->exists() ? 'Yes' : 'No'),
             ExportColumn::make('advance_amount')
                 ->label('Advance Amount (Birr)'),
             ExportColumn::make('production_mode'),

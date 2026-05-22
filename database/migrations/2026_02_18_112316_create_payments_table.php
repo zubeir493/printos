@@ -19,9 +19,10 @@ return new class extends Migration
             $table->foreignId('partner_id')->constrained();
             $table->date('payment_date');
             $table->decimal('amount', 15, 2);
-            $table->enum('direction', ["inbound","outbound"]);
-            $table->enum('method', ["cash","bank","cheque"]);
+            $table->enum('direction', ['inbound', 'outbound']);
+            $table->enum('method', ['cash', 'bank', 'cheque']);
             $table->string('reference')->nullable();
+            $table->nullableMorphs('payable');
             $table->timestamps();
         });
 

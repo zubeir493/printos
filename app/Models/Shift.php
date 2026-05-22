@@ -32,8 +32,8 @@ class Shift extends Model
         ];
     }
 
-    public function scheduleDays(): HasMany
+    public function attendanceSegments(): HasMany
     {
-        return $this->hasMany(WorkScheduleDay::class);
+        return $this->hasMany(AttendanceSegment::class);
     }
 }

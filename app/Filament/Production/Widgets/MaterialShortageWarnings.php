@@ -27,6 +27,7 @@ class MaterialShortageWarnings extends BaseWidget
                     ->latest()
                     ->limit(3)
             )
+            ->searchable(false)
             ->columns([
                 Tables\Columns\TextColumn::make('id')
                     ->label('Plan')

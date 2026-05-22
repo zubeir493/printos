@@ -25,6 +25,7 @@ class SalaryRevisionHistoryTable extends BaseWidget
                     ->latest('effective_date')
                     ->limit(5)
             )
+            ->searchable(false)
             ->columns([
                 Tables\Columns\TextColumn::make('employee.full_name')
                     ->label('Employee')

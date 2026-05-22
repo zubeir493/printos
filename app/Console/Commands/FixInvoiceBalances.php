@@ -7,7 +7,6 @@ use App\Models\JobOrder;
 use App\Models\PurchaseOrder;
 use App\Models\SalesOrder;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
 
 class FixInvoiceBalances extends Command
 {
@@ -20,21 +19,21 @@ class FixInvoiceBalances extends Command
         $invoices = Invoice::all();
 
         foreach ($invoices as $invoice) {
-            $allocatableType = match ($invoice->order_type) {
+            $orderType = match ($invoice->order_type) {
                 'sales_order' => SalesOrder::class,
                 'purchase_order' => PurchaseOrder::class,
                 'job_order' => JobOrder::class,
                 default => null,
             };
 
-            if (! $allocatableType) {
+            if (! $orderType) {
                 continue;
             }
 
-            $paidAmount = DB::table('payment_allocations')
-                ->where('allocatable_type', $allocatableType)
-                ->where('allocatable_id', $invoice->order_id)
-                ->sum('allocated_amount');
+            $order = $orderType::query()->find($invoice->order_id);
+            $paidAmount = $order
+                ? (float) $order->payments()->whereNull('voided_at')->sum('amount')
+                : 0.0;
 
             $balanceDue = max(0, $invoice->total_amount - $paidAmount);
 

@@ -2,11 +2,11 @@
 
 namespace App\Services\Accounting;
 
+use App\Models\JobOrder;
 use App\Models\JournalEntry;
 use App\Models\JournalItem;
 use App\Models\Payment;
 use App\Models\User;
-use App\Observers\PaymentAllocationObserver;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -58,21 +58,20 @@ class VoidPaymentJournalEntry
                 ]);
             }
 
-            // Remove all payment allocations so order balances and invoice
-            // statuses are recalculated correctly.
-            // We call the observer's balance-update logic manually then force-delete
-            // to bypass the journal-entry guard (the void is the authoritative action).
-            $allocationObserver = app(PaymentAllocationObserver::class);
-            $payment->paymentAllocations()->each(function ($allocation) use ($allocationObserver): void {
-                $allocation->deleteQuietly();
-                $allocationObserver->deleted($allocation);
-            });
-
             Payment::whereKey($payment->id)->update([
                 'voided_at' => $timestamp,
                 'voided_by' => $user?->id,
                 'void_reason' => $reason,
             ]);
+
+            if ($payment->payable instanceof JobOrder) {
+                $jobOrder = $payment->payable->refresh();
+                $jobOrder->updateQuietly([
+                    'advance_paid' => $jobOrder->paid_amount > 0,
+                    'advance_amount' => $jobOrder->paid_amount,
+                ]);
+                $jobOrder->syncCompletionStatus();
+            }
 
             if ($payment->bank_id && in_array($payment->method, ['bank', 'bank_transfer'], true)) {
                 if ($payment->direction === 'outbound') {

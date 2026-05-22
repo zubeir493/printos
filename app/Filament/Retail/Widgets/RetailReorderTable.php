@@ -26,6 +26,7 @@ class RetailReorderTable extends BaseWidget
                     ->orderBy('quantity_on_hand')
                     ->limit(8)
             )
+            ->searchable(false)
             ->columns([
                 Tables\Columns\TextColumn::make('inventoryItem.name')
                     ->label('Item')

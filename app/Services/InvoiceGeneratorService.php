@@ -58,7 +58,7 @@ class InvoiceGeneratorService
             'due_date' => $order->due_date ? $order->due_date->format('Y-m-d') : Carbon::now()->addDays($settings->invoice_due_days ?? 30)->format('Y-m-d'),
             'order' => $order,
             'items' => $order->salesOrderItems,
-            'payments' => $order->paymentAllocations,
+            'payments' => $order->payments,
             'company_info' => $this->loadCompanyInformation(),
             'tax_calculations' => $taxCalculations,
             'subtotal' => $subtotal,
@@ -128,15 +128,15 @@ class InvoiceGeneratorService
             'receipt_number' => $receiptNumber,
             'receipt_date' => $payment->payment_date->format('Y-m-d'),
             'payment' => $payment,
-            'allocations' => $payment->paymentAllocations,
+            'payable' => $payment->payable,
             'company_info' => $this->loadCompanyInformation(),
             'options' => array_merge([
                 'show_payment_method' => true,
-                'show_allocated_orders' => true,
+                'show_paid_document' => true,
             ], $options),
         ];
 
-        $pdf = Pdf::loadView('invoices.payment-receipt', $receiptData)
+        $pdf = Pdf::loadView('invoices.payment-receipt', ['receipt_data' => $receiptData])
             ->setPaper('a4')
             ->setOption('defaultFont', 'Arial')
             ->setOption('fontDir', public_path('fonts'))
@@ -193,7 +193,7 @@ class InvoiceGeneratorService
             'due_date' => $order->due_date ? $order->due_date->format('Y-m-d') : Carbon::now()->addDays($settings->invoice_due_days ?? 30)->format('Y-m-d'),
             'order' => $order,
             'items' => $order->purchaseOrderItems,
-            'payments' => $order->paymentAllocations,
+            'payments' => $order->payments,
             'company_info' => $this->loadCompanyInformation(),
             'tax_calculations' => $taxCalculations,
             'subtotal' => $subtotal,
@@ -303,7 +303,7 @@ class InvoiceGeneratorService
             'due_date' => $order->due_date ? $order->due_date->format('Y-m-d') : Carbon::now()->addDays($settings->invoice_due_days ?? 15)->format('Y-m-d'),
             'order' => $order,
             'items' => $items,
-            'payments' => $order->paymentAllocations,
+            'payments' => $order->payments,
             'company_info' => $this->loadCompanyInformation(),
             'customer_info' => [
                 'name' => $order->partner?->name ?? 'Internal Job',
@@ -691,7 +691,7 @@ class InvoiceGeneratorService
             'due_date' => $invoice->due_date->format('Y-m-d'),
             'order' => $order,
             'items' => $items,
-            'payments' => $order->paymentAllocations,
+            'payments' => $order->payments,
             'company_info' => $this->loadCompanyInformation(),
             'tax_calculations' => $invoice->tax_calculations,
             'subtotal' => $invoice->subtotal,

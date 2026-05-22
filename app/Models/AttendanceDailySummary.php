@@ -13,8 +13,6 @@ class AttendanceDailySummary extends Model
     protected $fillable = [
         'employee_id',
         'date',
-        'work_schedule_id',
-        'shift_id',
         'expected_minutes',
         'worked_minutes',
         'regular_minutes',

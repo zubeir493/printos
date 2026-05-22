@@ -325,21 +325,14 @@ h1.fi-simple-header-heading {
 }
 
 .payrollTable th:nth-child(10),
-.payrollTable td:nth-child(10),
 .payrollTable th:nth-child(11),
-.payrollTable td:nth-child(11),
 .payrollTable th:nth-child(18),
-.payrollTable td:nth-child(18),
-.payrollTable th:nth-child(19),
-.payrollTable td:nth-child(19) {
+.payrollTable th:nth-child(19) {
     min-width: 9rem;
 }
 
 .payrollTable th:nth-child(3),
-.payrollTable td:nth-child(3),
 .payrollTable th:nth-child(8),
-.payrollTable td:nth-child(8),
-.payrollTable th:nth-child(13),
 .payrollTable td:nth-child(13) {
     min-width: 7.5rem;
 }

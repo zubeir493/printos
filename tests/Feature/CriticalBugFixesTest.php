@@ -7,7 +7,6 @@ use App\Models\Invoice;
 use App\Models\JournalEntry;
 use App\Models\Partner;
 use App\Models\Payment;
-use App\Models\PaymentAllocation;
 use App\Models\SalesOrder;
 use App\Models\SalesOrderItem;
 use App\Models\Setting;
@@ -55,7 +54,7 @@ test('completing a sales order with VAT posts revenue and tax payable separately
     ]);
     SalesOrderItem::create(['sales_order_id' => $order->id, 'inventory_item_id' => $item->id, 'quantity' => 10, 'unit_price' => 100.00, 'total' => 1000.00]);
 
-    $order->update(['status' => 'completed']);
+    $order->update(['status' => 'submitted']);
 
     $entry = JournalEntry::where('source_type', SalesOrder::class)->where('source_id', $order->id)->first();
     expect($entry)->not->toBeNull();
@@ -99,7 +98,7 @@ test('generating an invoice twice for the same sales order returns the existing 
         'partner_id' => $customer->id,
         'order_date' => now(),
         'payment_mode' => 'credit',
-        'status' => 'completed',
+        'status' => 'submitted',
         'subtotal' => 500.00,
         'tax_amount' => 0.00,
         'total' => 500.00,
@@ -132,11 +131,23 @@ test('generating an invoice twice for the same sales order returns the existing 
 });
 
 // ---------------------------------------------------------------------------
-// Fix #19 — Voiding a payment removes its allocations and updates balances
+// Fix #19 - Voiding a direct payment updates balances
 // ---------------------------------------------------------------------------
 
-test('voiding a payment removes its allocations and restores order balance', function () {
+test('voiding a direct payment restores order balance', function () {
     $customer = Partner::create(['name' => 'Void Customer', 'is_customer' => true]);
+
+    $warehouse = Warehouse::create(['name' => 'Void WH', 'code' => 'VWH']);
+    $order = SalesOrder::create([
+        'warehouse_id' => $warehouse->id,
+        'partner_id' => $customer->id,
+        'order_date' => now(),
+        'payment_mode' => 'credit',
+        'status' => 'submitted',
+        'subtotal' => 500.00,
+        'tax_amount' => 0.00,
+        'total' => 500.00,
+    ]);
 
     $payment = Payment::create([
         'payment_number' => 'PAY-VOID-001',
@@ -146,33 +157,13 @@ test('voiding a payment removes its allocations and restores order balance', fun
         'direction' => 'inbound',
         'transaction_type' => 'customer_receipt',
         'method' => 'cash',
-    ]);
-
-    $warehouse = Warehouse::create(['name' => 'Void WH', 'code' => 'VWH']);
-    $order = SalesOrder::create([
-        'warehouse_id' => $warehouse->id,
-        'partner_id' => $customer->id,
-        'order_date' => now(),
-        'payment_mode' => 'credit',
-        'status' => 'completed',
-        'subtotal' => 500.00,
-        'tax_amount' => 0.00,
-        'total' => 500.00,
-    ]);
-
-    PaymentAllocation::create([
-        'payment_id' => $payment->id,
-        'allocatable_type' => SalesOrder::class,
-        'allocatable_id' => $order->id,
-        'allocated_amount' => 500.00,
+        'payable_type' => SalesOrder::class,
+        'payable_id' => $order->id,
     ]);
 
     expect($order->fresh()->paid_amount)->toBe(500.0);
 
     app(VoidPaymentJournalEntry::class)->handle($payment, 'Test void');
-
-    // Allocation must be gone
-    expect(PaymentAllocation::where('payment_id', $payment->id)->count())->toBe(0);
 
     // Order balance must be restored to full amount
     expect($order->fresh()->balance)->toBe(500.0);

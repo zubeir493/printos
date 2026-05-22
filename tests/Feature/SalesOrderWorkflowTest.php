@@ -95,11 +95,11 @@ class SalesOrderWorkflowTest extends TestCase
 
         $payment = Payment::query()->first();
 
-        $this->assertDatabaseHas('payment_allocations', [
-            'payment_id' => $payment->id,
-            'allocatable_type' => SalesOrder::class,
-            'allocatable_id' => $salesOrder->id,
-            'allocated_amount' => 230.00,
+        $this->assertDatabaseHas('payments', [
+            'id' => $payment->id,
+            'payable_type' => SalesOrder::class,
+            'payable_id' => $salesOrder->id,
+            'amount' => 230.00,
         ]);
 
         $this->assertDatabaseHas('stock_movements', [
@@ -120,7 +120,7 @@ class SalesOrderWorkflowTest extends TestCase
         ]);
     }
 
-    public function test_sales_order_cannot_complete_when_insufficient_stock()
+    public function test_sales_order_cannot_be_submitted_when_insufficient_stock()
     {
         $this->expectException(\Exception::class);
 
@@ -167,10 +167,10 @@ class SalesOrderWorkflowTest extends TestCase
             'total' => 250.00,
         ]);
 
-        $salesOrder->update(['status' => 'completed']);
+        $salesOrder->update(['status' => SalesOrder::STATUS_SUBMITTED]);
     }
 
-    public function test_credit_sales_order_completion_posts_sale_without_creating_payment(): void
+    public function test_credit_sales_order_submission_posts_sale_without_completing_before_payment(): void
     {
         $warehouse = Warehouse::create([
             'name' => 'Credit Sales Warehouse',
@@ -216,7 +216,7 @@ class SalesOrderWorkflowTest extends TestCase
             'total' => 200.00,
         ]);
 
-        $salesOrder->update(['status' => 'completed']);
+        $salesOrder->update(['status' => SalesOrder::STATUS_SUBMITTED]);
 
         $this->assertDatabaseMissing('payments', [
             'partner_id' => $customer->id,
@@ -231,6 +231,122 @@ class SalesOrderWorkflowTest extends TestCase
 
         // Balance is the full order total (subtotal + VAT from default settings)
         $this->assertEqualsWithDelta($salesOrder->fresh()->total, $salesOrder->fresh()->balance, 0.001);
+        $this->assertSame(SalesOrder::STATUS_SUBMITTED, $salesOrder->fresh()->status);
+    }
+
+    public function test_credit_sales_order_cannot_be_completed_before_full_payment(): void
+    {
+        $this->expectException(\Exception::class);
+        $this->expectExceptionMessage('Credit sales can only be completed after full payment is received.');
+
+        $warehouse = Warehouse::create([
+            'name' => 'Credit Guard Warehouse',
+            'code' => 'CGW',
+        ]);
+
+        $customer = Partner::create([
+            'name' => 'Guarded Credit Customer',
+            'is_customer' => true,
+        ]);
+
+        $item = InventoryItem::create([
+            'name' => 'Guarded Packaging Box',
+            'sku' => 'GBOX-001',
+            'unit' => 'Piece',
+            'purchase_unit' => 'Piece',
+            'conversion_factor' => 1,
+            'type' => 'finished_good',
+            'is_sellable' => true,
+            'price' => 15.00,
+            'average_cost' => 12.00,
+        ]);
+
+        InventoryBalance::create([
+            'inventory_item_id' => $item->id,
+            'warehouse_id' => $warehouse->id,
+            'quantity_on_hand' => 40,
+        ]);
+
+        $salesOrder = SalesOrder::create([
+            'warehouse_id' => $warehouse->id,
+            'partner_id' => $customer->id,
+            'order_date' => now(),
+            'payment_mode' => 'credit',
+            'status' => SalesOrder::STATUS_DRAFT,
+        ]);
+
+        SalesOrderItem::create([
+            'sales_order_id' => $salesOrder->id,
+            'inventory_item_id' => $item->id,
+            'quantity' => 10,
+            'unit_price' => 20.00,
+            'total' => 200.00,
+        ]);
+
+        $salesOrder->update(['status' => SalesOrder::STATUS_COMPLETED]);
+    }
+
+    public function test_submitted_credit_sales_order_completes_after_full_payment(): void
+    {
+        $warehouse = Warehouse::create([
+            'name' => 'Paid Credit Warehouse',
+            'code' => 'PCW',
+        ]);
+
+        $customer = Partner::create([
+            'name' => 'Paid Credit Customer',
+            'is_customer' => true,
+        ]);
+
+        $item = InventoryItem::create([
+            'name' => 'Paid Packaging Box',
+            'sku' => 'PBOX-001',
+            'unit' => 'Piece',
+            'purchase_unit' => 'Piece',
+            'conversion_factor' => 1,
+            'type' => 'finished_good',
+            'is_sellable' => true,
+            'price' => 15.00,
+            'average_cost' => 12.00,
+        ]);
+
+        InventoryBalance::create([
+            'inventory_item_id' => $item->id,
+            'warehouse_id' => $warehouse->id,
+            'quantity_on_hand' => 40,
+        ]);
+
+        $salesOrder = SalesOrder::create([
+            'warehouse_id' => $warehouse->id,
+            'partner_id' => $customer->id,
+            'order_date' => now(),
+            'payment_mode' => 'credit',
+            'status' => SalesOrder::STATUS_DRAFT,
+        ]);
+
+        SalesOrderItem::create([
+            'sales_order_id' => $salesOrder->id,
+            'inventory_item_id' => $item->id,
+            'quantity' => 10,
+            'unit_price' => 20.00,
+            'total' => 200.00,
+        ]);
+
+        $salesOrder->update(['status' => SalesOrder::STATUS_SUBMITTED]);
+
+        Payment::create([
+            'partner_id' => $customer->id,
+            'amount' => $salesOrder->fresh()->balance,
+            'direction' => 'inbound',
+            'transaction_type' => 'customer_receipt',
+            'method' => 'cash',
+            'reference' => 'Paid in full',
+            'payment_date' => now(),
+            'payable_type' => SalesOrder::class,
+            'payable_id' => $salesOrder->id,
+        ]);
+
+        $this->assertSame(SalesOrder::STATUS_COMPLETED, $salesOrder->fresh()->status);
     }
 
     public function test_purchase_unit_sales_and_void_returns_use_base_stock_quantities(): void
@@ -280,7 +396,7 @@ class SalesOrderWorkflowTest extends TestCase
             'total' => 500.00,
         ]);
 
-        $salesOrder->update(['status' => 'completed']);
+        $salesOrder->update(['status' => SalesOrder::STATUS_SUBMITTED]);
 
         $this->assertSame(500.0, $salesOrderItem->fresh()->baseQuantityForStockMovement());
 
@@ -346,7 +462,7 @@ class SalesOrderWorkflowTest extends TestCase
             'total' => 500.00,
         ]);
 
-        $salesOrder->update(['status' => 'completed']);
+        $salesOrder->update(['status' => SalesOrder::STATUS_SUBMITTED]);
 
         $this->assertTrue($salesOrderItem->fresh()->usesPurchaseUnit());
         $this->assertSame(500.0, $salesOrderItem->fresh()->baseQuantityForStockMovement());

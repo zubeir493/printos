@@ -15,6 +15,14 @@ class SalesOrder extends Model
 {
     use LogsActivity;
 
+    public const STATUS_DRAFT = 'draft';
+
+    public const STATUS_SUBMITTED = 'submitted';
+
+    public const STATUS_COMPLETED = 'completed';
+
+    public const STATUS_VOID = 'void';
+
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
@@ -67,9 +75,9 @@ class SalesOrder extends Model
         return $this->hasMany(SalesOrderItem::class);
     }
 
-    public function paymentAllocations(): MorphMany
+    public function payments(): MorphMany
     {
-        return $this->morphMany(PaymentAllocation::class, 'allocatable');
+        return $this->morphMany(Payment::class, 'payable');
     }
 
     public function invoices(): HasMany
@@ -80,7 +88,7 @@ class SalesOrder extends Model
 
     public function getPaidAmountAttribute(): float
     {
-        return (float) $this->paymentAllocations()->sum('allocated_amount');
+        return (float) $this->payments()->whereNull('voided_at')->sum('amount');
     }
 
     public function getBalanceAttribute(): float
@@ -113,6 +121,24 @@ class SalesOrder extends Model
         return $this->payment_mode === 'cash';
     }
 
+    public function hasSubmittedItems(): bool
+    {
+        return in_array($this->status, [self::STATUS_SUBMITTED, self::STATUS_COMPLETED], true);
+    }
+
+    public function isPaidInFull(): bool
+    {
+        return $this->balance <= 0.00001;
+    }
+
+    private function remainingBalanceForCompletion(): float
+    {
+        $total = (float) ($this->getAttribute('total') ?: $this->getOriginal('total') ?: $this->fresh()?->total ?: 0);
+        $paid = (float) $this->payments()->whereNull('voided_at')->sum('amount');
+
+        return $total - $paid;
+    }
+
     protected static function booted()
     {
         static::creating(function ($salesOrder): void {
@@ -131,7 +157,18 @@ class SalesOrder extends Model
         });
 
         static::updating(function ($salesOrder) {
-            if ($salesOrder->isDirty('status') && $salesOrder->status === 'completed') {
+            if (
+                $salesOrder->isDirty('status') &&
+                in_array($salesOrder->status, [self::STATUS_SUBMITTED, self::STATUS_COMPLETED], true)
+            ) {
+                if (
+                    $salesOrder->status === self::STATUS_COMPLETED &&
+                    ! $salesOrder->isCashSale() &&
+                    $salesOrder->remainingBalanceForCompletion() > 0.00001
+                ) {
+                    throw new \Exception('Credit sales can only be completed after full payment is received.');
+                }
+
                 // Validate sufficient stock — quantities may be in purchase units, convert to base
                 foreach ($salesOrder->salesOrderItems as $item) {
                     $inventoryItem = $item->inventoryItem;
@@ -162,7 +199,10 @@ class SalesOrder extends Model
         });
 
         static::updated(function ($salesOrder) {
-            if ($salesOrder->wasChanged('status') && $salesOrder->status === 'completed') {
+            if (
+                $salesOrder->wasChanged('status') &&
+                in_array($salesOrder->status, [self::STATUS_SUBMITTED, self::STATUS_COMPLETED], true)
+            ) {
                 DB::transaction(function () use ($salesOrder) {
                     foreach ($salesOrder->salesOrderItems as $item) {
                         // Prevent duplicate movements

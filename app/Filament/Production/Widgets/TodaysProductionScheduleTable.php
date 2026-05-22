@@ -11,7 +11,7 @@ class TodaysProductionScheduleTable extends BaseWidget
 {
     protected static ?int $sort = 3;
 
-    protected int | string | array $columnSpan = 'full';
+    protected int|string|array $columnSpan = 'full';
 
     protected static ?string $heading = 'This Week\'s Production Schedule';
 
@@ -32,6 +32,7 @@ class TodaysProductionScheduleTable extends BaseWidget
                     })
                     ->orderByDesc('planned_quantity')
             )
+            ->searchable(false)
             ->columns([
                 Tables\Columns\TextColumn::make('productionPlanMachine.machine.name')
                     ->label('Machine')

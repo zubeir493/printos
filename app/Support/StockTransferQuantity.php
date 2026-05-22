@@ -12,26 +12,27 @@ class StockTransferQuantity
     {
         $quantity = (float) ($baseQuantity ?? 0);
 
-        if (! $item) {
+        if (! self::usesPurchaseUnits($item)) {
             return $quantity;
         }
 
-        return $item->hasPurchaseUnit()
-            ? round($item->toPurchaseUnits($quantity), 4)
-            : $quantity;
+        return round($item->toPurchaseUnits($quantity), 4);
     }
 
     public static function baseQuantity(?InventoryItem $item, float|int|string|null $displayQuantity): float
     {
         $quantity = (float) ($displayQuantity ?? 0);
 
-        if (! $item) {
+        if (! self::usesPurchaseUnits($item)) {
             return $quantity;
         }
 
-        return $item->hasPurchaseUnit()
-            ? round($item->toBaseUnits($quantity), 4)
-            : $quantity;
+        return round($item->toBaseUnits($quantity), 4);
+    }
+
+    public static function usesPurchaseUnits(?InventoryItem $item): bool
+    {
+        return $item?->type === 'raw_material' && $item->hasPurchaseUnit();
     }
 
     public static function unitLabel(?InventoryItem $item): string
@@ -40,7 +41,7 @@ class StockTransferQuantity
             return 'unit';
         }
 
-        return $item->hasPurchaseUnit()
+        return self::usesPurchaseUnits($item)
             ? ($item->purchase_unit ?: 'unit')
             : ($item->unit ?: 'unit');
     }

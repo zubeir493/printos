@@ -26,6 +26,7 @@ class HighPriorityJobsTable extends BaseWidget
                     ->whereNotIn('status', ['completed', 'cancelled'])
                     ->orderBy('submission_date')
             )
+            ->searchable(false)
             ->columns([
                 Tables\Columns\TextColumn::make('job_order_number')
                     ->label('Job Order')

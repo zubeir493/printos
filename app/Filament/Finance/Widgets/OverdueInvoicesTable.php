@@ -26,6 +26,7 @@ class OverdueInvoicesTable extends BaseWidget
                     ->where('status', '!=', 'paid')
                     ->orderBy('due_date')
             )
+            ->searchable(false)
             ->columns([
                 Tables\Columns\TextColumn::make('invoice_number')
                     ->label('Invoice')

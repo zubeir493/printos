@@ -105,8 +105,8 @@ class ReceivablesAgingReport extends Page implements HasForms, HasTable
         return SalesOrder::query()
             ->with('partner')
             ->select('sales_orders.*')
-            ->selectRaw('(sales_orders.total - COALESCE((SELECT SUM(payment_allocations.allocated_amount) FROM payment_allocations JOIN payments ON payments.id = payment_allocations.payment_id WHERE payment_allocations.allocatable_type = ? AND payment_allocations.allocatable_id = sales_orders.id AND payments.payment_date <= ?), 0)) as balance', [SalesOrder::class, $this->asOfDate])
-            ->whereRaw('(sales_orders.total - COALESCE((SELECT SUM(payment_allocations.allocated_amount) FROM payment_allocations JOIN payments ON payments.id = payment_allocations.payment_id WHERE payment_allocations.allocatable_type = ? AND payment_allocations.allocatable_id = sales_orders.id AND payments.payment_date <= ?), 0)) > 0', [SalesOrder::class, $this->asOfDate])
+            ->selectRaw('(sales_orders.total - COALESCE((SELECT SUM(payments.amount) FROM payments WHERE payments.payable_type = ? AND payments.payable_id = sales_orders.id AND payments.payment_date <= ? AND payments.voided_at IS NULL), 0)) as balance', [SalesOrder::class, $this->asOfDate])
+            ->whereRaw('(sales_orders.total - COALESCE((SELECT SUM(payments.amount) FROM payments WHERE payments.payable_type = ? AND payments.payable_id = sales_orders.id AND payments.payment_date <= ? AND payments.voided_at IS NULL), 0)) > 0', [SalesOrder::class, $this->asOfDate])
             ->when($this->asOfDate, fn ($query) => $query->whereDate('sales_orders.order_date', '<=', Carbon::parse($this->asOfDate)->toDateString()))
             ->orderByDesc('sales_orders.order_date');
     }

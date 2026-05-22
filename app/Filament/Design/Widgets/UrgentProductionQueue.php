@@ -26,6 +26,7 @@ class UrgentProductionQueue extends BaseWidget
                     ->latest()
                     ->limit(10)
             )
+            ->searchable(false)
             ->columns([
                 Tables\Columns\TextColumn::make('job_order_number')
                     ->label('Job Order #')

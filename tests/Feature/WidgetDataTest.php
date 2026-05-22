@@ -191,3 +191,26 @@ test('admin and retail stats do not display synthetic or duplicated sparkline ch
     expect($adminStats['Inventory Shrinkage (30d)']->getChart())->toBeNull();
     expect($retailStats['Counter Sales Today']->getChart())->toBeNull();
 });
+
+test('dashboard table widgets disable the global search bar', function () {
+    $filamentPath = app_path('Filament');
+    $missing = [];
+
+    foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($filamentPath)) as $file) {
+        if (! $file->isFile() || $file->getExtension() !== 'php') {
+            continue;
+        }
+
+        $contents = file_get_contents($file->getPathname());
+
+        if (! str_contains($contents, 'TableWidget as BaseWidget')) {
+            continue;
+        }
+
+        if (! str_contains($contents, '->searchable(false)')) {
+            $missing[] = str_replace(base_path().DIRECTORY_SEPARATOR, '', $file->getPathname());
+        }
+    }
+
+    expect($missing)->toBeEmpty();
+});

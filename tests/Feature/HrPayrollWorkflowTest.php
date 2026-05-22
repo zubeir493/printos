@@ -13,7 +13,6 @@ use App\Models\Payment;
 use App\Models\PayrollRun;
 use App\Models\PayrollTaxRule;
 use App\Models\Shift;
-use App\Models\WorkSchedule;
 use App\Services\Hr\CalculatePayrollRun;
 use App\Services\Hr\ExportPayrollRegisterCsv;
 use App\Services\Hr\GeneratePayrollPayments;
@@ -21,14 +20,13 @@ use App\Services\Hr\ImportAttendanceSegmentCsv;
 use App\Services\Hr\ImportAttendanceSummaryReport;
 use App\Services\Hr\PostPayrollRun;
 use App\Services\Hr\RecordManualAttendanceLog;
-use App\Services\Hr\ResolveEmployeeSchedule;
 use Database\Seeders\PayrollTaxRuleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
 
 uses(RefreshDatabase::class);
 
-it('resolves employee schedule assignments by date and requires manual attendance reasons', function () {
+it('requires reasons for manual attendance entries', function () {
     $employee = Employee::create([
         'employee_id' => 'EMP-0000',
         'attendance_device_id' => '1',
@@ -40,29 +38,6 @@ it('resolves employee schedule assignments by date and requires manual attendanc
         'employment_type' => 'permanent',
         'basic_salary' => 10000,
     ]);
-
-    $defaultSchedule = WorkSchedule::create(['name' => 'Default', 'is_default' => true]);
-    $assignedSchedule = WorkSchedule::create(['name' => 'Assigned', 'is_default' => false]);
-    $shift = Shift::create([
-        'name' => 'Day',
-        'start_time' => '08:30',
-        'end_time' => '17:30',
-        'expected_minutes' => 480,
-    ]);
-
-    $assignedSchedule->days()->create([
-        'day_of_week' => 1,
-        'shift_id' => $shift->id,
-        'is_working_day' => true,
-    ]);
-
-    $employee->scheduleAssignments()->create([
-        'work_schedule_id' => $assignedSchedule->id,
-        'effective_from' => '2026-05-01',
-    ]);
-
-    expect(app(ResolveEmployeeSchedule::class)->handle($employee, '2026-04-30')->id)->toBe($defaultSchedule->id)
-        ->and(app(ResolveEmployeeSchedule::class)->handle($employee, '2026-05-20')->id)->toBe($assignedSchedule->id);
 
     app(RecordManualAttendanceLog::class)->handle($employee, '2026-05-20 08:31:00', 'in', '');
 })->throws(RuntimeException::class);
@@ -136,12 +111,59 @@ it('imports one attendance csv as segments and builds daily summaries', function
         ->and(Schema::hasColumn('attendance_segments', 'employee_code'))->toBeFalse()
         ->and(Schema::hasColumn('attendance_segments', 'employee_name'))->toBeFalse()
         ->and(Schema::hasColumn('attendance_segments', 'shift_type'))->toBeFalse()
+        ->and(Schema::hasColumn('attendance_daily_summaries', 'work_schedule_id'))->toBeFalse()
+        ->and(Schema::hasColumn('attendance_daily_summaries', 'shift_id'))->toBeFalse()
+        ->and(Schema::hasColumn('attendance_segments', 'shift_id'))->toBeTrue()
+        ->and(Schema::hasTable('shifts'))->toBeTrue()
+        ->and(Schema::hasTable('work_schedules'))->toBeFalse()
+        ->and(Shift::query()->where('name', 'Morning(Shift)')->exists())->toBeTrue()
+        ->and(AttendanceSegment::query()->where('schedule_name', 'Morning(Shift)')->firstOrFail()->shift_id)->not->toBeNull()
         ->and($summary->expected_minutes)->toBe(480)
         ->and($summary->worked_minutes)->toBe(493)
         ->and($summary->status)->toBe('present')
         ->and($nightSummary->status)->toBe('partial')
         ->and(AttendanceSegment::query()->where('employee_id', $nightEmployee->id)->firstOrFail()->clock_out)->toBe('03:00:00')
         ->and($nightSummary->calculation_snapshot)->not->toHaveKey('shift_types');
+});
+
+it('uses matched shift times when imported attendance is missing one clock value', function () {
+    $employee = Employee::create([
+        'employee_id' => 'EMP-0011',
+        'attendance_device_id' => '44',
+        'first_name' => 'Clock',
+        'last_name' => 'Fallback',
+        'phone' => '0911000011',
+        'hire_date' => '2026-01-01',
+        'status' => 'active',
+        'basic_salary' => 12000,
+        'overtime_multiplier' => 1,
+    ]);
+
+    Shift::create([
+        'name' => 'Morning(Shift)',
+        'start_time' => '08:00:00',
+        'end_time' => '12:30:00',
+        'expected_minutes' => 270,
+    ]);
+
+    $path = storage_path('app/attendance-clock-fallback.csv');
+
+    file_put_contents($path, implode("\n", [
+        'FP No,Emp Code,FullName,Date,Schedule,On Duty,Off Duty,Clock In,Clock Out,Late(M),Early(M),Status,OT,OT Hrs,OT In,OT Out,Exception,Count,M-In,M-Out,In Day(Hr),mod',
+        '44,I-44,Clock Fallback,05-04-26,Morning(Shift),,,8:05 AM,,,,,,,,,,0.5,1,1,,0',
+    ]));
+
+    app(ImportAttendanceSegmentCsv::class)->handle($path);
+
+    $segment = AttendanceSegment::query()
+        ->where('employee_id', $employee->id)
+        ->firstOrFail();
+
+    expect($segment->shift_id)->not->toBeNull()
+        ->and($segment->scheduled_start)->toBe('08:00:00')
+        ->and($segment->scheduled_end)->toBe('12:30:00')
+        ->and($segment->clock_out)->toBe('12:30:00')
+        ->and($segment->worked_minutes)->toBe(265);
 });
 
 it('calculates payroll from imported attendance segments', function () {

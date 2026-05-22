@@ -59,8 +59,8 @@ class InventoryItemForm
                     TextInput::make('price')
                         ->label('Price / Value')
                         ->helperText(fn ($get) => $get('type') === 'raw_material' && filled($get('purchase_unit'))
-                            ? 'Price per '.($get('purchase_unit') ?: 'purchase unit').' (e.g. per ream, per kg).'
-                            : 'Selling price for finished goods, or stock value per base unit for raw materials.'
+                            ? 'Price per '.($get('purchase_unit') ?: 'purchase unit')
+                            : 'Selling price for finished goods, or stock value per purchase unit for raw materials.'
                         )
                         ->numeric()
                         ->hidden(fn ($get) => in_array($get('type'), ['tools', 'spare_parts']) || ! PanelAccess::canSeeMoneyValues())

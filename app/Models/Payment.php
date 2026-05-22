@@ -6,8 +6,8 @@ use App\Support\SequentialNumber;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
@@ -40,6 +40,8 @@ class Payment extends Model
         'direction',
         'method',
         'reference',
+        'payable_type',
+        'payable_id',
         'transaction_type',
         'payment_type',
         'account_id',
@@ -62,6 +64,7 @@ class Payment extends Model
             'payment_date' => 'date',
             'amount' => 'decimal:2',
             'account_id' => 'integer',
+            'payable_id' => 'integer',
             'expense_account_id' => 'integer',
             'petty_cash_account_id' => 'integer',
             'voided_at' => 'datetime',
@@ -83,14 +86,14 @@ class Payment extends Model
         return $this->belongsTo(Bank::class);
     }
 
-    public function paymentAllocations(): HasMany
-    {
-        return $this->hasMany(PaymentAllocation::class);
-    }
-
     public function journalEntries(): MorphMany
     {
         return $this->morphMany(JournalEntry::class, 'source');
+    }
+
+    public function payable(): MorphTo
+    {
+        return $this->morphTo();
     }
 
     public function setCustomerPartnerIdAttribute($value)
@@ -119,5 +122,38 @@ class Payment extends Model
                 likePattern: 'PAY-%',
             );
         });
+
+        static::saved(function (self $payment): void {
+            $payment->syncPayablePaymentState();
+        });
+
+        static::deleted(function (self $payment): void {
+            $payment->syncPayablePaymentState();
+        });
+    }
+
+    private function syncPayablePaymentState(): void
+    {
+        $payable = $this->payable;
+
+        if ($payable instanceof JobOrder) {
+            $jobOrder = $payable->refresh();
+            $jobOrder->updateQuietly([
+                'advance_paid' => $jobOrder->paid_amount > 0,
+                'advance_amount' => $jobOrder->paid_amount,
+            ]);
+            $jobOrder->syncCompletionStatus();
+        }
+
+        if ($payable instanceof SalesOrder) {
+            $salesOrder = $payable->refresh();
+
+            if (
+                $salesOrder->status === SalesOrder::STATUS_SUBMITTED &&
+                $salesOrder->isPaidInFull()
+            ) {
+                $salesOrder->updateQuietly(['status' => SalesOrder::STATUS_COMPLETED]);
+            }
+        }
     }
 }

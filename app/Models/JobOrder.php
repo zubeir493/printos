@@ -111,9 +111,9 @@ class JobOrder extends Model
         return $this->hasManyThrough(Artwork::class, JobOrderTask::class);
     }
 
-    public function paymentAllocations(): MorphMany
+    public function payments(): MorphMany
     {
-        return $this->morphMany(PaymentAllocation::class, 'allocatable');
+        return $this->morphMany(Payment::class, 'payable');
     }
 
     public function invoices(): HasMany
@@ -124,7 +124,7 @@ class JobOrder extends Model
 
     public function getPaidAmountAttribute(): float
     {
-        return (float) $this->paymentAllocations()->sum('allocated_amount');
+        return (float) $this->payments()->whereNull('voided_at')->sum('amount');
     }
 
     public function getBalanceAttribute(): float
@@ -134,12 +134,12 @@ class JobOrder extends Model
 
     public function scopePendingPayment($query)
     {
-        return $query->whereRaw('total > (SELECT COALESCE(SUM(allocated_amount), 0) FROM payment_allocations WHERE allocatable_id = job_orders.id AND allocatable_type = ?)', [self::class]);
+        return $query->whereRaw('total > (SELECT COALESCE(SUM(amount), 0) FROM payments WHERE payable_id = job_orders.id AND payable_type = ? AND voided_at IS NULL)', [self::class]);
     }
 
     public function scopeFullyPaid($query)
     {
-        return $query->whereRaw('total <= (SELECT COALESCE(SUM(allocated_amount), 0) FROM payment_allocations WHERE allocatable_id = job_orders.id AND allocatable_type = ?)', [self::class]);
+        return $query->whereRaw('total <= (SELECT COALESCE(SUM(amount), 0) FROM payments WHERE payable_id = job_orders.id AND payable_type = ? AND voided_at IS NULL)', [self::class]);
     }
 
     public function scopeLate($query, CarbonInterface|string|null $date = null)

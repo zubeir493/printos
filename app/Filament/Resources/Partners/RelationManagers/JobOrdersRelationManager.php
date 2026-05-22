@@ -69,7 +69,7 @@ class JobOrdersRelationManager extends RelationManager
                     ->sortable(),
                 IconColumn::make('advance_paid')
                     ->boolean()
-                    ->getStateUsing(fn ($record) => $record->paymentAllocations()->exists())
+                    ->getStateUsing(fn ($record) => $record->payments()->whereNull('voided_at')->exists())
                     ->label('Adv. Paid'),
                 TextColumn::make('total')
                     ->formatStateUsing(fn ($state) => Money::format($state))

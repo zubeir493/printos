@@ -19,7 +19,7 @@ return new class extends Migration
             $table->date('order_date');
             $table->decimal('subtotal', 15, 2)->default(0);
             $table->decimal('total', 15, 2)->default(0);
-            $table->enum('status', ['draft', 'completed', 'void'])->default('draft');
+            $table->enum('status', ['draft', 'submitted', 'completed', 'void'])->default('draft');
             $table->timestamps();
         });
     }

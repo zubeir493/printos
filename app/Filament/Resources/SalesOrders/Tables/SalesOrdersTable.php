@@ -7,6 +7,7 @@ use App\Filament\Exports\SalesOrderExporter;
 use App\Filament\Support\PanelAccess;
 use App\Models\Bank;
 use App\Models\Payment;
+use App\Models\SalesOrder;
 use App\Models\StockMovement;
 use App\Models\Warehouse;
 use App\Services\Accounting\VoidPaymentJournalEntry;
@@ -45,14 +46,15 @@ class SalesOrdersTable
                     ->label('Payment Status')
                     ->state(fn ($record) => Money::format($record->paid_amount).'/'.Money::format($record->total))
                     ->color(fn ($record) => $record->balance > 0 ? 'warning' : 'success')
-                    ->description(fn ($record) => $record->payment_allocations_count > 0
-                        ? $record->payment_allocations_count.' payment(s)'
+                    ->description(fn ($record) => $record->payments_count > 0
+                        ? $record->payments_count.' payment(s)'
                         : 'No payments'),
                 TextColumn::make('status')
                     ->badge()
                     ->color(fn ($state) => match ($state) {
-                        'completed' => 'success',
-                        'void' => 'danger',
+                        SalesOrder::STATUS_SUBMITTED => 'info',
+                        SalesOrder::STATUS_COMPLETED => 'success',
+                        SalesOrder::STATUS_VOID => 'danger',
                         default => 'gray',
                     }),
                 TextColumn::make('order_date')
@@ -63,6 +65,7 @@ class SalesOrdersTable
                 SelectFilter::make('status')
                     ->options([
                         'draft' => 'Draft',
+                        'submitted' => 'Submitted',
                         'completed' => 'Completed',
                         'void' => 'Void',
                     ]),
@@ -80,12 +83,14 @@ class SalesOrdersTable
             ->recordActions([
                 ActionGroup::make([
                     Action::make('pay')
-                        ->label('Recieve Payment')
+                        ->label('Receive Payment')
                         ->icon('heroicon-o-banknotes')
                         ->color('success')
-                        ->visible(fn ($record) => $record->balance > 0 &&
+                        ->visible(fn ($record) => $record->payment_mode === 'credit' &&
+                            $record->status !== SalesOrder::STATUS_VOID &&
+                            $record->balance > 0 &&
                             PanelAccess::canAccessFinanceSection() &&
-                            $record->status === 'completed'
+                            in_array($record->status, [SalesOrder::STATUS_DRAFT, SalesOrder::STATUS_SUBMITTED], true)
                         )
                         ->schema([
                             Grid::make(2)->schema([
@@ -106,8 +111,8 @@ class SalesOrdersTable
                                     ->preload()
                                     ->visible(fn (callable $get) => $get('method') === 'bank')
                                     ->required(fn (callable $get) => $get('method') === 'bank'),
-                                TextInput::make('allocated_amount')
-                                    ->label('Amount to Allocate')
+                                TextInput::make('amount')
+                                    ->label('Payment Amount')
                                     ->required()
                                     ->numeric()
                                     ->suffix('Birr')
@@ -127,13 +132,13 @@ class SalesOrdersTable
                             try {
                                 DB::beginTransaction();
 
-                                $amount = (float) $data['allocated_amount'];
+                                $amount = (float) $data['amount'];
 
                                 if ($amount > $record->balance) {
-                                    throw new \Exception('Cannot allocate more than the remaining balance of '.Money::format($record->balance).'.');
+                                    throw new \Exception('Cannot pay more than the remaining balance of '.Money::format($record->balance).'.');
                                 }
 
-                                $payment = Payment::create([
+                                Payment::create([
                                     'partner_id' => $record->partner_id,
                                     'payment_date' => $data['payment_date'],
                                     'transaction_type' => PaymentTransactionType::CUSTOMER_RECEIPT->value,
@@ -141,12 +146,8 @@ class SalesOrdersTable
                                     'method' => $data['method'],
                                     'bank_id' => $data['bank_id'] ?? null,
                                     'reference' => $data['reference'] ?? 'Payment for '.$record->order_number,
-                                ]);
-
-                                $payment->paymentAllocations()->create([
-                                    'allocatable_id' => $record->id,
-                                    'allocatable_type' => get_class($record),
-                                    'allocated_amount' => $amount,
+                                    'payable_type' => get_class($record),
+                                    'payable_id' => $record->id,
                                 ]);
 
                                 DB::commit();
@@ -202,7 +203,7 @@ class SalesOrdersTable
                         ->label('Void')
                         ->icon('heroicon-o-x-circle')
                         ->color('danger')
-                        ->visible(fn ($record) => $record->status === 'completed')
+                        ->visible(fn ($record) => in_array($record->status, [SalesOrder::STATUS_SUBMITTED, SalesOrder::STATUS_COMPLETED], true))
                         ->requiresConfirmation()
                         ->modalHeading('Void Sales Order')
                         ->modalDescription('Are you sure you want to void this sales order? This action cannot be undone.')
@@ -211,11 +212,9 @@ class SalesOrdersTable
                             try {
                                 DB::beginTransaction();
 
-                                // Void all payment allocations and reverse journal entries
-                                $record->load(['paymentAllocations.payment', 'salesOrderItems.inventoryItem']);
-                                foreach ($record->paymentAllocations as $allocation) {
-                                    $payment = $allocation->payment;
-                                    if ($payment && ! $payment->voided_at) {
+                                $record->load(['payments', 'salesOrderItems.inventoryItem']);
+                                foreach ($record->payments as $payment) {
+                                    if (! $payment->voided_at) {
                                         try {
                                             app(VoidPaymentJournalEntry::class)->handle($payment, 'Sales order voided');
                                         } catch (\Exception $e) {

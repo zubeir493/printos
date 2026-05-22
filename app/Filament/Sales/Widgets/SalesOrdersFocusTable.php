@@ -22,11 +22,12 @@ class SalesOrdersFocusTable extends BaseWidget
             ->query(
                 SalesOrder::query()
                     ->with(['partner', 'warehouse'])
-                    ->whereNotIn('status', ['completed', 'cancelled'])
+                    ->whereNotIn('status', ['completed', 'void'])
                     ->orderByRaw('CASE WHEN due_date IS NULL THEN 1 ELSE 0 END')
                     ->orderBy('due_date')
                     ->limit(8)
             )
+            ->searchable(false)
             ->columns([
                 Tables\Columns\TextColumn::make('order_number')
                     ->label('Order')

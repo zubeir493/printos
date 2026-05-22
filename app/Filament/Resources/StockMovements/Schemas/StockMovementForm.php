@@ -3,10 +3,14 @@
 namespace App\Filament\Resources\StockMovements\Schemas;
 
 use App\Models\InventoryBalance;
+use App\Models\InventoryItem;
+use App\Models\StockMovement;
 use App\Models\Warehouse;
+use App\Support\StockTransferQuantity;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 
 class StockMovementForm
@@ -39,16 +43,20 @@ class StockMovementForm
                     ->required()
                     ->numeric()
                     ->reactive()
-                    ->helperText(function ($get) {
+                    ->formatStateUsing(fn ($state, ?StockMovement $record = null): float => StockTransferQuantity::displayQuantity($record?->inventoryItem, $state))
+                    ->dehydrateStateUsing(fn ($state, Get $get): float => self::baseQuantityForItemId($get('inventory_item_id'), $state))
+                    ->suffix(fn (Get $get): string => self::unitLabelForItemId($get('inventory_item_id')))
+                    ->helperText(function (Get $get) {
                         $type = $get('type');
                         $itemId = $get('inventory_item_id');
                         $warehouseId = $get('warehouse_id');
-                        $quantity = (float) $get('quantity');
+                        $quantity = self::baseQuantityForItemId($itemId, $get('quantity'));
 
                         if (! $type || ! $itemId || ! $warehouseId || $quantity === 0.0) {
                             return null;
                         }
 
+                        $item = InventoryItem::find($itemId);
                         $balance = InventoryBalance::where([
                             'inventory_item_id' => $itemId,
                             'warehouse_id' => $warehouseId,
@@ -59,9 +67,9 @@ class StockMovementForm
 
                         if ($resulting < 0) {
                             return sprintf(
-                                'This movement would make stock negative: %s → %s.',
-                                number_format($current, 2),
-                                number_format($resulting, 2)
+                                'This movement would make stock negative: %s -> %s.',
+                                StockTransferQuantity::formattedQuantity($item, $current),
+                                StockTransferQuantity::formattedQuantity($item, $resulting)
                             );
                         }
 
@@ -86,5 +94,15 @@ class StockMovementForm
                     ->default(now())
                     ->required(),
             ]);
+    }
+
+    public static function baseQuantityForItemId(int|string|null $inventoryItemId, float|int|string|null $quantity): float
+    {
+        return StockTransferQuantity::baseQuantity(InventoryItem::find($inventoryItemId), $quantity);
+    }
+
+    public static function unitLabelForItemId(int|string|null $inventoryItemId): string
+    {
+        return StockTransferQuantity::unitLabel(InventoryItem::find($inventoryItemId));
     }
 }

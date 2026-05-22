@@ -12,7 +12,7 @@ class SalesOrderPaymentService
 {
     public function createImmediatePaymentForCashSale(SalesOrder $salesOrder): ?Payment
     {
-        $salesOrder->loadMissing('paymentAllocations', 'salesOrderItems');
+        $salesOrder->loadMissing('payments', 'salesOrderItems');
 
         if (! $salesOrder->isCashSale()) {
             return null;
@@ -24,7 +24,7 @@ class SalesOrderPaymentService
             $amount = (float) $salesOrder->fresh()->total;
         }
 
-        if ($amount <= 0 || $salesOrder->paymentAllocations()->exists()) {
+        if ($amount <= 0 || $salesOrder->payments()->whereNull('voided_at')->exists()) {
             return null;
         }
 
@@ -37,11 +37,8 @@ class SalesOrderPaymentService
                 'method' => $salesOrder->payment_method ?: 'cash',
                 'reference' => $salesOrder->payment_reference ?: 'Immediate receipt for sale '.$salesOrder->order_number,
                 'payment_date' => $salesOrder->order_date,
-            ]);
-
-            $salesOrder->paymentAllocations()->create([
-                'payment_id' => $payment->id,
-                'allocated_amount' => $amount,
+                'payable_type' => SalesOrder::class,
+                'payable_id' => $salesOrder->id,
             ]);
 
             return $payment;
@@ -69,12 +66,6 @@ class SalesOrderPaymentService
 
                 $payment = $this->createPaymentFromData($salesOrder, $paymentData);
 
-                // Create payment allocation
-                $salesOrder->paymentAllocations()->create([
-                    'payment_id' => $payment->id,
-                    'allocated_amount' => $paymentData['amount'],
-                ]);
-
                 $createdPayments[] = $payment;
             }
 
@@ -96,6 +87,8 @@ class SalesOrderPaymentService
             'bank_id' => $paymentData['bank_id'] ?? null,
             'reference' => $paymentData['reference'] ?? 'Payment for '.$salesOrder->order_number,
             'payment_date' => $salesOrder->order_date,
+            'payable_type' => SalesOrder::class,
+            'payable_id' => $salesOrder->id,
         ]);
     }
 }

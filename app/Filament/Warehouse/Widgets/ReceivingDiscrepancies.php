@@ -25,6 +25,7 @@ class ReceivingDiscrepancies extends BaseWidget
                     ->latest()
                     ->limit(5)
             )
+            ->searchable(false)
             ->columns([
                 Tables\Columns\TextColumn::make('receipt_number')
                     ->label('Receipt #')

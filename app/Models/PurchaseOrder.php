@@ -73,14 +73,14 @@ class PurchaseOrder extends Model
         return $this->hasMany(GoodsReceipt::class);
     }
 
-    public function paymentAllocations(): MorphMany
+    public function payments(): MorphMany
     {
-        return $this->morphMany(PaymentAllocation::class, 'allocatable');
+        return $this->morphMany(Payment::class, 'payable');
     }
 
     public function getPaidAmountAttribute(): float
     {
-        return (float) $this->paymentAllocations()->sum('allocated_amount');
+        return (float) $this->payments()->whereNull('voided_at')->sum('amount');
     }
 
     public function getBalanceAttribute(): float

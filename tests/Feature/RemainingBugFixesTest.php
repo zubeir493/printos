@@ -8,12 +8,10 @@ use App\Models\JobOrder;
 use App\Models\JobOrderTask;
 use App\Models\Partner;
 use App\Models\Payment;
-use App\Models\PaymentAllocation;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderItem;
 use App\Models\SalesOrder;
 use App\Models\Warehouse;
-use App\Observers\PaymentAllocationObserver;
 use App\Services\InvoiceGeneratorService;
 use App\UserRole;
 use Filament\Panel;
@@ -194,10 +192,10 @@ test('admin role can access all panels', function () {
 });
 
 // ---------------------------------------------------------------------------
-// Fix #14 — PaymentAllocationObserver uses total of all allocations for advance
+// Fix #14 - Job order advance uses total direct payments
 // ---------------------------------------------------------------------------
 
-test('job order advance_amount reflects total of all allocations not just the first', function () {
+test('job order advance_amount reflects total of all direct payments', function () {
     $partner = Partner::create(['name' => 'Advance Customer', 'is_customer' => true]);
 
     $jo = JobOrder::factory()->create([
@@ -214,6 +212,8 @@ test('job order advance_amount reflects total of all allocations not just the fi
         'direction' => 'inbound',
         'transaction_type' => 'customer_receipt',
         'method' => 'cash',
+        'payable_type' => JobOrder::class,
+        'payable_id' => $jo->id,
     ]);
 
     $p2 = Payment::create([
@@ -223,29 +223,16 @@ test('job order advance_amount reflects total of all allocations not just the fi
         'direction' => 'inbound',
         'transaction_type' => 'customer_receipt',
         'method' => 'cash',
-    ]);
-
-    PaymentAllocation::create([
-        'payment_id' => $p1->id,
-        'allocatable_type' => JobOrder::class,
-        'allocatable_id' => $jo->id,
-        'allocated_amount' => 300.00,
-    ]);
-
-    PaymentAllocation::create([
-        'payment_id' => $p2->id,
-        'allocatable_type' => JobOrder::class,
-        'allocatable_id' => $jo->id,
-        'allocated_amount' => 200.00,
+        'payable_type' => JobOrder::class,
+        'payable_id' => $jo->id,
     ]);
 
     $jo->refresh();
     expect($jo->advance_paid)->toBeTrue();
-    // Should be 500 (sum of both), not 300 (just the first)
     expect((float) $jo->advance_amount)->toBe(500.0);
 });
 
-test('job order advance_amount updates correctly when an allocation is deleted', function () {
+test('job order advance_amount updates correctly when a direct payment is deleted', function () {
     $partner = Partner::create(['name' => 'Advance Delete Customer', 'is_customer' => true]);
 
     $jo = JobOrder::factory()->create([
@@ -262,41 +249,29 @@ test('job order advance_amount updates correctly when an allocation is deleted',
         'direction' => 'inbound',
         'transaction_type' => 'customer_receipt',
         'method' => 'cash',
+        'payable_type' => JobOrder::class,
+        'payable_id' => $jo->id,
     ]);
 
-    $p2 = Payment::create([
+    Payment::create([
         'partner_id' => $partner->id,
         'payment_date' => now(),
         'amount' => 200.00,
         'direction' => 'inbound',
         'transaction_type' => 'customer_receipt',
         'method' => 'cash',
+        'payable_type' => JobOrder::class,
+        'payable_id' => $jo->id,
     ]);
 
-    $alloc1 = PaymentAllocation::create([
-        'payment_id' => $p1->id,
-        'allocatable_type' => JobOrder::class,
-        'allocatable_id' => $jo->id,
-        'allocated_amount' => 300.00,
-    ]);
-
-    PaymentAllocation::create([
-        'payment_id' => $p2->id,
-        'allocatable_type' => JobOrder::class,
-        'allocatable_id' => $jo->id,
-        'allocated_amount' => 200.00,
-    ]);
-
-    // Delete the first allocation — advance_amount should drop to 200, not 0
-    $alloc1->deleteQuietly();
-    app(PaymentAllocationObserver::class)->deleted($alloc1);
+    $p1->delete();
 
     $jo->refresh();
     expect((float) $jo->advance_amount)->toBe(200.0);
     expect($jo->advance_paid)->toBeTrue();
 });
 
-test('job order completes when final payment is allocated after all tasks are completed', function () {
+test('job order completes when final payment is recorded after all tasks are completed', function () {
     $partner = Partner::create(['name' => 'Completion Customer', 'is_customer' => true]);
 
     $jo = JobOrder::factory()->create([
@@ -317,26 +292,21 @@ test('job order completes when final payment is allocated after all tasks are co
 
     $jo->refresh();
 
-    $payment = Payment::create([
+    Payment::create([
         'partner_id' => $partner->id,
         'payment_date' => now(),
         'amount' => $jo->total,
         'direction' => 'inbound',
         'transaction_type' => 'customer_receipt',
         'method' => 'cash',
-    ]);
-
-    PaymentAllocation::create([
-        'payment_id' => $payment->id,
-        'allocatable_type' => JobOrder::class,
-        'allocatable_id' => $jo->id,
-        'allocated_amount' => $jo->total,
+        'payable_type' => JobOrder::class,
+        'payable_id' => $jo->id,
     ]);
 
     expect((string) $jo->fresh()->status)->toBe('completed');
 });
 
-test('job order completes when final task is completed after payment is fully allocated', function () {
+test('job order completes when final task is completed after payment is fully recorded', function () {
     $partner = Partner::create(['name' => 'Task Completion Customer', 'is_customer' => true]);
 
     $jo = JobOrder::factory()->create([
@@ -357,20 +327,15 @@ test('job order completes when final task is completed after payment is fully al
 
     $jo->refresh();
 
-    $payment = Payment::create([
+    Payment::create([
         'partner_id' => $partner->id,
         'payment_date' => now(),
         'amount' => $jo->total,
         'direction' => 'inbound',
         'transaction_type' => 'customer_receipt',
         'method' => 'cash',
-    ]);
-
-    PaymentAllocation::create([
-        'payment_id' => $payment->id,
-        'allocatable_type' => JobOrder::class,
-        'allocatable_id' => $jo->id,
-        'allocated_amount' => $jo->total,
+        'payable_type' => JobOrder::class,
+        'payable_id' => $jo->id,
     ]);
 
     expect((string) $jo->fresh()->status)->toBe('active');
@@ -381,58 +346,37 @@ test('job order completes when final task is completed after payment is fully al
 });
 
 // ---------------------------------------------------------------------------
-// Fix #17 — Over-allocation guard on PaymentAllocation
+// Fix #17 - Direct payment payable links
 // ---------------------------------------------------------------------------
 
-test('cannot allocate more than the payment amount', function () {
+test('direct payment records the payable document it settles', function () {
     $partner = Partner::create(['name' => 'Over-alloc Customer', 'is_customer' => true]);
 
-    $payment = Payment::create([
-        'partner_id' => $partner->id,
-        'payment_date' => now(),
-        'amount' => 500.00,
-        'direction' => 'inbound',
-        'transaction_type' => 'customer_receipt',
-        'method' => 'cash',
-    ]);
-
     $warehouse = Warehouse::create(['name' => 'OA Warehouse', 'code' => 'OAW']);
-    $order1 = SalesOrder::create([
+    $order = SalesOrder::create([
         'warehouse_id' => $warehouse->id,
         'partner_id' => $partner->id,
         'order_date' => now(),
         'payment_mode' => 'credit',
-        'status' => 'completed',
+        'status' => 'submitted',
         'subtotal' => 400.00,
         'tax_amount' => 0.00,
         'total' => 400.00,
     ]);
-    $order2 = SalesOrder::create([
-        'warehouse_id' => $warehouse->id,
+
+    Payment::create([
         'partner_id' => $partner->id,
-        'order_date' => now(),
-        'payment_mode' => 'credit',
-        'status' => 'completed',
-        'subtotal' => 300.00,
-        'tax_amount' => 0.00,
-        'total' => 300.00,
+        'payment_date' => now(),
+        'amount' => 400.00,
+        'direction' => 'inbound',
+        'transaction_type' => 'customer_receipt',
+        'method' => 'cash',
+        'payable_type' => SalesOrder::class,
+        'payable_id' => $order->id,
     ]);
 
-    // First allocation of 400 — fine
-    PaymentAllocation::create([
-        'payment_id' => $payment->id,
-        'allocatable_type' => SalesOrder::class,
-        'allocatable_id' => $order1->id,
-        'allocated_amount' => 400.00,
-    ]);
-
-    // Second allocation of 200 would bring total to 600 > 500 — must throw
-    expect(fn () => PaymentAllocation::create([
-        'payment_id' => $payment->id,
-        'allocatable_type' => SalesOrder::class,
-        'allocatable_id' => $order2->id,
-        'allocated_amount' => 200.00,
-    ]))->toThrow(RuntimeException::class);
+    expect((float) $order->fresh()->paid_amount)->toBe(400.0)
+        ->and((float) $order->fresh()->balance)->toBe(0.0);
 });
 
 // ---------------------------------------------------------------------------

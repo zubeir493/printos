@@ -6,6 +6,7 @@ use App\Models\AttendanceImport;
 use App\Models\AttendanceImportRow;
 use App\Models\AttendanceSegment;
 use App\Models\Employee;
+use App\Models\Shift;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
@@ -55,11 +56,15 @@ class ImportAttendanceSegmentCsv
                         throw new RuntimeException("No employee found for FP No {$normalized['fp_no']}.");
                     }
 
+                    $shift = $this->syncShift($normalized);
+                    $normalized = $this->applyShiftDefaults($normalized, $shift);
+
                     $segment = AttendanceSegment::create([
                         ...$normalized,
                         'attendance_import_id' => $import->id,
                         'attendance_import_row_id' => $importRow->id,
                         'employee_id' => $employee->id,
+                        'shift_id' => $shift?->id,
                         'raw_data' => $row,
                     ]);
 
@@ -207,6 +212,88 @@ class ImportAttendanceSegmentCsv
             'status' => $status,
             'exception' => $exception,
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $normalized
+     */
+    private function syncShift(array $normalized): ?Shift
+    {
+        if (! $normalized['schedule_name']) {
+            return null;
+        }
+
+        $shift = Shift::query()->firstOrNew([
+            'name' => $normalized['schedule_name'],
+        ]);
+
+        if (! $shift->exists) {
+            $shift->fill([
+                'start_time' => $normalized['scheduled_start'] ?? '00:00:00',
+                'end_time' => $normalized['scheduled_end'] ?? '00:00:00',
+                'expected_minutes' => $this->expectedShiftMinutes(
+                    $normalized['scheduled_start'] ?? null,
+                    $normalized['scheduled_end'] ?? null,
+                ),
+            ]);
+        } else {
+            $updates = [];
+
+            if ($normalized['scheduled_start'] && $shift->start_time !== $normalized['scheduled_start']) {
+                $updates['start_time'] = $normalized['scheduled_start'];
+            }
+
+            if ($normalized['scheduled_end'] && $shift->end_time !== $normalized['scheduled_end']) {
+                $updates['end_time'] = $normalized['scheduled_end'];
+            }
+
+            if ($updates !== []) {
+                $updates['expected_minutes'] = $this->expectedShiftMinutes(
+                    $updates['start_time'] ?? $shift->start_time,
+                    $updates['end_time'] ?? $shift->end_time,
+                );
+
+                $shift->fill($updates);
+            }
+        }
+
+        $shift->save();
+
+        return $shift;
+    }
+
+    /**
+     * @param  array<string, mixed>  $normalized
+     * @return array<string, mixed>
+     */
+    private function applyShiftDefaults(array $normalized, ?Shift $shift): array
+    {
+        if (! $shift) {
+            return $normalized;
+        }
+
+        $normalized['scheduled_start'] ??= $shift->start_time;
+        $normalized['scheduled_end'] ??= $shift->end_time;
+
+        if (($normalized['clock_in'] && ! $normalized['clock_out']) || (! $normalized['clock_in'] && $normalized['clock_out'])) {
+            $normalized['clock_in'] ??= $shift->start_time;
+            $normalized['clock_out'] ??= $shift->end_time;
+        }
+
+        if ($normalized['worked_minutes'] === 0 && $normalized['clock_in'] && $normalized['clock_out']) {
+            $normalized['worked_minutes'] = $this->minutesBetween($normalized['clock_in'], $normalized['clock_out']);
+        }
+
+        return $normalized;
+    }
+
+    private function expectedShiftMinutes(?string $start, ?string $end): int
+    {
+        if (! $start || ! $end) {
+            return 480;
+        }
+
+        return max(1, $this->minutesBetween($start, $end));
     }
 
     private function parseDate(string $value): string

@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\JournalEntries\Tables;
 
 use App\Filament\Exports\JournalEntryExporter;
+use App\Filament\Support\TableBadgeFormatter;
 use App\Support\Money;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
@@ -26,7 +27,7 @@ class JournalEntriesTable
                     ->label('Transferred Amount'),
                 TextColumn::make('status')
                     ->badge()
-                    ->formatStateUsing(fn (string $state): string => ucfirst($state))
+                    ->formatStateUsing(fn (string $state): string => TableBadgeFormatter::format($state))
                     ->icon(fn (string $state): string => match ($state) {
                         'draft' => 'heroicon-o-pencil',
                         'posted' => 'heroicon-o-check-circle',

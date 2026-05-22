@@ -22,6 +22,7 @@ class LiveMachineStatusGrid extends BaseWidget
     {
         return $table
             ->query(Machine::query())
+            ->searchable(false)
             ->columns([
                 Tables\Columns\TextColumn::make('name')
                     ->label('Machine')

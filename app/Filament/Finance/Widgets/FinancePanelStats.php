@@ -3,7 +3,6 @@
 namespace App\Filament\Finance\Widgets;
 
 use App\Models\Payment;
-use App\Models\PaymentAllocation;
 use App\Models\SalesInvoice;
 use App\Support\Money;
 use Filament\Widgets\StatsOverviewWidget;
@@ -28,24 +27,28 @@ class FinancePanelStats extends StatsOverviewWidget
             ->sum('amount');
 
         $receivables = (float) SalesInvoice::query()->sum('total_amount');
-        $allocated = (float) PaymentAllocation::query()
-            ->where('allocatable_type', SalesInvoice::class)
-            ->sum('allocated_amount');
-        $unallocatedFunds = max(0, (float) Payment::query()->sum('amount') - (float) PaymentAllocation::query()->sum('allocated_amount'));
+        $paidInvoices = (float) Payment::query()
+            ->where('payable_type', SalesInvoice::class)
+            ->whereNull('voided_at')
+            ->sum('amount');
+        $unlinkedPayments = (float) Payment::query()
+            ->whereNull('payable_type')
+            ->whereNull('voided_at')
+            ->sum('amount');
 
         return [
             Stat::make('Net Cash Flow', Money::abbreviate($incoming - $outgoing, precision: 2))
                 ->description('Inbound less outbound, last 30 days')
                 ->descriptionIcon('heroicon-m-banknotes')
                 ->color(($incoming - $outgoing) >= 0 ? 'success' : 'danger'),
-            Stat::make('Outstanding Receivables', Money::abbreviate(max(0, $receivables - $allocated), precision: 2))
-                ->description('Sales invoices less allocations')
+            Stat::make('Outstanding Receivables', Money::abbreviate(max(0, $receivables - $paidInvoices), precision: 2))
+                ->description('Sales invoices less direct payments')
                 ->descriptionIcon('heroicon-m-credit-card')
                 ->color('warning'),
-            Stat::make('Unallocated Funds', Money::abbreviate($unallocatedFunds, precision: 2))
+            Stat::make('Unlinked Payments', Money::abbreviate($unlinkedPayments, precision: 2))
                 ->description('Payments not linked to orders')
                 ->descriptionIcon('heroicon-m-scale')
-                ->color($unallocatedFunds > 0 ? 'warning' : 'success'),
+                ->color($unlinkedPayments > 0 ? 'warning' : 'success'),
         ];
     }
 }

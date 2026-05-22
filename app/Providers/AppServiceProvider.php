@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Filament\Resources\AttendanceSegments\Pages\ManageAttendanceSegments;
+use App\Filament\Support\TableBadgeFormatter;
 use App\Livewire\ExceptionHandlerHook;
 use App\Models\Artwork;
 use App\Models\BankTransfer;
@@ -11,7 +12,6 @@ use App\Models\InventoryItem;
 use App\Models\JobOrderTask;
 use App\Models\MaterialRequest;
 use App\Models\Payment;
-use App\Models\PaymentAllocation;
 use App\Models\PayrollRunEmployee;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderItem;
@@ -23,18 +23,17 @@ use App\Observers\EmployeeObserver;
 use App\Observers\InventoryItemObserver;
 use App\Observers\JobOrderTaskObserver;
 use App\Observers\MaterialRequestObserver;
-use App\Observers\PaymentAllocationObserver;
 use App\Observers\PaymentObserver;
 use App\Observers\PayrollRunEmployeeObserver;
 use App\Observers\PurchaseOrderItemObserver;
 use App\Observers\PurchaseOrderObserver;
 use App\Observers\SalesOrderObserver;
 use App\Observers\StockMovementObserver;
-use App\Policies\PaymentAllocationPolicy;
 use App\Policies\PaymentPolicy;
 use Filament\Actions\CreateAction;
 use Filament\Support\Facades\FilamentTimezone;
 use Filament\Support\Facades\FilamentView;
+use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\View\TablesRenderHook;
 use Filament\View\PanelsRenderHook;
 use Illuminate\Database\Eloquent\Model;
@@ -73,6 +72,13 @@ class AppServiceProvider extends ServiceProvider
         }
 
         CreateAction::configureUsing(fn (CreateAction $action) => $action->createAnother(false));
+        TextColumn::configureUsing(
+            fn (TextColumn $column) => $column->formatStateUsing(
+                fn (TextColumn $column, mixed $state): mixed => $column->isBadge()
+                    ? TableBadgeFormatter::format($state)
+                    : $state
+            )
+        );
         FilamentTimezone::set(config('app.timezone'));
 
         FilamentView::registerRenderHook(
@@ -109,11 +115,9 @@ class AppServiceProvider extends ServiceProvider
         Livewire::componentHook(ExceptionHandlerHook::class);
 
         Gate::policy(Payment::class, PaymentPolicy::class);
-        Gate::policy(PaymentAllocation::class, PaymentAllocationPolicy::class);
 
         Payment::observe(PaymentObserver::class);
         BankTransfer::observe(BankTransferObserver::class);
-        PaymentAllocation::observe(PaymentAllocationObserver::class);
         StockMovement::observe(StockMovementObserver::class);
 
         // Totals Automation

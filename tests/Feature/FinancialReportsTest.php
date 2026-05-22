@@ -9,7 +9,6 @@ use App\Models\JournalEntry;
 use App\Models\JournalItem;
 use App\Models\Partner;
 use App\Models\Payment;
-use App\Models\PaymentAllocation;
 use App\Models\PurchaseOrder;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -98,13 +97,8 @@ test('payables aging uses tax inclusive purchase order totals', function (): voi
         'payment_date' => '2026-01-20',
         'amount' => 200,
         'direction' => 'outbound',
-    ]);
-
-    PaymentAllocation::create([
-        'payment_id' => $payment->id,
-        'allocatable_type' => PurchaseOrder::class,
-        'allocatable_id' => $purchaseOrder->id,
-        'allocated_amount' => 200,
+        'payable_type' => PurchaseOrder::class,
+        'payable_id' => $purchaseOrder->id,
     ]);
 
     $page = new PayablesAgingReport;

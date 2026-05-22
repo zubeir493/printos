@@ -13,17 +13,16 @@ use App\Filament\Finance\Pages\ReceivablesAgingReport;
 use App\Filament\Finance\Pages\TrialBalanceReport;
 use App\Filament\Finance\Widgets\FinancePanelStats;
 use App\Filament\Finance\Widgets\OverdueInvoicesTable;
-use App\Filament\Finance\Widgets\UnallocatedPaymentsTable;
 use App\Filament\Pages\Auth\EditProfile;
 use App\Filament\Resources\Accounts\AccountResource;
 use App\Filament\Resources\Banks\BankResource;
+use App\Filament\Resources\BankTransactions\BankTransactionResource;
 use App\Filament\Resources\BankTransfers\BankTransferResource;
 use App\Filament\Resources\Invoices\InvoiceResource;
 use App\Filament\Resources\JobOrders\JobOrderResource;
 use App\Filament\Resources\JobOrderTasks\JobOrderTaskResource;
 use App\Filament\Resources\JournalEntries\JournalEntryResource;
 use App\Filament\Resources\Partners\PartnerResource;
-use App\Filament\Resources\PaymentAllocations\PaymentAllocationResource;
 use App\Filament\Resources\Payments\PaymentResource;
 use App\Filament\Resources\PurchaseOrderItems\PurchaseOrderItemResource;
 use App\Filament\Resources\PurchaseOrders\PurchaseOrderResource;
@@ -68,6 +67,7 @@ class FinancePanelProvider extends PanelProvider
             ->resources([
                 AccountResource::class,
                 BankResource::class,
+                BankTransactionResource::class,
                 BankTransferResource::class,
                 InvoiceResource::class,
                 JobOrderResource::class,
@@ -78,7 +78,6 @@ class FinancePanelProvider extends PanelProvider
                 PurchaseOrderItemResource::class,
                 SalesOrderResource::class,
                 PaymentResource::class,
-                PaymentAllocationResource::class,
             ])
             ->discoverPages(in: app_path('Filament/Finance/Pages'), for: 'App\Filament\Finance\Pages')
             ->pages([
@@ -95,7 +94,6 @@ class FinancePanelProvider extends PanelProvider
             ->widgets([
                 FinancePanelStats::class,
                 BankBalancesChart::class,
-                UnallocatedPaymentsTable::class,
                 OverdueInvoicesTable::class,
             ])
             ->globalSearch(true)

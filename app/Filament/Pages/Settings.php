@@ -125,6 +125,16 @@ class Settings extends Page implements HasForms
                                     ->numeric()
                                     ->suffix('%')
                                     ->visible(fn (Get $get) => $get('workers_union_enabled')),
+                                TextInput::make('employee_pension_rate')
+                                    ->label('Employee Pension Rate (%)')
+                                    ->numeric()
+                                    ->suffix('%')
+                                    ->required(),
+                                TextInput::make('employer_pension_rate')
+                                    ->label('Employer Pension Rate (%)')
+                                    ->numeric()
+                                    ->suffix('%')
+                                    ->required(),
                             ]),
                     ]),
 

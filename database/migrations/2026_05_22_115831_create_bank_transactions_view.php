@@ -8,6 +8,7 @@ return new class extends Migration
     public function up(): void
     {
         if (DB::getDriverName() === 'sqlite') {
+            DB::statement('DROP VIEW IF EXISTS bank_transactions');
             DB::statement(<<<'SQL'
             CREATE VIEW bank_transactions AS
                 SELECT
@@ -121,6 +122,7 @@ return new class extends Migration
             return;
         }
 
+        DB::statement('DROP VIEW IF EXISTS bank_transactions');
         DB::statement(<<<'SQL'
             CREATE VIEW bank_transactions AS
                 SELECT

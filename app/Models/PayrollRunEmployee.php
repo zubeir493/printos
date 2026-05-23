@@ -19,7 +19,7 @@ class PayrollRunEmployee extends Model
         'pay_per_hour',
         'bonus',
         'transport_allowance',
-        'pension_11',
+        'employer_pension_contribution',
         'overtime_hours',
         'overtime_amount',
         'gross_earning',
@@ -27,7 +27,7 @@ class PayrollRunEmployee extends Model
         'income_tax',
         'penalty_hours',
         'penalty_amount',
-        'pension_18',
+        'pension_contribution',
         'loan',
         'workers_union',
         'total_deduction',
@@ -51,6 +51,11 @@ class PayrollRunEmployee extends Model
     public function employee(): BelongsTo
     {
         return $this->belongsTo(Employee::class);
+    }
+
+    public function payment(): BelongsTo
+    {
+        return $this->belongsTo(Payment::class);
     }
 
     public function lineItems(): HasMany

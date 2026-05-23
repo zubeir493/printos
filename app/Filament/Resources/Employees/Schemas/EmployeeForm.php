@@ -12,6 +12,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Illuminate\Support\HtmlString;
 
@@ -70,16 +71,13 @@ class EmployeeForm
                                     ])
                                     ->default(true)
                                     ->required(),
-                                TextInput::make('employee_pension_rate')
-                                    ->label('Employee Pension %')
-                                    ->numeric()
-                                    ->default(7),
-                                TextInput::make('employer_pension_rate')
-                                    ->label('Employer Pension %')
-                                    ->numeric()
-                                    ->default(11),
                                 TextInput::make('basic_salary')
                                     ->label('Monthly Rate')
+                                    ->numeric()
+                                    ->suffix('Birr')
+                                    ->default(0),
+                                TextInput::make('transport_allowance')
+                                    ->label('Transportation Allowance')
                                     ->numeric()
                                     ->suffix('Birr')
                                     ->default(0),
@@ -128,6 +126,9 @@ class EmployeeForm
                                     ->required()
                                     ->default(now())
                                     ->columnSpanFull(),
+                                DatePicker::make('termination_date')
+                                    ->visible(fn (Get $get): bool => in_array($get('status'), ['inactive', 'terminated'], true))
+                                    ->columnSpanFull(),
                                 Select::make('status')
                                     ->options([
                                         'active' => 'Active',
@@ -135,6 +136,7 @@ class EmployeeForm
                                         'terminated' => 'Terminated',
                                     ])
                                     ->default('active')
+                                    ->live()
                                     ->required()
                                     ->columnSpanFull(),
                             ])->columnSpan(1)->columns(5),

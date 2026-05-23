@@ -48,6 +48,7 @@ class CreatePaymentJournalEntry
             PaymentTransactionType::PETTY_CASH_FUNDING => $this->createItems($journalEntry->id, $pettyCashAccountId, $sourceAccountId, $amount),
             PaymentTransactionType::PETTY_CASH_EXPENSE => $this->createItems($journalEntry->id, $expenseAccountId, $pettyCashAccountId, $amount),
             PaymentTransactionType::PAYROLL_PAYMENT => $this->createItems($journalEntry->id, Account::getSystemAccount('2150', 'Payroll Payable', 'Liability')->id, $sourceAccountId, $amount),
+            PaymentTransactionType::EMPLOYEE_LOAN_REPAYMENT => $this->createItems($journalEntry->id, $sourceAccountId, Account::getSystemAccount('1230', 'Employee Loans Receivable', 'Asset')->id, $amount),
         };
     }
 

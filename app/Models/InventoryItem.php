@@ -39,6 +39,7 @@ class InventoryItem extends Model
         'is_sellable',
         'price',
         'average_cost',
+        'low_stock_threshold',
     ];
 
     /**
@@ -52,6 +53,7 @@ class InventoryItem extends Model
             'id' => 'integer',
             'is_sellable' => 'boolean',
             'price' => 'decimal:2',
+            'low_stock_threshold' => 'decimal:2',
         ];
     }
 

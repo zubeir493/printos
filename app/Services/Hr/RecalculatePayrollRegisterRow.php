@@ -24,34 +24,34 @@ class RecalculatePayrollRegisterRow
         $penaltyHours = (float) ($data['penalty_hours'] ?? 0);
         $loan = (float) ($data['loan'] ?? 0);
         $payPerHour = round($basicSalary / 30 / 8, 4);
-        $overtimeMultiplier = (float) ($snapshot['overtime_multiplier'] ?? 1);
-        $employeePensionRate = (float) ($snapshot['employee_pension_rate'] ?? 7);
-        $employerPensionRate = (float) ($snapshot['employer_pension_rate'] ?? 11);
         $pensionEnabled = (bool) ($snapshot['pension_enabled'] ?? true);
         $settings = Setting::getSettings();
+        $overtimeMultiplier = (float) ($snapshot['overtime_multiplier'] ?? 1);
+        $employeePensionRate = (float) ($snapshot['employee_pension_rate'] ?? $settings->employee_pension_rate);
+        $employerPensionRate = (float) ($snapshot['employer_pension_rate'] ?? $settings->employer_pension_rate);
         $unionEnabled = (bool) ($snapshot['union_enabled'] ?? $settings->workers_union_enabled);
         $unionRate = (float) ($snapshot['union_rate'] ?? $settings->workers_union_rate);
 
-        $pension11 = $pensionEnabled ? round($basicSalary * ($employerPensionRate / 100), 2) : 0.0;
+        $employerPensionContribution = $pensionEnabled ? round($basicSalary * ($employerPensionRate / 100), 2) : 0.0;
         $overtimeAmount = round(($basicSalary / 24 / 8) * $overtimeHours * $overtimeMultiplier, 2);
         $penaltyAmount = round($payPerHour * $penaltyHours, 2);
-        $grossEarning = round($basicSalary + $bonus + $transportAllowance + $pension11 + $overtimeAmount, 2);
-        $taxableAmount = max(0, round($grossEarning - $pension11 - $penaltyAmount, 2));
+        $grossEarning = round($basicSalary + $bonus + $transportAllowance + $employerPensionContribution + $overtimeAmount, 2);
+        $taxableAmount = max(0, round($grossEarning - $employerPensionContribution - $penaltyAmount, 2));
         $incomeTax = $this->taxAmount($taxableAmount, $payrollRun?->getRawOriginal('period_end') ?? now()->toDateString(), $snapshot);
-        $pension18 = $pensionEnabled ? round($basicSalary * (($employeePensionRate + $employerPensionRate) / 100), 2) : 0.0;
+        $pensionContribution = $pensionEnabled ? round($basicSalary * (($employeePensionRate + $employerPensionRate) / 100), 2) : 0.0;
         $workersUnion = $unionEnabled ? round($basicSalary * ($unionRate / 100), 2) : 0.0;
-        $totalDeduction = round($incomeTax + $penaltyAmount + $pension18 + $loan + $workersUnion, 2);
+        $totalDeduction = round($incomeTax + $penaltyAmount + $pensionContribution + $loan + $workersUnion, 2);
 
         return [
             ...$data,
             'pay_per_hour' => $payPerHour,
-            'pension_11' => $pension11,
+            'employer_pension_contribution' => $employerPensionContribution,
             'overtime_amount' => $overtimeAmount,
             'gross_earning' => $grossEarning,
             'taxable_amount' => $taxableAmount,
             'income_tax' => $incomeTax,
             'penalty_amount' => $penaltyAmount,
-            'pension_18' => $pension18,
+            'pension_contribution' => $pensionContribution,
             'workers_union' => $workersUnion,
             'total_deduction' => $totalDeduction,
             'net_pay' => round($grossEarning - $totalDeduction, 2),

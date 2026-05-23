@@ -8,6 +8,7 @@ use App\Livewire\ExceptionHandlerHook;
 use App\Models\Artwork;
 use App\Models\BankTransfer;
 use App\Models\Employee;
+use App\Models\InventoryBalance;
 use App\Models\InventoryItem;
 use App\Models\JobOrderTask;
 use App\Models\MaterialRequest;
@@ -20,6 +21,7 @@ use App\Models\StockMovement;
 use App\Observers\ArtworkObserver;
 use App\Observers\BankTransferObserver;
 use App\Observers\EmployeeObserver;
+use App\Observers\InventoryBalanceObserver;
 use App\Observers\InventoryItemObserver;
 use App\Observers\JobOrderTaskObserver;
 use App\Observers\MaterialRequestObserver;
@@ -131,6 +133,7 @@ class AppServiceProvider extends ServiceProvider
         Employee::observe(EmployeeObserver::class);
         PayrollRunEmployee::observe(PayrollRunEmployeeObserver::class);
         InventoryItem::observe(InventoryItemObserver::class);
+        InventoryBalance::observe(InventoryBalanceObserver::class);
         Artwork::observe(ArtworkObserver::class);
         MaterialRequest::observe(MaterialRequestObserver::class);
     }

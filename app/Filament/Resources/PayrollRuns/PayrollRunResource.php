@@ -51,7 +51,7 @@ class PayrollRunResource extends Resource
                 ]),
             Group::make()
                 ->columnSpanFull()
-                ->visible(fn (?PayrollRun $record): bool => filled($record?->id))
+                ->visible(fn (?PayrollRun $record, string $operation): bool => $operation !== 'create' && filled($record?->id))
                 ->schema([
                     Repeater::make('employees')
                         ->extraAttributes(['class' => 'payrollTable'])
@@ -70,7 +70,7 @@ class PayrollRunResource extends Resource
                             TableColumn::make('Rate'),
                             TableColumn::make('Bonus'),
                             TableColumn::make('Transport'),
-                            TableColumn::make('Pension 11%'),
+                            TableColumn::make('Employer Pension'),
                             TableColumn::make('OT Hrs'),
                             TableColumn::make('OT Amt'),
                             TableColumn::make('Gross'),
@@ -78,7 +78,7 @@ class PayrollRunResource extends Resource
                             TableColumn::make('Tax'),
                             TableColumn::make('Penalty Hrs'),
                             TableColumn::make('Penalty'),
-                            TableColumn::make('Pension 18%'),
+                            TableColumn::make('Pension'),
                             TableColumn::make('Loan'),
                             TableColumn::make('Union'),
                             TableColumn::make('Deductions'),
@@ -99,7 +99,7 @@ class PayrollRunResource extends Resource
                             static::moneyInput('pay_per_hour')->disabled(),
                             static::editableMoneyInput('bonus'),
                             static::editableMoneyInput('transport_allowance'),
-                            static::moneyInput('pension_11')->disabled(),
+                            static::moneyInput('employer_pension_contribution')->disabled(),
                             static::editableNumberInput('overtime_hours', 2),
                             static::moneyInput('overtime_amount')->disabled(),
                             static::moneyInput('gross_earning')->disabled(),
@@ -107,7 +107,7 @@ class PayrollRunResource extends Resource
                             static::moneyInput('income_tax')->disabled(),
                             static::editableNumberInput('penalty_hours', 2),
                             static::moneyInput('penalty_amount')->disabled(),
-                            static::moneyInput('pension_18')->disabled(),
+                            static::moneyInput('pension_contribution')->disabled(),
                             static::editableMoneyInput('loan'),
                             static::moneyInput('workers_union')->disabled(),
                             static::moneyInput('total_deduction')->disabled(),
@@ -188,7 +188,7 @@ class PayrollRunResource extends Resource
             'pay_per_hour',
             'bonus',
             'transport_allowance',
-            'pension_11',
+            'employer_pension_contribution',
             'overtime_hours',
             'overtime_amount',
             'gross_earning',
@@ -196,7 +196,7 @@ class PayrollRunResource extends Resource
             'income_tax',
             'penalty_hours',
             'penalty_amount',
-            'pension_18',
+            'pension_contribution',
             'loan',
             'workers_union',
             'total_deduction',
@@ -210,13 +210,13 @@ class PayrollRunResource extends Resource
 
         foreach ([
             'pay_per_hour',
-            'pension_11',
+            'employer_pension_contribution',
             'overtime_amount',
             'gross_earning',
             'taxable_amount',
             'income_tax',
             'penalty_amount',
-            'pension_18',
+            'pension_contribution',
             'workers_union',
             'total_deduction',
             'net_pay',

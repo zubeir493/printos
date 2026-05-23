@@ -47,10 +47,10 @@ class PayrollRunEmployeesRelationManager extends RelationManager
                     ->label('Transport')
                     ->formatStateUsing(fn ($state) => Money::format($state))
                     ->summarize(Sum::make()->label('Transport')->formatStateUsing(fn ($state) => Money::format($state))),
-                TextColumn::make('pension_11')
-                    ->label('Pension 11%')
+                TextColumn::make('employer_pension_contribution')
+                    ->label('Employer Pension')
                     ->formatStateUsing(fn ($state) => Money::format($state))
-                    ->summarize(Sum::make()->label('Pension 11%')->formatStateUsing(fn ($state) => Money::format($state))),
+                    ->summarize(Sum::make()->label('Employer Pension')->formatStateUsing(fn ($state) => Money::format($state))),
                 TextColumn::make('overtime_hours')
                     ->label('OT Hrs')
                     ->numeric(decimalPlaces: 2)
@@ -79,10 +79,10 @@ class PayrollRunEmployeesRelationManager extends RelationManager
                     ->label('Penalty')
                     ->formatStateUsing(fn ($state) => Money::format($state))
                     ->summarize(Sum::make()->label('Penalty')->formatStateUsing(fn ($state) => Money::format($state))),
-                TextColumn::make('pension_18')
-                    ->label('Pension 18%')
+                TextColumn::make('pension_contribution')
+                    ->label('Pension')
                     ->formatStateUsing(fn ($state) => Money::format($state))
-                    ->summarize(Sum::make()->label('Pension 18%')->formatStateUsing(fn ($state) => Money::format($state))),
+                    ->summarize(Sum::make()->label('Pension')->formatStateUsing(fn ($state) => Money::format($state))),
                 TextColumn::make('loan')
                     ->label('Loan')
                     ->formatStateUsing(fn ($state) => Money::format($state))

@@ -16,7 +16,7 @@ class Employee extends Model
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly(['employee_id', 'attendance_device_id', 'first_name', 'last_name', 'phone', 'hire_date', 'status', 'employment_type', 'department', 'position', 'tax_id', 'pension_enabled', 'employee_pension_rate', 'employer_pension_rate', 'basic_salary', 'overtime_multiplier', 'payment_method'])
+            ->logOnly(['employee_id', 'attendance_device_id', 'first_name', 'last_name', 'phone', 'hire_date', 'termination_date', 'status', 'employment_type', 'department', 'position', 'tax_id', 'pension_enabled', 'basic_salary', 'transport_allowance', 'overtime_multiplier', 'payment_method'])
             ->logOnlyDirty()
             ->useLogName('employee');
     }
@@ -29,15 +29,15 @@ class Employee extends Model
         'image',
         'phone',
         'hire_date',
+        'termination_date',
         'status',
         'employment_type',
         'department',
         'position',
         'tax_id',
         'pension_enabled',
-        'employee_pension_rate',
-        'employer_pension_rate',
         'basic_salary',
+        'transport_allowance',
         'overtime_multiplier',
         'payment_method',
         'bank_name',
@@ -48,10 +48,10 @@ class Employee extends Model
     {
         return [
             'hire_date' => 'date',
+            'termination_date' => 'date',
             'pension_enabled' => 'boolean',
-            'employee_pension_rate' => 'decimal:2',
-            'employer_pension_rate' => 'decimal:2',
             'basic_salary' => 'decimal:2',
+            'transport_allowance' => 'decimal:2',
             'overtime_multiplier' => 'decimal:4',
         ];
     }

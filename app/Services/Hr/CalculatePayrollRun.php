@@ -5,7 +5,7 @@ namespace App\Services\Hr;
 use App\Models\AttendanceDailySummary;
 use App\Models\AttendancePeriodSummary;
 use App\Models\Employee;
-use App\Models\EmployeeLoan;
+use App\Models\EmployeeLoanInstallment;
 use App\Models\PayrollRun;
 use App\Models\PayrollRunEmployee;
 use App\Models\Setting;
@@ -28,7 +28,9 @@ class CalculatePayrollRun
         }
 
         return DB::transaction(function () use ($payrollRun, $employeeIds): PayrollRun {
-            $employees = $this->employees($employeeIds);
+            $periodStart = CarbonImmutable::parse($payrollRun->getRawOriginal('period_start'))->toDateString();
+            $periodEnd = CarbonImmutable::parse($payrollRun->getRawOriginal('period_end'))->toDateString();
+            $employees = $this->employees($periodStart, $periodEnd, $employeeIds);
 
             if ($employees->isEmpty()) {
                 throw new RuntimeException('No active employees were found for this payroll run.');
@@ -48,10 +50,15 @@ class CalculatePayrollRun
      * @param  array<int>|null  $employeeIds
      * @return Collection<int, Employee>
      */
-    private function employees(?array $employeeIds): Collection
+    private function employees(string $periodStart, string $periodEnd, ?array $employeeIds): Collection
     {
         return Employee::query()
-            ->whereRaw('LOWER(status) = ?', ['active'])
+            ->whereDate('hire_date', '<=', $periodEnd)
+            ->where(function ($query) use ($periodStart): void {
+                $query
+                    ->whereRaw('LOWER(status) = ?', ['active'])
+                    ->orWhereDate('termination_date', '>=', $periodStart);
+            })
             ->when($employeeIds, fn ($query) => $query->whereIn('id', $employeeIds))
             ->get();
     }
@@ -60,7 +67,9 @@ class CalculatePayrollRun
     {
         $periodStart = CarbonImmutable::parse($payrollRun->getRawOriginal('period_start'))->toDateString();
         $periodEnd = CarbonImmutable::parse($payrollRun->getRawOriginal('period_end'))->toDateString();
-        $basicSalary = $this->salaryForPeriod($employee, $periodEnd);
+        $fullBasicSalary = $this->salaryForPeriod($employee, $periodEnd);
+        $employment = $this->employmentWindow($employee, $periodStart, $periodEnd);
+        $basicSalary = round($fullBasicSalary * $employment['ratio'], 2);
         $overtimeMultiplier = $this->overtimeMultiplierForPeriod($employee, $periodEnd);
         $dailySummaries = AttendanceDailySummary::query()
             ->where('employee_id', $employee->id)
@@ -77,7 +86,9 @@ class CalculatePayrollRun
             : $this->attendanceFromPeriodSummaries($periodSummaries, $periodStart, $periodEnd);
         $leave = $this->approvedLeaveMinutes($employee, $periodStart, $periodEnd);
         $absenceMinutes = (int) round($attendance['absent_days'] * 480);
-        $deductibleAbsentMinutes = max(max(0, $absenceMinutes - $leave['paid_minutes']), $leave['unpaid_minutes']);
+        $deductibleAbsentMinutes = $dailySummaries->isNotEmpty()
+            ? $this->deductibleAbsentMinutesFromDailySummaries($dailySummaries, $leave['by_date'])
+            : max(max(0, $absenceMinutes - $leave['paid_minutes']), $leave['unpaid_minutes']);
         $penaltyMinutes = $attendance['late_minutes'] + $deductibleAbsentMinutes;
         $penaltyHours = round($penaltyMinutes / 60, 2);
         $payPerHour = $basicSalary / 30 / 8;
@@ -86,21 +97,23 @@ class CalculatePayrollRun
         $overtimeHours = round(($attendance['normal_overtime_minutes'] + $attendance['night_overtime_minutes'] + $holidayOngoingMinutes) / 60, 2);
         $overtimeAmount = round(($basicSalary / 24 / 8) * $overtimeHours * $overtimeMultiplier, 2);
         $bonus = 0.0;
-        $transportAllowance = 0.0;
-        $pension11 = $employee->pension_enabled ? round($basicSalary * ((float) $employee->employer_pension_rate / 100), 2) : 0.0;
-        $grossEarning = round($basicSalary + $bonus + $transportAllowance + $pension11 + $overtimeAmount, 2);
-        $taxableAmount = max(0, round($grossEarning - $pension11 - $penaltyAmount, 2));
-        $tax = $this->taxCalculator->handle($taxableAmount, $periodEnd);
-        $pension18 = $employee->pension_enabled
-            ? round($basicSalary * (((float) $employee->employee_pension_rate + (float) $employee->employer_pension_rate) / 100), 2)
-            : 0.0;
-        $loans = $this->loans($employee, $periodStart, $periodEnd);
+        $transportAllowance = round((float) ($employee->transport_allowance ?? 0), 2);
         $settings = Setting::getSettings();
-        $loan = (float) $loans->sum('amount');
+        $employeePensionRate = (float) $settings->employee_pension_rate;
+        $employerPensionRate = (float) $settings->employer_pension_rate;
+        $employerPensionContribution = $employee->pension_enabled ? round($basicSalary * ($employerPensionRate / 100), 2) : 0.0;
+        $grossEarning = round($basicSalary + $bonus + $transportAllowance + $employerPensionContribution + $overtimeAmount, 2);
+        $taxableAmount = max(0, round($grossEarning - $employerPensionContribution - $penaltyAmount, 2));
+        $tax = $this->taxCalculator->handle($taxableAmount, $periodEnd);
+        $pensionContribution = $employee->pension_enabled
+            ? round($basicSalary * (($employeePensionRate + $employerPensionRate) / 100), 2)
+            : 0.0;
+        $loanInstallments = $this->loanInstallments($employee, $periodStart, $periodEnd);
+        $loan = round($loanInstallments->sum(fn ($installment): float => max(0.0, (float) $installment->amount - (float) $installment->paid_amount)), 2);
         $workersUnion = $settings->workers_union_enabled
             ? round($basicSalary * ((float) $settings->workers_union_rate / 100), 2)
             : 0.0;
-        $totalDeduction = round($tax['amount'] + $penaltyAmount + $pension18 + $loan + $workersUnion, 2);
+        $totalDeduction = round($tax['amount'] + $penaltyAmount + $pensionContribution + $loan + $workersUnion, 2);
         $netPay = round($grossEarning - $totalDeduction, 2);
 
         $payrollEmployee = $payrollRun->employees()->create([
@@ -110,7 +123,7 @@ class CalculatePayrollRun
             'pay_per_hour' => round($payPerHour, 4),
             'bonus' => $bonus,
             'transport_allowance' => $transportAllowance,
-            'pension_11' => $pension11,
+            'employer_pension_contribution' => $employerPensionContribution,
             'overtime_hours' => $overtimeHours,
             'overtime_amount' => $overtimeAmount,
             'gross_earning' => $grossEarning,
@@ -118,7 +131,7 @@ class CalculatePayrollRun
             'income_tax' => $tax['amount'],
             'penalty_hours' => $penaltyHours,
             'penalty_amount' => $penaltyAmount,
-            'pension_18' => $pension18,
+            'pension_contribution' => $pensionContribution,
             'loan' => $loan,
             'workers_union' => $workersUnion,
             'total_deduction' => $totalDeduction,
@@ -126,7 +139,14 @@ class CalculatePayrollRun
             'calculation_snapshot' => [
                 'daily_summary_ids' => $dailySummaries->pluck('id')->all(),
                 'period_summary_ids' => $periodSummaries->pluck('id')->all(),
-                'loan_ids' => $loans->pluck('id')->all(),
+                'loan_installment_ids' => $loanInstallments->pluck('id')->all(),
+                'loan_ids' => $loanInstallments->pluck('employee_loan_id')->unique()->values()->all(),
+                'full_basic_salary' => $fullBasicSalary,
+                'employment_period_start' => $employment['start'],
+                'employment_period_end' => $employment['end'],
+                'employment_business_days' => $employment['employed_days'],
+                'period_business_days' => $employment['period_days'],
+                'employment_ratio' => $employment['ratio'],
                 'work_days' => $attendance['work_days'],
                 'time_on_duty' => $attendance['time_on_duty'],
                 'absent_days' => $attendance['absent_days'],
@@ -142,8 +162,8 @@ class CalculatePayrollRun
                 'dayoff_days' => $attendance['dayoff_days'],
                 'overtime_multiplier' => $overtimeMultiplier,
                 'pension_enabled' => (bool) $employee->pension_enabled,
-                'employee_pension_rate' => (float) $employee->employee_pension_rate,
-                'employer_pension_rate' => (float) $employee->employer_pension_rate,
+                'employee_pension_rate' => $employeePensionRate,
+                'employer_pension_rate' => $employerPensionRate,
                 'union_rate' => (float) $settings->workers_union_rate,
                 'union_enabled' => (bool) $settings->workers_union_enabled,
                 'tax' => $tax,
@@ -173,6 +193,31 @@ class CalculatePayrollRun
             ->first();
 
         return (float) ($history?->overtime_multiplier ?? $employee->overtime_multiplier ?? 1);
+    }
+
+    /**
+     * @return array{start: string, end: string, employed_days: int, period_days: int, ratio: float}
+     */
+    private function employmentWindow(Employee $employee, string $periodStart, string $periodEnd): array
+    {
+        $start = CarbonImmutable::parse($employee->hire_date)->greaterThan(CarbonImmutable::parse($periodStart))
+            ? CarbonImmutable::parse($employee->hire_date)->toDateString()
+            : $periodStart;
+        $end = $employee->termination_date && CarbonImmutable::parse($employee->termination_date)->lessThan(CarbonImmutable::parse($periodEnd))
+            ? CarbonImmutable::parse($employee->termination_date)->toDateString()
+            : $periodEnd;
+        $periodDays = $this->businessDays($periodStart, $periodEnd);
+        $employedDays = CarbonImmutable::parse($start)->lte(CarbonImmutable::parse($end))
+            ? $this->businessDays($start, $end)
+            : 0;
+
+        return [
+            'start' => $start,
+            'end' => $end,
+            'employed_days' => $employedDays,
+            'period_days' => $periodDays,
+            'ratio' => round($employedDays / max(1, $periodDays), 6),
+        ];
     }
 
     private function businessDays(string $start, string $end): int
@@ -231,22 +276,26 @@ class CalculatePayrollRun
     }
 
     /**
-     * @return Collection<int, EmployeeLoan>
+     * @return Collection<int, EmployeeLoanInstallment>
      */
-    private function loans(Employee $employee, string $periodStart, string $periodEnd): Collection
+    private function loanInstallments(Employee $employee, string $periodStart, string $periodEnd): Collection
     {
-        return $employee->loans()
-            ->deductibleForPeriod($periodStart, $periodEnd)
+        return EmployeeLoanInstallment::query()
+            ->whereHas('loan', fn ($query) => $query
+                ->where('employee_id', $employee->id)
+                ->whereIn('status', ['active', 'partially_paid']))
+            ->dueForPeriod($periodStart, $periodEnd)
             ->get();
     }
 
     /**
-     * @return array{paid_minutes: int, unpaid_minutes: int}
+     * @return array{paid_minutes: int, unpaid_minutes: int, by_date: array<string, array{paid_minutes: int, unpaid_minutes: int}>}
      */
     private function approvedLeaveMinutes(Employee $employee, string $periodStart, string $periodEnd): array
     {
         $paidMinutes = 0;
         $unpaidMinutes = 0;
+        $byDate = [];
 
         $employee->leaveRequests()
             ->with('leaveType')
@@ -254,40 +303,68 @@ class CalculatePayrollRun
             ->whereDate('start_date', '<=', $periodEnd)
             ->whereDate('end_date', '>=', $periodStart)
             ->get()
-            ->each(function ($leaveRequest) use (&$paidMinutes, &$unpaidMinutes): void {
-                $minutes = $leaveRequest->minutes;
+            ->each(function ($leaveRequest) use (&$paidMinutes, &$unpaidMinutes, &$byDate, $periodStart, $periodEnd): void {
+                $start = $leaveRequest->start_date->greaterThan(CarbonImmutable::parse($periodStart))
+                    ? CarbonImmutable::parse($leaveRequest->start_date)->toDateString()
+                    : $periodStart;
+                $end = $leaveRequest->end_date->lessThan(CarbonImmutable::parse($periodEnd))
+                    ? CarbonImmutable::parse($leaveRequest->end_date)->toDateString()
+                    : $periodEnd;
+                $days = max(1, CarbonImmutable::parse($start)->diffInDays(CarbonImmutable::parse($end)) + 1);
+                $minutesPerDay = $leaveRequest->minutes
+                    ? (int) round((int) $leaveRequest->minutes / $days)
+                    : 480;
+                $date = CarbonImmutable::parse($start);
+                $last = CarbonImmutable::parse($end);
 
-                if (! $minutes) {
-                    $minutes = $leaveRequest->start_date->diffInDays($leaveRequest->end_date) + 1;
-                    $minutes *= 480;
+                while ($date->lte($last)) {
+                    $key = $date->toDateString();
+                    $byDate[$key] ??= ['paid_minutes' => 0, 'unpaid_minutes' => 0];
+
+                    if ($leaveRequest->leaveType->is_paid) {
+                        $paidMinutes += $minutesPerDay;
+                        $byDate[$key]['paid_minutes'] += $minutesPerDay;
+                    } else {
+                        $unpaidMinutes += $minutesPerDay;
+                        $byDate[$key]['unpaid_minutes'] += $minutesPerDay;
+                    }
+
+                    $date = $date->addDay();
                 }
-
-                $minutes = (int) $minutes;
-
-                if ($leaveRequest->leaveType->is_paid) {
-                    $paidMinutes += $minutes;
-
-                    return;
-                }
-
-                $unpaidMinutes += $minutes;
             });
 
         return [
             'paid_minutes' => $paidMinutes,
             'unpaid_minutes' => $unpaidMinutes,
+            'by_date' => $byDate,
         ];
+    }
+
+    /**
+     * @param  Collection<int, AttendanceDailySummary>  $summaries
+     * @param  array<string, array{paid_minutes: int, unpaid_minutes: int}>  $leaveByDate
+     */
+    private function deductibleAbsentMinutesFromDailySummaries(Collection $summaries, array $leaveByDate): int
+    {
+        return (int) $summaries->sum(function (AttendanceDailySummary $summary) use ($leaveByDate): int {
+            $leave = $leaveByDate[$summary->date->toDateString()] ?? ['paid_minutes' => 0, 'unpaid_minutes' => 0];
+
+            return max(
+                max(0, (int) $summary->absence_minutes - $leave['paid_minutes']),
+                $leave['unpaid_minutes'],
+            );
+        });
     }
 
     private function createLineItems(PayrollRunEmployee $employee): void
     {
         foreach ([
             ['earning', 'basic_salary', 'Basic salary', $employee->basic_salary],
-            ['earning', 'pension_11', 'Pension fund 11%', $employee->pension_11],
+            ['earning', 'employer_pension', 'Employer pension contribution', $employee->employer_pension_contribution],
             ['earning', 'overtime', 'Overtime', $employee->overtime_amount],
             ['deduction', 'income_tax', 'Income tax', $employee->income_tax],
             ['deduction', 'penalty', 'Penalty', $employee->penalty_amount],
-            ['deduction', 'pension_18', 'Pension fund 18%', $employee->pension_18],
+            ['deduction', 'pension', 'Pension contribution', $employee->pension_contribution],
             ['deduction', 'loan', 'Loan / recurring deductions', $employee->loan],
             ['deduction', 'workers_union', 'Workers union', $employee->workers_union],
         ] as [$type, $code, $description, $amount]) {

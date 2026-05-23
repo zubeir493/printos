@@ -1,5 +1,6 @@
 <?php
 
+use App\Filament\Resources\PayrollRuns\Pages\CreatePayrollRun;
 use App\Models\Account;
 use App\Models\AttendanceDailySummary;
 use App\Models\AttendanceImport;
@@ -13,6 +14,7 @@ use App\Models\Payment;
 use App\Models\PayrollRun;
 use App\Models\PayrollTaxRule;
 use App\Models\Shift;
+use App\Models\User;
 use App\Services\Hr\CalculatePayrollRun;
 use App\Services\Hr\ExportPayrollRegisterCsv;
 use App\Services\Hr\GeneratePayrollPayments;
@@ -20,11 +22,38 @@ use App\Services\Hr\ImportAttendanceSegmentCsv;
 use App\Services\Hr\ImportAttendanceSummaryReport;
 use App\Services\Hr\PostPayrollRun;
 use App\Services\Hr\RecordManualAttendanceLog;
+use App\Services\Hr\RepayEmployeeLoan;
+use App\UserRole;
 use Database\Seeders\PayrollTaxRuleSeeder;
+use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
+use Livewire\Livewire;
 
 uses(RefreshDatabase::class);
+
+it('creates a payroll run from the filament form without saving blank payroll rows', function () {
+    Filament::setCurrentPanel(Filament::getPanel('hr'));
+
+    $this->actingAs(User::factory()->create([
+        'role' => UserRole::HR,
+    ]));
+
+    Livewire::test(CreatePayrollRun::class)
+        ->fillForm([
+            'name' => 'May payroll',
+            'pay_date' => '2026-05-22',
+            'period_start' => '2026-04-22',
+            'period_end' => '2026-05-22',
+        ])
+        ->call('create')
+        ->assertHasNoFormErrors();
+
+    $payrollRun = PayrollRun::query()->firstOrFail();
+
+    expect($payrollRun->name)->toBe('May payroll')
+        ->and($payrollRun->employees()->count())->toBe(0);
+});
 
 it('requires reasons for manual attendance entries', function () {
     $employee = Employee::create([
@@ -33,7 +62,7 @@ it('requires reasons for manual attendance entries', function () {
         'first_name' => 'Test',
         'last_name' => 'Employee',
         'phone' => '0911000009',
-        'hire_date' => '2026-01-01',
+        'hire_date' => '2018-01-01',
         'status' => 'Active',
         'employment_type' => 'permanent',
         'basic_salary' => 10000,
@@ -49,7 +78,7 @@ it('imports normal and night summary reports and keeps unmatched rows as failure
         'first_name' => 'Abdulkerim',
         'last_name' => 'Amdega',
         'phone' => '0911000000',
-        'hire_date' => '2026-01-01',
+        'hire_date' => '2018-01-01',
         'status' => 'active',
         'basic_salary' => 12000,
         'overtime_multiplier' => 1,
@@ -76,7 +105,7 @@ it('imports one attendance csv as segments and builds daily summaries', function
         'first_name' => 'Abas',
         'last_name' => 'Mohammed',
         'phone' => '0911000010',
-        'hire_date' => '2026-01-01',
+        'hire_date' => '2018-01-01',
         'status' => 'Active',
         'basic_salary' => 12000,
         'overtime_multiplier' => 1,
@@ -87,7 +116,7 @@ it('imports one attendance csv as segments and builds daily summaries', function
         'first_name' => 'Night',
         'last_name' => 'Worker',
         'phone' => '0911000011',
-        'hire_date' => '2026-01-01',
+        'hire_date' => '2018-01-01',
         'status' => 'Active',
         'basic_salary' => 10000,
         'overtime_multiplier' => 1,
@@ -209,14 +238,12 @@ it('calculates batch payroll from merged attendance summaries and locks recalcul
         'first_name' => 'Abdulhamid',
         'last_name' => 'Mekonn',
         'phone' => '0911000001',
-        'hire_date' => '2026-01-01',
+        'hire_date' => '2018-01-01',
         'status' => 'Active',
         'employment_type' => 'permanent',
         'basic_salary' => 12000,
         'overtime_multiplier' => 1.25,
         'pension_enabled' => true,
-        'employee_pension_rate' => 7,
-        'employer_pension_rate' => 11,
     ]);
 
     AttendancePeriodSummary::create([
@@ -271,6 +298,36 @@ it('calculates batch payroll from merged attendance summaries and locks recalcul
     app(CalculatePayrollRun::class)->handle($payrollRun);
 })->throws(RuntimeException::class);
 
+it('uses the employee transportation allowance as the payroll default', function () {
+    $this->seed(PayrollTaxRuleSeeder::class);
+
+    $employee = Employee::create([
+        'employee_id' => 'EMP-TRAVEL-1',
+        'attendance_device_id' => '701',
+        'first_name' => 'Transit',
+        'last_name' => 'Allowance',
+        'phone' => '0911555701',
+        'hire_date' => '2026-01-01',
+        'status' => 'active',
+        'basic_salary' => 12000,
+        'transport_allowance' => 150,
+        'pension_enabled' => false,
+    ]);
+
+    $payrollRun = PayrollRun::create([
+        'name' => 'Transport allowance payroll',
+        'period_start' => '2026-05-01',
+        'period_end' => '2026-05-31',
+    ]);
+
+    app(CalculatePayrollRun::class)->handle($payrollRun, [$employee->id]);
+
+    $payrollEmployee = $payrollRun->employees()->firstOrFail();
+
+    expect((float) $payrollEmployee->transport_allowance)->toBe(150.0)
+        ->and((float) $payrollEmployee->gross_earning)->toBe((float) $payrollEmployee->basic_salary + 150.0);
+});
+
 it('matches the finance payroll register formula and exports the register csv', function () {
     $rule = PayrollTaxRule::create([
         'name' => 'Finance sample PAYE',
@@ -297,8 +354,6 @@ it('matches the finance payroll register formula and exports the register csv', 
         'basic_salary' => 15432,
         'overtime_multiplier' => 1,
         'pension_enabled' => true,
-        'employee_pension_rate' => 7,
-        'employer_pension_rate' => 11,
     ]);
 
     $loan = $employee->loans()->create([
@@ -338,18 +393,154 @@ it('matches the finance payroll register formula and exports the register csv', 
         ->and((float) $payrollEmployee->pay_per_hour)->toBe(64.3)
         ->and((float) $payrollEmployee->overtime_hours)->toBe(44.73)
         ->and((float) $payrollEmployee->overtime_amount)->toBe(3595.17)
-        ->and((float) $payrollEmployee->pension_11)->toBe(1697.52)
+        ->and((float) $payrollEmployee->employer_pension_contribution)->toBe(1697.52)
         ->and((float) $payrollEmployee->gross_earning)->toBe(20724.69)
         ->and((float) $payrollEmployee->taxable_amount)->toBe(19027.17)
         ->and((float) $payrollEmployee->income_tax)->toBe(4609.51)
-        ->and((float) $payrollEmployee->pension_18)->toBe(2777.76)
+        ->and((float) $payrollEmployee->pension_contribution)->toBe(2777.76)
         ->and((float) $payrollEmployee->loan)->toBe(3750.0)
         ->and((float) $payrollEmployee->workers_union)->toBe(154.32)
         ->and((float) $payrollEmployee->total_deduction)->toBe(11291.59)
         ->and((float) $payrollEmployee->net_pay)->toBe(9433.1)
         ->and($payrollEmployee->calculation_snapshot['loan_ids'])->toContain($loan->id)
-        ->and($csv)->toContain('Pension Fund 11%')
+        ->and($payrollEmployee->calculation_snapshot['loan_installment_ids'])->toContain($loan->installments()->firstOrFail()->id)
+        ->and($csv)->toContain('Employer Pension')
         ->and($csv)->toContain('9433.10');
+});
+
+it('deducts only due loan installments and closes them when payroll is posted', function () {
+    $this->seed(PayrollTaxRuleSeeder::class);
+
+    $employee = Employee::create([
+        'employee_id' => 'EMP-LOAN-1',
+        'attendance_device_id' => '601',
+        'first_name' => 'Loan',
+        'last_name' => 'Installment',
+        'phone' => '0911555601',
+        'hire_date' => '2026-01-01',
+        'status' => 'active',
+        'basic_salary' => 12000,
+        'overtime_multiplier' => 1,
+    ]);
+
+    $loan = $employee->loans()->create([
+        'loan_date' => '2026-05-01',
+        'return_date' => '2026-05-31',
+        'amount' => 1200,
+        'installment_count' => 3,
+        'reason' => 'Three month repayment',
+        'status' => 'active',
+    ]);
+
+    $payrollRun = PayrollRun::create([
+        'name' => 'Installment payroll',
+        'period_start' => '2026-05-01',
+        'period_end' => '2026-05-31',
+    ]);
+
+    app(CalculatePayrollRun::class)->handle($payrollRun, [$employee->id]);
+
+    $payrollEmployee = $payrollRun->employees()->firstOrFail();
+    $firstInstallment = $loan->installments()->orderBy('due_date')->firstOrFail();
+
+    expect($loan->installments()->count())->toBe(3)
+        ->and((float) $payrollEmployee->loan)->toBe(400.0)
+        ->and($payrollEmployee->calculation_snapshot['loan_installment_ids'])->toBe([$firstInstallment->id]);
+
+    app(PostPayrollRun::class)->handle($payrollRun);
+
+    expect($firstInstallment->refresh()->status)->toBe('paid')
+        ->and((float) $firstInstallment->paid_amount)->toBe(400.0)
+        ->and($loan->refresh()->status)->toBe('active')
+        ->and($loan->installments()->where('status', 'pending')->count())->toBe(2);
+});
+
+it('records manual employee loan repayments through payments and journals', function () {
+    $employee = Employee::create([
+        'employee_id' => 'EMP-LOAN-2',
+        'attendance_device_id' => '602',
+        'first_name' => 'Manual',
+        'last_name' => 'Repayment',
+        'phone' => '0911555602',
+        'hire_date' => '2026-01-01',
+        'status' => 'active',
+        'basic_salary' => 12000,
+    ]);
+
+    $loan = $employee->loans()->create([
+        'loan_date' => '2026-05-01',
+        'return_date' => '2026-05-31',
+        'amount' => 900,
+        'installment_count' => 3,
+        'reason' => 'Manual repayment',
+        'status' => 'active',
+    ]);
+
+    $payment = app(RepayEmployeeLoan::class)->handle($loan, 'cash');
+    $journal = JournalEntry::query()
+        ->where('source_type', Payment::class)
+        ->where('source_id', $payment->id)
+        ->firstOrFail();
+    $loanAccount = Account::query()->where('code', '1230')->firstOrFail();
+
+    expect((float) $payment->amount)->toBe(900.0)
+        ->and($payment->transaction_type)->toBe('employee_loan_repayment')
+        ->and($loan->refresh()->status)->toBe('deducted')
+        ->and($loan->installments()->where('status', 'paid')->count())->toBe(3)
+        ->and((float) $journal->journalItems()->where('account_id', $loanAccount->id)->firstOrFail()->credit)->toBe(900.0);
+});
+
+it('supports partial manual employee loan repayments and keeps the remaining balance for payroll', function () {
+    $this->seed(PayrollTaxRuleSeeder::class);
+
+    $employee = Employee::create([
+        'employee_id' => 'EMP-LOAN-3',
+        'attendance_device_id' => '603',
+        'first_name' => 'Partial',
+        'last_name' => 'Repayment',
+        'phone' => '0911555603',
+        'hire_date' => '2026-01-01',
+        'status' => 'active',
+        'basic_salary' => 12000,
+    ]);
+
+    $loan = $employee->loans()->create([
+        'loan_date' => '2026-05-01',
+        'return_date' => '2026-05-31',
+        'amount' => 900,
+        'installment_count' => 3,
+        'reason' => 'Partial repayment',
+        'status' => 'active',
+    ]);
+
+    $payment = app(RepayEmployeeLoan::class)->handle($loan, 'cash', null, 100.0);
+    $firstInstallment = $loan->installments()->orderBy('due_date')->firstOrFail();
+
+    expect((float) $payment->amount)->toBe(100.0)
+        ->and($loan->refresh()->status)->toBe('partially_paid')
+        ->and((float) $firstInstallment->refresh()->paid_amount)->toBe(100.0)
+        ->and($firstInstallment->status)->toBe('pending')
+        ->and((float) $loan->remainingBalance())->toBe(800.0);
+
+    $payrollRun = PayrollRun::create([
+        'name' => 'Partial repayment payroll',
+        'period_start' => '2026-05-01',
+        'period_end' => '2026-05-31',
+    ]);
+
+    app(CalculatePayrollRun::class)->handle($payrollRun, [$employee->id]);
+
+    $payrollEmployee = $payrollRun->employees()->firstOrFail();
+
+    expect((float) $payrollEmployee->loan)->toBe(200.0)
+        ->and($loan->refresh()->status)->toBe('partially_paid');
+
+    app(PostPayrollRun::class)->handle($payrollRun);
+
+    expect($firstInstallment->refresh()->status)->toBe('paid')
+        ->and((float) $firstInstallment->paid_amount)->toBe(300.0)
+        ->and($loan->refresh()->status)->toBe('partially_paid')
+        ->and((float) $loan->remainingBalance())->toBe(600.0);
 });
 
 it('applies paid and unpaid leave to payroll absence deductions', function () {
@@ -361,7 +552,7 @@ it('applies paid and unpaid leave to payroll absence deductions', function () {
         'first_name' => 'Leave',
         'last_name' => 'Tester',
         'phone' => '0911000004',
-        'hire_date' => '2026-01-01',
+        'hire_date' => '2018-01-01',
         'status' => 'active',
         'basic_salary' => 10000,
     ]);
@@ -408,6 +599,84 @@ it('applies paid and unpaid leave to payroll absence deductions', function () {
         ->and((int) $payrollEmployee->calculation_snapshot['unpaid_leave_minutes'])->toBe(480);
 });
 
+it('pro-rates salary for employees hired during the payroll period', function () {
+    $this->seed(PayrollTaxRuleSeeder::class);
+
+    $employee = Employee::create([
+        'employee_id' => 'EMP-PRORATE-1',
+        'attendance_device_id' => '702',
+        'first_name' => 'Prorated',
+        'last_name' => 'Hire',
+        'phone' => '0911777002',
+        'hire_date' => '2026-05-16',
+        'status' => 'active',
+        'basic_salary' => 26000,
+        'overtime_multiplier' => 1,
+    ]);
+
+    $payrollRun = PayrollRun::create([
+        'name' => 'Prorated payroll',
+        'period_start' => '2026-05-01',
+        'period_end' => '2026-05-31',
+    ]);
+
+    app(CalculatePayrollRun::class)->handle($payrollRun, [$employee->id]);
+
+    $payrollEmployee = $payrollRun->employees()->firstOrFail();
+
+    expect((float) $payrollEmployee->basic_salary)->toBe(13000.0)
+        ->and((float) $payrollEmployee->calculation_snapshot['full_basic_salary'])->toBe(26000.0)
+        ->and($payrollEmployee->calculation_snapshot['employment_business_days'])->toBe(13)
+        ->and($payrollEmployee->calculation_snapshot['period_business_days'])->toBe(26);
+});
+
+it('does not double count unpaid leave and attendance absence on the same day', function () {
+    $this->seed(PayrollTaxRuleSeeder::class);
+
+    $employee = Employee::create([
+        'employee_id' => 'EMP-LEAVE-DAILY',
+        'attendance_device_id' => '703',
+        'first_name' => 'Daily',
+        'last_name' => 'Leave',
+        'phone' => '0911777003',
+        'hire_date' => '2026-01-01',
+        'status' => 'active',
+        'basic_salary' => 10000,
+        'overtime_multiplier' => 1,
+    ]);
+    $unpaidLeave = LeaveType::create(['name' => 'Unpaid daily', 'is_paid' => false]);
+
+    AttendanceDailySummary::create([
+        'employee_id' => $employee->id,
+        'date' => '2026-05-04',
+        'expected_minutes' => 480,
+        'worked_minutes' => 0,
+        'absence_minutes' => 480,
+        'status' => 'absent',
+    ]);
+
+    $employee->leaveRequests()->create([
+        'leave_type_id' => $unpaidLeave->id,
+        'start_date' => '2026-05-04',
+        'end_date' => '2026-05-04',
+        'status' => 'approved',
+    ]);
+
+    $payrollRun = PayrollRun::create([
+        'name' => 'Daily leave payroll',
+        'period_start' => '2026-05-01',
+        'period_end' => '2026-05-31',
+    ]);
+
+    app(CalculatePayrollRun::class)->handle($payrollRun, [$employee->id]);
+
+    $payrollEmployee = $payrollRun->employees()->firstOrFail();
+
+    expect((float) $payrollEmployee->penalty_hours)->toBe(8.0)
+        ->and((float) $payrollEmployee->penalty_amount)->toBe(333.33)
+        ->and((int) $payrollEmployee->calculation_snapshot['deductible_absent_minutes'])->toBe(480);
+});
+
 it('does not calculate an empty payroll run when no active employees exist', function () {
     $this->seed(PayrollTaxRuleSeeder::class);
 
@@ -438,7 +707,7 @@ it('posts payroll journals and generates outbound payroll payments', function ()
         'first_name' => 'Abdulhalim',
         'last_name' => 'Abubeker',
         'phone' => '0911000002',
-        'hire_date' => '2026-01-01',
+        'hire_date' => '2018-01-01',
         'status' => 'active',
         'basic_salary' => 10000,
         'overtime_multiplier' => 1,
@@ -449,7 +718,7 @@ it('posts payroll journals and generates outbound payroll payments', function ()
         'first_name' => 'Second',
         'last_name' => 'Payroll',
         'phone' => '0911000005',
-        'hire_date' => '2026-01-01',
+        'hire_date' => '2018-01-01',
         'status' => 'active',
         'basic_salary' => 8000,
         'overtime_multiplier' => 1,

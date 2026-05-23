@@ -10,6 +10,7 @@ enum PaymentTransactionType: string
     case PETTY_CASH_FUNDING = 'petty_cash_funding';
     case PETTY_CASH_EXPENSE = 'petty_cash_expense';
     case PAYROLL_PAYMENT = 'payroll_payment';
+    case EMPLOYEE_LOAN_REPAYMENT = 'employee_loan_repayment';
 
     public function label(): string
     {
@@ -20,6 +21,7 @@ enum PaymentTransactionType: string
             self::PETTY_CASH_FUNDING => 'Petty Cash Funding',
             self::PETTY_CASH_EXPENSE => 'Petty Cash Expense',
             self::PAYROLL_PAYMENT => 'Payroll Payment',
+            self::EMPLOYEE_LOAN_REPAYMENT => 'Employee Loan Repayment',
         };
     }
 
@@ -32,6 +34,7 @@ enum PaymentTransactionType: string
             self::PETTY_CASH_FUNDING => 'Moves money into petty cash. Debits petty cash and credits cash/bank.',
             self::PETTY_CASH_EXPENSE => 'Expense paid out of petty cash. Debits expense and credits petty cash.',
             self::PAYROLL_PAYMENT => 'Salary payment. Debits payroll payable and credits cash/bank.',
+            self::EMPLOYEE_LOAN_REPAYMENT => 'Employee loan repayment. Debits cash/bank and credits employee loan receivable.',
         };
     }
 
@@ -55,7 +58,7 @@ enum PaymentTransactionType: string
     public function direction(): string
     {
         return match ($this) {
-            self::CUSTOMER_RECEIPT => 'inbound',
+            self::CUSTOMER_RECEIPT, self::EMPLOYEE_LOAN_REPAYMENT => 'inbound',
             default => 'outbound',
         };
     }

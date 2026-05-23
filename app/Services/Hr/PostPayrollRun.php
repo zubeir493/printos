@@ -3,6 +3,7 @@
 namespace App\Services\Hr;
 
 use App\Models\Account;
+use App\Models\EmployeeLoanInstallment;
 use App\Models\JournalEntry;
 use App\Models\JournalItem;
 use App\Models\PayrollRun;
@@ -28,7 +29,7 @@ class PostPayrollRun
             $netPay = (float) $payrollRun->employees->sum('net_pay');
             $incomeTax = (float) $payrollRun->employees->sum('income_tax');
             $penalty = (float) $payrollRun->employees->sum('penalty_amount');
-            $pension = (float) $payrollRun->employees->sum('pension_18');
+            $pension = (float) $payrollRun->employees->sum('pension_contribution');
             $loan = (float) $payrollRun->employees->sum('loan');
             $workersUnion = (float) $payrollRun->employees->sum('workers_union');
 
@@ -52,8 +53,10 @@ class PostPayrollRun
             $this->item($journalEntry, '2160', 'PAYE Tax Payable', 'Liability', 0, $incomeTax);
             $this->item($journalEntry, '2165', 'Payroll Penalty Clearing', 'Liability', 0, $penalty);
             $this->item($journalEntry, '2170', 'Pension Payable', 'Liability', 0, $pension);
-            $this->item($journalEntry, '2180', 'Loan Payable', 'Liability', 0, $loan);
+            $this->item($journalEntry, '1230', 'Employee Loans Receivable', 'Asset', 0, $loan);
             $this->item($journalEntry, '2190', 'Workers Union Payable', 'Liability', 0, $workersUnion);
+
+            $this->markLoanInstallmentsPaid($payrollRun);
 
             $payrollRun->update([
                 'status' => 'approved',
@@ -77,5 +80,31 @@ class PostPayrollRun
             'debit' => round($debit, 2),
             'credit' => round($credit, 2),
         ]);
+    }
+
+    private function markLoanInstallmentsPaid(PayrollRun $payrollRun): void
+    {
+        $payrollRun->employees->each(function ($employeePayroll): void {
+            $installmentIds = $employeePayroll->calculation_snapshot['loan_installment_ids'] ?? [];
+
+            if (! is_array($installmentIds) || $installmentIds === []) {
+                return;
+            }
+
+            EmployeeLoanInstallment::query()
+                ->whereIn('id', $installmentIds)
+                ->where('status', 'pending')
+                ->get()
+                ->each(function (EmployeeLoanInstallment $installment) use ($employeePayroll): void {
+                    $installment->update([
+                        'paid_amount' => $installment->amount,
+                        'status' => 'paid',
+                        'payroll_run_employee_id' => $employeePayroll->id,
+                        'paid_at' => now(),
+                    ]);
+
+                    $installment->loan->syncStatusFromInstallments();
+                });
+        });
     }
 }

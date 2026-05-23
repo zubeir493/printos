@@ -23,6 +23,8 @@ class Setting extends Model
         'vat_enabled',
         'workers_union_enabled',
         'workers_union_rate',
+        'employee_pension_rate',
+        'employer_pension_rate',
         'tax_configuration',
         'invoice_terms',
         'invoice_due_days',
@@ -42,6 +44,8 @@ class Setting extends Model
             'vat_rate' => 'decimal:2',
             'workers_union_enabled' => 'boolean',
             'workers_union_rate' => 'decimal:2',
+            'employee_pension_rate' => 'decimal:2',
+            'employer_pension_rate' => 'decimal:2',
             'tax_configuration' => 'array',
             'invoice_due_days' => 'integer',
         ];
@@ -77,6 +81,8 @@ class Setting extends Model
             'vat_enabled' => true,
             'workers_union_enabled' => true,
             'workers_union_rate' => 1,
+            'employee_pension_rate' => 7,
+            'employer_pension_rate' => 11,
             'tax_configuration' => [
                 ['name' => 'VAT', 'rate' => 0.15],
             ],

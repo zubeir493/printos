@@ -11,6 +11,7 @@ use App\Models\BankTransfer;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class BankTransferResource extends Resource
 {
@@ -30,6 +31,11 @@ class BankTransferResource extends Resource
     public static function table(Table $table): Table
     {
         return BankTransfersTable::configure($table);
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()->with(['fromBank', 'toBank']);
     }
 
     public static function getRelations(): array

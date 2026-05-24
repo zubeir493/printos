@@ -78,6 +78,28 @@ class ViewJobOrderTask extends ViewRecord
                         ->success()
                         ->send();
                 }),
+            Action::make('assign_typist')
+                ->label('Assign Typist')
+                ->icon('heroicon-o-document-text')
+                ->color('warning')
+                ->visible(fn ($record) => blank($record->typist_id)
+                    && ! in_array($record->status, ['completed', 'cancelled'])
+                    && in_array(Filament::getCurrentPanel()?->getId(), ['admin', 'operations']))
+                ->form([
+                    Select::make('typist_id')
+                        ->label('Typist')
+                        ->options(User::where('role', 'typist')->pluck('name', 'id'))
+                        ->required(),
+                ])
+                ->action(function (array $data, $record) {
+                    $record->update(['typist_id' => $data['typist_id']]);
+                    $record->updateStatus();
+
+                    Notification::make()
+                        ->title('Typist assigned')
+                        ->success()
+                        ->send();
+                }),
             Action::make('log_production')
                 ->label('Log Production')
                 ->icon('heroicon-o-archive-box-arrow-down')

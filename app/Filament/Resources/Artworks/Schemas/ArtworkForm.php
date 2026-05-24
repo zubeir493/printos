@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Artworks\Schemas;
 
+use App\Models\JobOrderTask;
 use App\Support\PrivateStorage;
 use Filament\Forms\Components\BaseFileUpload;
 use Filament\Forms\Components\FileUpload;
@@ -11,6 +12,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Flex;
 use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Utilities\Get as UtilitiesGet;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\HtmlString;
@@ -30,7 +32,16 @@ class ArtworkForm
                             ->required()
                             ->searchable()
                             ->preload()
+                            ->live()
                             ->columnSpan(1),
+                        Select::make('deliverable')
+                            ->label('Deliverable')
+                            ->options(fn (UtilitiesGet $get): array => self::artworkDeliverableOptions((int) $get('job_order_task_id')))
+                            ->visible(fn (UtilitiesGet $get): bool => filled(self::artworkDeliverableOptions((int) $get('job_order_task_id'))))
+                            ->required(fn (UtilitiesGet $get): bool => filled(self::artworkDeliverableOptions((int) $get('job_order_task_id'))))
+                            ->searchable()
+                            ->preload()
+                            ->placeholder('Select an artwork deliverable'),
                         FileUpload::make('filename')
                             ->label('Artwork File')
                             ->disk(config('filesystems.private_disk', 's3'))
@@ -79,5 +90,20 @@ class ArtworkForm
                 Hidden::make('uploaded_by')
                     ->default(fn () => Auth::id()),
             ]);
+    }
+
+    private static function artworkDeliverableOptions(?int $taskId): array
+    {
+        if (! $taskId) {
+            return [];
+        }
+
+        $task = JobOrderTask::find($taskId);
+
+        if (! $task) {
+            return [];
+        }
+
+        return $task->deliverableOptionsForType('artwork');
     }
 }

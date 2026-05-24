@@ -39,6 +39,7 @@ class UsersTable
                             'retail' => Color::Lime,
                             'hr' => Color::Purple,
                             'design' => Color::Pink,
+                            'typist' => Color::Teal,
                             'production' => Color::Orange,
                             'warehouse' => Color::Cyan,
                             default => 'gray',
@@ -50,6 +51,8 @@ class UsersTable
                 SelectFilter::make('role')
                     ->options([
                         UserRole::Admin->value => 'Admin',
+                        UserRole::Design->value => 'Design',
+                        UserRole::Typist->value => 'Typist',
                         UserRole::Operations->value => 'Operations',
                         UserRole::Finance->value => 'Finance',
                         UserRole::Sales->value => 'Sales',

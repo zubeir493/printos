@@ -113,7 +113,7 @@ class JobOrderTasksTable
                         ->form([
                             Select::make('designer_id')
                                 ->label('Designer')
-                                ->options(User::where('role', 'design')->pluck('name', 'id'))
+                                ->options(User::where('role', UserRole::Design->value)->pluck('name', 'id'))
                                 ->required(),
                             Textarea::make('instructions')
                                 ->label('Brief / Instructions')
@@ -131,6 +131,44 @@ class JobOrderTasksTable
 
                             Notification::make()
                                 ->title('Designer assigned')
+                                ->success()
+                                ->send();
+                        }),
+                    Action::make('assign_typist')
+                        ->label('Assign Typist')
+                        ->icon('heroicon-o-document-text')
+                        ->color('warning')
+                        ->visible(fn ($record) => blank($record->typist_id)
+                            && ! in_array($record->status, ['completed', 'cancelled'])
+                            && in_array(Filament::getCurrentPanel()?->getId(), ['admin', 'operations']))
+                        ->form([
+                            Select::make('typist_id')
+                                ->label('Typist')
+                                ->options(User::where('role', UserRole::Typist->value)->pluck('name', 'id'))
+                                ->required(),
+                        ])
+                        ->action(function (array $data, $record) {
+                            $record->update(['typist_id' => $data['typist_id']]);
+                            $record->updateStatus();
+
+                            Notification::make()
+                                ->title('Typist assigned')
+                                ->success()
+                                ->send();
+                        }),
+                    Action::make('send_to_production')
+                        ->label('Send to Production')
+                        ->icon('heroicon-o-arrow-up-tray')
+                        ->color('success')
+                        ->visible(fn ($record) => in_array(Filament::getCurrentPanel()?->getId(), ['admin', 'operations'])
+                            && $record->status === 'design')
+                        ->requiresConfirmation()
+                        ->modalDescription('Move this task to production once the required files are ready?')
+                        ->action(function ($record) {
+                            $record->update(['status' => 'production']);
+
+                            Notification::make()
+                                ->title('Task sent to production')
                                 ->success()
                                 ->send();
                         }),

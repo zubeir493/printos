@@ -207,6 +207,7 @@ class SalesOrderForm
                                     ->numeric()
                                     ->required()
                                     ->default(1)
+                                    ->minValue(0.01)
                                     ->suffix(fn ($get) => $get('unit_label') ?: 'unit')
                                     ->live()
                                     ->afterStateUpdated(function (Set $set, Get $get, $state) {
@@ -224,6 +225,7 @@ class SalesOrderForm
                                     ->numeric()
                                     ->required()
                                     ->default(0)
+                                    ->minValue(0)
                                     ->suffix('Birr')
                                     ->live(onBlur: true)
                                     ->afterStateUpdated(function (Set $set, Get $get, $state) {

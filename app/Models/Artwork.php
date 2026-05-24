@@ -26,6 +26,7 @@ class Artwork extends Model
     protected $fillable = [
         'job_order_task_id',
         'filename',
+        'deliverable',
         'is_approved',
         'uploaded_by',
     ];

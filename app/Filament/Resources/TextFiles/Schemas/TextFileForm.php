@@ -2,12 +2,15 @@
 
 namespace App\Filament\Resources\TextFiles\Schemas;
 
+use App\Models\JobOrderTask;
 use App\Support\PrivateStorage;
 use Filament\Forms\Components\BaseFileUpload;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Utilities\Get as UtilitiesGet;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Facades\Auth;
 
@@ -26,7 +29,16 @@ class TextFileForm
                             ->required()
                             ->searchable()
                             ->preload()
+                            ->live()
                             ->columnSpan(1),
+                        Select::make('deliverable')
+                            ->label('Deliverable')
+                            ->options(fn (UtilitiesGet $get): array => self::textFileDeliverableOptions((int) $get('job_order_task_id')))
+                            ->visible(fn (UtilitiesGet $get): bool => filled(self::textFileDeliverableOptions((int) $get('job_order_task_id'))))
+                            ->required(fn (UtilitiesGet $get): bool => filled(self::textFileDeliverableOptions((int) $get('job_order_task_id'))))
+                            ->searchable()
+                            ->preload()
+                            ->placeholder('Select a text file deliverable'),
                         FileUpload::make('filename')
                             ->label('Text File')
                             ->disk(config('filesystems.private_disk', 's3'))
@@ -52,9 +64,35 @@ class TextFileForm
                             ->live()
                             ->columnSpanFull(),
                     ])->columnSpanFull(),
+                Toggle::make('is_approved')
+                    ->label('Approved for Production')
+                    ->default(false)
+                    ->onColor('success')
+                    ->offColor('danger')
+                    ->live()
+                    ->afterStateUpdated(function ($state, $record) {
+                        if ($record && $record->jobOrderTask) {
+                            $record->jobOrderTask->updateStatus();
+                        }
+                    }),
                 Hidden::make('original_name'),
                 Hidden::make('uploaded_by')
                     ->default(fn () => Auth::id()),
             ]);
+    }
+
+    private static function textFileDeliverableOptions(?int $taskId): array
+    {
+        if (! $taskId) {
+            return [];
+        }
+
+        $task = JobOrderTask::find($taskId);
+
+        if (! $task) {
+            return [];
+        }
+
+        return $task->deliverableOptionsForType('text_file');
     }
 }

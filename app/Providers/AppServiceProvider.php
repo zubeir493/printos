@@ -18,6 +18,7 @@ use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderItem;
 use App\Models\SalesOrder;
 use App\Models\StockMovement;
+use App\Models\TextFile;
 use App\Observers\ArtworkObserver;
 use App\Observers\BankTransferObserver;
 use App\Observers\EmployeeObserver;
@@ -31,6 +32,7 @@ use App\Observers\PurchaseOrderItemObserver;
 use App\Observers\PurchaseOrderObserver;
 use App\Observers\SalesOrderObserver;
 use App\Observers\StockMovementObserver;
+use App\Observers\TextFileObserver;
 use App\Policies\PaymentPolicy;
 use Filament\Actions\CreateAction;
 use Filament\Support\Facades\FilamentTimezone;
@@ -135,6 +137,7 @@ class AppServiceProvider extends ServiceProvider
         InventoryItem::observe(InventoryItemObserver::class);
         InventoryBalance::observe(InventoryBalanceObserver::class);
         Artwork::observe(ArtworkObserver::class);
+        TextFile::observe(TextFileObserver::class);
         MaterialRequest::observe(MaterialRequestObserver::class);
     }
 }

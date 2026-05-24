@@ -106,7 +106,8 @@ class JobOrderForm
 
                                 TextInput::make('quantity')
                                     ->required()
-                                    ->numeric(),
+                                    ->numeric()
+                                    ->minValue(1),
 
                                 TextInput::make('size')
                                     ->label('Size'),
@@ -116,6 +117,7 @@ class JobOrderForm
                                     ->numeric()
                                     ->suffix('Birr')
                                     ->required()
+                                    ->minValue(0)
                                     ->live()
                                     ->afterStateUpdated(function (UtilitiesGet $get, UtilitiesSet $set) {
                                         Calculations::sumRepeater($get, $set, '../../jobOrderTasks', 'subtotal', 'task_cost');
@@ -156,10 +158,12 @@ class JobOrderForm
                                         TextInput::make('required_quantity')
                                             ->numeric()
                                             ->required()
+                                            ->minValue(0)
                                             ->default(0),
 
                                         TextInput::make('reserve_quantity')
                                             ->numeric()
+                                            ->minValue(0)
                                             ->default(0),
 
                                         Hidden::make('base_unit'),
@@ -184,6 +188,43 @@ class JobOrderForm
                                                 ];
                                                 $component->state($state);
                                             }),
+                                    ]),
+                                Repeater::make('deliverables')
+                                    ->label('Required files for this task')
+                                    ->table([
+                                        TableColumn::make('Name')->alignLeft(),
+                                        TableColumn::make('File Type')->alignLeft(),
+                                    ])
+                                    ->compact()
+                                    ->columnSpanFull()
+                                    ->addable(false)
+                                    ->reorderable(false)
+                                    ->defaultItems(1)
+                                    ->extraItemActions([
+                                        Action::make('add_deliverable')
+                                            ->label('Add Deliverable')
+                                            ->icon('heroicon-o-plus')
+                                            ->action(function (Repeater $component) {
+                                                $state = $component->getState() ?? [];
+                                                $state[(string) Str::uuid()] = [
+                                                    'label' => '',
+                                                    'type' => 'artwork',
+                                                ];
+                                                $component->state($state);
+                                            }),
+                                    ])
+                                    ->schema([
+                                        TextInput::make('label')
+                                            ->label('Deliverable')
+                                            ->placeholder('Cover Artwork')
+                                            ->required(),
+                                        Select::make('type')
+                                            ->label('Type')
+                                            ->options([
+                                                'artwork' => 'Artwork',
+                                                'text_file' => 'Text File',
+                                            ])
+                                            ->required(),
                                     ]),
                             ])
                             ->columns(4)

@@ -17,7 +17,16 @@ class TextFile extends Model
         'uploaded_by',
         'filename',
         'original_name',
+        'deliverable',
+        'is_approved',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'is_approved' => 'boolean',
+        ];
+    }
 
     public function jobOrderTask(): BelongsTo
     {

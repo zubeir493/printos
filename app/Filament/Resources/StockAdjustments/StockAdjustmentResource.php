@@ -15,6 +15,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class StockAdjustmentResource extends Resource
 {
@@ -45,6 +46,11 @@ class StockAdjustmentResource extends Resource
     {
         return StockAdjustmentsTable::configure($table)
             ->recordUrl(fn ($record) => static::getUrl('view', ['record' => $record]));
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()->with(['warehouse']);
     }
 
     public static function getRelations(): array

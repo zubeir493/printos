@@ -75,7 +75,9 @@ class JobOrdersTable
                     ->weight(fn ($record): FontWeight => $record->balance <= 0
                         ? FontWeight::Bold
                         : FontWeight::SemiBold)
-                    ->visible(fn () => PanelAccess::canSeeMoneyValues())
+                    ->visible(fn ($record) => is_object($record)
+                        && PanelAccess::canSeeMoneyValues()
+                        && ($record->production_mode ?? null) !== 'make_to_stock')
                     ->sortable(),
             ])
             ->headerActions([
@@ -125,7 +127,11 @@ class JobOrdersTable
                         ->label('Invoice')
                         ->icon('heroicon-o-document-text')
                         ->color('primary')
-                        ->hidden(fn ($record) => $record->invoices()->exists() || ! PanelAccess::canSeeMoneyValues() || $record->balance <= 0 || $record->production_mode === 'make_to_stock')
+                        ->hidden(fn ($record) => ! is_object($record)
+                            || $record->invoices()->exists()
+                            || ! PanelAccess::canSeeMoneyValues()
+                            || $record->balance <= 0
+                            || ($record->production_mode ?? null) === 'make_to_stock')
                         ->action(function ($record) {
                             try {
                                 $invoiceService = app(InvoiceGeneratorService::class);
@@ -156,10 +162,11 @@ class JobOrdersTable
                         ->label('Recieve Payment')
                         ->icon('heroicon-o-banknotes')
                         ->color('success')
-                        ->visible(fn ($record) => $record->balance > 0 &&
-                            PanelAccess::canAccessFinanceSection() &&
-                            in_array($record->status, ['active', 'completed']) &&
-                            $record->production_mode !== 'make_to_stock'
+                        ->visible(fn ($record) => is_object($record)
+                            && $record->balance > 0
+                            && PanelAccess::canAccessFinanceSection()
+                            && in_array($record->status, ['active', 'completed'])
+                            && ($record->production_mode ?? null) !== 'make_to_stock'
                         )
                         ->schema([
                             Grid::make(2)->schema([

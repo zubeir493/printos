@@ -33,7 +33,7 @@ class ArtworkResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()->with(['jobOrder', 'uploader']);
+        return parent::getEloquentQuery()->with(['jobOrder', 'jobOrderTask', 'uploader']);
     }
 
     public static function getRelations(): array

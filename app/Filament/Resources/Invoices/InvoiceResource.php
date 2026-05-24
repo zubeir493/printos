@@ -55,7 +55,7 @@ class InvoiceResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()->with(['partner']);
+        return parent::getEloquentQuery()->with(['partner', 'salesOrder', 'purchaseOrder', 'jobOrder', 'payment']);
     }
 
     public static function getNavigationBadge(): ?string

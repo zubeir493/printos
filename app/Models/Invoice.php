@@ -110,15 +110,38 @@ class Invoice extends Model
     }
 
     /**
+     * Explicit relationships for manual eager loading.
+     */
+    public function salesOrder(): BelongsTo
+    {
+        return $this->belongsTo(SalesOrder::class, 'order_id');
+    }
+
+    public function purchaseOrder(): BelongsTo
+    {
+        return $this->belongsTo(PurchaseOrder::class, 'order_id');
+    }
+
+    public function jobOrder(): BelongsTo
+    {
+        return $this->belongsTo(JobOrder::class, 'order_id');
+    }
+
+    public function payment(): BelongsTo
+    {
+        return $this->belongsTo(Payment::class, 'order_id');
+    }
+
+    /**
      * Get the related order based on order_type.
      */
     public function order()
     {
         return match ($this->order_type) {
-            'sales_order' => $this->belongsTo(SalesOrder::class, 'order_id'),
-            'purchase_order' => $this->belongsTo(PurchaseOrder::class, 'order_id'),
-            'job_order' => $this->belongsTo(JobOrder::class, 'order_id'),
-            'payment' => $this->belongsTo(Payment::class, 'order_id'),
+            'sales_order' => $this->salesOrder(),
+            'purchase_order' => $this->purchaseOrder(),
+            'job_order' => $this->jobOrder(),
+            'payment' => $this->payment(),
             default => null,
         };
     }

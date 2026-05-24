@@ -8,6 +8,7 @@ enum UserRole: string
 {
     case Admin = 'admin';
     case Design = 'design';
+    case Typist = 'typist';
     case Production = 'production';
     case Finance = 'finance';
     case Sales = 'sales';
@@ -24,6 +25,7 @@ enum UserRole: string
 
         return match ($panel->getId()) {
             'design' => $this === self::Design,
+            'typist' => $this === self::Typist,
             'production' => $this === self::Production,
             'finance' => $this === self::Finance,
             'sales' => $this === self::Sales,
@@ -40,6 +42,7 @@ enum UserRole: string
         return match ($this) {
             self::Admin => '/',
             self::Design => '/design',
+            self::Typist => '/typist',
             self::Production => '/production',
             self::Finance => '/finance',
             self::Sales => '/sales',

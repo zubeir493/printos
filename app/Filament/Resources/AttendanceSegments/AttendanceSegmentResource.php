@@ -111,6 +111,11 @@ class AttendanceSegmentResource extends Resource
             ->defaultSort('date', 'desc');
     }
 
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()->with(['employee']);
+    }
+
     public static function getPages(): array
     {
         return [

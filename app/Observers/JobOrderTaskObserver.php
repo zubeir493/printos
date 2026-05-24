@@ -5,18 +5,24 @@ namespace App\Observers;
 use App\Models\JobOrder;
 use App\Models\JobOrderTask;
 use App\Notifications\DesignerAssignedToTask;
+use App\Notifications\TypistAssignedToTask;
 
 class JobOrderTaskObserver
 {
     public function created(JobOrderTask $task): void
     {
         $this->notifyDesigner($task);
+        $this->notifyTypist($task);
     }
 
     public function updated(JobOrderTask $task): void
     {
         if ($task->wasChanged('designer_id')) {
             $this->notifyDesigner($task);
+        }
+
+        if ($task->wasChanged('typist_id')) {
+            $this->notifyTypist($task);
         }
     }
 
@@ -40,6 +46,19 @@ class JobOrderTaskObserver
 
         if ($designer) {
             $designer->notify(new DesignerAssignedToTask($task));
+        }
+    }
+
+    private function notifyTypist(JobOrderTask $task): void
+    {
+        if (! $task->typist_id) {
+            return;
+        }
+
+        $typist = $task->typist;
+
+        if ($typist) {
+            $typist->notify(new TypistAssignedToTask($task));
         }
     }
 

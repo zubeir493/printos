@@ -80,6 +80,11 @@ class User extends Authenticatable implements FilamentUser
         return $this->hasMany(JobOrderTask::class, 'designer_id');
     }
 
+    public function assignedTypistTasks(): HasMany
+    {
+        return $this->hasMany(JobOrderTask::class, 'typist_id');
+    }
+
     public function warehouses(): BelongsToMany
     {
         return $this->belongsToMany(Warehouse::class)->withTimestamps();

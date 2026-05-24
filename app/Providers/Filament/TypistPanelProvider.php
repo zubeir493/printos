@@ -3,19 +3,9 @@
 namespace App\Providers\Filament;
 
 use App\Filament\AvatarProviders\PrimaryColorAvatarProvider;
-use App\Filament\Hr\Widgets\HrPanelStats;
-use App\Filament\Hr\Widgets\SalaryRevisionHistoryTable;
-use App\Filament\Hr\Widgets\WorkforceCompositionChart;
 use App\Filament\Pages\Auth\EditProfile;
-use App\Filament\Resources\AttendanceImports\AttendanceImportResource;
-use App\Filament\Resources\AttendanceSegments\AttendanceSegmentResource;
-use App\Filament\Resources\EmployeeLoans\EmployeeLoanResource;
-use App\Filament\Resources\Employees\EmployeeResource;
-use App\Filament\Resources\Holidays\HolidayResource;
-use App\Filament\Resources\LeaveRequests\LeaveRequestResource;
-use App\Filament\Resources\LeaveTypes\LeaveTypeResource;
-use App\Filament\Resources\PayrollRuns\PayrollRunResource;
-use App\Filament\Resources\Shifts\ShiftResource;
+use App\Filament\Resources\JobOrderTasks\JobOrderTaskResource;
+use App\Filament\Resources\TextFiles\TextFileResource;
 use Filament\Enums\ThemeMode;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -32,13 +22,13 @@ use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 
-class HrPanelProvider extends PanelProvider
+class TypistPanelProvider extends PanelProvider
 {
     public function panel(Panel $panel): Panel
     {
         return $panel
-            ->id('hr')
-            ->path('hr')
+            ->id('typist')
+            ->path('typist')
             ->authGuard('web')
             ->viteTheme('resources/css/filament/admin/theme.css')
             ->font('Albert Sans')
@@ -53,23 +43,11 @@ class HrPanelProvider extends PanelProvider
                 'primary' => Color::Indigo,
             ])
             ->resources([
-                AttendanceImportResource::class,
-                AttendanceSegmentResource::class,
-                EmployeeLoanResource::class,
-                EmployeeResource::class,
-                HolidayResource::class,
-                LeaveRequestResource::class,
-                LeaveTypeResource::class,
-                PayrollRunResource::class,
-                ShiftResource::class,
+                JobOrderTaskResource::class,
+                TextFileResource::class,
             ])
             ->pages([
                 Dashboard::class,
-            ])
-            ->widgets([
-                HrPanelStats::class,
-                WorkforceCompositionChart::class,
-                SalaryRevisionHistoryTable::class,
             ])
             ->middleware([
                 EncryptCookies::class,
@@ -84,9 +62,6 @@ class HrPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
-            ])
-            ->plugins([
-                //
             ]);
     }
 }

@@ -17,7 +17,7 @@ class JobOrderTask extends Model
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly(['name', 'designer_id', 'quantity', 'task_cost', 'status', 'size'])
+            ->logOnly(['name', 'designer_id', 'typist_id', 'quantity', 'task_cost', 'status', 'size'])
             ->logOnlyDirty()
             ->useLogName('job_order_task');
     }
@@ -30,10 +30,12 @@ class JobOrderTask extends Model
     protected $fillable = [
         'job_order_id',
         'designer_id',
+        'typist_id',
         'name',
         'quantity',
         'task_cost',
         'paper',
+        'deliverables',
         'status',
         'size',
         'instructions',
@@ -50,8 +52,10 @@ class JobOrderTask extends Model
             'id' => 'integer',
             'job_order_id' => 'integer',
             'designer_id' => 'integer',
+            'typist_id' => 'integer',
             'task_cost' => 'decimal:2',
             'paper' => 'array',
+            'deliverables' => 'array',
         ];
     }
 
@@ -63,6 +67,11 @@ class JobOrderTask extends Model
     public function designer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'designer_id');
+    }
+
+    public function typist(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'typist_id');
     }
 
     public function dispatchItems(): HasMany
@@ -103,6 +112,63 @@ class JobOrderTask extends Model
         return $this->hasMany(Artwork::class);
     }
 
+    public function textFiles(): HasMany
+    {
+        return $this->hasMany(TextFile::class);
+    }
+
+    public function deliverableOptionsForType(string $type): array
+    {
+        return collect($this->deliverables ?? [])
+            ->filter(fn ($deliverable): bool => is_array($deliverable)
+                && ($deliverable['type'] ?? null) === $type
+                && filled($deliverable['label'] ?? null))
+            ->mapWithKeys(fn ($deliverable): array => [
+                (string) $deliverable['label'] => (string) $deliverable['label'],
+            ])
+            ->all();
+    }
+
+    public function canStartProduction(): bool
+    {
+        return $this->canAutoStartProduction();
+    }
+
+    public function canAutoStartProduction(): bool
+    {
+        return $this->status === 'design' && $this->isReadyForProduction();
+    }
+
+    public function isReadyForProduction(): bool
+    {
+        $deliverables = array_values(array_filter((array) $this->deliverables ?? [], fn ($deliverable) => is_array($deliverable)));
+
+        if ($deliverables === []) {
+            return $this->artworks()->where('is_approved', true)->exists()
+                || $this->textFiles()->where('is_approved', true)->exists();
+        }
+
+        foreach ($deliverables as $deliverable) {
+            $type = $deliverable['type'] ?? null;
+            $label = trim((string) ($deliverable['label'] ?? ''));
+
+            if (! in_array($type, ['artwork', 'text_file'], true) || $label === '') {
+                continue;
+            }
+
+            $approvedCount = match ($type) {
+                'artwork' => $this->artworks()->where('is_approved', true)->where('deliverable', $label)->count(),
+                'text_file' => $this->textFiles()->where('is_approved', true)->where('deliverable', $label)->count(),
+            };
+
+            if ($approvedCount < 1) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     /**
      * Update task status based on current conditions
      */
@@ -115,20 +181,19 @@ class JobOrderTask extends Model
 
         $newStatus = $this->status;
 
-        // Check if should be completed
-        if ($this->produced_quantity >= $this->quantity) {
+        if ($this->produced_quantity >= $this->quantity && $this->isReadyForProduction()) {
             $newStatus = 'completed';
-        }
-        // Check if should be in production (has approved artwork)
-        elseif ($this->artworks()->where('is_approved', true)->exists()) {
+        } elseif ($this->status === 'production' && $this->produced_quantity > 0) {
             $newStatus = 'production';
-        }
-        // Check if should be in design (has designer assigned)
-        elseif ($this->designer_id) {
+        } elseif ($this->status === 'design' && $this->isReadyForProduction()) {
+            $newStatus = 'production';
+        } elseif ($this->status === 'design' && ! $this->designer_id && ! $this->typist_id) {
+            $newStatus = 'draft';
+        } elseif ($this->designer_id) {
             $newStatus = 'design';
-        }
-        // Default to draft
-        else {
+        } elseif ($this->typist_id) {
+            $newStatus = $this->status ?: 'draft';
+        } else {
             $newStatus = 'draft';
         }
 

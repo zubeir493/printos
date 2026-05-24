@@ -80,6 +80,10 @@ class JobOrderTaskResource extends Resource
             $query->where('status', 'production');
         }
 
+        if (Filament::getCurrentPanel()?->getId() === 'typist') {
+            $query->where('typist_id', auth()->id());
+        }
+
         return $query;
     }
 
@@ -87,6 +91,7 @@ class JobOrderTaskResource extends Resource
     {
         $relations = [
             RelationManagers\ArtworksRelationManager::class,
+            RelationManagers\TextFilesRelationManager::class,
         ];
 
         // Only show material requests to non-design panels

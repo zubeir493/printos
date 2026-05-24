@@ -47,7 +47,7 @@ class WarehousePanelProvider extends PanelProvider
             ->databaseNotifications()
             ->defaultAvatarProvider(PrimaryColorAvatarProvider::class)
             ->profile(EditProfile::class)
-            ->brandLogo(asset('images/logo.svg')) // TODO: Place logo in public/images/logo.svg
+            ->brandLogo(asset('images/logo.svg'))
             ->brandLogoHeight('2rem')
             ->colors([
                 'primary' => Color::Indigo,

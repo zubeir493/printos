@@ -89,6 +89,8 @@ class InvoiceForm
                                     ->suffix('Birr')
                                     ->numeric()
                                     ->step(0.01)
+                                    ->required()
+                                    ->minValue(0)
                                     ->live(onBlur: true)
                                     ->afterStateUpdated(function ($state, Set $set) {
                                         $tax = $state * 0.15; // 15% tax
@@ -103,6 +105,7 @@ class InvoiceForm
                                     ->suffix('Birr')
                                     ->numeric()
                                     ->step(0.01)
+                                    ->required()
                                     ->readOnly(),
 
                                 TextInput::make('total_amount')
@@ -110,6 +113,7 @@ class InvoiceForm
                                     ->suffix('Birr')
                                     ->numeric()
                                     ->step(0.01)
+                                    ->required()
                                     ->readOnly(),
                             ]),
                     ]),

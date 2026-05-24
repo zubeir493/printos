@@ -41,7 +41,7 @@ class AdminPanelProvider extends PanelProvider
             ->profile(EditProfile::class)
             ->databaseNotifications()
             ->defaultAvatarProvider(PrimaryColorAvatarProvider::class)
-            ->brandLogo(asset('images/logo.svg')) // TODO: Place logo in public/images/logo.svg
+            ->brandLogo(asset('images/logo.svg'))
             ->brandLogoHeight('2rem')
             ->colors([
                 'primary' => Color::Indigo,

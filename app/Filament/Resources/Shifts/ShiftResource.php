@@ -22,7 +22,7 @@ class ShiftResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedClock;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Attendance';
+    protected static ?string $navigationParentItem = 'Attendance';
 
     protected static ?int $navigationSort = 300;
 

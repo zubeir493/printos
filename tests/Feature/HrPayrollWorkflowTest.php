@@ -451,7 +451,7 @@ it('deducts only due loan installments and closes them when payroll is posted', 
 
     expect($firstInstallment->refresh()->status)->toBe('paid')
         ->and((float) $firstInstallment->paid_amount)->toBe(400.0)
-        ->and($loan->refresh()->status)->toBe('active')
+        ->and($loan->refresh()->status)->toBe('partially_paid')
         ->and($loan->installments()->where('status', 'pending')->count())->toBe(2);
 });
 

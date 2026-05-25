@@ -4,8 +4,12 @@ namespace App\Observers;
 
 use App\Models\GoodsReceipt;
 use App\Models\PurchaseOrderItem;
+use App\Models\User;
+use App\Notifications\GoodsReceiptPostedNotification;
 use App\Services\InventoryService;
+use App\UserRole;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 
 class GoodsReceiptObserver
 {
@@ -15,14 +19,14 @@ class GoodsReceiptObserver
             return;
         }
 
-        DB::transaction(function () use ($receipt): void {
+        $processed = DB::transaction(function () use ($receipt): bool {
             // Re-fetch inside the transaction with a row lock so concurrent
             // requests cannot both pass the posted_at guard simultaneously.
-            $locked = GoodsReceipt::lockForUpdate()->find($receipt->id);
+            $locked = GoodsReceipt::with(['items.purchaseOrderItem'])->lockForUpdate()->find($receipt->id);
 
             if (! $locked || ! is_null($locked->posted_at)) {
                 // Already processed by a concurrent request — bail out safely.
-                return;
+                return false;
             }
 
             if (! $locked->warehouse_id) {
@@ -32,13 +36,14 @@ class GoodsReceiptObserver
             $inventoryService = app(InventoryService::class);
 
             foreach ($locked->items as $item) {
-                $poItem = PurchaseOrderItem::query()
-                    ->lockForUpdate()
-                    ->find($item->purchase_order_item_id);
+                $poItem = $item->purchaseOrderItem;
 
                 if (! $poItem) {
                     continue;
                 }
+
+                // Re-lock the PO item specifically
+                $poItem = PurchaseOrderItem::query()->lockForUpdate()->find($poItem->id);
 
                 $inventoryService->receiveStockInPurchaseUnit(
                     $poItem->inventory_item_id,
@@ -75,6 +80,22 @@ class GoodsReceiptObserver
                     $purchaseOrder->update(['status' => 'received']);
                 }
             }
+
+            return true;
         });
+
+        if (! $processed) {
+            return;
+        }
+
+        $recipients = User::whereIn('role', [
+            UserRole::Admin->value,
+            UserRole::Warehouse->value,
+            UserRole::Finance->value,
+        ])->get();
+
+        if ($recipients->isNotEmpty()) {
+            Notification::send($recipients, new GoodsReceiptPostedNotification($receipt->refresh()));
+        }
     }
 }

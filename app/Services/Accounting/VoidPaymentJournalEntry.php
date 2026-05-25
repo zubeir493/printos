@@ -64,6 +64,8 @@ class VoidPaymentJournalEntry
                 'void_reason' => $reason,
             ]);
 
+            $payment->refresh()->syncRelatedDocumentPaymentState();
+
             if ($payment->payable instanceof JobOrder) {
                 $jobOrder = $payment->payable->refresh();
                 $jobOrder->updateQuietly([

@@ -8,11 +8,11 @@ class SalesOrderItemObserver
 {
     public function saved(SalesOrderItem $item): void
     {
-        $item->salesOrder?->recalculateTotal();
+        $item->salesOrder?->recalculateTotals();
     }
 
     public function deleted(SalesOrderItem $item): void
     {
-        $item->salesOrder?->recalculateTotal();
+        $item->salesOrder?->recalculateTotals();
     }
 }

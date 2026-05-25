@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Partners;
 use App\Filament\Resources\Partners\Pages\CreatePartner;
 use App\Filament\Resources\Partners\Pages\EditPartner;
 use App\Filament\Resources\Partners\Pages\ListPartners;
+use App\Filament\Resources\Partners\Pages\PartnerStatement;
 use App\Filament\Resources\Partners\Pages\ViewPartner;
 use App\Filament\Resources\Partners\RelationManagers\JobOrdersRelationManager;
 use App\Filament\Resources\Partners\Schemas\PartnerForm;
@@ -60,6 +61,7 @@ class PartnerResource extends Resource
             'index' => ListPartners::route('/'),
             'create' => CreatePartner::route('/create'),
             'view' => ViewPartner::route('/{record}'),
+            'statement' => PartnerStatement::route('/{record}/statement'),
             'edit' => EditPartner::route('/{record}/edit'),
         ];
     }

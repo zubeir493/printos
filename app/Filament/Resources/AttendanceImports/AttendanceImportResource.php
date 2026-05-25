@@ -17,7 +17,7 @@ class AttendanceImportResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedArrowUpTray;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Attendance';
+    protected static ?string $navigationParentItem = 'Attendance';
 
     protected static ?int $navigationSort = 310;
 

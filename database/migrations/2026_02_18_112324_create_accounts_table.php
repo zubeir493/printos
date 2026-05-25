@@ -17,7 +17,7 @@ return new class extends Migration
             $table->id();
             $table->string('name');
             $table->string('code')->unique();
-            $table->enum('type', ["Asset","Liability","Equity","Revenue","Expense"]);
+            $table->enum('type', ['Asset', 'Liability', 'Equity', 'Revenue', 'Expense']);
             $table->timestamps();
         });
 

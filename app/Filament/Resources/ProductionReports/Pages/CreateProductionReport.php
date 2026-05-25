@@ -2,8 +2,8 @@
 
 namespace App\Filament\Resources\ProductionReports\Pages;
 
-use App\Filament\Resources\ProductionReports\ProductionReportResource;
 use App\Filament\Resources\Pages\CreateRecord;
+use App\Filament\Resources\ProductionReports\ProductionReportResource;
 
 class CreateProductionReport extends CreateRecord
 {

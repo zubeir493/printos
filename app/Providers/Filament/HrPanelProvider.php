@@ -9,12 +9,10 @@ use App\Filament\Hr\Widgets\WorkforceCompositionChart;
 use App\Filament\Pages\Auth\EditProfile;
 use App\Filament\Resources\AttendanceImports\AttendanceImportResource;
 use App\Filament\Resources\AttendanceSegments\AttendanceSegmentResource;
-use App\Filament\Resources\EmployeeLoans\EmployeeLoanResource;
 use App\Filament\Resources\Employees\EmployeeResource;
 use App\Filament\Resources\Holidays\HolidayResource;
 use App\Filament\Resources\LeaveRequests\LeaveRequestResource;
 use App\Filament\Resources\LeaveTypes\LeaveTypeResource;
-use App\Filament\Resources\PayrollRuns\PayrollRunResource;
 use App\Filament\Resources\Shifts\ShiftResource;
 use Filament\Enums\ThemeMode;
 use Filament\Http\Middleware\Authenticate;
@@ -55,12 +53,10 @@ class HrPanelProvider extends PanelProvider
             ->resources([
                 AttendanceImportResource::class,
                 AttendanceSegmentResource::class,
-                EmployeeLoanResource::class,
                 EmployeeResource::class,
                 HolidayResource::class,
                 LeaveRequestResource::class,
                 LeaveTypeResource::class,
-                PayrollRunResource::class,
                 ShiftResource::class,
             ])
             ->pages([

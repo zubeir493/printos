@@ -40,7 +40,7 @@ return Application::configure(basePath: dirname(__DIR__))
             $isFilamentRequest = $request->is('filament/*') || str_starts_with($request->path(), 'filament');
 
             // PHP fatal errors surfaced as Error instances (max execution time, memory, etc.)
-            if ($e instanceof \Error) {
+            if ($e instanceof Error) {
                 $message = $e->getMessage() ?? '';
 
                 if (str_contains($message, 'Maximum execution time')) {

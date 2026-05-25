@@ -33,7 +33,7 @@ class PayrollRunResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBanknotes;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Payroll';
+    protected static ?string $navigationLabel = 'Payroll';
 
     protected static ?int $navigationSort = 320;
 
@@ -51,7 +51,7 @@ class PayrollRunResource extends Resource
                 ]),
             Group::make()
                 ->columnSpanFull()
-                ->visible(fn (?PayrollRun $record, string $operation): bool => $operation !== 'create' && filled($record?->id))
+                ->visible(fn(?PayrollRun $record, string $operation): bool => $operation !== 'create' && filled($record?->id))
                 ->schema([
                     Repeater::make('employees')
                         ->extraAttributes(['class' => 'payrollTable'])
@@ -61,7 +61,7 @@ class PayrollRunResource extends Resource
                         ->addable(false)
                         ->deletable(false)
                         ->reorderable(false)
-                        ->disabled(fn (?PayrollRun $record): bool => $record?->status !== 'draft')
+                        ->disabled(fn(?PayrollRun $record): bool => $record?->status !== 'draft')
                         ->compact()
                         ->table([
                             TableColumn::make('Employee'),
@@ -88,7 +88,7 @@ class PayrollRunResource extends Resource
                             Hidden::make('calculation_snapshot'),
                             Select::make('employee_id')
                                 ->relationship('employee', 'first_name')
-                                ->getOptionLabelFromRecordUsing(fn (Employee $record): string => $record->full_name)
+                                ->getOptionLabelFromRecordUsing(fn(Employee $record): string => $record->full_name)
                                 ->searchable()
                                 ->preload()
                                 ->disabled()
@@ -113,7 +113,7 @@ class PayrollRunResource extends Resource
                             static::moneyInput('total_deduction')->disabled(),
                             static::moneyInput('net_pay')->disabled()->suffix('Birr'),
                         ])
-                        ->mutateRelationshipDataBeforeSaveUsing(fn (array $data, Model $record): array => app(RecalculatePayrollRegisterRow::class)->forData($data, $record->payrollRun()->first())),
+                        ->mutateRelationshipDataBeforeSaveUsing(fn(array $data, Model $record): array => app(RecalculatePayrollRegisterRow::class)->forData($data, $record->payrollRun()->first())),
                 ]),
         ]);
     }
@@ -127,7 +127,7 @@ class PayrollRunResource extends Resource
                 TextColumn::make('period_end')->date(),
                 TextColumn::make('status')
                     ->badge()
-                    ->color(fn (string $state): string => match ($state) {
+                    ->color(fn(string $state): string => match ($state) {
                         'approved' => 'warning',
                         'paid' => 'success',
                         default => 'gray',
@@ -175,53 +175,57 @@ class PayrollRunResource extends Resource
             ->extraInputAttributes(['class' => 'payroll-register-number-input'])
             ->dehydrated()
             ->live(onBlur: true)
-            ->afterStateUpdated(fn (Get $get, Set $set): null => static::recalculatePayrollRow($get, $set));
+            ->afterStateUpdated(fn(Get $get, Set $set): null => static::recalculatePayrollRow($get, $set));
     }
 
     private static function recalculatePayrollRow(Get $get, Set $set): null
     {
         $data = [];
 
-        foreach ([
-            'basic_salary',
-            'time_on_duty',
-            'pay_per_hour',
-            'bonus',
-            'transport_allowance',
-            'employer_pension_contribution',
-            'overtime_hours',
-            'overtime_amount',
-            'gross_earning',
-            'taxable_amount',
-            'income_tax',
-            'penalty_hours',
-            'penalty_amount',
-            'pension_contribution',
-            'loan',
-            'workers_union',
-            'total_deduction',
-            'net_pay',
-            'calculation_snapshot',
-        ] as $field) {
+        foreach (
+            [
+                'basic_salary',
+                'time_on_duty',
+                'pay_per_hour',
+                'bonus',
+                'transport_allowance',
+                'employer_pension_contribution',
+                'overtime_hours',
+                'overtime_amount',
+                'gross_earning',
+                'taxable_amount',
+                'income_tax',
+                'penalty_hours',
+                'penalty_amount',
+                'pension_contribution',
+                'loan',
+                'workers_union',
+                'total_deduction',
+                'net_pay',
+                'calculation_snapshot',
+            ] as $field
+        ) {
             $data[$field] = $get($field);
         }
 
         $calculated = app(RecalculatePayrollRegisterRow::class)->forData($data);
 
-        foreach ([
-            'pay_per_hour',
-            'employer_pension_contribution',
-            'overtime_amount',
-            'gross_earning',
-            'taxable_amount',
-            'income_tax',
-            'penalty_amount',
-            'pension_contribution',
-            'workers_union',
-            'total_deduction',
-            'net_pay',
-            'calculation_snapshot',
-        ] as $field) {
+        foreach (
+            [
+                'pay_per_hour',
+                'employer_pension_contribution',
+                'overtime_amount',
+                'gross_earning',
+                'taxable_amount',
+                'income_tax',
+                'penalty_amount',
+                'pension_contribution',
+                'workers_union',
+                'total_deduction',
+                'net_pay',
+                'calculation_snapshot',
+            ] as $field
+        ) {
             $set($field, $calculated[$field]);
         }
 

@@ -17,7 +17,7 @@ class ViewInvoice extends ViewRecord
             Actions\Action::make('download')
                 ->label('Download')
                 ->icon('heroicon-o-arrow-down-tray')
-                ->url(fn($record) => app(InvoiceGeneratorService::class)->getInvoicePath($record->filename))
+                ->url(fn ($record) => app(InvoiceGeneratorService::class)->getInvoicePath($record->filename))
                 ->openUrlInNewTab(),
         ];
     }

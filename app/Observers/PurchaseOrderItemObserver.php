@@ -21,7 +21,7 @@ class PurchaseOrderItemObserver
     {
         if ($purchaseOrder) {
             // Re-calculate financial subtotal whenever an item changes
-            $purchaseOrder->recalculateSubtotal();
+            $purchaseOrder->recalculateTotals();
 
             $allItems = $purchaseOrder->purchaseOrderItems()->get();
 

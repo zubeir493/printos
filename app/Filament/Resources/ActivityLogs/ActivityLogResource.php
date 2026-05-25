@@ -5,11 +5,13 @@ namespace App\Filament\Resources\ActivityLogs;
 use App\Filament\Resources\ActivityLogs\Pages\ListActivityLogs;
 use App\Filament\Resources\ActivityLogs\Pages\ViewActivityLog;
 use App\Filament\Resources\ActivityLogs\Tables\ActivityLogsTable;
+use App\UserRole;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Auth;
 use Spatie\Activitylog\Models\Activity;
 
 class ActivityLogResource extends Resource
@@ -41,12 +43,12 @@ class ActivityLogResource extends Resource
 
     public static function canViewAny(): bool
     {
-        return true;
+        return Auth::user()?->role === UserRole::Admin;
     }
 
     public static function canView($record): bool
     {
-        return true;
+        return Auth::user()?->role === UserRole::Admin;
     }
 
     public static function shouldRegisterNavigation(): bool

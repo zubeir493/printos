@@ -2,21 +2,22 @@
 
 namespace App\Filament\Widgets;
 
-use App\Models\JobOrder;
 use App\Models\Artwork;
+use App\Models\JobOrder;
 use App\Models\PurchaseOrder;
 use Filament\Widgets\ChartWidget;
 
 class SystemBottlenecksChart extends ChartWidget
 {
     protected ?string $heading = 'System Bottlenecks';
+
     protected static ?int $sort = 3;
 
     protected function getData(): array
     {
-        $joPending = \App\Models\JobOrder::where('status', 'draft')->count();
-        $artworkPending = \App\Models\Artwork::where('is_approved', false)->count();
-        $poPending = \App\Models\PurchaseOrder::where('status', 'pending')->count();
+        $joPending = JobOrder::where('status', 'draft')->count();
+        $artworkPending = Artwork::where('is_approved', false)->count();
+        $poPending = PurchaseOrder::whereNotIn('status', ['received', 'cancelled'])->count();
 
         return [
             'datasets' => [

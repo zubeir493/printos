@@ -15,7 +15,7 @@ class ListInvoices extends ListRecords
         return [
             Actions\Action::make('create')
                 ->label('Create Invoice')
-                ->url(fn() => static::getResource()::getUrl('create'))
+                ->url(fn () => static::getResource()::getUrl('create'))
                 ->icon('heroicon-o-plus')
                 ->color('primary'),
         ];

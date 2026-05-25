@@ -23,7 +23,7 @@ class StockMovementObserver
         Log::info('Balance updated', [
             'item' => $stockMovement->inventory_item_id,
             'warehouse' => $stockMovement->warehouse_id,
-            'change' => $quantityChange
+            'change' => $quantityChange,
         ]);
     }
 
@@ -53,7 +53,7 @@ class StockMovementObserver
         Log::info('StockMovement updated balance changes applied', [
             'id' => $stockMovement->id,
             'old' => ['item' => $oldItemId, 'warehouse' => $oldWarehouseId, 'qty' => $oldQuantity],
-            'new' => ['item' => $newItemId, 'warehouse' => $newWarehouseId, 'qty' => $newQuantity]
+            'new' => ['item' => $newItemId, 'warehouse' => $newWarehouseId, 'qty' => $newQuantity],
         ]);
     }
 
@@ -84,7 +84,7 @@ class StockMovementObserver
             'item' => $inventoryItemId,
             'warehouse' => $warehouseId,
             'delta' => $delta,
-            'new_qty' => $balance->fresh()->quantity_on_hand
+            'new_qty' => $balance->fresh()->quantity_on_hand,
         ]);
     }
 

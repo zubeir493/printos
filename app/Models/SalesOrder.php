@@ -96,7 +96,7 @@ class SalesOrder extends Model
         return (float) ($this->total - $this->paid_amount);
     }
 
-    public function recalculateTotal(): void
+    public function recalculateTotals(): void
     {
         $subtotal = (float) $this->salesOrderItems()->sum('total');
         $taxRate = $this->getTaxRate();
@@ -151,7 +151,7 @@ class SalesOrder extends Model
                 modelClass: self::class,
                 column: 'order_number',
                 prefix: 'SO-',
-                padding: 5,
+                padding: 6,
                 likePattern: 'SO-%',
             );
         });
@@ -184,6 +184,7 @@ class SalesOrder extends Model
 
                     $balance = InventoryBalance::where('inventory_item_id', $item->inventory_item_id)
                         ->where('warehouse_id', $salesOrder->warehouse_id)
+                        ->lockForUpdate()
                         ->first();
                     $qty = $balance ? (float) $balance->quantity_on_hand : 0;
 
@@ -204,26 +205,31 @@ class SalesOrder extends Model
                 in_array($salesOrder->status, [self::STATUS_SUBMITTED, self::STATUS_COMPLETED], true)
             ) {
                 DB::transaction(function () use ($salesOrder) {
+                    $salesOrder->loadMissing('salesOrderItems.inventoryItem');
+
+                    $existingItemIds = StockMovement::where('reference_type', self::class)
+                        ->where('reference_id', $salesOrder->id)
+                        ->pluck('inventory_item_id')
+                        ->toArray();
+
                     foreach ($salesOrder->salesOrderItems as $item) {
-                        // Prevent duplicate movements
-                        $exists = StockMovement::where('reference_type', self::class)
-                            ->where('reference_id', $salesOrder->id)
-                            ->where('inventory_item_id', $item->inventory_item_id)
-                            ->exists();
-
-                        if (! $exists) {
-                            $baseQty = $item->baseQuantityForStockMovement();
-
-                            StockMovement::create([
-                                'inventory_item_id' => $item->inventory_item_id,
-                                'warehouse_id' => $salesOrder->warehouse_id,
-                                'type' => 'sale',
-                                'reference_type' => self::class,
-                                'reference_id' => $salesOrder->id,
-                                'quantity' => -abs($baseQty),
-                                'movement_date' => now(),
-                            ]);
+                        if (in_array($item->inventory_item_id, $existingItemIds, true)) {
+                            continue;
                         }
+
+                        $baseQty = $item->baseQuantityForStockMovement();
+
+                        StockMovement::create([
+                            'inventory_item_id' => $item->inventory_item_id,
+                            'warehouse_id' => $salesOrder->warehouse_id,
+                            'type' => 'sale',
+                            'reference_type' => self::class,
+                            'reference_id' => $salesOrder->id,
+                            'quantity' => -abs($baseQty),
+                            'movement_date' => now(),
+                        ]);
+
+                        $existingItemIds[] = $item->inventory_item_id;
                     }
                 });
             }

@@ -22,7 +22,7 @@ class PurchaseInvoiceFactory extends Factory
             'subtotal' => fake()->randomFloat(2, 0, 9999999999999.99),
             'tax_amount' => fake()->randomFloat(2, 0, 9999999999999.99),
             'total_amount' => fake()->randomFloat(2, 0, 9999999999999.99),
-            'status' => fake()->randomElement(["draft","posted","partially_paid","paid","void"]),
+            'status' => fake()->randomElement(['draft', 'posted', 'partially_paid', 'paid', 'void']),
         ];
     }
 }

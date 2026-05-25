@@ -22,7 +22,7 @@ return new class extends Migration
             $table->foreignId('completed_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamp('completed_at')->nullable();
             $table->timestamps();
-            
+
             $table->index('transfer_number');
             $table->index('status');
             $table->index('transfer_date');

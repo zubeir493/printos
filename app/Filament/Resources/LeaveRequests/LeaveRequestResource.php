@@ -21,9 +21,7 @@ class LeaveRequestResource extends Resource
 {
     protected static ?string $model = LeaveRequest::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCalendarDateRange;
-
-    protected static string|UnitEnum|null $navigationGroup = 'Leave';
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedClipboardDocumentCheck;
 
     protected static ?int $navigationSort = 330;
 

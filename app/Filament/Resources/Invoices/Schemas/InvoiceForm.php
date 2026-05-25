@@ -3,14 +3,15 @@
 namespace App\Filament\Resources\Invoices\Schemas;
 
 use App\Models\Partner;
+use App\Models\Setting;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
-use Filament\Forms\Set;
 use Filament\Schemas\Components\Grid as ComponentsGrid;
 use Filament\Schemas\Components\Section as ComponentsSection;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 
 class InvoiceForm
@@ -26,8 +27,9 @@ class InvoiceForm
                             ->schema([
                                 TextInput::make('invoice_number')
                                     ->label('Invoice Number')
-                                    ->required()
                                     ->readOnly()
+                                    ->dehydrated(false)
+                                    ->placeholder('Auto-generated')
                                     ->prefix('#'),
 
                                 Select::make('invoice_type')
@@ -52,7 +54,7 @@ class InvoiceForm
                                 DatePicker::make('due_date')
                                     ->label('Due Date')
                                     ->required()
-                                    ->default(fn () => now()->addDays(30))
+                                    ->default(fn() => now()->addDays(30))
                                     ->after('invoice_date'),
                             ]),
                     ]),
@@ -69,7 +71,7 @@ class InvoiceForm
                                     ->preload()
                                     ->required()
                                     ->live()
-                                    ->afterStateUpdated(fn ($state, Set $set) => $set('email_recipient', Partner::find($state)?->email)),
+                                    ->afterStateUpdated(fn($state, Set $set) => $set('email_recipient', Partner::find($state)?->email)),
 
                                 TextInput::make('email_recipient')
                                     ->label('Email')
@@ -93,7 +95,8 @@ class InvoiceForm
                                     ->minValue(0)
                                     ->live(onBlur: true)
                                     ->afterStateUpdated(function ($state, Set $set) {
-                                        $tax = $state * 0.15; // 15% tax
+                                        $vatRate = (float) (Setting::getSettings()->vat_rate ?? 0) / 100;
+                                        $tax = $state * $vatRate;
                                         $total = $state + $tax;
                                         $set('tax_amount', $tax);
                                         $set('total_amount', $total);
@@ -101,7 +104,7 @@ class InvoiceForm
                                     }),
 
                                 TextInput::make('tax_amount')
-                                    ->label('Tax (15%)')
+                                    ->label(fn() => 'Tax (' . (Setting::getSettings()->vat_rate ?? 0) . '%)')
                                     ->suffix('Birr')
                                     ->numeric()
                                     ->step(0.01)

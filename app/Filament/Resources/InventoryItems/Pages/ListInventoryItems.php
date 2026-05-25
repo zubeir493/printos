@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\InventoryItems\Pages;
 
 use App\Filament\Resources\InventoryItems\InventoryItemResource;
+use App\Filament\Widgets\StockOverviewStats;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
 
@@ -20,7 +21,7 @@ class ListInventoryItems extends ListRecords
     protected function getHeaderWidgets(): array
     {
         return [
-            \App\Filament\Widgets\StockOverviewStats::class,
+            StockOverviewStats::class,
         ];
     }
 }

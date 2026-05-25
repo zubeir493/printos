@@ -2,10 +2,10 @@
 
 namespace App\Filament\Resources\Users\Schemas;
 
+use App\Models\Warehouse;
 use App\UserRole;
-use Filament\Forms\Get;
-use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Utilities\Get as UtilitiesGet;
 use Filament\Schemas\Schema;
 
@@ -22,20 +22,20 @@ class UserForm
                     ->email()
                     ->required(),
                 Select::make('role')
-                    ->options(\App\UserRole::class)
+                    ->options(UserRole::class)
                     ->required()
-                    ->default(\App\UserRole::Design)
+                    ->default(UserRole::Design)
                     ->live(),
                 TextInput::make('password')
                     ->password()
-                    ->dehydrateStateUsing(fn($state) => filled($state) ? bcrypt($state) : null)
-                    ->dehydrated(fn($state) => filled($state))
-                    ->required(fn(string $context) => $context === 'create')
+                    ->dehydrateStateUsing(fn ($state) => filled($state) ? bcrypt($state) : null)
+                    ->dehydrated(fn ($state) => filled($state))
+                    ->required(fn (string $context) => $context === 'create')
                     ->helperText('Leave blank to keep current password')
                     ->label('Password'),
                 Select::make('warehouse_ids')
                     ->label('Assigned Warehouses')
-                    ->options(fn () => \App\Models\Warehouse::orderBy('name')->pluck('name', 'id')->all())
+                    ->options(fn () => Warehouse::orderBy('name')->pluck('name', 'id')->all())
                     ->multiple()
                     ->searchable()
                     ->preload()

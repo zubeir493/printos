@@ -60,9 +60,7 @@ class InvoiceResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        $count = static::getModel()::where('due_date', '<', now())
-            ->where('status', '!=', 'paid')
-            ->count();
+        $count = static::getModel()::overdue()->count();
 
         return $count > 0 ? (string) $count : null;
     }

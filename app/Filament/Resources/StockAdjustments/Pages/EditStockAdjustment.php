@@ -3,7 +3,9 @@
 namespace App\Filament\Resources\StockAdjustments\Pages;
 
 use App\Filament\Resources\StockAdjustments\StockAdjustmentResource;
+use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 
 class EditStockAdjustment extends EditRecord
@@ -15,7 +17,7 @@ class EditStockAdjustment extends EditRecord
         return [
             DeleteAction::make()
                 ->hidden(fn ($record) => $record->status === 'posted'),
-            \Filament\Actions\Action::make('post')
+            Action::make('post')
                 ->label('Post Adjustment')
                 ->color('success')
                 ->icon('heroicon-o-check-circle')
@@ -24,7 +26,7 @@ class EditStockAdjustment extends EditRecord
                 ->action(function ($record) {
                     $record->post();
                     $this->refreshFormData(['status', 'posted_at']);
-                    \Filament\Notifications\Notification::make()
+                    Notification::make()
                         ->title('Adjustment Posted Successfully')
                         ->success()
                         ->send();

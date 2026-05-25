@@ -65,7 +65,7 @@ class JobOrderTaskObserver
     private function syncJobOrderStatus(?JobOrder $jobOrder): void
     {
         if ($jobOrder) {
-            $jobOrder->recalculateTotal();
+            $jobOrder->recalculateTotals();
             $jobOrder->refresh()->syncCompletionStatus();
         }
     }

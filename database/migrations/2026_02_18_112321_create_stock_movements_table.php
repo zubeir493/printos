@@ -17,7 +17,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('inventory_item_id')->constrained();
             $table->foreignId('warehouse_id')->constrained();
-            $table->enum('type', ["purchase","consumption","transfer_in","transfer_out","adjustment"]);
+            $table->enum('type', ['purchase', 'consumption', 'transfer_in', 'transfer_out', 'adjustment']);
             $table->string('reference_type')->nullable();
             $table->unsignedBigInteger('reference_id')->nullable();
             $table->decimal('quantity', 15, 2);

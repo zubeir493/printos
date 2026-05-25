@@ -344,7 +344,7 @@ class ViewJobOrder extends ViewRecord
                             ]);
                         }
 
-                        $po->recalculateSubtotal();
+                        $po->recalculateTotals();
 
                         \DB::commit();
 

@@ -2,6 +2,8 @@
 
 namespace App\Filament\Finance\Widgets;
 
+use App\Mail\CustomerReminderMail;
+use App\Models\EmailLog;
 use App\Models\Partner;
 use App\Models\SalesOrder;
 use App\Support\Money;
@@ -11,6 +13,8 @@ use Filament\Notifications\Notification;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget as BaseWidget;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Mail;
 
 class HighRiskReceivables extends BaseWidget
 {
@@ -43,7 +47,7 @@ class HighRiskReceivables extends BaseWidget
                     ->label('Contact'),
                 Tables\Columns\TextColumn::make('total_balance')
                     ->label('Outstanding Balance')
-                    ->formatStateUsing(fn ($state) => Money::format($state))
+                    ->formatStateUsing(fn($state) => Money::format($state))
                     ->color('danger')
                     ->sortable(),
             ])
@@ -53,7 +57,41 @@ class HighRiskReceivables extends BaseWidget
                         ->label('Send Reminder')
                         ->icon('heroicon-m-envelope')
                         ->color('warning')
-                        ->action(fn (Partner $record) => Notification::make()->title('Reminder Sent')->success()->send()),
+                        ->action(function (Partner $record): void {
+                            if (blank($record->email)) {
+                                Notification::make()
+                                    ->title('Reminder not sent')
+                                    ->body('This customer does not have an email address on file.')
+                                    ->warning()
+                                    ->send();
+
+                                return;
+                            }
+
+                            try {
+                                Mail::to($record->email)->queue(new CustomerReminderMail($record));
+
+                                EmailLog::create([
+                                    'recipient_email' => $record->email,
+                                    'subject' => 'Payment reminder from ' . config('app.name'),
+                                    'message' => 'High-risk receivables reminder sent to ' . $record->name,
+                                    'sent_by' => Auth::id(),
+                                    'sent_at' => now(),
+                                ]);
+
+                                Notification::make()
+                                    ->title('Reminder Sent')
+                                    ->body('Reminder sent to ' . $record->email)
+                                    ->success()
+                                    ->send();
+                            } catch (\Throwable $exception) {
+                                Notification::make()
+                                    ->title('Reminder Failed')
+                                    ->body($exception->getMessage())
+                                    ->danger()
+                                    ->send();
+                            }
+                        }),
                 ]),
             ]);
     }

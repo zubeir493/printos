@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Payments\Pages;
 
 use App\Filament\Resources\Payments\PaymentResource;
+use App\Filament\Widgets\PaymentsStatsWidget;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
 
@@ -20,7 +21,7 @@ class ListPayments extends ListRecords
     protected function getHeaderWidgets(): array
     {
         return [
-            \App\Filament\Widgets\PaymentsStatsWidget::class,
+            PaymentsStatsWidget::class,
         ];
     }
 }

@@ -140,7 +140,7 @@ class ActivityLogsTable
                 ?? $attrs['name'] ?? null;
 
             // If not found in properties, try to get from the subject model
-            if (!$ref && $record->subject) {
+            if (! $ref && $record->subject) {
                 $subjectModel = $record->subject;
                 $ref = $subjectModel->job_order_number ?? $subjectModel->po_number ?? $subjectModel->order_number
                     ?? $subjectModel->invoice_number ?? $subjectModel->payment_number ?? $subjectModel->transfer_number

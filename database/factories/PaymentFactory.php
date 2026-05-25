@@ -17,8 +17,8 @@ class PaymentFactory extends Factory
             'partner_id' => Partner::factory(),
             'payment_date' => fake()->date(),
             'amount' => fake()->randomFloat(2, 0, 9999999999999.99),
-            'direction' => fake()->randomElement(["inbound","outbound"]),
-            'method' => fake()->randomElement(["cash","bank","cheque"]),
+            'direction' => fake()->randomElement(['inbound', 'outbound']),
+            'method' => fake()->randomElement(['cash', 'bank', 'cheque']),
             'reference' => fake()->word(),
         ];
     }

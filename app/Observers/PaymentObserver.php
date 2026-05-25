@@ -7,8 +7,12 @@ use App\Models\Bank;
 use App\Models\JournalEntry;
 use App\Models\Partner;
 use App\Models\Payment;
+use App\Models\User;
+use App\Notifications\PaymentReceivedNotification;
 use App\Services\Accounting\CreatePaymentJournalEntry;
 use App\Support\Money;
+use App\UserRole;
+use Illuminate\Support\Facades\Notification;
 
 class PaymentObserver
 {
@@ -47,6 +51,13 @@ class PaymentObserver
     public function created(Payment $payment): void
     {
         app(CreatePaymentJournalEntry::class)->handle($payment);
+
+        if ($payment->direction === 'inbound') {
+            $recipients = User::whereIn('role', [UserRole::Admin->value, UserRole::Finance->value])->get();
+            if ($recipients->isNotEmpty()) {
+                Notification::send($recipients, new PaymentReceivedNotification($payment));
+            }
+        }
 
         if (! $this->isBankPayment($payment)) {
             return;

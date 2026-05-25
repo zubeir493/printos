@@ -4,8 +4,8 @@ namespace Tests\Feature;
 
 use App\Models\GoodsReceipt;
 use App\Models\GoodsReceiptItem;
-use App\Models\InventoryItem;
 use App\Models\InventoryBalance;
+use App\Models\InventoryItem;
 use App\Models\Partner;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderItem;

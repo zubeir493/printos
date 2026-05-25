@@ -2,16 +2,16 @@
 
 namespace App\Policies;
 
+use App\Models\JournalEntry;
 use App\Models\Payment;
 use App\Models\User;
-use App\Models\JournalEntry;
 
 class PaymentPolicy
 {
     public function update(User $user, Payment $payment): bool
     {
         // Allow editing only if no journal entries exist
-        return !JournalEntry::where('source_type', Payment::class)
+        return ! JournalEntry::where('source_type', Payment::class)
             ->where('source_id', $payment->id)
             ->exists();
     }
@@ -19,7 +19,7 @@ class PaymentPolicy
     public function delete(User $user, Payment $payment): bool
     {
         // Same logic for deletion
-        return !JournalEntry::where('source_type', Payment::class)
+        return ! JournalEntry::where('source_type', Payment::class)
             ->where('source_id', $payment->id)
             ->exists();
     }

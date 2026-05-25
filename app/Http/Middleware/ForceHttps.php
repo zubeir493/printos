@@ -11,11 +11,11 @@ class ForceHttps
     /**
      * Handle an incoming request.
      *
-     * @param  \Closure(\Illuminate\Http\Request): mixed  $next
+     * @param  Closure(Request): mixed  $next
      */
     public function handle(Request $request, Closure $next): Response
     {
-        if (!$request->secure() && app()->environment('production')) {
+        if (! $request->secure() && app()->environment('production')) {
             return redirect()->secure($request->getRequestUri());
         }
 

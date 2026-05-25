@@ -2,8 +2,8 @@
 
 namespace App\Filament\Resources\StockTransfers\Pages;
 
-use App\Filament\Resources\StockTransfers\StockTransferResource;
 use App\Filament\Resources\Pages\CreateRecord;
+use App\Filament\Resources\StockTransfers\StockTransferResource;
 
 class CreateStockTransfer extends CreateRecord
 {

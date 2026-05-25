@@ -3,8 +3,8 @@
 namespace App\Mail;
 
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
+use Illuminate\Mail\Mailables\Attachment;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
@@ -14,8 +14,11 @@ class ShareArtwork extends Mailable
     use Queueable, SerializesModels;
 
     public $artwork;
+
     public $recipientEmail;
+
     public $customMessage;
+
     public $subjectLine;
 
     /**
@@ -46,7 +49,7 @@ class ShareArtwork extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: $this->subjectLine ?: 'Artwork Shared: ' . basename($this->artwork->filename),
+            subject: $this->subjectLine ?: 'Artwork Shared: '.basename($this->artwork->filename),
         );
     }
 
@@ -67,7 +70,7 @@ class ShareArtwork extends Mailable
     /**
      * Get the attachments for the message.
      *
-     * @return array<int, \Illuminate\Mail\Mailables\Attachment>
+     * @return array<int, Attachment>
      */
     public function attachments(): array
     {

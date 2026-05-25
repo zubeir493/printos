@@ -15,7 +15,7 @@ return new class extends Migration
             if (Schema::hasColumn('stock_adjustment_items', 'counted_quantity')) {
                 $table->renameColumn('counted_quantity', 'adjustment_quantity');
             }
-            if (!Schema::hasColumn('stock_adjustment_items', 'new_quantity')) {
+            if (! Schema::hasColumn('stock_adjustment_items', 'new_quantity')) {
                 $table->decimal('new_quantity', 15, 2)->default(0)->after('difference');
             }
         });

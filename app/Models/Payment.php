@@ -124,15 +124,15 @@ class Payment extends Model
         });
 
         static::saved(function (self $payment): void {
-            $payment->syncPayablePaymentState();
+            $payment->syncRelatedDocumentPaymentState();
         });
 
         static::deleted(function (self $payment): void {
-            $payment->syncPayablePaymentState();
+            $payment->syncRelatedDocumentPaymentState();
         });
     }
 
-    private function syncPayablePaymentState(): void
+    public function syncRelatedDocumentPaymentState(): void
     {
         $payable = $this->payable;
 
@@ -143,6 +143,7 @@ class Payment extends Model
                 'advance_amount' => $jobOrder->paid_amount,
             ]);
             $jobOrder->syncCompletionStatus();
+            $this->syncInvoicesForDocument($jobOrder);
         }
 
         if ($payable instanceof SalesOrder) {
@@ -154,6 +155,55 @@ class Payment extends Model
             ) {
                 $salesOrder->updateQuietly(['status' => SalesOrder::STATUS_COMPLETED]);
             }
+
+            $this->syncInvoicesForDocument($salesOrder);
         }
+
+        if ($payable instanceof PurchaseOrder) {
+            $this->syncInvoicesForDocument($payable->refresh());
+        }
+
+        if ($payable instanceof Invoice) {
+            $this->syncInvoiceBalance($payable->refresh());
+        }
+    }
+
+    private function syncInvoicesForDocument(SalesOrder|JobOrder|PurchaseOrder $document): void
+    {
+        $paidAmount = (float) $document->payments()
+            ->whereNull('voided_at')
+            ->sum('amount');
+
+        $document->invoices()->get()->each(function (Invoice $invoice) use ($document, $paidAmount): void {
+            $this->syncInvoiceBalance($invoice, (float) $document->total, $paidAmount);
+        });
+    }
+
+    private function syncInvoiceBalance(Invoice $invoice, ?float $totalAmount = null, ?float $paidAmount = null): void
+    {
+        if ($invoice->status === 'cancelled') {
+            return;
+        }
+
+        $totalAmount ??= (float) $invoice->total_amount;
+        $paidAmount ??= (float) $invoice->payments()
+            ->whereNull('voided_at')
+            ->sum('amount');
+
+        $balanceDue = max(0, round($totalAmount - $paidAmount, 2));
+
+        $status = $invoice->status;
+        if ($balanceDue <= 0.001) {
+            $status = 'paid';
+        } elseif ($paidAmount > 0) {
+            $status = 'partial';
+        } elseif ($status === 'paid' || $status === 'partial') {
+            $status = 'sent';
+        }
+
+        $invoice->updateQuietly([
+            'balance_due' => $balanceDue,
+            'status' => $status,
+        ]);
     }
 }

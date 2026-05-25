@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 
@@ -84,8 +85,22 @@ class JobOrderTask extends Model
         return $this->hasMany(ProductionPlanItem::class);
     }
 
+    public function productionMovements(): MorphMany
+    {
+        return $this->morphMany(StockMovement::class, 'reference')
+            ->where('type', 'production_output');
+    }
+
     public function getProducedQuantityAttribute(): int|float
     {
+        if ($this->relationLoaded('productionMovements')) {
+            return (float) $this->productionMovements->sum('quantity');
+        }
+
+        if (array_key_exists('production_movements_sum_quantity', $this->getAttributes())) {
+            return (float) $this->getAttribute('production_movements_sum_quantity');
+        }
+
         return (float) StockMovement::where('reference_type', static::class)
             ->where('reference_id', $this->id)
             ->where('type', 'production_output')

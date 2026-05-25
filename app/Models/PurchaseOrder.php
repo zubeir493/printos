@@ -78,6 +78,12 @@ class PurchaseOrder extends Model
         return $this->morphMany(Payment::class, 'payable');
     }
 
+    public function invoices(): HasMany
+    {
+        return $this->hasMany(Invoice::class, 'order_id')
+            ->where('order_type', 'purchase_order');
+    }
+
     public function getPaidAmountAttribute(): float
     {
         return (float) $this->payments()->whereNull('voided_at')->sum('amount');
@@ -88,7 +94,7 @@ class PurchaseOrder extends Model
         return (float) (($this->total ?? 0) - $this->paid_amount);
     }
 
-    public function recalculateSubtotal(): void
+    public function recalculateTotals(): void
     {
         $subtotal = (float) $this->purchaseOrderItems()->sum('total');
         $taxRate = $this->getTaxRate();
@@ -120,7 +126,7 @@ class PurchaseOrder extends Model
                 modelClass: self::class,
                 column: 'po_number',
                 prefix: 'PO-',
-                padding: 4,
+                padding: 6,
                 likePattern: 'PO-%',
             );
         });

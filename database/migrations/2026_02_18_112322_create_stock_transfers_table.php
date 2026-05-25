@@ -19,7 +19,7 @@ return new class extends Migration
             $table->foreignId('from_warehouse_id');
             $table->foreignId('to_warehouse_id');
             $table->date('transfer_date');
-            $table->enum('status', ["draft","completed","cancelled"]);
+            $table->enum('status', ['draft', 'completed', 'cancelled']);
             $table->timestamps();
         });
 

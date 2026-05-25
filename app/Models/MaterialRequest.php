@@ -29,10 +29,8 @@ class MaterialRequest extends Model
         'reason',
     ];
 
-    public static function boot()
+    protected static function booted(): void
     {
-        parent::boot();
-
         static::saving(function ($model) {
             if ($model->required_quantity < 0) {
                 throw new \InvalidArgumentException('Required quantity cannot be negative');

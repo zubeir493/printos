@@ -62,8 +62,7 @@ class JobOrderTasksTable
                     ->label('Deadline')
                     ->date()
                     ->sortable()
-                    ->since()
-                    ->color(fn ($state) => $state && Carbon::parse($state)->isPast() ? 'danger' : null),
+                    ->color(fn ($state) => $state && Carbon::parse($state)->isBefore(today()) ? 'danger' : null),
 
             ])
             ->headerActions([

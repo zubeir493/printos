@@ -21,7 +21,7 @@ class LeaveTypeResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedClipboardDocumentList;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Leave';
+    protected static ?string $navigationParentItem = 'Leave Requests';
 
     protected static ?int $navigationSort = 329;
 

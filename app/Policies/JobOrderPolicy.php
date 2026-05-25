@@ -14,6 +14,7 @@ class JobOrderPolicy
     public function viewAny(User $user): bool
     {
         $userRoleValue = $user->role?->value ?? $user->role;
+
         return in_array($userRoleValue, [
             UserRole::Admin->value,
             UserRole::Operations->value,
@@ -28,6 +29,7 @@ class JobOrderPolicy
     public function view(User $user, JobOrder $jobOrder): bool
     {
         $userRoleValue = $user->role?->value ?? $user->role;
+
         return in_array($userRoleValue, [
             UserRole::Admin->value,
             UserRole::Operations->value,
@@ -42,6 +44,7 @@ class JobOrderPolicy
     public function create(User $user): bool
     {
         $userRoleValue = $user->role?->value ?? $user->role;
+
         return in_array($userRoleValue, [
             UserRole::Admin->value,
             UserRole::Operations->value,
@@ -54,6 +57,7 @@ class JobOrderPolicy
     public function update(User $user, JobOrder $jobOrder): bool
     {
         $userRoleValue = $user->role?->value ?? $user->role;
+
         return in_array($userRoleValue, [
             UserRole::Admin->value,
             UserRole::Operations->value,
@@ -66,6 +70,7 @@ class JobOrderPolicy
     public function delete(User $user, JobOrder $jobOrder): bool
     {
         $userRoleValue = $user->role?->value ?? $user->role;
+
         return in_array($userRoleValue, [
             UserRole::Admin->value,
             UserRole::Operations->value,
@@ -78,6 +83,7 @@ class JobOrderPolicy
     public function restore(User $user, JobOrder $jobOrder): bool
     {
         $userRoleValue = $user->role?->value ?? $user->role;
+
         return in_array($userRoleValue, [
             UserRole::Admin->value,
             UserRole::Operations->value,
@@ -90,6 +96,7 @@ class JobOrderPolicy
     public function forceDelete(User $user, JobOrder $jobOrder): bool
     {
         $userRoleValue = $user->role?->value ?? $user->role;
+
         return in_array($userRoleValue, [
             UserRole::Admin->value,
             UserRole::Operations->value,

@@ -3,10 +3,10 @@
 namespace App\Filament\Resources\Invoices\Pages;
 
 use App\Filament\Resources\Invoices\InvoiceResource;
-use Filament\Actions;
-use Filament\Resources\Pages\EditRecord;
-use Filament\Notifications\Notification;
 use BackedEnum;
+use Filament\Actions;
+use Filament\Notifications\Notification;
+use Filament\Resources\Pages\EditRecord;
 
 class EditInvoice extends EditRecord
 {
@@ -27,13 +27,13 @@ class EditInvoice extends EditRecord
                 ->modalHeading('Delete Invoice')
                 ->modalDescription('Are you sure you want to delete this invoice? This action cannot be undone.')
                 ->modalSubmitActionLabel('Yes, delete it'),
-                
+
             Actions\Action::make('save')
                 ->label('Save Changes')
                 ->action('save')
                 ->icon('heroicon-o-check')
                 ->color('success'),
-                
+
             Actions\Action::make('cancel')
                 ->label('Cancel')
                 ->url($this->getResource()::getUrl('index'))

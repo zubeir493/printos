@@ -23,7 +23,7 @@ return new class extends Migration
 
         // Recreate production_plan_items to avoid foreign key issues when dropping and recreating tables
         Schema::dropIfExists('production_plan_items');
-        
+
         Schema::create('production_plan_items', function (Blueprint $table) {
             $table->id();
             $table->foreignId('production_plan_machine_id')->constrained()->cascadeOnDelete();
@@ -46,7 +46,7 @@ return new class extends Migration
 
         Schema::dropIfExists('production_plan_items');
         Schema::dropIfExists('production_plan_machines');
-        
+
         // Recreate original production_plan_items
         Schema::create('production_plan_items', function (Blueprint $table) {
             $table->id();

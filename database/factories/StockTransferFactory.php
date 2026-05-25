@@ -18,7 +18,7 @@ class StockTransferFactory extends Factory
             'from_warehouse_id' => FromWarehouse::factory(),
             'to_warehouse_id' => ToWarehouse::factory(),
             'transfer_date' => fake()->date(),
-            'status' => fake()->randomElement(["draft","completed","cancelled"]),
+            'status' => fake()->randomElement(['draft', 'completed', 'cancelled']),
         ];
     }
 }

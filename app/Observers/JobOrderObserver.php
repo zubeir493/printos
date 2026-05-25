@@ -18,7 +18,7 @@ class JobOrderObserver
             modelClass: JobOrder::class,
             column: 'job_order_number',
             prefix: 'JO-',
-            padding: 4,
+            padding: 6,
             likePattern: 'JO-%',
         );
     }

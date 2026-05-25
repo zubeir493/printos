@@ -3,7 +3,7 @@
 namespace App\Policies;
 
 use App\Models\User;
-use Illuminate\Auth\Access\Response;
+use App\UserRole;
 
 class UserPolicy
 {
@@ -12,7 +12,7 @@ class UserPolicy
      */
     public function viewAny(User $user): bool
     {
-        return ($user->role?->value ?? $user->role) === \App\UserRole::Admin->value;
+        return ($user->role?->value ?? $user->role) === UserRole::Admin->value;
     }
 
     /**
@@ -20,7 +20,7 @@ class UserPolicy
      */
     public function view(User $user, User $model): bool
     {
-        return ($user->role?->value ?? $user->role) === \App\UserRole::Admin->value;
+        return ($user->role?->value ?? $user->role) === UserRole::Admin->value;
     }
 
     /**
@@ -28,7 +28,7 @@ class UserPolicy
      */
     public function create(User $user): bool
     {
-        return ($user->role?->value ?? $user->role) === \App\UserRole::Admin->value;
+        return ($user->role?->value ?? $user->role) === UserRole::Admin->value;
     }
 
     /**
@@ -36,7 +36,7 @@ class UserPolicy
      */
     public function update(User $user, User $model): bool
     {
-        return ($user->role?->value ?? $user->role) === \App\UserRole::Admin->value;
+        return ($user->role?->value ?? $user->role) === UserRole::Admin->value;
     }
 
     /**
@@ -45,7 +45,7 @@ class UserPolicy
     public function delete(User $user, User $model): bool
     {
         // Admin can delete any user except themselves
-        return ($user->role?->value ?? $user->role) === \App\UserRole::Admin->value && $user->id !== $model->id;
+        return ($user->role?->value ?? $user->role) === UserRole::Admin->value && $user->id !== $model->id;
     }
 
     /**
@@ -53,7 +53,7 @@ class UserPolicy
      */
     public function restore(User $user, User $model): bool
     {
-        return ($user->role?->value ?? $user->role) === \App\UserRole::Admin->value;
+        return ($user->role?->value ?? $user->role) === UserRole::Admin->value;
     }
 
     /**
@@ -61,6 +61,6 @@ class UserPolicy
      */
     public function forceDelete(User $user, User $model): bool
     {
-        return ($user->role?->value ?? $user->role) === \App\UserRole::Admin->value && $user->id !== $model->id;
+        return ($user->role?->value ?? $user->role) === UserRole::Admin->value && $user->id !== $model->id;
     }
 }

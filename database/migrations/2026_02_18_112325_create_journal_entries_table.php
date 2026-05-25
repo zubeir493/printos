@@ -22,7 +22,7 @@ return new class extends Migration
             $table->text('narration')->nullable();
             $table->decimal('total_debit', 15, 2);
             $table->decimal('total_credit', 15, 2);
-            $table->enum('status', ["draft","posted","void"]);
+            $table->enum('status', ['draft', 'posted', 'void']);
             $table->dateTime('posted_at')->nullable();
             $table->dateTime('voided_at')->nullable();
             $table->timestamps();

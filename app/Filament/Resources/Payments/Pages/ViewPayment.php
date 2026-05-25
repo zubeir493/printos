@@ -5,9 +5,9 @@ namespace App\Filament\Resources\Payments\Pages;
 use App\Filament\Resources\Payments\PaymentResource;
 use App\Services\Accounting\VoidPaymentJournalEntry;
 use Filament\Actions\Action;
-use Filament\Resources\Pages\ViewRecord;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
+use Filament\Resources\Pages\ViewRecord;
 
 class ViewPayment extends ViewRecord
 {

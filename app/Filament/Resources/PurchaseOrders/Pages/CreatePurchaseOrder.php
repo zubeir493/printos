@@ -2,9 +2,9 @@
 
 namespace App\Filament\Resources\PurchaseOrders\Pages;
 
+use App\Filament\Resources\Pages\CreateRecord;
 use App\Filament\Resources\PurchaseOrders\PurchaseOrderResource;
 use App\Filament\Support\PanelAccess;
-use App\Filament\Resources\Pages\CreateRecord;
 
 class CreatePurchaseOrder extends CreateRecord
 {

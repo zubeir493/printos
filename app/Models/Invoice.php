@@ -7,6 +7,7 @@ use App\Support\SequentialNumber;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
@@ -132,6 +133,11 @@ class Invoice extends Model
         return $this->belongsTo(Payment::class, 'order_id');
     }
 
+    public function payments(): MorphMany
+    {
+        return $this->morphMany(Payment::class, 'payable');
+    }
+
     /**
      * Get the related order based on order_type.
      */
@@ -167,8 +173,9 @@ class Invoice extends Model
      */
     public function scopeOverdue($query)
     {
-        return $query->where('due_date', '<', now())
-            ->where('status', '!=', 'paid');
+        return $query->whereDate('due_date', '<', today())
+            ->whereNotIn('status', ['paid', 'cancelled'])
+            ->where('balance_due', '>', 0);
     }
 
     /**
@@ -184,7 +191,9 @@ class Invoice extends Model
      */
     public function isOverdue(): bool
     {
-        return $this->due_date->isPast() && ! $this->isPaid();
+        return $this->due_date->isBefore(today())
+            && ! in_array($this->status, ['paid', 'cancelled'], true)
+            && ! $this->isPaid();
     }
 
     /**

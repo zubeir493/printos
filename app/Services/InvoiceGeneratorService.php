@@ -439,7 +439,7 @@ class InvoiceGeneratorService
     {
         try {
             Mail::to($recipientEmail)
-                ->queue(new InvoiceGenerated($invoiceData, $options));
+                ->send(new InvoiceGenerated($invoiceData, $options));
 
             $invoiceNumber = $invoiceData['invoice_data']['invoice_number']
                 ?? $invoiceData['receipt_data']['receipt_number']
@@ -454,7 +454,7 @@ class InvoiceGeneratorService
                 'sent_at' => now(),
             ]);
 
-            Log::info('Invoice email queued successfully', [
+            Log::info('Invoice email sent successfully', [
                 'invoice_number' => $invoiceNumber,
                 'recipient' => $recipientEmail,
             ]);

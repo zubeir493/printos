@@ -14,7 +14,7 @@ class AccountFactory extends Factory
         return [
             'name' => fake()->name(),
             'code' => fake()->word(),
-            'type' => fake()->randomElement(["Asset","Liability","Equity","Revenue","Expense"]),
+            'type' => fake()->randomElement(['Asset', 'Liability', 'Equity', 'Revenue', 'Expense']),
         ];
     }
 }

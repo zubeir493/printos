@@ -30,7 +30,7 @@ class EmployeeLoanResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedReceiptPercent;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Payroll';
+    protected static ?string $navigationParentItem = 'Payroll';
 
     protected static ?int $navigationSort = 315;
 
@@ -78,7 +78,7 @@ class EmployeeLoanResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn (Builder $query) => $query->with(['employee', 'installments']))
+            ->modifyQueryUsing(fn(Builder $query) => $query->with(['employee', 'installments']))
             ->searchable(true)
             ->columns([
                 TextColumn::make('employee.full_name')
@@ -92,7 +92,7 @@ class EmployeeLoanResource extends Resource
                     ->sortable(),
                 TextColumn::make('status')
                     ->badge()
-                    ->color(fn (string $state): string => match ($state) {
+                    ->color(fn(string $state): string => match ($state) {
                         'active' => 'info',
                         'partially_paid' => 'warning',
                         'deducted' => 'success',
@@ -101,7 +101,7 @@ class EmployeeLoanResource extends Resource
                     }),
                 TextColumn::make('remaining_balance')
                     ->label('Remaining')
-                    ->state(fn (EmployeeLoan $record): string => Money::format($record->remainingBalance())),
+                    ->state(fn(EmployeeLoan $record): string => Money::format($record->remainingBalance())),
                 TextColumn::make('reason')
                     ->limit(40),
                 TextColumn::make('amount')
@@ -126,7 +126,7 @@ class EmployeeLoanResource extends Resource
                 Action::make('repay')
                     ->label('Repay')
                     ->icon(Heroicon::OutlinedBanknotes)
-                    ->visible(fn (EmployeeLoan $record): bool => in_array($record->status, ['active', 'partially_paid'], true) && $record->remainingBalance() > 0)
+                    ->visible(fn(EmployeeLoan $record): bool => in_array($record->status, ['active', 'partially_paid'], true) && $record->remainingBalance() > 0)
                     ->schema([
                         Grid::make(2)
                             ->schema([
@@ -145,23 +145,23 @@ class EmployeeLoanResource extends Resource
                                     ->numeric()
                                     ->suffix('Birr')
                                     ->required()
-                                    ->default(fn (EmployeeLoan $record): float => $record->remainingBalance())
+                                    ->default(fn(EmployeeLoan $record): float => $record->remainingBalance())
                                     ->minValue(0.01)
-                                    ->maxValue(fn (EmployeeLoan $record): float => $record->remainingBalance())
+                                    ->maxValue(fn(EmployeeLoan $record): float => $record->remainingBalance())
                                     ->helperText('Leave the default to repay the full outstanding balance.'),
                             ]),
                         Select::make('bank_id')
                             ->label('Bank Account')
-                            ->options(fn (): array => Bank::query()
+                            ->options(fn(): array => Bank::query()
                                 ->where('status', 'active')
                                 ->orderBy('name')
                                 ->pluck('name', 'id')
                                 ->all())
                             ->searchable()
-                            ->visible(fn ($get): bool => $get('method') === 'bank')
-                            ->required(fn ($get): bool => $get('method') === 'bank'),
+                            ->visible(fn($get): bool => $get('method') === 'bank')
+                            ->required(fn($get): bool => $get('method') === 'bank'),
                     ])
-                    ->action(fn (EmployeeLoan $record, array $data) => app(RepayEmployeeLoan::class)->handle(
+                    ->action(fn(EmployeeLoan $record, array $data) => app(RepayEmployeeLoan::class)->handle(
                         $record,
                         $data['method'],
                         $data['bank_id'] ?? null,

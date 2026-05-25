@@ -6,7 +6,6 @@ use App\Filament\Resources\ActivityLogs\ActivityLogResource;
 use Filament\Actions\Action;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Resources\Pages\ViewRecord;
-use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
@@ -18,61 +17,61 @@ class ViewActivityLog extends ViewRecord
     public function infolist(Schema $schema): Schema
     {
         return $schema->components([
-                Section::make('Event Details')
-                    ->columns(6)            
-                    ->columnSpanFull()        
-                    ->schema([
-                        TextEntry::make('created_at')
-                            ->label('When')
-                            ->dateTime('M j, Y H:i:s'),
+            Section::make('Event Details')
+                ->columns(6)
+                ->columnSpanFull()
+                ->schema([
+                    TextEntry::make('created_at')
+                        ->label('When')
+                        ->dateTime('M j, Y H:i:s'),
 
-                        TextEntry::make('causer.name')
-                            ->label('User')
-                            ->default('System'),
+                    TextEntry::make('causer.name')
+                        ->label('User')
+                        ->default('System'),
 
-                        TextEntry::make('event')
-                            ->label('Action')
-                            ->badge()
-                            ->color(fn (?string $state) => match ($state) {
-                                'created' => 'success',
-                                'updated' => 'info',
-                                'deleted' => 'danger',
-                                default => 'gray',
-                            })
-                            ->formatStateUsing(fn (?string $state) => ucfirst($state ?? 'logged')),
+                    TextEntry::make('event')
+                        ->label('Action')
+                        ->badge()
+                        ->color(fn (?string $state) => match ($state) {
+                            'created' => 'success',
+                            'updated' => 'info',
+                            'deleted' => 'danger',
+                            default => 'gray',
+                        })
+                        ->formatStateUsing(fn (?string $state) => ucfirst($state ?? 'logged')),
 
-                        TextEntry::make('log_name')
-                            ->label('Area')
-                            ->formatStateUsing(fn (string $state) => str($state)->replace('_', ' ')->title()),
+                    TextEntry::make('log_name')
+                        ->label('Area')
+                        ->formatStateUsing(fn (string $state) => str($state)->replace('_', ' ')->title()),
 
-                        TextEntry::make('subject_type')
-                            ->label('Record Type')
-                            ->formatStateUsing(fn (?string $state) => $state ? class_basename($state) : '—'),
+                    TextEntry::make('subject_type')
+                        ->label('Record Type')
+                        ->formatStateUsing(fn (?string $state) => $state ? class_basename($state) : '—'),
 
-                        TextEntry::make('subject_id')
-                            ->label('Record ID')
-                            ->default('—'),
-                    ]),
+                    TextEntry::make('subject_id')
+                        ->label('Record ID')
+                        ->default('—'),
+                ]),
 
-                Section::make('What Changed')
-                    ->columnSpan(2)
-                    ->schema([
-                        TextEntry::make('new_values')
-                            ->label('New Values')
-                            ->state(fn ($record) => self::formatProperties(
-                                $record->properties['attributes'] ?? []
-                            ))
-                            ->html()
-                            ->columnSpanFull(),
+            Section::make('What Changed')
+                ->columnSpan(2)
+                ->schema([
+                    TextEntry::make('new_values')
+                        ->label('New Values')
+                        ->state(fn ($record) => self::formatProperties(
+                            $record->properties['attributes'] ?? []
+                        ))
+                        ->html()
+                        ->columnSpanFull(),
 
-                        TextEntry::make('old_values')
-                            ->label('Previous Values')
-                            ->state(fn ($record) => self::formatProperties(
-                                $record->properties['old'] ?? []
-                            ))
-                            ->html()
-                            ->columnSpanFull(),
-                    ]),
+                    TextEntry::make('old_values')
+                        ->label('Previous Values')
+                        ->state(fn ($record) => self::formatProperties(
+                            $record->properties['old'] ?? []
+                        ))
+                        ->html()
+                        ->columnSpanFull(),
+                ]),
         ]);
     }
 

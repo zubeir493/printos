@@ -68,7 +68,7 @@ class GoodsReceipt extends Model
                 modelClass: self::class,
                 column: 'receipt_number',
                 prefix: 'GR-',
-                padding: 5,
+                padding: 6,
                 likePattern: 'GR-%',
             );
         });

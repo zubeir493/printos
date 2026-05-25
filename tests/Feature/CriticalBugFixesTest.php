@@ -15,6 +15,7 @@ use App\Services\Accounting\VoidPaymentJournalEntry;
 use App\Services\InvoiceGeneratorService;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 
 uses(RefreshDatabase::class);
 
@@ -213,10 +214,84 @@ test('update overdue invoices command marks unpaid and partial invoices as overd
         'file_path' => 'invoices/inv-od-002.pdf',
     ]);
 
+    $dueTodayInvoice = Invoice::create([
+        'invoice_number' => 'INV-OD-003',
+        'invoice_type' => 'sales',
+        'order_id' => 3,
+        'order_type' => 'sales_order',
+        'partner_id' => $partner->id,
+        'invoice_date' => now()->subDays(30),
+        'due_date' => today(),
+        'subtotal' => 1500.00,
+        'tax_amount' => 0.00,
+        'total_amount' => 1500.00,
+        'balance_due' => 1500.00,
+        'status' => 'unpaid',
+        'filename' => 'inv-od-003.pdf',
+        'file_path' => 'invoices/inv-od-003.pdf',
+    ]);
+
     $this->artisan('invoices:update-overdue')->assertExitCode(0);
 
     expect($unpaidInvoice->fresh()->status)->toBe('overdue');
     expect($partialInvoice->fresh()->status)->toBe('overdue');
+    expect($dueTodayInvoice->fresh()->status)->toBe('unpaid');
+});
+
+test('invoice due dates are overdue only after the selected calendar day', function () {
+    Carbon::setTestNow(Carbon::parse('2026-05-22 14:30:00'));
+
+    try {
+        $partner = Partner::create(['name' => 'Calendar Due Partner', 'is_customer' => true]);
+
+        $makeInvoice = fn (string $invoiceNumber, Carbon $dueDate, string $status = 'unpaid') => Invoice::create([
+            'invoice_number' => $invoiceNumber,
+            'invoice_type' => 'sales',
+            'order_id' => fake()->unique()->numberBetween(1000, 9999),
+            'order_type' => 'sales_order',
+            'partner_id' => $partner->id,
+            'invoice_date' => today()->subDays(30),
+            'due_date' => $dueDate,
+            'subtotal' => 1000.00,
+            'tax_amount' => 0.00,
+            'total_amount' => 1000.00,
+            'balance_due' => 1000.00,
+            'status' => $status,
+            'filename' => "{$invoiceNumber}.pdf",
+            'file_path' => "invoices/{$invoiceNumber}.pdf",
+        ]);
+
+        $dueTodayInvoice = $makeInvoice('INV-DUE-TODAY', today());
+        $dueYesterdayInvoice = $makeInvoice('INV-DUE-YESTERDAY', today()->subDay());
+        $cancelledInvoice = $makeInvoice('INV-DUE-CANCELLED', today()->subDay(), 'cancelled');
+        $settledInvoice = $makeInvoice('INV-DUE-SETTLED', today()->subDay());
+        $settledInvoice->update(['balance_due' => 0]);
+
+        expect($dueTodayInvoice->isOverdue())->toBeFalse();
+        expect($dueYesterdayInvoice->isOverdue())->toBeTrue();
+        expect($cancelledInvoice->isOverdue())->toBeFalse();
+        expect($settledInvoice->fresh()->isOverdue())->toBeFalse();
+        expect(Invoice::overdue()->pluck('invoice_number')->sort()->values()->all())
+            ->toBe(['INV-DUE-YESTERDAY']);
+    } finally {
+        Carbon::setTestNow();
+    }
+});
+
+test('date only deadline columns do not use time based relative formatting', function () {
+    expect(file_get_contents(app_path('Filament/Resources/Invoices/Tables/InvoicesTable.php')))
+        ->not->toContain('->since()')
+        ->not->toContain('isPast()');
+
+    expect(file_get_contents(app_path('Filament/Resources/JobOrderTasks/Tables/JobOrderTasksTable.php')))
+        ->not->toContain('->since()')
+        ->not->toContain('isPast()');
+
+    expect(file_get_contents(app_path('Filament/Widgets/AdminExceptionsTable.php')))
+        ->not->toContain('isPast()');
+
+    expect(file_get_contents(app_path('Filament/Sales/Widgets/SalesOrdersFocusTable.php')))
+        ->not->toContain('isPast()');
 });
 
 // ---------------------------------------------------------------------------

@@ -25,6 +25,7 @@ class SalesOrderItemImportService
 
                 if ($headers === null) {
                     $headers = array_map([$this, 'normalizeHeader'], $values);
+
                     continue;
                 }
 
@@ -74,10 +75,10 @@ class SalesOrderItemImportService
 
         return [
             'inventory_item_id' => $item->id,
-            'quantity'          => $quantity,
-            'unit_label'        => $unit,
-            'unit_price'        => $unitPrice ?: (float) ($item->price ?? 0),
-            'total'             => round($quantity * ($unitPrice ?: (float) ($item->price ?? 0)), 2),
+            'quantity' => $quantity,
+            'unit_label' => $unit,
+            'unit_price' => $unitPrice ?: (float) ($item->price ?? 0),
+            'total' => round($quantity * ($unitPrice ?: (float) ($item->price ?? 0)), 2),
         ];
     }
 

@@ -11,11 +11,14 @@ use App\Models\Payment;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderItem;
 use App\Models\SalesOrder;
+use App\Models\User;
 use App\Models\Warehouse;
+use App\Notifications\GoodsReceiptPostedNotification;
 use App\Services\InvoiceGeneratorService;
 use App\UserRole;
 use Filament\Panel;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Notification;
 
 uses(RefreshDatabase::class);
 
@@ -69,7 +72,7 @@ test('two payments created concurrently get unique payment numbers', function ()
 test('job order number is auto-generated when not provided', function () {
     $jo = JobOrder::factory()->create(['job_order_number' => null]);
 
-    expect($jo->job_order_number)->toMatch('/^JO-\d{4}$/');
+    expect($jo->job_order_number)->toMatch('/^JO-\d{6}$/');
 });
 
 test('two job orders get unique sequential numbers', function () {
@@ -84,6 +87,12 @@ test('two job orders get unique sequential numbers', function () {
 // ---------------------------------------------------------------------------
 
 test('goods receipt posted_at is stamped after posting and stock is received once', function () {
+    Notification::fake();
+
+    $admin = User::factory()->create([
+        'role' => UserRole::Admin,
+    ]);
+
     $supplier = Partner::create(['name' => 'GR Supplier', 'is_supplier' => true]);
     $warehouse = Warehouse::create(['name' => 'GR Warehouse', 'code' => 'GRW']);
     $item = InventoryItem::create([
@@ -130,6 +139,8 @@ test('goods receipt posted_at is stamped after posting and stock is received onc
 
     $receipt->refresh();
     expect($receipt->posted_at)->not->toBeNull();
+    Notification::assertSentTo($admin, GoodsReceiptPostedNotification::class);
+    Notification::assertSentTimes(GoodsReceiptPostedNotification::class, 1);
 
     // Stock should be received exactly once
     $this->assertDatabaseHas('inventory_balances', [
@@ -140,6 +151,7 @@ test('goods receipt posted_at is stamped after posting and stock is received onc
 
     // Posting again must not double-count
     $receipt->update(['status' => 'posted']);
+    Notification::assertSentTimes(GoodsReceiptPostedNotification::class, 1);
 
     $this->assertDatabaseHas('inventory_balances', [
         'inventory_item_id' => $item->id,

@@ -12,7 +12,7 @@ class RateLimitRequests
     /**
      * Handle an incoming request.
      *
-     * @param  \Closure(\Illuminate\Http\Request): mixed  $next
+     * @param  Closure(Request): mixed  $next
      */
     public function handle(Request $request, Closure $next, int $maxAttempts = 60, int $decayMinutes = 1): Response
     {
@@ -41,7 +41,7 @@ class RateLimitRequests
     protected function resolveRequestSignature(Request $request): string
     {
         return sha1(
-            $request->ip() . '|' . $request->route()?->getName() . '|' . $request->method()
+            $request->ip().'|'.$request->route()?->getName().'|'.$request->method()
         );
     }
 }

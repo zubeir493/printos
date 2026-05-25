@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Warehouses\Schemas;
 
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Schema;
 
 class WarehouseForm
@@ -17,7 +18,7 @@ class WarehouseForm
                     ->required()
                     ->unique(ignoreRecord: true),
                 TextInput::make('location'),
-                \Filament\Forms\Components\Toggle::make('is_default')
+                Toggle::make('is_default')
                     ->label('Is Default Warehouse')
                     ->default(false),
             ]);

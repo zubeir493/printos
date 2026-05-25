@@ -39,7 +39,7 @@ class SalesOrdersFocusTable extends BaseWidget
                     ->label('Warehouse'),
                 Tables\Columns\TextColumn::make('due_date')
                     ->date()
-                    ->color(fn ($state) => $state && $state->isPast() ? 'danger' : 'warning'),
+                    ->color(fn ($state) => $state && $state->isBefore(today()) ? 'danger' : 'warning'),
                 Tables\Columns\TextColumn::make('total')
                     ->alignEnd()
                     ->formatStateUsing(fn ($state) => Money::format($state)),

@@ -5,10 +5,21 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class Bank extends Model
 {
     use HasFactory;
+    use LogsActivity;
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logAll()
+            ->logOnlyDirty()
+            ->useLogName('finance');
+    }
 
     protected $fillable = [
         'name',
@@ -83,10 +94,8 @@ class Bank extends Model
         ]);
     }
 
-    public static function boot()
+    protected static function booted(): void
     {
-        parent::boot();
-
         static::saving(function ($model) {
             if ($model->current_balance < 0) {
                 throw new \InvalidArgumentException('Bank balance cannot be negative');

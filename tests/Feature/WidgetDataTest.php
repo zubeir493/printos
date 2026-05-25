@@ -2,14 +2,18 @@
 
 use App\Filament\Design\Widgets\ArtworkPipelineChart;
 use App\Filament\Design\Widgets\DesignSLAStats;
+use App\Filament\Finance\Widgets\ExpectedCashflowChart;
 use App\Filament\Production\Widgets\FloorEfficiencyStats;
 use App\Filament\Retail\Widgets\RetailCounterStats;
 use App\Filament\Widgets\AdminHealthStats;
 use App\Filament\Widgets\BankBalancesChart;
+use App\Filament\Widgets\SystemBottlenecksChart;
 use App\Models\Artwork;
 use App\Models\Bank;
 use App\Models\JobOrder;
 use App\Models\JobOrderTask;
+use App\Models\Partner;
+use App\Models\PurchaseOrder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -190,6 +194,75 @@ test('admin and retail stats do not display synthetic or duplicated sparkline ch
     expect($adminStats['Delayed Dispatches']->getChart())->toBeNull();
     expect($adminStats['Inventory Shrinkage (30d)']->getChart())->toBeNull();
     expect($retailStats['Counter Sales Today']->getChart())->toBeNull();
+});
+
+test('system bottlenecks chart counts open purchase orders using valid workflow statuses', function () {
+    $supplier = Partner::create([
+        'name' => 'Widget Supplier',
+        'is_supplier' => true,
+    ]);
+
+    PurchaseOrder::create([
+        'po_number' => 'PO-WIDGET-001',
+        'partner_id' => $supplier->id,
+        'order_date' => now(),
+        'status' => 'draft',
+        'subtotal' => 100,
+        'total' => 100,
+    ]);
+
+    PurchaseOrder::create([
+        'po_number' => 'PO-WIDGET-002',
+        'partner_id' => $supplier->id,
+        'order_date' => now(),
+        'status' => 'approved',
+        'subtotal' => 200,
+        'total' => 200,
+    ]);
+
+    PurchaseOrder::create([
+        'po_number' => 'PO-WIDGET-003',
+        'partner_id' => $supplier->id,
+        'order_date' => now(),
+        'status' => 'received',
+        'subtotal' => 300,
+        'total' => 300,
+    ]);
+
+    $data = invokeWidgetMethod(new SystemBottlenecksChart, 'getData');
+
+    expect($data['datasets'][0]['data'][2])->toBe(2);
+});
+
+test('expected cashflow chart counts open purchase order outflows from valid statuses and totals', function () {
+    $supplier = Partner::create([
+        'name' => 'Cashflow Supplier',
+        'is_supplier' => true,
+    ]);
+
+    PurchaseOrder::create([
+        'po_number' => 'PO-CASH-001',
+        'partner_id' => $supplier->id,
+        'order_date' => now(),
+        'status' => 'approved',
+        'subtotal' => 321,
+        'total' => 321,
+        'created_at' => now()->subDay(),
+    ]);
+
+    PurchaseOrder::create([
+        'po_number' => 'PO-CASH-002',
+        'partner_id' => $supplier->id,
+        'order_date' => now(),
+        'status' => 'received',
+        'subtotal' => 999,
+        'total' => 999,
+        'created_at' => now()->subDay(),
+    ]);
+
+    $data = invokeWidgetMethod(new ExpectedCashflowChart, 'getData');
+
+    expect((float) $data['datasets'][1]['data'][0])->toBe(321.0);
 });
 
 test('dashboard table widgets disable the global search bar', function () {

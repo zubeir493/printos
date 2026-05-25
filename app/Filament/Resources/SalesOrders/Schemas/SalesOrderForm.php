@@ -51,16 +51,23 @@ class SalesOrderForm
                                             $lastNumber = (int) $matches[1];
                                         }
 
-                                        return 'SO-'.str_pad($lastNumber + 1, 4, '0', STR_PAD_LEFT);
+                                        return 'SO-' . str_pad($lastNumber + 1, 6, '0', STR_PAD_LEFT);
                                     })
                                     ->readOnly()
                                     ->dehydrated(false),
                                 Select::make('partner_id')
                                     ->label('Customer')
-                                    ->relationship('partner', 'name', modifyQueryUsing: fn ($query) => $query->where('is_customer', true))
+                                    ->relationship('partner', 'name', modifyQueryUsing: fn($query) => $query->where('is_customer', true))
                                     ->searchable()
                                     ->preload()
-                                    ->default(fn () => Partner::where('id', 1)->first()?->id)
+                                    ->default(fn() => Partner::query()
+                                        ->where('is_customer', true)
+                                        ->where('name', 'Walk-In Customer')
+                                        ->first()?->id
+                                        ?? Partner::query()
+                                        ->where('is_customer', true)
+                                        ->orderBy('id')
+                                        ->first()?->id)
                                     ->required()
                                     ->createOptionForm([
                                         TextInput::make('name')->required(),
@@ -73,7 +80,7 @@ class SalesOrderForm
                                     ->label('Warehouse')
                                     ->relationship('warehouse', 'name')
                                     ->searchable()
-                                    ->default(fn () => Warehouse::where('is_default', true)->value('id'))
+                                    ->default(fn() => Warehouse::where('is_default', true)->value('id'))
                                     ->preload()
                                     ->required(),
                             ]),
@@ -98,10 +105,10 @@ class SalesOrderForm
                                         ->label('Import from CSV / Excel')
                                         ->icon('heroicon-o-arrow-up-tray')
                                         ->color(Color::Indigo)
-                                        ->visible(fn () => ! request()->routeIs('*.view'))
+                                        ->visible(fn() => ! request()->routeIs('*.view'))
                                         ->modalHeading('Import Sale Items')
                                         ->modalDescription(new HtmlString(
-                                            'Use the <a href="'.asset('import-templates/sales-order-items.csv').'" download class="font-medium text-primary-600 hover:underline dark:text-primary-400">example CSV template</a> to see the supported columns.'
+                                            'Use the <a href="' . asset('import-templates/sales-order-items.csv') . '" download class="font-medium text-primary-600 hover:underline dark:text-primary-400">example CSV template</a> to see the supported columns.'
                                         ))
                                         ->modalWidth('lg')
                                         ->schema([
@@ -130,7 +137,7 @@ class SalesOrderForm
 
                                                 // Write to a real OS temp file so OpenSpout can open it by path
                                                 $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION)) ?: 'csv';
-                                                $localTmp = tempnam(sys_get_temp_dir(), 'so_import_').'.'.$ext;
+                                                $localTmp = tempnam(sys_get_temp_dir(), 'so_import_') . '.' . $ext;
                                                 file_put_contents($localTmp, $contents);
 
                                                 try {
@@ -157,7 +164,7 @@ class SalesOrderForm
                                                 $set('total', $subtotal + $tax);
 
                                                 Notification::make()
-                                                    ->title(count($imported).' item(s) imported')
+                                                    ->title(count($imported) . ' item(s) imported')
                                                     ->body('Matching items with the same price had their quantities merged. Items with different prices were added as separate rows.')
                                                     ->success()
                                                     ->send();
@@ -185,7 +192,7 @@ class SalesOrderForm
                             ->schema([
                                 Select::make('inventory_item_id')
                                     ->label('Item')
-                                    ->relationship('inventoryItem', 'name', fn ($query) => $query->where('is_sellable', true))
+                                    ->relationship('inventoryItem', 'name', fn($query) => $query->where('is_sellable', true))
                                     ->searchable()
                                     ->preload()
                                     ->required()
@@ -208,7 +215,7 @@ class SalesOrderForm
                                     ->required()
                                     ->default(1)
                                     ->minValue(0.01)
-                                    ->suffix(fn ($get) => $get('unit_label') ?: 'unit')
+                                    ->suffix(fn($get) => $get('unit_label') ?: 'unit')
                                     ->live()
                                     ->afterStateUpdated(function (Set $set, Get $get, $state) {
                                         $set('total', round((float) ($state ?? 0) * (float) ($get('unit_price') ?? 0), 2));
@@ -289,7 +296,7 @@ class SalesOrderForm
                                 Calculations::updateTaxedTotal($get, $set, 'subtotal', 'tax_amount', 'total');
                             })
                             ->deleteAction(
-                                fn ($action) => $action->after(function (Get $get, Set $set) {
+                                fn($action) => $action->after(function (Get $get, Set $set) {
                                     Calculations::updateSubtotal($get, $set, 'salesOrderItems', 'subtotal');
                                     $subtotal = (float) $get('subtotal');
                                     $taxRate = Setting::getSettings()->vat_enabled
@@ -346,12 +353,13 @@ class SalesOrderForm
     public static function mergeImportedRows(array $existingRows, array $importedRows): array
     {
         $rows = collect($existingRows)
-            ->filter(fn ($row): bool => is_array($row) && filled($row['inventory_item_id'] ?? null))
+            ->filter(fn($row): bool => is_array($row) && filled($row['inventory_item_id'] ?? null))
             ->values();
 
         foreach ($importedRows as $newRow) {
-            $matchIndex = $rows->search(fn ($row): bool => (int) ($row['inventory_item_id'] ?? 0) === (int) ($newRow['inventory_item_id'] ?? 0)
-                && (float) ($row['unit_price'] ?? 0) === (float) ($newRow['unit_price'] ?? 0)
+            $matchIndex = $rows->search(
+                fn($row): bool => (int) ($row['inventory_item_id'] ?? 0) === (int) ($newRow['inventory_item_id'] ?? 0)
+                    && (float) ($row['unit_price'] ?? 0) === (float) ($newRow['unit_price'] ?? 0)
             );
 
             if ($matchIndex !== false) {

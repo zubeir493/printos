@@ -20,8 +20,8 @@ class UpdateOverdueInvoices extends Command
     {
         $this->info('Checking for overdue invoices...');
 
-        $overdueInvoices = Invoice::where('due_date', '<', now())
-            ->whereNotIn('status', ['paid', 'cancelled', 'overdue'])
+        $overdueInvoices = Invoice::overdue()
+            ->where('status', '!=', 'overdue')
             ->get();
 
         $recipients = User::whereIn('role', [

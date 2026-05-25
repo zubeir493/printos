@@ -2,8 +2,8 @@
 
 namespace App\Filament\Resources\Users\Pages;
 
-use App\UserRole;
 use App\Filament\Resources\Users\UserResource;
+use App\UserRole;
 use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
 

@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Artworks\Schemas;
 use App\Support\PrivateStorage;
 use Filament\Infolists\Components\IconEntry;
 use Filament\Infolists\Components\TextEntry;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 
 class ArtworkInfolist
@@ -13,7 +14,7 @@ class ArtworkInfolist
     {
         return $schema
             ->components([
-                \Filament\Schemas\Components\Section::make('Artwork Overview')
+                Section::make('Artwork Overview')
                     ->schema([
                         TextEntry::make('jobOrder.job_order_number')
                             ->label('Job Order')
@@ -30,7 +31,7 @@ class ArtworkInfolist
                         TextEntry::make('created_at')
                             ->label('Uploaded Date')
                             ->dateTime(),
-                        \Filament\Infolists\Components\TextEntry::make('filename')
+                        TextEntry::make('filename')
                             ->label('Download Artwork')
                             ->formatStateUsing(fn ($state) => '📥 Download Artwork')
                             ->url(fn ($record) => PrivateStorage::downloadUrl($record->filename, now()->addMinutes(60)))
@@ -38,7 +39,7 @@ class ArtworkInfolist
                             ->color('primary')
                             ->icon('heroicon-m-arrow-down-tray')
                             ->extraAttributes(['class' => 'p-4 bg-gray-50 rounded-xl border border-dashed border-gray-300 flex items-center justify-center']),
-                    ])
+                    ]),
             ]);
     }
 }

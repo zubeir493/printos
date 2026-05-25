@@ -38,7 +38,7 @@ class AdminExceptionsTable extends BaseWidget
                 Tables\Columns\TextColumn::make('due_date')
                     ->label('Due')
                     ->date()
-                    ->color(fn ($state) => $state && $state->isPast() ? 'danger' : 'warning'),
+                    ->color(fn ($state) => $state && $state->isBefore(today()) ? 'danger' : 'warning'),
                 Tables\Columns\TextColumn::make('jobOrderTasks_count')
                     ->label('Tasks')
                     ->state(fn (JobOrder $record) => $record->jobOrderTasks->count())

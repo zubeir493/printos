@@ -18,12 +18,14 @@ use App\Filament\Resources\Accounts\AccountResource;
 use App\Filament\Resources\Banks\BankResource;
 use App\Filament\Resources\BankTransactions\BankTransactionResource;
 use App\Filament\Resources\BankTransfers\BankTransferResource;
+use App\Filament\Resources\EmployeeLoans\EmployeeLoanResource;
 use App\Filament\Resources\Invoices\InvoiceResource;
 use App\Filament\Resources\JobOrders\JobOrderResource;
 use App\Filament\Resources\JobOrderTasks\JobOrderTaskResource;
 use App\Filament\Resources\JournalEntries\JournalEntryResource;
 use App\Filament\Resources\Partners\PartnerResource;
 use App\Filament\Resources\Payments\PaymentResource;
+use App\Filament\Resources\PayrollRuns\PayrollRunResource;
 use App\Filament\Resources\PurchaseOrderItems\PurchaseOrderItemResource;
 use App\Filament\Resources\PurchaseOrders\PurchaseOrderResource;
 use App\Filament\Resources\SalesOrders\SalesOrderResource;
@@ -70,6 +72,8 @@ class FinancePanelProvider extends PanelProvider
                 BankTransactionResource::class,
                 BankTransferResource::class,
                 InvoiceResource::class,
+                EmployeeLoanResource::class,
+                PayrollRunResource::class,
                 JobOrderResource::class,
                 JobOrderTaskResource::class,
                 PartnerResource::class,

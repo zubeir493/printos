@@ -151,7 +151,7 @@ class JobOrder extends Model
             ->whereNotIn('status', ['completed', 'cancelled']);
     }
 
-    public function recalculateTotal(): void
+    public function recalculateTotals(): void
     {
         $subtotal = (float) $this->jobOrderTasks()->sum('task_cost');
         $taxRate = $this->getTaxRate();

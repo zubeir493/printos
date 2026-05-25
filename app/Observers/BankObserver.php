@@ -3,8 +3,8 @@
 namespace App\Observers;
 
 use App\Models\Bank;
-use App\Models\Payment;
 use App\Models\BankTransfer;
+use App\Models\Payment;
 use Illuminate\Support\Facades\Log;
 
 class BankObserver
@@ -15,7 +15,7 @@ class BankObserver
     public function created(Bank $bank): void
     {
         Log::info('Bank created', ['bank_id' => $bank->id, 'code' => $bank->code]);
-        
+
         // Initialize balance to 0 for new banks
         if ($bank->current_balance === null) {
             $bank->update(['current_balance' => 0]);
@@ -28,13 +28,13 @@ class BankObserver
     public function updated(Bank $bank): void
     {
         Log::info('Bank updated', ['bank_id' => $bank->id, 'changes' => $bank->getDirty()]);
-        
+
         // If status changed to inactive/closed, log warning
         if ($bank->wasChanged('status') && in_array($bank->status, ['inactive', 'closed'])) {
             Log::warning('Bank deactivated', [
-                'bank_id' => $bank->id, 
-                'code' => $bank->code, 
-                'status' => $bank->status
+                'bank_id' => $bank->id,
+                'code' => $bank->code,
+                'status' => $bank->status,
             ]);
         }
     }
@@ -58,7 +58,7 @@ class BankObserver
             'payment_id' => $payment->id,
             'amount' => $payment->amount,
             'direction' => $payment->direction,
-            'action' => $action
+            'action' => $action,
         ]);
 
         // Update bank balance
@@ -76,7 +76,7 @@ class BankObserver
             'transfer_id' => $transfer->id,
             'amount' => $transfer->amount,
             'status' => $transfer->status,
-            'action' => $action
+            'action' => $action,
         ]);
 
         // Only update balance for completed transfers

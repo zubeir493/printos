@@ -18,7 +18,7 @@ return new class extends Migration
             $table->string('po_number')->unique();
             $table->foreignId('partner_id')->constrained();
             $table->date('order_date');
-            $table->enum('status', ["draft","approved","received","cancelled"]);
+            $table->enum('status', ['draft', 'approved', 'received', 'cancelled']);
             $table->timestamps();
         });
 

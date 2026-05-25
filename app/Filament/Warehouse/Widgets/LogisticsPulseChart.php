@@ -2,12 +2,15 @@
 
 namespace App\Filament\Warehouse\Widgets;
 
-use Filament\Widgets\ChartWidget;
+use App\Models\Dispatch;
+use App\Models\GoodsReceipt;
 use Carbon\Carbon;
+use Filament\Widgets\ChartWidget;
 
 class LogisticsPulseChart extends ChartWidget
 {
     protected ?string $heading = 'Daily Logistics Pulse';
+
     protected static ?int $sort = 2;
 
     protected function getData(): array
@@ -16,12 +19,12 @@ class LogisticsPulseChart extends ChartWidget
         $outbound = [];
         $labels = [];
 
-        for($i=13; $i>=0; $i--) {
+        for ($i = 13; $i >= 0; $i--) {
             $date = Carbon::now()->subDays($i);
             $labels[] = $date->format('M d');
-            
-            $inbound[] = \App\Models\GoodsReceipt::whereDate('created_at', $date)->count();
-            $outbound[] = \App\Models\Dispatch::whereDate('created_at', $date)->count();
+
+            $inbound[] = GoodsReceipt::whereDate('created_at', $date)->count();
+            $outbound[] = Dispatch::whereDate('created_at', $date)->count();
         }
 
         return [

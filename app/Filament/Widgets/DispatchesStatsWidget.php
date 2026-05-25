@@ -3,9 +3,8 @@
 namespace App\Filament\Widgets;
 
 use App\Models\Dispatch;
-use Filament\Widgets\StatsOverviewWidget\Stat;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
-use Carbon\Carbon;
+use Filament\Widgets\StatsOverviewWidget\Stat;
 
 class DispatchesStatsWidget extends BaseWidget
 {

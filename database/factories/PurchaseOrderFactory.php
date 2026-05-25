@@ -16,7 +16,7 @@ class PurchaseOrderFactory extends Factory
             'po_number' => fake()->word(),
             'partner_id' => Partner::factory(),
             'order_date' => fake()->date(),
-            'status' => fake()->randomElement(["draft","approved","received","cancelled"]),
+            'status' => fake()->randomElement(['draft', 'approved', 'received', 'cancelled']),
         ];
     }
 }

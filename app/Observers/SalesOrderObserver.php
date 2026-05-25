@@ -3,11 +3,28 @@
 namespace App\Observers;
 
 use App\Models\SalesOrder;
+use App\Models\User;
+use App\Notifications\SalesOrderCreatedNotification;
 use App\Services\Accounting\CreateSalesJournalEntry;
 use App\Services\SalesOrderPaymentService;
+use App\UserRole;
+use Illuminate\Support\Facades\Notification;
 
 class SalesOrderObserver
 {
+    public function created(SalesOrder $salesOrder)
+    {
+        $recipients = User::whereIn('role', [
+            UserRole::Admin->value,
+            UserRole::Sales->value,
+            UserRole::Finance->value,
+        ])->get();
+
+        if ($recipients->isNotEmpty()) {
+            Notification::send($recipients, new SalesOrderCreatedNotification($salesOrder));
+        }
+    }
+
     public function saved(SalesOrder $salesOrder)
     {
         if (

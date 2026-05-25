@@ -33,10 +33,10 @@ class InvoiceGenerated extends Mailable
     public function envelope(): Envelope
     {
         $invoiceNumber = $this->invoiceData['invoice_data']['invoice_number'] ??
-                        $this->invoiceData['receipt_data']['receipt_number'] ??
-                        'Document';
+            $this->invoiceData['receipt_data']['receipt_number'] ??
+            'Document';
 
-        $subject = $this->options['subject_prefix']." #{$invoiceNumber} from ".config('app.name');
+        $subject = $this->options['subject_prefix'] . " #{$invoiceNumber} from " . config('app.name');
 
         return new Envelope(
             subject: $subject,
@@ -61,7 +61,7 @@ class InvoiceGenerated extends Mailable
                 'companyInfo' => $companyInfo,
                 'options' => $this->options,
                 'download_url' => isset($this->invoiceData['filename'])
-                    ? PrivateStorage::downloadUrl($this->invoiceData['path'] ?? 'invoices/'.$this->invoiceData['filename'], now()->addDays(7))
+                    ? PrivateStorage::downloadUrl($this->invoiceData['path'] ?? 'invoices/' . $this->invoiceData['filename'], now()->addDays(7))
                     : null,
             ]
         );
@@ -73,38 +73,25 @@ class InvoiceGenerated extends Mailable
 
         if (isset($this->invoiceData['pdf']) && method_exists($this->invoiceData['pdf'], 'output')) {
             return [
-                Attachment::fromData(fn () => $this->invoiceData['pdf']->output(), $filename)
+                Attachment::fromData(fn() => $this->invoiceData['pdf']->output(), $filename)
                     ->withMime('application/pdf'),
             ];
         }
 
         $path = $this->invoiceData['path'] ?? $this->invoiceData['file_path'] ?? null;
 
-        if ($path) {
-            return [
-                Attachment::fromData(function () use ($path) {
-                    try {
-                        return Storage::disk(PrivateStorage::diskName())->get($path);
-                    } catch (Throwable $e) {
-                        throw new RuntimeException('Invoice PDF could not be read from private storage: '.$e->getMessage(), 0, $e);
-                    }
-                }, $filename)->withMime('application/pdf'),
-            ];
+        if (! $path) {
+            return [];
         }
 
-        foreach (array_filter([
-            $path ? storage_path("app/public/{$path}") : null,
-            $path ? storage_path("app/{$path}") : null,
-        ]) as $localPath) {
-            if (is_file($localPath)) {
-                return [
-                    Attachment::fromPath($localPath)
-                        ->as($filename)
-                        ->withMime('application/pdf'),
-                ];
-            }
-        }
-
-        throw new RuntimeException("Invoice PDF could not be found for attachment: {$filename}");
+        return [
+            Attachment::fromData(function () use ($path) {
+                try {
+                    return Storage::disk(PrivateStorage::diskName())->get($path);
+                } catch (Throwable $e) {
+                    throw new RuntimeException('Invoice PDF could not be read from private storage: ' . $e->getMessage(), 0, $e);
+                }
+            }, $filename)->withMime('application/pdf'),
+        ];
     }
 }

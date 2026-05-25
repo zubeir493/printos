@@ -28,7 +28,7 @@ class AttendanceSegmentResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCalendarDateRange;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Attendance';
+    protected static ?string $navigationLabel = 'Attendance';
 
     protected static ?int $navigationSort = 311;
 
@@ -100,13 +100,13 @@ class AttendanceSegmentResource extends Resource
                         DatePicker::make('from'),
                         DatePicker::make('until'),
                     ])
-                    ->query(fn (Builder $query, array $data): Builder => $query
-                        ->when($data['from'], fn (Builder $query, $date): Builder => $query->whereDate('date', '>=', $date))
-                        ->when($data['until'], fn (Builder $query, $date): Builder => $query->whereDate('date', '<=', $date))),
+                    ->query(fn(Builder $query, array $data): Builder => $query
+                        ->when($data['from'], fn(Builder $query, $date): Builder => $query->whereDate('date', '>=', $date))
+                        ->when($data['until'], fn(Builder $query, $date): Builder => $query->whereDate('date', '<=', $date))),
             ])
             ->recordActions([
                 EditAction::make()
-                    ->after(fn ($record) => app(RebuildAttendanceDailySummaries::class)->forSegments(collect([$record]))),
+                    ->after(fn($record) => app(RebuildAttendanceDailySummaries::class)->forSegments(collect([$record]))),
             ])
             ->defaultSort('date', 'desc');
     }

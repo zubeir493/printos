@@ -2,9 +2,9 @@
 
 namespace App\Filament\Resources\Users\Pages;
 
-use App\UserRole;
-use App\Filament\Resources\Users\UserResource;
 use App\Filament\Resources\Pages\CreateRecord;
+use App\Filament\Resources\Users\UserResource;
+use App\UserRole;
 
 class CreateUser extends CreateRecord
 {

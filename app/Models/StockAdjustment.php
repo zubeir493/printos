@@ -66,7 +66,7 @@ class StockAdjustment extends Model
                     modelClass: self::class,
                     column: 'adjustment_number',
                     prefix: 'ADJ-',
-                    padding: 4,
+                    padding: 6,
                     likePattern: 'ADJ-%',
                 );
             }
@@ -118,19 +118,24 @@ class StockAdjustment extends Model
 
     private function validateNonNegativeAdjustment(): void
     {
+        $itemIds = $this->items->pluck('inventory_item_id')->unique()->toArray();
+
+        $balances = InventoryBalance::whereIn('inventory_item_id', $itemIds)
+            ->where('warehouse_id', $this->warehouse_id)
+            ->get()
+            ->keyBy('inventory_item_id');
+
         foreach ($this->items as $item) {
-            if ((float) $item->adjustment_quantity === 0.0) {
+            if ((float) $item->adjustment_quantity >= 0.0) {
                 continue;
             }
 
-            $balance = InventoryBalance::where('inventory_item_id', $item->inventory_item_id)
-                ->where('warehouse_id', $this->warehouse_id)
-                ->first();
+            $balance = $balances->get($item->inventory_item_id);
 
             $startingQty = $balance ? (float) $balance->quantity_on_hand : 0.0;
             $resultingQty = $startingQty + (float) $item->adjustment_quantity;
 
-            if ($resultingQty < 0) {
+            if ($resultingQty < -0.00001) {
                 throw new \Exception(sprintf(
                     'Cannot post stock adjustment because item %s would go negative (current %s, adjustment %s).',
                     $item->inventoryItem?->name ?? 'Unknown Item',

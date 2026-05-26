@@ -7,14 +7,10 @@ use App\Filament\Support\PanelAccess;
 use App\Models\InventoryItem;
 use App\Models\JobOrder;
 use App\Models\Setting;
-use App\Support\PrivateStorage;
 use Filament\Actions\Action;
-use Filament\Facades\Filament;
-use Filament\Forms\Components\BaseFileUpload;
 use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Repeater\TableColumn;
@@ -413,20 +409,6 @@ class JobOrderForm
                     ->schema([
                         Hidden::make('status')->default('draft'),
 
-                        FileUpload::make('cost_calc_file')
-                            ->label('Cost Calculation File')
-                            ->disk(config('filesystems.private_disk', 's3'))
-                            ->visibility('private')
-                            ->getUploadedFileUsing(fn (BaseFileUpload $component, string $file, string|array|null $storedFileNames): ?array => PrivateStorage::uploadedFileInfo($component, $file, $storedFileNames))
-                            ->getOpenableFileUrlUsing(fn (string $file): ?string => PrivateStorage::url($file))
-                            ->getDownloadableFileUrlUsing(fn (string $file): ?string => PrivateStorage::downloadUrl($file))
-                            ->directory('job-orders/cost-calculations')
-                            ->acceptedFileTypes(['application/csv', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel'])
-                            ->maxSize(1024)
-                            ->panelAspectRatio('3:1')
-                            ->downloadable(fn ($record) => in_array(Filament::getCurrentPanel()?->getId(), ['admin', 'finance', 'operations']))
-                            ->dehydrated() // Add this line to make the file uploader work on edit pages
-                            ->required(),
                         TextInput::make('subtotal')
                             ->label('Subtotal')
                             ->default(0)

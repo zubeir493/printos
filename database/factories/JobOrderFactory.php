@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Models\Partner;
+use App\Models\Proforma;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 class JobOrderFactory extends Factory
@@ -14,10 +15,10 @@ class JobOrderFactory extends Factory
     {
         return [
             'job_order_number' => 'JO-'.str_pad(fake()->unique()->numberBetween(1, 9999), 4, '0', STR_PAD_LEFT),
+            'proforma_id' => Proforma::factory(),
             'partner_id' => Partner::factory(),
             'job_type' => fake()->randomElement(['books', 'packages', 'labels', 'vouchers']),
             'production_mode' => fake()->randomElement(['make_to_order', 'make_to_stock']),
-            'cost_calc_file' => 'job-orders/cost-calculations/placeholder.xlsx',
             'services' => [],
             'submission_date' => fake()->date(),
             'remarks' => fake()->text(),

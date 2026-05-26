@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\JobOrder;
 use App\Models\Partner;
+use App\Models\Proforma;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -31,10 +32,10 @@ class LateJobOrdersTest extends TestCase
     protected function makeJobOrder(int $partnerId, string $number, string $submissionDate, string $status): JobOrder
     {
         return JobOrder::create([
+            'proforma_id' => Proforma::factory()->create(['partner_id' => $partnerId])->id,
             'job_order_number' => $number,
             'partner_id' => $partnerId,
             'job_type' => 'books',
-            'cost_calc_file' => 'late-test.pdf',
             'services' => json_encode(['printing']),
             'submission_date' => $submissionDate,
             'remarks' => 'Late job order scope test',

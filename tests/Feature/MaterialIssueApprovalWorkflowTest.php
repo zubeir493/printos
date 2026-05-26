@@ -9,6 +9,7 @@ use App\Models\JobOrderTask;
 use App\Models\MaterialIssueApproval;
 use App\Models\MaterialRequest;
 use App\Models\Partner;
+use App\Models\Proforma;
 use App\Models\User;
 use App\Models\Warehouse;
 use App\Services\MaterialIssueService;
@@ -143,10 +144,10 @@ class MaterialIssueApprovalWorkflowTest extends TestCase
         ]);
 
         $jobOrder = JobOrder::create([
+            'proforma_id' => Proforma::factory()->create(['partner_id' => Partner::factory()->create()->id])->id,
             'job_order_number' => 'JO-TEST-001',
             'partner_id' => Partner::factory()->create()->id,
             'job_type' => 'books',
-            'cost_calc_file' => 'test.pdf',
             'services' => json_encode(['printing']),
             'submission_date' => now()->toDateString(),
             'status' => 'active',

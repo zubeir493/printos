@@ -12,6 +12,7 @@ use App\Models\ProductionPlanMachine;
 use App\Models\ProductionReport;
 use App\Models\ProductionReportItem;
 use App\Models\ProductionReportMachine;
+use App\Models\Proforma;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -27,10 +28,10 @@ class ProductionWorkflowTest extends TestCase
         ]);
 
         $jobOrder = JobOrder::create([
+            'proforma_id' => Proforma::factory()->create(['partner_id' => $partner->id])->id,
             'partner_id' => $partner->id,
             'job_order_number' => 'JO-PROD-001',
             'job_type' => 'packages',
-            'cost_calc_file' => 'calc.xlsx',
             'services' => [],
             'status' => 'draft',
             'submission_date' => now(),
@@ -52,10 +53,10 @@ class ProductionWorkflowTest extends TestCase
         ]);
 
         $jobOrder = JobOrder::create([
+            'proforma_id' => Proforma::factory()->create(['partner_id' => $partner->id])->id,
             'partner_id' => $partner->id,
             'job_order_number' => 'JO-PROD-002',
             'job_type' => 'packages',
-            'cost_calc_file' => 'calc-bags.xlsx',
             'services' => [],
             'status' => 'draft',
             'submission_date' => now(),

@@ -41,6 +41,7 @@ class JobOrder extends Model
      */
     protected $fillable = [
         'job_order_number',
+        'proforma_id',
         'partner_id',
         'job_type',
         'production_mode',
@@ -49,7 +50,6 @@ class JobOrder extends Model
         'due_date',
         'remarks',
         'advance_paid',
-        'cost_calc_file',
         'advance_amount',
         'subtotal',
         'tax_amount',
@@ -62,6 +62,7 @@ class JobOrder extends Model
     {
         return [
             'id' => 'integer',
+            'proforma_id' => 'integer',
             'partner_id' => 'integer',
             'submission_date' => 'date',
             'due_date' => 'date',
@@ -79,6 +80,11 @@ class JobOrder extends Model
     public function partner(): BelongsTo
     {
         return $this->belongsTo(Partner::class);
+    }
+
+    public function proforma(): BelongsTo
+    {
+        return $this->belongsTo(Proforma::class);
     }
 
     public function jobOrderTasks(): HasMany

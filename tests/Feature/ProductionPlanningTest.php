@@ -14,6 +14,7 @@ use App\Models\ProductionPlanMachine;
 use App\Models\ProductionReport;
 use App\Models\ProductionReportItem;
 use App\Models\ProductionReportMachine;
+use App\Models\Proforma;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -34,10 +35,10 @@ class ProductionPlanningTest extends TestCase
         ]);
 
         $jobOrder = JobOrder::create([
+            'proforma_id' => Proforma::factory()->create(['partner_id' => $partner->id])->id,
             'job_order_number' => 'JO-001',
             'partner_id' => $partner->id,
             'job_type' => 'packages',
-            'cost_calc_file' => 'test.xlsx',
             'services' => [],
             'submission_date' => now(),
             'total' => 1000.00,

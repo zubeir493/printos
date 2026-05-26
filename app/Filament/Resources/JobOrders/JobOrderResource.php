@@ -2,7 +2,6 @@
 
 namespace App\Filament\Resources\JobOrders;
 
-use App\Filament\Resources\JobOrders\Pages\CreateJobOrder;
 use App\Filament\Resources\JobOrders\Pages\EditJobOrder;
 use App\Filament\Resources\JobOrders\Pages\ListJobOrders;
 use App\Filament\Resources\JobOrders\RelationManagers\JobOrderArtworksRelationManager;
@@ -47,7 +46,7 @@ class JobOrderResource extends Resource
 
     public static function canCreate(): bool
     {
-        return PanelAccess::canManageJobOrders();
+        return false;
     }
 
     public static function canEdit($record): bool
@@ -92,7 +91,6 @@ class JobOrderResource extends Resource
     {
         return [
             'index' => ListJobOrders::route('/'),
-            'create' => CreateJobOrder::route('/create'),
             'view' => Pages\ViewJobOrder::route('/{record}'),
             'edit' => EditJobOrder::route('/{record}/edit'),
         ];

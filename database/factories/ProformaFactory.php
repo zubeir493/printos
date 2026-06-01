@@ -2,7 +2,6 @@
 
 namespace Database\Factories;
 
-use App\Models\CostEstimate;
 use App\Models\Partner;
 use App\Models\Proforma;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -21,7 +20,6 @@ class ProformaFactory extends Factory
     {
         return [
             'proforma_number' => 'PF-'.now()->format('Y').'-'.str_pad((string) fake()->unique()->numberBetween(1, 999999), 6, '0', STR_PAD_LEFT),
-            'cost_estimate_id' => CostEstimate::factory(),
             'partner_id' => Partner::factory(),
             'job_type' => fake()->randomElement(['books', 'packages', 'labels', 'vouchers']),
             'services' => [],

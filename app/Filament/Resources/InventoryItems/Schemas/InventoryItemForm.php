@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\InventoryItems\Schemas;
 
 use App\Filament\Support\PanelAccess;
+use App\Models\InventoryItem;
 use App\Support\PrivateStorage;
 use Filament\Forms\Components\BaseFileUpload;
 use Filament\Forms\Components\FileUpload;
@@ -11,6 +12,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 
 class InventoryItemForm
@@ -29,7 +31,8 @@ class InventoryItemForm
                         ])
                         ->required()
                         ->default('raw_material')
-                        ->live(),
+                        ->live()
+                        ->afterStateUpdated(fn (Set $set, ?string $state): mixed => $set('category', $state === 'finished_good' ? 'quran' : 'paper')),
                     TextInput::make('name')
                         ->required()
                         ->maxLength(255),
@@ -40,16 +43,11 @@ class InventoryItemForm
                         ->label('Base Unit'),
                     Select::make('category')
                         ->label('Category')
-                        ->options([
-                            'quran' => 'Quran',
-                            'hadeeth' => 'Hadeeth',
-                            'aqeedah' => 'Aqeedah',
-                            'fiqh' => 'Fiqh',
-                            'external' => 'External',
-                        ])
-                        ->hidden(fn ($get) => $get('type') !== 'finished_good')
-                        ->required(fn ($get) => $get('type') === 'finished_good')
-                        ->default('quran'),
+                        ->options(fn ($get): array => self::categoryOptions($get('type')))
+                        ->hidden(fn ($get) => ! in_array($get('type'), ['raw_material', 'finished_good'], true))
+                        ->required(fn ($get) => in_array($get('type'), ['raw_material', 'finished_good'], true))
+                        ->default(fn ($get): string => $get('type') === 'finished_good' ? 'quran' : 'paper')
+                        ->live(),
                     TextInput::make('purchase_unit')
                         ->label('Purchase Unit')
                         ->hidden(fn ($get) => $get('type') !== 'raw_material'),
@@ -57,16 +55,31 @@ class InventoryItemForm
                         ->numeric()
                         ->hidden(fn ($get) => $get('type') !== 'raw_material'),
                     TextInput::make('price')
-                        ->label('Price / Value')
-                        ->helperText(fn ($get) => $get('type') === 'raw_material' && filled($get('purchase_unit'))
+                        ->label(fn ($get) => $get('type') === 'raw_material' && filled($get('purchase_unit'))
                             ? 'Price per '.($get('purchase_unit') ?: 'purchase unit')
-                            : 'Selling price for finished goods, or stock value per purchase unit for raw materials.'
-                        )
+                            : 'Selling price for finished goods, or stock value per purchase unit for raw materials.')
                         ->numeric()
                         ->hidden(fn ($get) => in_array($get('type'), ['tools', 'spare_parts']) || ! PanelAccess::canSeeMoneyValues())
                         ->required(fn ($get) => ! in_array($get('type'), ['tools', 'spare_parts']) && PanelAccess::canSeeMoneyValues())
                         ->suffix('Birr')
                         ->dehydratedWhenHidden(),
+                    TextInput::make('gsm')
+                        ->label('GSM')
+                        ->numeric()
+                        ->hidden(fn ($get) => ! self::isPaperLike($get('type'), $get('category'))),
+                    TextInput::make('width')
+                        ->numeric()
+                        ->suffix('cm')
+                        ->hidden(fn ($get) => ! self::isPaperLike($get('type'), $get('category'))),
+                    TextInput::make('height')
+                        ->numeric()
+                        ->suffix('cm')
+                        ->hidden(fn ($get) => ! self::isPaperLike($get('type'), $get('category'))),
+                    TextInput::make('default_waste_percent')
+                        ->numeric()
+                        ->suffix('%')
+                        ->default(5)
+                        ->hidden(fn ($get) => $get('type') !== 'raw_material'),
                     Toggle::make('is_sellable')
                         ->label('Is Sellable')
                         ->hidden(fn ($get) => in_array($get('type'), ['tools', 'spare_parts']))
@@ -89,5 +102,19 @@ class InventoryItemForm
                         ->hidden(fn ($get) => $get('type') === 'spare_parts'),
                 ])->columnSpan(2),
             ])->columns(6);
+    }
+
+    private static function categoryOptions(?string $type): array
+    {
+        return match ($type) {
+            'raw_material' => InventoryItem::RAW_MATERIAL_CATEGORIES,
+            'finished_good' => InventoryItem::FINISHED_GOOD_CATEGORIES,
+            default => [],
+        };
+    }
+
+    private static function isPaperLike(?string $type, ?string $category): bool
+    {
+        return $type === 'raw_material' && in_array($category, ['paper', 'board'], true);
     }
 }

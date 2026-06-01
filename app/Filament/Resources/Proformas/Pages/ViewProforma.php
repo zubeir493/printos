@@ -22,7 +22,8 @@ class ViewProforma extends ViewRecord
             Action::make('download')
                 ->label('Download')
                 ->icon('heroicon-o-arrow-down-tray')
-                ->action(fn () => redirect()->away((string) app(ProformaPdfService::class)->downloadUrl($this->record))),
+                ->url(fn (): ?string => app(ProformaPdfService::class)->downloadUrl($this->record))
+                ->openUrlInNewTab(),
             Action::make('email')
                 ->label('Email')
                 ->icon('heroicon-o-envelope')

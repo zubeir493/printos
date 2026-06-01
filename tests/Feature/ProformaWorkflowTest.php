@@ -4,8 +4,6 @@ use App\Filament\Resources\Proformas\Pages\CreateProforma;
 use App\Filament\Resources\Proformas\Pages\ListProformas;
 use App\Mail\ProformaGenerated;
 use App\Models\Bank;
-use App\Models\CostEstimate;
-use App\Models\CostEstimateTask;
 use App\Models\Partner;
 use App\Models\Proforma;
 use App\Models\ProformaTask;
@@ -13,7 +11,6 @@ use App\Models\Setting;
 use App\Models\User;
 use App\Services\Proformas\ProformaPdfService;
 use App\Services\Proformas\ProformaWorkflowService;
-use App\Support\PrivateStorage;
 use App\UserRole;
 use Filament\Facades\Filament;
 use Illuminate\Database\Eloquent\Model;
@@ -24,44 +21,6 @@ use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 
 uses(RefreshDatabase::class);
-
-it('converts an estimate with multiple tasks into a proforma', function (): void {
-    Setting::createDefault();
-
-    $customer = Partner::factory()->create(['is_customer' => true]);
-    $estimate = CostEstimate::factory()->create([
-        'partner_id' => $customer->id,
-        'job_type' => 'books',
-        'subtotal' => 500,
-        'tax_amount' => 75,
-        'total' => 575,
-    ]);
-
-    CostEstimateTask::factory()->for($estimate)->create([
-        'name' => 'Cover',
-        'quantity' => 2,
-        'unit_price' => 100,
-        'task_cost' => 200,
-    ]);
-    CostEstimateTask::factory()->for($estimate)->create([
-        'name' => 'Text',
-        'quantity' => 3,
-        'unit_price' => 100,
-        'task_cost' => 300,
-    ]);
-
-    $proforma = app(ProformaWorkflowService::class)->createFromEstimate($estimate, [
-        'partner_id' => $customer->id,
-        'issue_date' => now(),
-        'expiry_date' => now()->addDays(15),
-        'remarks' => 'Valid for 15 days',
-    ]);
-
-    expect($proforma->partner_id)->toBe($customer->id)
-        ->and($proforma->tasks)->toHaveCount(2)
-        ->and($proforma->total)->toEqual('575.00')
-        ->and($estimate->refresh()->status)->toBe('converted');
-});
 
 it('creates one linked job order from an approved proforma', function (): void {
     Setting::createDefault();
@@ -92,13 +51,13 @@ it('creates one linked job order from an approved proforma', function (): void {
         ->and($jobOrder->jobOrderTasks->first()->deliverables[0]['label'])->toBe('Dieline')
         ->and($proforma->refresh()->status)->toBe('job_order_created');
 
-    expect(fn() => app(ProformaWorkflowService::class)->createJobOrder($proforma->refresh()))
+    expect(fn () => app(ProformaWorkflowService::class)->createJobOrder($proforma->refresh()))
         ->toThrow(RuntimeException::class);
 });
 
 it('stores and emails a proforma pdf privately', function (): void {
     Setting::createDefault();
-    Storage::fake(PrivateStorage::diskName());
+    Storage::fake('local');
     Mail::fake();
 
     Bank::create([
@@ -129,7 +88,7 @@ it('stores and emails a proforma pdf privately', function (): void {
 
     $proforma->refresh();
 
-    Storage::disk(PrivateStorage::diskName())->assertExists($proforma->file_path);
+    Storage::disk('local')->assertExists($proforma->file_path);
     Mail::assertSent(ProformaGenerated::class);
 
     $mailHtml = (new ProformaGenerated([
@@ -147,6 +106,32 @@ it('stores and emails a proforma pdf privately', function (): void {
         ]);
 });
 
+it('returns a temporary local download route for a proforma pdf', function (): void {
+    Setting::createDefault();
+    Storage::disk('local')->deleteDirectory('proformas-temp');
+
+    $this->actingAs(User::factory()->create([
+        'role' => UserRole::Admin,
+    ]));
+
+    $proforma = Proforma::factory()->create();
+
+    $downloadUrl = app(ProformaPdfService::class)->downloadUrl($proforma);
+
+    expect($downloadUrl)->toBe(route('proformas.download', $proforma));
+
+    $response = $this->get($downloadUrl);
+
+    $response->assertOk()
+        ->assertDownload();
+
+    ob_start();
+    $response->send();
+    ob_end_clean();
+
+    expect(Storage::disk('local')->allFiles('proformas-temp'))->toBeEmpty();
+});
+
 it('creates proformas from a full page with a previewed number', function (): void {
     Setting::createDefault();
     Filament::setCurrentPanel(Filament::getPanel('admin'));
@@ -161,7 +146,7 @@ it('creates proformas from a full page with a previewed number', function (): vo
     try {
         Livewire::test(CreateProforma::class)
             ->assertFormSet([
-                'proforma_number' => 'PF-' . now()->format('Y') . '-000001',
+                'proforma_number' => 'PF-'.now()->format('Y').'-000001',
             ])
             ->fillForm([
                 'partner_id' => $customer->id,
@@ -197,7 +182,7 @@ it('creates proformas from a full page with a previewed number', function (): vo
 
     $proforma = Proforma::query()->firstOrFail();
 
-    expect($proforma->proforma_number)->toBe('PF-' . now()->format('Y') . '-000001')
+    expect($proforma->proforma_number)->toBe('PF-'.now()->format('Y').'-000001')
         ->and($proforma->status)->toBe('draft')
         ->and($proforma->email_recipient)->toBeNull()
         ->and($proforma->tasks)->toHaveCount(2);
@@ -298,7 +283,7 @@ it('updates proforma totals dynamically while editing the form', function (): vo
 it('emails a proforma from the list table action', function (): void {
     Setting::createDefault();
     Filament::setCurrentPanel(Filament::getPanel('admin'));
-    Storage::fake(PrivateStorage::diskName());
+    Storage::fake('local');
     Mail::fake();
 
     $this->actingAs(User::factory()->create([

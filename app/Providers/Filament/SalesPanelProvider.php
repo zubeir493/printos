@@ -4,6 +4,7 @@ namespace App\Providers\Filament;
 
 use App\Filament\AvatarProviders\PrimaryColorAvatarProvider;
 use App\Filament\Pages\Auth\EditProfile;
+use App\Filament\Resources\CostEstimates\CostEstimateResource;
 use App\Filament\Resources\SalesOrders\SalesOrderResource;
 use App\Filament\Sales\Widgets\SalesOrdersFocusTable;
 use App\Filament\Sales\Widgets\SalesPanelStats;
@@ -45,6 +46,7 @@ class SalesPanelProvider extends PanelProvider
                 'primary' => Color::Indigo,
             ])
             ->resources([
+                CostEstimateResource::class,
                 SalesOrderResource::class,
             ])
             ->pages([

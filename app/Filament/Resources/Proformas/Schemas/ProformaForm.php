@@ -8,7 +8,6 @@ use App\Models\Proforma;
 use App\Models\Setting;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Repeater\TableColumn;
 use Filament\Forms\Components\Select;
@@ -46,13 +45,13 @@ class ProformaForm
                                         $lastNumber = (int) $matches[1];
                                     }
 
-                                    return "PF-{$year}-" . str_pad((string) ($lastNumber + 1), 6, '0', STR_PAD_LEFT);
+                                    return "PF-{$year}-".str_pad((string) ($lastNumber + 1), 6, '0', STR_PAD_LEFT);
                                 })
                                 ->readOnly()
                                 ->dehydrated(false),
                             Select::make('partner_id')
                                 ->label('Customer')
-                                ->relationship('partner', 'name', modifyQueryUsing: fn($query) => $query->where('is_customer', true))
+                                ->relationship('partner', 'name', modifyQueryUsing: fn ($query) => $query->where('is_customer', true))
                                 ->searchable()
                                 ->preload()
                                 ->required(),
@@ -91,8 +90,8 @@ class ProformaForm
                                     ->default(1)
                                     ->required()
                                     ->live(onBlur: true)
-                                    ->afterStateUpdated(fn(Get $get, Set $set): mixed => self::refreshCurrentTaskTotals($get, $set))
-                                    ->afterStateHydrated(fn(Get $get, Set $set): mixed => self::refreshCurrentTaskTotals($get, $set)),
+                                    ->afterStateUpdated(fn (Get $get, Set $set): mixed => self::refreshCurrentTaskTotals($get, $set))
+                                    ->afterStateHydrated(fn (Get $get, Set $set): mixed => self::refreshCurrentTaskTotals($get, $set)),
                                 TextInput::make('size'),
                                 TextInput::make('unit_price')
                                     ->numeric()
@@ -101,8 +100,8 @@ class ProformaForm
                                     ->default(0)
                                     ->required()
                                     ->live(onBlur: true)
-                                    ->afterStateUpdated(fn(Get $get, Set $set): mixed => self::refreshCurrentTaskTotals($get, $set))
-                                    ->afterStateHydrated(fn(Get $get, Set $set): mixed => self::refreshCurrentTaskTotals($get, $set)),
+                                    ->afterStateUpdated(fn (Get $get, Set $set): mixed => self::refreshCurrentTaskTotals($get, $set))
+                                    ->afterStateHydrated(fn (Get $get, Set $set): mixed => self::refreshCurrentTaskTotals($get, $set)),
                                 TextInput::make('task_cost')->numeric()->suffix('Birr')->default(0)->readOnly()->required(),
                                 Repeater::make('paper')
                                     ->table([
@@ -113,7 +112,7 @@ class ProformaForm
                                     ->schema([
                                         Select::make('inventory_item_id')
                                             ->label('Material')
-                                            ->options(fn(): array => InventoryItem::query()
+                                            ->options(fn (): array => InventoryItem::query()
                                                 ->rawMaterials()
                                                 ->pluck('name', 'id')
                                                 ->all())
@@ -171,27 +170,25 @@ class ProformaForm
                     ->columnSpan(3),
                 Section::make()
                     ->schema([
-                        Hidden::make('cost_estimate_id'),
                         TextInput::make('subtotal')
                             ->numeric()
                             ->suffix('Birr')
                             ->readOnly()
-                            ->hidden(fn() => ! PanelAccess::canSeeMoneyValues())
+                            ->hidden(fn () => ! PanelAccess::canSeeMoneyValues())
                             ->dehydratedWhenHidden(),
                         TextInput::make('tax_amount')
                             ->label('VAT')
                             ->numeric()
                             ->suffix('Birr')
                             ->readOnly()
-                            ->hidden(fn() => ! PanelAccess::canSeeMoneyValues())
+                            ->hidden(fn () => ! PanelAccess::canSeeMoneyValues())
                             ->dehydratedWhenHidden(),
                         TextInput::make('total')
                             ->numeric()
                             ->suffix('Birr')
                             ->readOnly()
-                            ->hidden(fn() => ! PanelAccess::canSeeMoneyValues())
+                            ->hidden(fn () => ! PanelAccess::canSeeMoneyValues())
                             ->dehydratedWhenHidden(),
-                        Hidden::make('email_recipient'),
                     ]),
             ])
             ->columns(4);

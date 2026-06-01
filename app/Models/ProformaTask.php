@@ -22,6 +22,9 @@ class ProformaTask extends Model
         'paper',
         'deliverables',
         'instructions',
+        'inputs',
+        'cost_breakdown',
+        'rate_snapshot',
     ];
 
     protected function casts(): array
@@ -34,6 +37,9 @@ class ProformaTask extends Model
             'task_cost' => 'decimal:2',
             'paper' => 'array',
             'deliverables' => 'array',
+            'inputs' => 'array',
+            'cost_breakdown' => 'array',
+            'rate_snapshot' => 'array',
         ];
     }
 

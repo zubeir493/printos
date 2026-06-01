@@ -7,32 +7,23 @@ use App\Models\Bank;
 use App\Models\EmailLog;
 use App\Models\Proforma;
 use App\Models\Setting;
-use App\Support\PrivateStorage;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class ProformaPdfService
 {
     public function generate(Proforma $proforma): array
     {
-        $proforma->loadMissing(['partner', 'tasks']);
-
-        $pdf = Pdf::loadView('proformas.pdf', [
-            'proformaData' => $this->dataFor($proforma),
-        ])
-            ->setPaper('a4')
-            ->setOption('defaultFont', 'Arial')
-            ->setOption('fontDir', public_path('fonts'))
-            ->setOption('fontCache', public_path('fonts'))
-            ->setOption('isRemoteEnabled', true);
+        $pdf = $this->buildPdf($proforma);
 
         $filename = $this->filenameFor($proforma);
         $path = "proformas/{$filename}";
 
-        Storage::disk(PrivateStorage::diskName())->put($path, $pdf->output());
+        Storage::disk('local')->put($path, $pdf->output());
 
         $proforma->updateQuietly([
             'filename' => $filename,
@@ -47,14 +38,36 @@ class ProformaPdfService
         ];
     }
 
+    private function buildPdf(Proforma $proforma): \Barryvdh\DomPDF\PDF
+    {
+        $proforma->loadMissing(['partner', 'tasks']);
+
+        return Pdf::loadView('proformas.pdf', [
+            'proformaData' => $this->dataFor($proforma),
+        ])
+            ->setPaper('a4')
+            ->setOption('defaultFont', 'Arial')
+            ->setOption('fontDir', public_path('fonts'))
+            ->setOption('fontCache', public_path('fonts'))
+            ->setOption('isRemoteEnabled', true);
+    }
+
     public function downloadUrl(Proforma $proforma): ?string
     {
-        if (blank($proforma->file_path)) {
-            $this->generate($proforma);
-            $proforma->refresh();
-        }
+        return route('proformas.download', ['proforma' => $proforma]);
+    }
 
-        return PrivateStorage::downloadUrl($proforma->file_path, now()->addMinutes(60));
+    public function downloadResponse(Proforma $proforma): BinaryFileResponse
+    {
+        $tempPath = 'proformas-temp/'.Str::uuid()->toString().'.pdf';
+
+        Storage::disk('local')->put($tempPath, $this->buildPdf($proforma)->output());
+
+        return response()->download(
+            Storage::disk('local')->path($tempPath),
+            $this->filenameFor($proforma),
+            ['Content-Type' => 'application/pdf'],
+        )->deleteFileAfterSend(true);
     }
 
     public function email(Proforma $proforma, string $recipientEmail, ?string $message = null): void

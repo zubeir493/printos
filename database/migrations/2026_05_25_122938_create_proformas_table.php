@@ -14,7 +14,6 @@ return new class extends Migration
         Schema::create('proformas', function (Blueprint $table) {
             $table->id();
             $table->string('proforma_number')->unique();
-            $table->foreignId('cost_estimate_id')->nullable()->constrained()->nullOnDelete();
             $table->foreignId('partner_id')->nullable()->constrained()->nullOnDelete();
             $table->string('job_type');
             $table->json('services')->nullable();

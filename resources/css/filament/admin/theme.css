@@ -344,3 +344,21 @@ h1.fi-simple-header-heading {
 .payrollTable .payroll-register-employee-field {
     min-width: 17rem;
 }
+
+button>.fi-sc-wizard-header-step-text{
+    display: none;
+}
+.fi-active>button>.fi-sc-wizard-header-step-text{
+    display: block;
+}
+.fi-sc-wizard-header-step>svg{
+    display: none !important;
+}
+.fi-completed>svg, .fi-active>svg{
+    display: block !important;
+}
+
+.liveSummary>section>.fi-section-content-ctn>.fi-sc-has-gap.fi-grid{
+    gap: 1rem;
+    padding: .85rem;
+}

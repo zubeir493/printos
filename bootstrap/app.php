@@ -38,6 +38,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->render(function (Throwable $e, Request $request) {
             $isFilamentRequest = $request->is('filament/*') || str_starts_with($request->path(), 'filament');
+            $isJsonRequest = $request->expectsJson() || $request->ajax() || $request->hasHeader('X-Livewire') || $request->hasHeader('X-Requested-With');
 
             // PHP fatal errors surfaced as Error instances (max execution time, memory, etc.)
             if ($e instanceof Error) {
@@ -58,7 +59,9 @@ return Application::configure(basePath: dirname(__DIR__))
                         ->danger()
                         ->send();
 
-                    return new RedirectResponse($request->headers->get('referer') ?? url('/'));
+                    return $isJsonRequest
+                        ? response()->json(['message' => $body], 500)
+                        : response()->view('errors.500', [], 500);
                 }
 
                 return response()->view('errors.500', [], 500);
@@ -96,13 +99,17 @@ return Application::configure(basePath: dirname(__DIR__))
                 str_contains($e->getMessage() ?? '', 'timeout') ||
                 str_contains($e->getMessage() ?? '', 'connection')
             )) {
+                $body = 'The request took too long to complete. Please try again.';
+
                 Notification::make()
                     ->title('Connection problem')
-                    ->body('The request took too long to complete. Please try again.')
+                    ->body($body)
                     ->danger()
                     ->send();
 
-                return new RedirectResponse($request->headers->get('referer') ?? url('/'));
+                return $isJsonRequest
+                    ? response()->json(['message' => $body], 500)
+                    : response()->view('errors.500', [], 500);
             }
 
             // Validation errors on Filament routes — Livewire handles inline errors,
@@ -115,19 +122,22 @@ return Application::configure(basePath: dirname(__DIR__))
                     ->send();
             }
 
-            // All other server errors (5xx) on Filament routes — redirect with notification
-            // This catches both HttpException 5xx AND unhandled runtime Throwables
+            // All other server errors (5xx) on Filament routes — render a single error response
             if ($isFilamentRequest && ! ($e instanceof ValidationException) && ! ($e instanceof NotFoundHttpException)) {
                 $statusCode = $e instanceof HttpException ? $e->getStatusCode() : 500;
 
                 if ($statusCode >= 500) {
+                    $body = 'An unexpected error occurred. Please try again or contact your administrator if it keeps happening.';
+
                     Notification::make()
                         ->title('Something went wrong')
-                        ->body('An unexpected error occurred. Please try again or contact your administrator if it keeps happening.')
+                        ->body($body)
                         ->danger()
                         ->send();
 
-                    return new RedirectResponse($request->headers->get('referer') ?? url('/'));
+                    return $isJsonRequest
+                        ? response()->json(['message' => $body], 500)
+                        : response()->view('errors.500', [], 500);
                 }
             }
         });

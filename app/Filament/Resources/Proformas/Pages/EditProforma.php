@@ -3,7 +3,6 @@
 namespace App\Filament\Resources\Proformas\Pages;
 
 use App\Filament\Resources\Proformas\ProformaResource;
-use App\Services\CostEstimates\CostEstimateCalculator;
 use App\Services\Proformas\ProformaPdfService;
 use App\Services\Proformas\ProformaWorkflowService;
 use Filament\Actions\Action;
@@ -23,7 +22,8 @@ class EditProforma extends EditRecord
             Action::make('download')
                 ->label('Download')
                 ->icon('heroicon-o-arrow-down-tray')
-                ->action(fn () => redirect()->away((string) app(ProformaPdfService::class)->downloadUrl($this->record))),
+                ->url(fn (): ?string => app(ProformaPdfService::class)->downloadUrl($this->record))
+                ->openUrlInNewTab(),
             Action::make('email')
                 ->label('Email')
                 ->icon('heroicon-o-envelope')
@@ -74,16 +74,6 @@ class EditProforma extends EditRecord
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
-        $calculation = app(CostEstimateCalculator::class)->calculate(
-            $data['job_type'],
-            $data['tasks'] ?? [],
-        );
-
-        $data['tasks'] = $calculation['tasks'];
-        $data['subtotal'] = $calculation['subtotal'];
-        $data['tax_amount'] = $calculation['tax_amount'];
-        $data['total'] = $calculation['total'];
-
         unset($data['tasks']);
 
         return $data;

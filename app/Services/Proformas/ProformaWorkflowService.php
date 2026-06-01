@@ -2,52 +2,12 @@
 
 namespace App\Services\Proformas;
 
-use App\Models\CostEstimate;
 use App\Models\JobOrder;
 use App\Models\Proforma;
 use Illuminate\Support\Facades\DB;
 
 class ProformaWorkflowService
 {
-    public function createFromEstimate(CostEstimate $estimate, array $data): Proforma
-    {
-        return DB::transaction(function () use ($estimate, $data): Proforma {
-            $estimate->loadMissing('tasks');
-
-            $proforma = Proforma::create([
-                'cost_estimate_id' => $estimate->id,
-                'partner_id' => $data['partner_id'],
-                'job_type' => $estimate->job_type,
-                'services' => $estimate->services,
-                'issue_date' => $data['issue_date'] ?? now(),
-                'expiry_date' => $data['expiry_date'],
-                'remarks' => $data['remarks'] ?? $estimate->remarks,
-                'subtotal' => $estimate->subtotal,
-                'tax_amount' => $estimate->tax_amount,
-                'total' => $estimate->total,
-                'status' => 'draft',
-                'email_recipient' => $data['email_recipient'] ?? null,
-            ]);
-
-            foreach ($estimate->tasks as $task) {
-                $proforma->tasks()->create([
-                    'name' => $task->name,
-                    'quantity' => $task->quantity,
-                    'size' => $task->size,
-                    'unit_price' => $task->unit_price,
-                    'task_cost' => $task->task_cost,
-                    'paper' => $task->paper,
-                    'deliverables' => $task->deliverables,
-                    'instructions' => $task->instructions,
-                ]);
-            }
-
-            $estimate->update(['status' => 'converted']);
-
-            return $proforma;
-        });
-    }
-
     public function createJobOrder(Proforma $proforma): JobOrder
     {
         return DB::transaction(function () use ($proforma): JobOrder {

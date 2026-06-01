@@ -58,18 +58,7 @@ class InventoryItemsTable
                         'other' => 'gray',
                         default => 'gray',
                     })
-                    ->formatStateUsing(fn ($state) => match ($state) {
-                        'printing' => 'Printing',
-                        'design' => 'Design',
-                        'binding' => 'Binding',
-                        'finishing' => 'Finishing',
-                        'packaging' => 'Packaging',
-                        'stationery' => 'Stationery',
-                        'marketing' => 'Marketing',
-                        'other' => 'Other',
-                        default => ucfirst($state ?? 'N/A'),
-                    })
-                    ->visible(fn ($record) => $record?->type === 'finished_good'),
+                    ->formatStateUsing(fn ($state) => ucfirst(str_replace('_', ' ', $state ?? 'N/A'))),
                 TextColumn::make('unit')
                     ->label('Unit')
                     ->badge()
@@ -87,13 +76,20 @@ class InventoryItemsTable
                 SelectFilter::make('category')
                     ->label('Category')
                     ->options([
-                        'printing' => 'Printing Services',
-                        'design' => 'Design Services',
-                        'binding' => 'Binding Services',
-                        'finishing' => 'Finishing Services',
-                        'packaging' => 'Packaging',
-                        'stationery' => 'Stationery',
-                        'marketing' => 'Marketing Materials',
+                        'paper' => 'Paper',
+                        'board' => 'Board',
+                        'ink' => 'Ink',
+                        'adhesive' => 'Adhesive',
+                        'liner' => 'Liner',
+                        'lamination' => 'Lamination',
+                        'coating' => 'Coating',
+                        'glue' => 'Glue',
+                        'packing' => 'Packing',
+                        'quran' => 'Quran',
+                        'hadeeth' => 'Hadeeth',
+                        'aqeedah' => 'Aqeedah',
+                        'fiqh' => 'Fiqh',
+                        'external' => 'External',
                         'other' => 'Other',
                     ]),
             ])

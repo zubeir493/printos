@@ -5,11 +5,17 @@ use Illuminate\Http\Request;
 
 define('LARAVEL_START', microtime(true));
 
+$GLOBALS['printos_request_completed'] = false;
+
 // Catch PHP fatal errors (max execution time, memory exhaustion, etc.) that
 // kill the process before Laravel can render a response. The shutdown function
 // runs even after a fatal, so we can output the custom error page directly.
 register_shutdown_function(function (): void {
     $error = error_get_last();
+
+    if ($GLOBALS['printos_request_completed'] ?? false) {
+        return;
+    }
 
     $fatalTypes = [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR, E_USER_ERROR];
 
@@ -107,3 +113,5 @@ require __DIR__.'/../vendor/autoload.php';
 $app = require_once __DIR__.'/../bootstrap/app.php';
 
 $app->handleRequest(Request::capture());
+
+$GLOBALS['printos_request_completed'] = true;

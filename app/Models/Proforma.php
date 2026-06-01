@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Services\CostEstimates\CostEstimateCalculator;
 use App\Support\Money;
 use App\Support\SequentialNumber;
 use Database\Factories\ProformaFactory;
@@ -42,8 +41,8 @@ class Proforma extends Model
     {
         return [
             'id' => 'integer',
-            'cost_estimate_id' => 'integer',
             'partner_id' => 'integer',
+            'cost_estimate_id' => 'integer',
             'approved_by' => 'integer',
             'services' => 'array',
             'issue_date' => 'date',
@@ -73,14 +72,14 @@ class Proforma extends Model
         });
     }
 
-    public function costEstimate(): BelongsTo
-    {
-        return $this->belongsTo(CostEstimate::class);
-    }
-
     public function partner(): BelongsTo
     {
         return $this->belongsTo(Partner::class);
+    }
+
+    public function costEstimate(): BelongsTo
+    {
+        return $this->belongsTo(CostEstimate::class);
     }
 
     public function approvedBy(): BelongsTo
@@ -115,27 +114,22 @@ class Proforma extends Model
 
     public function recalculateTotals(): void
     {
-        $calculator = app(CostEstimateCalculator::class);
-        $calculation = $calculator->calculate($this->job_type, $this->tasks()->get()->toArray());
+        $subtotal = 0;
 
-        foreach ($calculation['tasks'] as $task) {
-            if (! isset($task['id'])) {
-                continue;
-            }
-
-            $this->tasks()
-                ->whereKey($task['id'])
-                ->update([
-                    'quantity' => $task['quantity'],
-                    'unit_price' => $task['unit_price'],
-                    'task_cost' => $task['task_cost'],
-                ]);
+        foreach ($this->tasks as $task) {
+            $taskCost = round(max(1, (int) $task->quantity) * (float) $task->unit_price, 2);
+            $task->updateQuietly(['task_cost' => $taskCost]);
+            $subtotal += $taskCost;
         }
 
+        $settings = Setting::getSettings();
+        $taxRate = $settings->vat_enabled ? (float) $settings->vat_rate / 100 : 0.0;
+        $taxAmount = round($subtotal * $taxRate, 2);
+
         $this->updateQuietly([
-            'subtotal' => $calculation['subtotal'],
-            'tax_amount' => $calculation['tax_amount'],
-            'total' => $calculation['total'],
+            'subtotal' => round($subtotal, 2),
+            'tax_amount' => $taxAmount,
+            'total' => round($subtotal + $taxAmount, 2),
         ]);
     }
 }

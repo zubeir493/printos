@@ -26,6 +26,7 @@ class Setting extends Model
         'employee_pension_rate',
         'employer_pension_rate',
         'tax_configuration',
+        'costing_defaults',
         'invoice_terms',
         'invoice_due_days',
         'invoice_prefix',
@@ -47,6 +48,7 @@ class Setting extends Model
             'employee_pension_rate' => 'decimal:2',
             'employer_pension_rate' => 'decimal:2',
             'tax_configuration' => 'array',
+            'costing_defaults' => 'array',
             'invoice_due_days' => 'integer',
         ];
     }
@@ -85,6 +87,20 @@ class Setting extends Model
             'employer_pension_rate' => 11,
             'tax_configuration' => [
                 ['name' => 'VAT', 'rate' => 0.15],
+            ],
+            'costing_defaults' => [
+                'overhead_percent' => 15,
+                'profit_margin_percent' => 20,
+                'waste_percent' => 3,
+                'plate_unit_cost' => 1000,
+                'make_ready_unit_cost' => 50,
+                'label_cutting_unit_cost' => 25,
+                'label_diecutting_unit_cost' => 0,
+                'package_die_unit_cost' => 10000,
+                'manual_finishing_unit_cost' => 0.05,
+                'varnish_unit_cost' => 0,
+                'currency_precision' => 2,
+                'rounding_strategy' => 'round',
             ],
             'invoice_terms' => "1. Payment is due within 30 days of invoice date.\n2. All prices are inclusive of applicable taxes unless otherwise stated.\n3. Goods remain the property of the company until paid in full.\n4. Please quote invoice number when making payment.",
             'invoice_due_days' => 30,

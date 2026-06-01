@@ -11,22 +11,20 @@ use Illuminate\Database\Eloquent\Factories\Factory;
  */
 class CostEstimateFactory extends Factory
 {
-    /**
-     * Define the model's default state.
-     *
-     * @return array<string, mixed>
-     */
+    protected $model = CostEstimate::class;
+
     public function definition(): array
     {
         return [
-            'estimate_number' => 'EST-'.now()->format('Y').'-'.str_pad((string) fake()->unique()->numberBetween(1, 999999), 6, '0', STR_PAD_LEFT),
-            'job_type' => fake()->randomElement(['books', 'packages', 'labels', 'vouchers']),
+            'estimate_number' => 'CE-'.now()->format('Y').'-'.str_pad((string) fake()->unique()->numberBetween(1, 999999), 6, '0', STR_PAD_LEFT),
+            'job_type' => 'labels',
             'partner_id' => Partner::factory(),
+            'description' => fake()->words(3, true),
+            'quantity' => 5000,
             'services' => [],
-            'remarks' => fake()->sentence(),
-            'subtotal' => 1000,
-            'tax_amount' => 150,
-            'total' => 1150,
+            'subtotal' => 0,
+            'tax_amount' => 0,
+            'total' => 0,
             'status' => 'draft',
         ];
     }

@@ -39,24 +39,31 @@ class CostEstimateForm
                     ->schema([
                         Placeholder::make('total')
                             ->label('Selling Price')
-                            ->content(fn(Get $get): string => self::summaryText($get, 'total')),
+                            ->content(fn (Get $get): HtmlString => self::summaryText($get, 'total', isPrimary: true))
+                            ->extraAttributes(['class' => 'cost-summary-metric cost-summary-total']),
                         Placeholder::make('unit_price')
-                            ->content(fn(Get $get): string => self::summaryText($get, 'unitPrice', 4)),
+                            ->label('Unit Price')
+                            ->content(fn (Get $get): HtmlString => self::summaryText($get, 'unitPrice', 4))
+                            ->extraAttributes(['class' => 'cost-summary-metric']),
                         Placeholder::make('subtotal')
                             ->label('Estimated Cost')
-                            ->content(fn(Get $get): string => self::summaryText($get, 'subtotal')),
+                            ->content(fn (Get $get): HtmlString => self::summaryText($get, 'subtotal'))
+                            ->extraAttributes(['class' => 'cost-summary-metric']),
                         Placeholder::make('margin')
                             ->label('Margin')
-                            ->content(fn(Get $get): HtmlString => self::marginValue($get)),
+                            ->content(fn (Get $get): HtmlString => self::marginValue($get))
+                            ->extraAttributes(['class' => 'cost-summary-metric']),
                         Placeholder::make('material_consumption')
                             ->label('Material Consumption')
-                            ->content(fn(Get $get): HtmlString => self::materials($get)),
+                            ->content(fn (Get $get): HtmlString => self::materials($get))
+                            ->extraAttributes(['class' => 'cost-summary-block']),
                         Placeholder::make('summary_warnings')
                             ->label('Warnings')
-                            ->content(fn(Get $get): HtmlString => self::warnings($get)),
+                            ->content(fn (Get $get): HtmlString => self::warnings($get))
+                            ->extraAttributes(['class' => 'cost-summary-block cost-summary-warnings']),
                     ])
                     ->extraAttributes(['class' => 'lg:sticky lg:top-6 liveSummary'])
-                    ->hidden(fn(): bool => ! PanelAccess::canSeeMoneyValues())
+                    ->hidden(fn (): bool => ! PanelAccess::canSeeMoneyValues())
                     ->columnSpan(1),
             ])
             ->columns(4);
@@ -75,7 +82,7 @@ class CostEstimateForm
                     ->maxLength(255),
                 Select::make('job_type')
                     ->label('Service Type')
-                    ->options(fn(): array => app(CostingRegistry::class)->options())
+                    ->options(fn (): array => app(CostingRegistry::class)->options())
                     ->default('labels')
                     ->live()
                     ->required(),
@@ -126,7 +133,7 @@ class CostEstimateForm
 
     private static function money(float $amount, int $precision = 2): string
     {
-        return number_format($amount, $precision) . ' Birr';
+        return number_format($amount, $precision).' Birr';
     }
 
     private static function materials(Get $get): HtmlString
@@ -134,34 +141,21 @@ class CostEstimateForm
         $preview = self::preview($get);
 
         if (! $preview) {
-            return self::waiting();
+            return CostingSnapshotPresenter::waitingValue();
         }
 
-        $materials = $preview->materialConsumption;
-
-        if ($materials === []) {
-            return new HtmlString('No inventory-backed material lines yet.');
-        }
-
-        return new HtmlString(collect($materials)
-            ->map(fn(array $material): string => sprintf(
-                '%s: %s %s',
-                e($material['label']),
-                number_format((float) $material['quantity'], 2),
-                e($material['unit'] ?? ''),
-            ))
-            ->implode('<br>'));
+        return CostingSnapshotPresenter::materials($preview->materialConsumption);
     }
 
-    private static function summaryText(Get $get, string $field, int $precision = 2): string
+    private static function summaryText(Get $get, string $field, int $precision = 2, bool $isPrimary = false): HtmlString
     {
         $preview = self::preview($get);
 
         if (! $preview) {
-            return 'Waiting for required fields';
+            return CostingSnapshotPresenter::waitingValue();
         }
 
-        return self::money((float) $preview->{$field}, $precision);
+        return CostingSnapshotPresenter::moneyValue(self::money((float) $preview->{$field}, $precision), $isPrimary);
     }
 
     private static function marginValue(Get $get): HtmlString
@@ -169,16 +163,16 @@ class CostEstimateForm
         $preview = self::preview($get);
 
         if (! $preview) {
-            return self::waiting();
+            return CostingSnapshotPresenter::waitingValue();
         }
 
-        return new HtmlString(e(number_format($preview->marginPercent, 2) . '%'));
+        return CostingSnapshotPresenter::margin($preview->marginPercent);
     }
 
     private static function warnings(Get $get): HtmlString
     {
         if (! self::isPreviewReady($get)) {
-            return new HtmlString('Complete product specs and material selection to calculate.');
+            return CostingSnapshotPresenter::warnings(['Complete product specs and material selection to calculate.']);
         }
 
         $warnings = [];
@@ -198,16 +192,9 @@ class CostEstimateForm
         }
 
         if ($warnings === []) {
-            return new HtmlString('Ready to review');
+            return CostingSnapshotPresenter::warnings([]);
         }
 
-        return new HtmlString(collect($warnings)
-            ->map(fn(string $warning): string => e($warning))
-            ->implode('<br>'));
-    }
-
-    private static function waiting(): HtmlString
-    {
-        return new HtmlString('Waiting for required fields');
+        return CostingSnapshotPresenter::warnings($warnings);
     }
 }

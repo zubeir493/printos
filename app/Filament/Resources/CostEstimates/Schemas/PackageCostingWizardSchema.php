@@ -56,9 +56,19 @@ class PackageCostingWizardSchema
                     Select::make('services.material.coating_item_id')->label('Coating')->options(fn (): array => InventoryItem::query()->coatingMaterials()->pluck('name', 'id')->all())->searchable()->preload()->live(),
                     Section::make('Inventory Snapshot')
                         ->schema([
-                            Placeholder::make('board_snapshot')->label('Board')->content(fn (Get $get): HtmlString => self::itemSnapshot($get('services.material.board_item_id'))),
-                            Placeholder::make('glue_snapshot')->label('Glue')->content(fn (Get $get): HtmlString => self::itemSnapshot($get('services.material.glue_item_id'))),
+                            Placeholder::make('board_snapshot')
+                                ->label('Board')
+                                ->content(fn (Get $get): HtmlString => self::itemSnapshot($get('services.material.board_item_id')))
+                                ->extraAttributes(['class' => 'cost-snapshot-field']),
+                            Placeholder::make('glue_snapshot')
+                                ->label('Glue')
+                                ->content(fn (Get $get): HtmlString => self::itemSnapshot($get('services.material.glue_item_id')))
+                                ->extraAttributes(['class' => 'cost-snapshot-field']),
                         ])
+                        ->secondary()
+                        ->compact()
+                        ->columns(2)
+                        ->extraAttributes(['class' => 'cost-snapshot-section'])
                         ->columnSpanFull(),
                 ]),
             Step::make('Production Operations')
@@ -72,11 +82,23 @@ class PackageCostingWizardSchema
                     TextInput::make('services.operations.manual_finishing_unit_cost')->numeric()->suffix('Birr')->default(0.05)->live(onBlur: true),
                     Section::make('Machine Snapshots')
                         ->schema([
-                            Placeholder::make('printing_machine_snapshot')->label('Printing')->content(fn (Get $get): HtmlString => self::machineSnapshot($get('services.operations.printing_machine_id'))),
-                            Placeholder::make('die_machine_snapshot')->label('Die Cutting')->content(fn (Get $get): HtmlString => self::machineSnapshot($get('services.operations.diecutting_machine_id'))),
-                            Placeholder::make('gluer_machine_snapshot')->label('Folder Gluer')->content(fn (Get $get): HtmlString => self::machineSnapshot($get('services.operations.folder_gluer_machine_id'))),
+                            Placeholder::make('printing_machine_snapshot')
+                                ->label('Printing')
+                                ->content(fn (Get $get): HtmlString => self::machineSnapshot($get('services.operations.printing_machine_id')))
+                                ->extraAttributes(['class' => 'cost-snapshot-field']),
+                            Placeholder::make('die_machine_snapshot')
+                                ->label('Die Cutting')
+                                ->content(fn (Get $get): HtmlString => self::machineSnapshot($get('services.operations.diecutting_machine_id')))
+                                ->extraAttributes(['class' => 'cost-snapshot-field']),
+                            Placeholder::make('gluer_machine_snapshot')
+                                ->label('Folder Gluer')
+                                ->content(fn (Get $get): HtmlString => self::machineSnapshot($get('services.operations.folder_gluer_machine_id')))
+                                ->extraAttributes(['class' => 'cost-snapshot-field']),
                         ])
+                        ->secondary()
+                        ->compact()
                         ->columns(3)
+                        ->extraAttributes(['class' => 'cost-snapshot-section'])
                         ->columnSpanFull(),
                 ]),
             Step::make('Packing & Logistics')
@@ -94,50 +116,11 @@ class PackageCostingWizardSchema
 
     private static function itemSnapshot(mixed $itemId): HtmlString
     {
-        $item = InventoryItem::query()->find($itemId);
-
-        if (! $item) {
-            return new HtmlString('<span class="text-gray-500">Select an item to see cost, specs, and stock.</span>');
-        }
-
-        $purchaseCost = $item->hasPurchaseUnit()
-            ? sprintf(
-                '<br><span class="text-xs text-gray-500 dark:text-gray-400">%s Birr/%s, %s %s per %s</span>',
-                number_format($item->pricePerPurchaseUnit(), 2),
-                e($item->purchase_unit),
-                number_format((float) $item->conversion_factor, 2),
-                e($item->unit),
-                e($item->purchase_unit),
-            )
-            : '';
-
-        return new HtmlString(sprintf(
-            '<strong>%s</strong><br><span class="text-primary-600 font-semibold">%s Birr/%s</span>%s<br><span class="text-gray-500 dark:text-gray-400">GSM %s | %s x %s | Stock %s %s</span>',
-            e($item->name),
-            number_format($item->baseUnitCost(), 2),
-            e($item->unit),
-            $purchaseCost,
-            e($item->gsm ?: 'N/A'),
-            e($item->width ?: 'N/A'),
-            e($item->height ?: 'N/A'),
-            number_format($item->stockOnHand(), 2),
-            e($item->unit),
-        ));
+        return CostingSnapshotPresenter::item(InventoryItem::query()->find($itemId));
     }
 
     private static function machineSnapshot(mixed $machineId): HtmlString
     {
-        $machine = Machine::query()->find($machineId);
-
-        if (! $machine) {
-            return new HtmlString('<span class="text-gray-500">Select a machine.</span>');
-        }
-
-        return new HtmlString(sprintf(
-            '<strong>%s</strong><br><span class="text-success-600 font-semibold">%s units/hr</span><br><span class="text-gray-500">%s Birr/hr</span>',
-            e($machine->name),
-            number_format((float) $machine->production_speed, 2),
-            number_format((float) $machine->hourly_cost, 2),
-        ));
+        return CostingSnapshotPresenter::machine(Machine::query()->find($machineId), 'Select a machine.');
     }
 }

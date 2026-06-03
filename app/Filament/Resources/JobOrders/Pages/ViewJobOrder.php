@@ -26,11 +26,17 @@ use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Support\Colors\Color;
+use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Validation\ValidationException;
 
 class ViewJobOrder extends ViewRecord
 {
     protected static string $resource = JobOrderResource::class;
+
+    public function getTitle(): string|Htmlable
+    {
+        return $this->getRecord()->job_order_number;
+    }
 
     protected function getHeaderActions(): array
     {

@@ -5,7 +5,6 @@ namespace App\Filament\Resources\SalesOrders\Schemas;
 use App\Filament\Support\Calculations;
 use App\Models\InventoryItem;
 use App\Models\Partner;
-use App\Models\SalesOrder;
 use App\Models\Setting;
 use App\Models\Warehouse;
 use App\Services\SalesOrderItemImportService;
@@ -13,6 +12,7 @@ use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Repeater\TableColumn;
 use Filament\Forms\Components\Select;
@@ -28,6 +28,7 @@ use Filament\Schemas\Schema;
 use Filament\Support\Colors\Color;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\HtmlString;
+use Illuminate\Support\Number;
 use Illuminate\Support\Str;
 use Livewire\Features\SupportFileUploads\FileUploadConfiguration;
 
@@ -41,33 +42,19 @@ class SalesOrderForm
                     ->schema([
                         Grid::make(3)
                             ->schema([
-                                TextInput::make('order_number')
-                                    ->label('Sales Order #')
-                                    ->default(function () {
-                                        $lastOrder = SalesOrder::orderBy('id', 'desc')->first();
-                                        $lastNumber = 0;
-
-                                        if ($lastOrder && preg_match('/SO-(\d+)/', $lastOrder->order_number, $matches)) {
-                                            $lastNumber = (int) $matches[1];
-                                        }
-
-                                        return 'SO-' . str_pad($lastNumber + 1, 6, '0', STR_PAD_LEFT);
-                                    })
-                                    ->readOnly()
-                                    ->dehydrated(false),
                                 Select::make('partner_id')
                                     ->label('Customer')
-                                    ->relationship('partner', 'name', modifyQueryUsing: fn($query) => $query->where('is_customer', true))
+                                    ->relationship('partner', 'name', modifyQueryUsing: fn ($query) => $query->where('is_customer', true))
                                     ->searchable()
                                     ->preload()
-                                    ->default(fn() => Partner::query()
+                                    ->default(fn () => Partner::query()
                                         ->where('is_customer', true)
                                         ->where('name', 'Walk-In Customer')
                                         ->first()?->id
                                         ?? Partner::query()
-                                        ->where('is_customer', true)
-                                        ->orderBy('id')
-                                        ->first()?->id)
+                                            ->where('is_customer', true)
+                                            ->orderBy('id')
+                                            ->first()?->id)
                                     ->required()
                                     ->createOptionForm([
                                         TextInput::make('name')->required(),
@@ -80,12 +67,9 @@ class SalesOrderForm
                                     ->label('Warehouse')
                                     ->relationship('warehouse', 'name')
                                     ->searchable()
-                                    ->default(fn() => Warehouse::where('is_default', true)->value('id'))
+                                    ->default(fn () => Warehouse::where('is_default', true)->value('id'))
                                     ->preload()
                                     ->required(),
-                            ]),
-                        Grid::make(3)
-                            ->schema([
                                 DatePicker::make('order_date')
                                     ->default(now())
                                     ->required(),
@@ -98,6 +82,11 @@ class SalesOrderForm
                                     ->default('cash')
                                     ->required()
                                     ->live(),
+                                DatePicker::make('due_date')
+                                    ->label('Payment Due Date')
+                                    ->live()
+                                    ->default(now())
+                                    ->required(),
                                 // Standalone import button — FileUpload lives inside the action modal,
                                 // completely isolated from the form's save lifecycle.
                                 SchemaActions::make([
@@ -105,10 +94,10 @@ class SalesOrderForm
                                         ->label('Import from CSV / Excel')
                                         ->icon('heroicon-o-arrow-up-tray')
                                         ->color(Color::Indigo)
-                                        ->visible(fn() => ! request()->routeIs('*.view'))
+                                        ->visible(fn () => ! request()->routeIs('*.view'))
                                         ->modalHeading('Import Sale Items')
                                         ->modalDescription(new HtmlString(
-                                            'Use the <a href="' . asset('import-templates/sales-order-items.csv') . '" download class="font-medium text-primary-600 hover:underline dark:text-primary-400">example CSV template</a> to see the supported columns.'
+                                            'Use the <a href="'.asset('import-templates/sales-order-items.csv').'" download class="font-medium text-primary-600 hover:underline dark:text-primary-400">example CSV template</a> to see the supported columns.'
                                         ))
                                         ->modalWidth('lg')
                                         ->schema([
@@ -137,7 +126,7 @@ class SalesOrderForm
 
                                                 // Write to a real OS temp file so OpenSpout can open it by path
                                                 $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION)) ?: 'csv';
-                                                $localTmp = tempnam(sys_get_temp_dir(), 'so_import_') . '.' . $ext;
+                                                $localTmp = tempnam(sys_get_temp_dir(), 'so_import_').'.'.$ext;
                                                 file_put_contents($localTmp, $contents);
 
                                                 try {
@@ -164,7 +153,7 @@ class SalesOrderForm
                                                 $set('total', $subtotal + $tax);
 
                                                 Notification::make()
-                                                    ->title(count($imported) . ' item(s) imported')
+                                                    ->title(count($imported).' item(s) imported')
                                                     ->body('Matching items with the same price had their quantities merged. Items with different prices were added as separate rows.')
                                                     ->success()
                                                     ->send();
@@ -192,7 +181,7 @@ class SalesOrderForm
                             ->schema([
                                 Select::make('inventory_item_id')
                                     ->label('Item')
-                                    ->relationship('inventoryItem', 'name', fn($query) => $query->where('is_sellable', true))
+                                    ->relationship('inventoryItem', 'name', fn ($query) => $query->where('is_sellable', true))
                                     ->searchable()
                                     ->preload()
                                     ->required()
@@ -215,7 +204,7 @@ class SalesOrderForm
                                     ->required()
                                     ->default(1)
                                     ->minValue(0.01)
-                                    ->suffix(fn($get) => $get('unit_label') ?: 'unit')
+                                    ->suffix(fn ($get) => $get('unit_label') ?: 'unit')
                                     ->live()
                                     ->afterStateUpdated(function (Set $set, Get $get, $state) {
                                         $set('total', round((float) ($state ?? 0) * (float) ($get('unit_price') ?? 0), 2));
@@ -296,7 +285,7 @@ class SalesOrderForm
                                 Calculations::updateTaxedTotal($get, $set, 'subtotal', 'tax_amount', 'total');
                             })
                             ->deleteAction(
-                                fn($action) => $action->after(function (Get $get, Set $set) {
+                                fn ($action) => $action->after(function (Get $get, Set $set) {
                                     Calculations::updateSubtotal($get, $set, 'salesOrderItems', 'subtotal');
                                     $subtotal = (float) $get('subtotal');
                                     $taxRate = Setting::getSettings()->vat_enabled
@@ -309,38 +298,34 @@ class SalesOrderForm
                             ),
                     ])
                     ->columnSpan(3),
-                Section::make('Summary')
+                Section::make()
                     ->schema([
-                        DatePicker::make('due_date')
-                            ->label('Payment Due Date')
-                            ->live()
-                            ->default(now())
-                            ->required(),
+                        Hidden::make('subtotal')
+                            ->default(0)
+                            ->dehydrated(),
+                        Hidden::make('tax_amount')
+                            ->default(0)
+                            ->dehydrated(),
+                        Hidden::make('total')
+                            ->default(0)
+                            ->dehydrated(),
 
-                        TextInput::make('subtotal')
+                        Placeholder::make('summary_subtotal')
                             ->label('Subtotal')
-                            ->readOnly()
-                            ->numeric()
-                            ->default(0)
-                            ->suffix('Birr')
-                            ->dehydrated(),
+                            ->content(fn (Get $get): HtmlString => self::summaryValue($get('subtotal')))
+                            ->extraAttributes(['class' => 'cost-summary-metric']),
 
-                        TextInput::make('tax_amount')
+                        Placeholder::make('summary_tax_amount')
                             ->label('Tax (VAT)')
-                            ->readOnly()
-                            ->numeric()
-                            ->default(0)
-                            ->suffix('Birr')
-                            ->dehydrated(),
+                            ->content(fn (Get $get): HtmlString => self::summaryValue($get('tax_amount')))
+                            ->extraAttributes(['class' => 'cost-summary-metric']),
 
-                        TextInput::make('total')
+                        Placeholder::make('summary_total')
                             ->label('Total')
-                            ->readOnly()
-                            ->numeric()
-                            ->default(0)
-                            ->suffix('Birr')
-                            ->dehydrated(),
-                    ]),
+                            ->content(fn (Get $get): HtmlString => self::summaryValue($get('total'), isPrimary: true))
+                            ->extraAttributes(['class' => 'cost-summary-metric cost-summary-total']),
+                    ])
+                    ->extraAttributes(['class' => 'lg:sticky lg:top-6 orderSummary']),
             ])
             ->columns(4);
     }
@@ -353,12 +338,12 @@ class SalesOrderForm
     public static function mergeImportedRows(array $existingRows, array $importedRows): array
     {
         $rows = collect($existingRows)
-            ->filter(fn($row): bool => is_array($row) && filled($row['inventory_item_id'] ?? null))
+            ->filter(fn ($row): bool => is_array($row) && filled($row['inventory_item_id'] ?? null))
             ->values();
 
         foreach ($importedRows as $newRow) {
             $matchIndex = $rows->search(
-                fn($row): bool => (int) ($row['inventory_item_id'] ?? 0) === (int) ($newRow['inventory_item_id'] ?? 0)
+                fn ($row): bool => (int) ($row['inventory_item_id'] ?? 0) === (int) ($newRow['inventory_item_id'] ?? 0)
                     && (float) ($row['unit_price'] ?? 0) === (float) ($newRow['unit_price'] ?? 0)
             );
 
@@ -375,5 +360,14 @@ class SalesOrderForm
         }
 
         return $rows->values()->toArray();
+    }
+
+    private static function summaryValue(mixed $amount, bool $isPrimary = false): HtmlString
+    {
+        return new HtmlString(sprintf(
+            '<span class="cost-summary-value%s">%s Birr</span>',
+            $isPrimary ? ' cost-summary-value-primary' : '',
+            e(Number::format((float) ($amount ?? 0), precision: 2)),
+        ));
     }
 }

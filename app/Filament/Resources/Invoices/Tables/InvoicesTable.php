@@ -26,14 +26,14 @@ class InvoicesTable
                     ->label('Invoice #')
                     ->searchable()
                     ->sortable()
-                    ->description(fn($record) => 'Generated for ' . ($record->partner?->name ?? 'Internal'))
+                    ->description(fn ($record) => 'Generated for '.($record->partner?->name ?? 'Internal'))
                     ->weight('bold')
                     ->color('primary'),
 
                 TextColumn::make('status')
                     ->label('Status')
                     ->badge()
-                    ->color(fn($state) => match ($state) {
+                    ->color(fn ($state) => match ($state) {
                         'draft' => 'gray',
                         'sent' => 'info',
                         'paid' => 'success',
@@ -43,7 +43,7 @@ class InvoicesTable
                         'cancelled' => 'warning',
                         default => 'gray',
                     })
-                    ->formatStateUsing(fn($state) => ucfirst($state)),
+                    ->formatStateUsing(fn ($state) => ucfirst($state)),
 
                 TextColumn::make('payment_progress')
                     ->label('Payment Progress')
@@ -51,15 +51,15 @@ class InvoicesTable
                         $total = (float) $record->total_amount;
                         $paid = $total - (float) $record->balance_due;
 
-                        return Money::format($paid) . '/' . Money::format($total);
+                        return Money::format($paid).'/'.Money::format($total);
                     }),
 
                 TextColumn::make('due_date')
                     ->label('Due Date')
                     ->date()
                     ->sortable()
-                    ->color(fn($record) => $record->isOverdue() ? 'danger' : null)
-                    ->description(fn($record) => $record->isOverdue() ? 'Overdue' : null),
+                    ->color(fn ($record) => $record->isOverdue() ? 'danger' : null)
+                    ->description(fn ($record) => $record->isOverdue() ? 'Overdue' : null),
             ])
             ->filters([
                 SelectFilter::make('invoice_type')
@@ -84,12 +84,12 @@ class InvoicesTable
 
                 Filter::make('overdue')
                     ->label('Overdue Only')
-                    ->query(fn($query) => $query->overdue())
+                    ->query(fn ($query) => $query->overdue())
                     ->toggle(),
 
                 Filter::make('unpaid')
                     ->label('Unpaid Only')
-                    ->query(fn($query) => $query->where('status', '!=', 'paid'))
+                    ->query(fn ($query) => $query->where('status', '!=', 'paid'))
                     ->toggle(),
             ])
             ->defaultSort('due_date', 'desc')
@@ -102,7 +102,7 @@ class InvoicesTable
                         ->url(function ($record) {
                             $invoiceService = app(InvoiceGeneratorService::class);
 
-                            return $invoiceService->getInvoicePath($record->filename);
+                            return $invoiceService->getInvoiceDownloadUrl($record->file_path, $record->filename);
                         })
                         ->openUrlInNewTab(),
 
@@ -115,7 +115,7 @@ class InvoicesTable
                                 ->label('Email Address')
                                 ->email()
                                 ->required()
-                                ->default(fn($record) => $record->partner?->email ?? $record->email_recipient)
+                                ->default(fn ($record) => $record->partner?->email ?? $record->email_recipient)
                                 ->placeholder('Enter email address'),
                             Textarea::make('message')
                                 ->label('Message (Optional)')
@@ -147,13 +147,19 @@ class InvoicesTable
                                 );
 
                                 if ($sent) {
-                                    $record->update([
+                                    $updates = [
                                         'emailed_at' => now(),
                                         'email_recipient' => $data['email'],
-                                    ]);
+                                    ];
+
+                                    if (! in_array($record->status, ['paid', 'cancelled'], true)) {
+                                        $updates['status'] = 'sent';
+                                    }
+
+                                    $record->update($updates);
                                     Notification::make()
                                         ->title('Invoice Sent')
-                                        ->body('Invoice sent to ' . $data['email'])
+                                        ->body('Invoice sent to '.$data['email'])
                                         ->success()
                                         ->send();
                                 } else {

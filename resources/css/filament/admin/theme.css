@@ -354,50 +354,68 @@ button>.fi-sc-wizard-header-step-text{
 .fi-sc-wizard-header-step>svg{
     display: none !important;
 }
-.fi-completed>svg, .fi-active>svg{
-    display: block !important;
-}
 
-.liveSummary>section>.fi-section-content-ctn>.fi-sc-has-gap.fi-grid{
+.liveSummary>section>.fi-section-content-ctn>.fi-sc-has-gap.fi-grid,
+.orderSummary>section>.fi-section-content-ctn>.fi-sc-has-gap.fi-grid{
     gap: 0;
-    padding: .25rem 1rem .85rem;
+    padding: .5rem 1rem;
 }
 
-.liveSummary>section {
+.liveSummary>section,
+.orderSummary>section {
     border-color: var(--gray-200);
 }
 
-.liveSummary .fi-section-header {
+.liveSummary .fi-section-header,
+.orderSummary .fi-section-header {
     padding-bottom: .25rem;
 }
 
 .liveSummary .fi-in-entry:has(.cost-summary-metric),
+.orderSummary .fi-in-entry:has(.cost-summary-metric),
 .liveSummary .fi-in-entry:has(.cost-summary-block) {
     align-items: baseline;
-    border-bottom: 1px solid var(--gray-100);
+    border-bottom: 2px dashed var(--gray-200);
     display: grid;
     gap: .75rem;
     grid-template-columns: minmax(0, 1fr) auto;
     padding-block: .55rem;
 }
 
-.liveSummary .fi-grid-col:last-child .fi-in-entry {
+.liveSummary .fi-in-entry:has(.cost-summary-block) {
+    align-items: stretch;
+    gap: .35rem;
+    grid-template-columns: minmax(0, 1fr);
+    padding-block: .7rem;
+}
+
+.liveSummary .fi-in-entry:has(.cost-summary-block) .fi-in-entry-label {
+    color: var(--gray-900);
+    font-size: .85rem;
+}
+
+.liveSummary .fi-grid-col:last-child .fi-in-entry,
+.orderSummary .fi-grid-col:last-child .fi-in-entry {
     border-bottom: 0;
 }
 
 .liveSummary .fi-in-entry-label-col,
-.liveSummary .fi-in-entry-content-col {
+.orderSummary .fi-in-entry-label-col,
+.liveSummary .fi-in-entry-content-col,
+.orderSummary .fi-in-entry-content-col {
     min-width: 0;
 }
 
-.liveSummary .fi-in-entry-label {
+.liveSummary .fi-in-entry-label,
+.orderSummary .fi-in-entry-label {
     color: var(--gray-600);
     font-size: .76rem;
     font-weight: 600;
     line-height: 1.25;
 }
 
-.liveSummary .fi-in-entry-content {
+.liveSummary .fi-in-entry-content,
+.orderSummary .fi-in-entry-content {
     min-width: 0;
 }
 
@@ -406,7 +424,14 @@ button>.fi-sc-wizard-header-step-text{
     background: transparent;
     color: inherit;
     padding: 0;
+}
+
+.cost-summary-metric {
     text-align: right;
+}
+
+.cost-summary-block {
+    text-align: left;
 }
 
 .cost-summary-value {
@@ -420,7 +445,6 @@ button>.fi-sc-wizard-header-step-text{
 
 .cost-summary-value-primary {
     color: var(--gray-950);
-    font-size: 1.05rem;
     letter-spacing: 0;
 }
 
@@ -434,37 +458,71 @@ button>.fi-sc-wizard-header-step-text{
     display: inline-flex;
     font-size: .78rem;
     line-height: 1.4;
-    text-align: right;
+    text-align: inherit;
 }
 
 .cost-summary-list {
     display: grid;
-    gap: .25rem;
+    gap: .35rem;
 }
 
 .cost-summary-list-row {
-    align-items: baseline;
+    align-items: start;
     color: var(--gray-700);
     display: flex;
-    font-size: .82rem;
     justify-content: space-between;
-    gap: .75rem;
+    font-size: .82rem;
+    gap: .25rem;
+}
+
+.cost-summary-material-name {
+    border-bottom: 1px dashed var(--gray-400);
+    cursor: help;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    position: relative;
 }
 
 .cost-summary-list-row strong {
     color: var(--gray-950);
     font-weight: 700;
-    text-align: right;
+    text-align: left;
     white-space: nowrap;
 }
 
 .cost-summary-alert {
-    color: var(--gray-600);
     display: grid;
+    gap: .4rem;
+}
+
+.cost-summary-alert-row {
+    border: 1px solid transparent;
+    border-radius: .5rem;
+    display: grid;
+    gap: .2rem;
+    padding: .5rem .6rem;
+}
+
+.cost-summary-alert-row span {
+    font-size: .7rem;
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.cost-summary-alert-row strong {
     font-size: .78rem;
-    gap: .25rem;
+    font-weight: 600;
     line-height: 1.4;
-    text-align: right;
+}
+
+.cost-summary-alert-warning {
+    background: var(--warning-50);
+    border-color: var(--warning-200);
+    color: var(--warning-900);
+}
+
+.cost-summary-alert-warning span {
+    color: var(--warning-700);
 }
 
 .cost-summary-status {

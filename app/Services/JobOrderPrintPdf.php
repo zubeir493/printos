@@ -71,7 +71,7 @@ class JobOrderPrintPdf
      *     submission_date: string|null,
      *     due_date: string|null,
      *     app_name: string,
-     *     company: array{name: string|null, phone: ?string, email: ?string},
+     *     company: array{name: string|null, phone: ?string, email: ?string, logo: ?string, logo_data_uri: ?string},
      *     client: array{name: string, phone: ?string, email: ?string, address: ?string},
      *     remarks: ?string,
      *     services: array<int, string>,
@@ -98,6 +98,8 @@ class JobOrderPrintPdf
                 'name' => $companyInfo['name'] ?? null,
                 'phone' => $companyInfo['phone'] ?? null,
                 'email' => $companyInfo['email'] ?? null,
+                'logo' => $companyInfo['logo'] ?? null,
+                'logo_data_uri' => $companyInfo['logo_data_uri'] ?? null,
             ],
             'client' => [
                 'name' => $jobOrder->partner?->name ?? 'Internal Job',

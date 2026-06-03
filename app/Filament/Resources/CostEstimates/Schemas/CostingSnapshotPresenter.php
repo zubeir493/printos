@@ -5,6 +5,8 @@ namespace App\Filament\Resources\CostEstimates\Schemas;
 use App\Models\InventoryItem;
 use App\Models\Machine;
 use Illuminate\Support\HtmlString;
+use Illuminate\Support\Js;
+use Illuminate\Support\Number;
 
 class CostingSnapshotPresenter
 {
@@ -17,7 +19,7 @@ class CostingSnapshotPresenter
         ));
     }
 
-    public static function waitingValue(string $message = 'Waiting for required fields'): HtmlString
+    public static function waitingValue(string $message = 'Awaiting inputs'): HtmlString
     {
         return new HtmlString(sprintf(
             '<span class="cost-summary-waiting">%s</span>',
@@ -29,12 +31,12 @@ class CostingSnapshotPresenter
     {
         return new HtmlString(sprintf(
             '<span class="cost-summary-value cost-summary-margin">%s</span>',
-            e(number_format($marginPercent, 2).'%'),
+            e(Number::format($marginPercent, maxPrecision: 2).'%'),
         ));
     }
 
     /**
-     * @param  array<int, array{label: string, quantity: int|float|string, unit?: string|null}>  $materials
+     * @param  array<int, array{label: string, name?: string|null, quantity: int|float|string, unit?: string|null, inventory?: array<string, mixed>}>  $materials
      */
     public static function materials(array $materials): HtmlString
     {
@@ -46,13 +48,37 @@ class CostingSnapshotPresenter
             '<div class="cost-summary-list">%s</div>',
             collect($materials)
                 ->map(fn (array $material): string => sprintf(
-                    '<div class="cost-summary-list-row"><span>%s</span><strong>%s %s</strong></div>',
-                    e($material['label']),
-                    e(number_format((float) $material['quantity'], 2)),
+                    '<div class="cost-summary-list-row"><span class="cost-summary-material-name" tabindex="0" x-tooltip="{ content: %s, theme: $store.theme }">%s</span><strong>%s %s</strong></div>',
+                    Js::from(self::materialTooltip($material))->toHtml(),
+                    e($material['name'] ?? $material['label']),
+                    e(Number::format((float) $material['quantity'], maxPrecision: 2)),
                     e($material['unit'] ?? ''),
                 ))
                 ->implode(''),
         ));
+    }
+
+    /**
+     * @param  array{name?: string|null, quantity: int|float|string, unit?: string|null, inventory?: array<string, mixed>}  $material
+     */
+    private static function materialTooltip(array $material): string
+    {
+        $inventory = $material['inventory'] ?? [];
+        $details = [];
+
+        if (isset($inventory['stock_on_hand'])) {
+            $details[] = Number::format((float) $inventory['stock_on_hand'], maxPrecision: 2).' '.($inventory['unit'] ?? $material['unit'] ?? '').' left';
+        }
+
+        if (! empty($inventory['gsm'])) {
+            $details[] = Number::format((float) $inventory['gsm'], maxPrecision: 2).' gsm';
+        }
+
+        if (! empty($inventory['width']) || ! empty($inventory['height'])) {
+            $details[] = trim(Number::format((float) ($inventory['width'] ?? 0), maxPrecision: 2).' x '.Number::format((float) ($inventory['height'] ?? 0), maxPrecision: 2).' cm');
+        }
+
+        return implode(' • ', $details) ?: 'Inventory item selected';
     }
 
     /**
@@ -61,13 +87,16 @@ class CostingSnapshotPresenter
     public static function warnings(array $warnings): HtmlString
     {
         if ($warnings === []) {
-            return new HtmlString('<span class="cost-summary-status cost-summary-status-ready">Ready to review</span>');
+            return new HtmlString('');
         }
 
         return new HtmlString(sprintf(
             '<div class="cost-summary-alert">%s</div>',
             collect($warnings)
-                ->map(fn (string $warning): string => sprintf('<div>%s</div>', e($warning)))
+                ->map(fn (string $warning): string => sprintf(
+                    '<div class="cost-summary-alert-row cost-summary-alert-warning"><span>Rate fallback</span><strong>%s</strong></div>',
+                    e($warning),
+                ))
                 ->implode(''),
         ));
     }
@@ -96,7 +125,7 @@ class CostingSnapshotPresenter
                 %s
                 <dl class="cost-snapshot-grid">
                     <div><dt>GSM</dt><dd>%s</dd></div>
-                    <div><dt>Size</dt><dd>%s x %s</dd></div>
+                    <div><dt>Size (cm)</dt><dd>%s x %s</dd></div>
                     <div><dt>Stock</dt><dd>%s %s</dd></div>
                 </dl>
             </div>',

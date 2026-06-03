@@ -19,6 +19,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
+use Illuminate\Contracts\Support\Htmlable;
 
 class EditJobOrder extends EditRecord
 {
@@ -27,6 +28,11 @@ class EditJobOrder extends EditRecord
     public static function canAccess($record = null): bool
     {
         return PanelAccess::canManageJobOrders();
+    }
+
+    public function getTitle(): string|Htmlable
+    {
+        return 'Edit '.$this->getRecord()->job_order_number;
     }
 
     protected function getHeaderActions(): array

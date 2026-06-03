@@ -5,7 +5,6 @@ namespace App\Filament\Resources\Invoices\Pages;
 use App\Filament\Resources\Invoices\InvoiceResource;
 use App\Filament\Resources\Pages\CreateRecord;
 use App\Services\InvoiceGeneratorService;
-use Filament\Actions;
 use Filament\Notifications\Notification;
 
 class CreateInvoice extends CreateRecord
@@ -25,12 +24,14 @@ class CreateInvoice extends CreateRecord
 
         unset($data['send_email'], $data['email_recipient']);
 
+        $data['status'] ??= 'draft';
+
         if (blank($data['filename'] ?? null)) {
-            $data['filename'] = 'manual-invoice-' . uniqid('', true) . '.pdf';
+            $data['filename'] = 'manual-invoice-'.uniqid('', true).'.pdf';
         }
 
         if (blank($data['file_path'] ?? null)) {
-            $data['file_path'] = 'invoices/' . $data['filename'];
+            $data['file_path'] = 'invoices/'.$data['filename'];
         }
 
         $data['order_type'] ??= match ($data['invoice_type'] ?? 'sales') {
@@ -45,7 +46,25 @@ class CreateInvoice extends CreateRecord
 
     protected function afterCreate(): void
     {
-        if (! $this->shouldSendEmail || ! $this->record || blank($this->emailRecipient)) {
+        if (! $this->record) {
+            return;
+        }
+
+        $invoiceService = app(InvoiceGeneratorService::class);
+
+        try {
+            $invoiceService->generateManualInvoicePdf($this->record);
+        } catch (\Throwable $exception) {
+            Notification::make()
+                ->title('PDF Generation Failed')
+                ->body($exception->getMessage())
+                ->danger()
+                ->send();
+
+            return;
+        }
+
+        if (! $this->shouldSendEmail || blank($this->emailRecipient)) {
             return;
         }
 
@@ -56,7 +75,6 @@ class CreateInvoice extends CreateRecord
         }
 
         try {
-            $invoiceService = app(InvoiceGeneratorService::class);
             $invoiceService->sendInvoiceEmail([
                 'filename' => $this->record->filename,
                 'path' => $this->record->file_path,
@@ -77,11 +95,12 @@ class CreateInvoice extends CreateRecord
             $this->record->update([
                 'emailed_at' => now(),
                 'email_recipient' => $recipient,
+                'status' => 'sent',
             ]);
 
             Notification::make()
                 ->title('Email Sent')
-                ->body('Invoice sent to ' . $recipient)
+                ->body('Invoice sent to '.$recipient)
                 ->success()
                 ->send();
         } catch (\Throwable $exception) {
@@ -95,19 +114,7 @@ class CreateInvoice extends CreateRecord
 
     protected function getHeaderActions(): array
     {
-        return [
-            Actions\Action::make('save')
-                ->label('Save Invoice')
-                ->action('save')
-                ->icon('heroicon-o-check')
-                ->color('success'),
-
-            Actions\Action::make('save_and_continue')
-                ->label('Save & Continue')
-                ->action('saveAndContinue')
-                ->icon('heroicon-o-arrow-right')
-                ->color('primary'),
-        ];
+        return [];
     }
 
     protected function getRedirectUrl(): string

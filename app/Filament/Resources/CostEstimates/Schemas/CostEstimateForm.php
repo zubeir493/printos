@@ -5,6 +5,7 @@ namespace App\Filament\Resources\CostEstimates\Schemas;
 use App\Filament\Support\PanelAccess;
 use App\Services\Costing\CostingRegistry;
 use App\Services\Costing\CostingResult;
+use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
@@ -17,7 +18,9 @@ use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Wizard;
 use Filament\Schemas\Components\Wizard\Step;
 use Filament\Schemas\Schema;
+use Filament\Support\Colors\Color;
 use Illuminate\Support\HtmlString;
+use Illuminate\Support\Number;
 
 class CostEstimateForm
 {
@@ -32,41 +35,44 @@ class CostEstimateForm
                             ...LabelCostingWizardSchema::steps(),
                             ...PackageCostingWizardSchema::steps(),
                         ])
+                            ->nextAction(fn (Action $action): Action => $action->color(Color::Indigo))
                             ->columnSpanFull(),
                     ])
-                    ->columnSpan(3),
-                Section::make('Live Summary')
+                    ->columnSpan(5),
+                Section::make()
                     ->schema([
-                        Placeholder::make('total')
-                            ->label('Selling Price')
-                            ->content(fn (Get $get): HtmlString => self::summaryText($get, 'total', isPrimary: true))
-                            ->extraAttributes(['class' => 'cost-summary-metric cost-summary-total']),
-                        Placeholder::make('unit_price')
-                            ->label('Unit Price')
-                            ->content(fn (Get $get): HtmlString => self::summaryText($get, 'unitPrice', 4))
-                            ->extraAttributes(['class' => 'cost-summary-metric']),
-                        Placeholder::make('subtotal')
-                            ->label('Estimated Cost')
-                            ->content(fn (Get $get): HtmlString => self::summaryText($get, 'subtotal'))
-                            ->extraAttributes(['class' => 'cost-summary-metric']),
-                        Placeholder::make('margin')
-                            ->label('Margin')
-                            ->content(fn (Get $get): HtmlString => self::marginValue($get))
-                            ->extraAttributes(['class' => 'cost-summary-metric']),
                         Placeholder::make('material_consumption')
                             ->label('Material Consumption')
                             ->content(fn (Get $get): HtmlString => self::materials($get))
+                            ->hidden(fn (Get $get): bool => ! self::hasMaterialConsumption($get))
                             ->extraAttributes(['class' => 'cost-summary-block']),
-                        Placeholder::make('summary_warnings')
-                            ->label('Warnings')
-                            ->content(fn (Get $get): HtmlString => self::warnings($get))
-                            ->extraAttributes(['class' => 'cost-summary-block cost-summary-warnings']),
+                        Placeholder::make('unit_price')
+                            ->label('Unit Price')
+                            ->content(fn (Get $get): HtmlString => self::summaryText($get, 'unitPrice'))
+                            ->extraAttributes(['class' => 'cost-summary-metric']),
+                        Placeholder::make('subtotal')
+                            ->label('Subtotal')
+                            ->content(fn (Get $get): HtmlString => self::summaryText($get, 'subtotal', precision: 2, fixedPrecision: true))
+                            ->extraAttributes(['class' => 'cost-summary-metric']),
+                        Placeholder::make('margin')
+                            ->label(fn (Get $get): string => self::marginLabel($get))
+                            ->content(fn (Get $get): HtmlString => self::marginValue($get))
+                            ->extraAttributes(['class' => 'cost-summary-metric']),
+                        Placeholder::make('tax_amount')
+                            ->label(fn (Get $get): string => self::taxLabel($get))
+                            ->content(fn (Get $get): HtmlString => self::summaryText($get, 'taxAmount'))
+                            ->hidden(fn (Get $get): bool => ! self::hasTax($get))
+                            ->extraAttributes(['class' => 'cost-summary-metric']),
+                        Placeholder::make('total')
+                            ->label('Final Price')
+                            ->content(fn (Get $get): HtmlString => self::summaryText($get, 'total', isPrimary: true))
+                            ->extraAttributes(['class' => 'cost-summary-metric cost-summary-total']),
                     ])
                     ->extraAttributes(['class' => 'lg:sticky lg:top-6 liveSummary'])
                     ->hidden(fn (): bool => ! PanelAccess::canSeeMoneyValues())
-                    ->columnSpan(1),
+                    ->columnSpan(2),
             ])
-            ->columns(4);
+            ->columns(7);
     }
 
     private static function jobStep(): Step
@@ -131,9 +137,9 @@ class CostEstimateForm
         };
     }
 
-    private static function money(float $amount, int $precision = 2): string
+    private static function money(float $amount, int $maxPrecision = 2, bool $fixedPrecision = false): string
     {
-        return number_format($amount, $precision).' Birr';
+        return Number::format($amount, precision: $fixedPrecision ? $maxPrecision : null, maxPrecision: $fixedPrecision ? null : $maxPrecision).' Birr';
     }
 
     private static function materials(Get $get): HtmlString
@@ -147,7 +153,14 @@ class CostEstimateForm
         return CostingSnapshotPresenter::materials($preview->materialConsumption);
     }
 
-    private static function summaryText(Get $get, string $field, int $precision = 2, bool $isPrimary = false): HtmlString
+    private static function hasMaterialConsumption(Get $get): bool
+    {
+        $preview = self::preview($get);
+
+        return $preview !== null && $preview->materialConsumption !== [];
+    }
+
+    private static function summaryText(Get $get, string $field, int $precision = 2, bool $isPrimary = false, bool $fixedPrecision = false): HtmlString
     {
         $preview = self::preview($get);
 
@@ -155,7 +168,7 @@ class CostEstimateForm
             return CostingSnapshotPresenter::waitingValue();
         }
 
-        return CostingSnapshotPresenter::moneyValue(self::money((float) $preview->{$field}, $precision), $isPrimary);
+        return CostingSnapshotPresenter::moneyValue(self::money((float) $preview->{$field}, $precision, $fixedPrecision), $isPrimary);
     }
 
     private static function marginValue(Get $get): HtmlString
@@ -166,16 +179,56 @@ class CostEstimateForm
             return CostingSnapshotPresenter::waitingValue();
         }
 
-        return CostingSnapshotPresenter::margin($preview->marginPercent);
+        return CostingSnapshotPresenter::moneyValue(self::money((float) $preview->profitAmount));
+    }
+
+    private static function marginLabel(Get $get): string
+    {
+        $preview = self::preview($get);
+
+        if (! $preview) {
+            return 'Profit Margin';
+        }
+
+        return 'Profit Margin ('.Number::format($preview->marginPercent, maxPrecision: 2).'%)';
+    }
+
+    private static function taxLabel(Get $get): string
+    {
+        $preview = self::preview($get);
+
+        if (! $preview) {
+            return 'VAT';
+        }
+
+        return 'VAT ('.Number::format($preview->vatRate, maxPrecision: 2).'%)';
+    }
+
+    private static function hasTax(Get $get): bool
+    {
+        $preview = self::preview($get);
+
+        return $preview !== null && $preview->taxAmount > 0;
     }
 
     private static function warnings(Get $get): HtmlString
     {
-        if (! self::isPreviewReady($get)) {
-            return CostingSnapshotPresenter::warnings(['Complete product specs and material selection to calculate.']);
-        }
+        return CostingSnapshotPresenter::warnings(self::warningMessages($get));
+    }
 
-        $warnings = [];
+    private static function hasWarnings(Get $get): bool
+    {
+        return self::warningMessages($get) !== [];
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private static function warningMessages(Get $get): array
+    {
+        if (! self::isPreviewReady($get)) {
+            return [];
+        }
 
         if (($get('job_type') ?: 'labels') === 'labels' && blank($get('services.production.machine_id'))) {
             $warnings[] = 'No printing machine selected. Default machine rates are being used.';
@@ -191,10 +244,6 @@ class CostEstimateForm
             }
         }
 
-        if ($warnings === []) {
-            return CostingSnapshotPresenter::warnings([]);
-        }
-
-        return CostingSnapshotPresenter::warnings($warnings);
+        return $warnings ?? [];
     }
 }

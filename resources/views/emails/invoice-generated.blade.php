@@ -6,60 +6,108 @@
     <title>{{ $options['subject_prefix'] }} from {{ config('app.name') }}</title>
     <style>
         body {
-            font-family: 'Helvetica Neue', 'Helvetica', Helvetica, Arial, sans-serif;
-            color: #333;
+            background: #f4f5f7;
+            color: #222222;
+            font-family: Arial, Helvetica, sans-serif;
             line-height: 1.6;
-            max-width: 600px;
             margin: 0 auto;
+            max-width: 600px;
             padding: 20px;
         }
+
         .header {
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 8px;
+            background: #1f2933;
+            color: #ffffff;
             margin-bottom: 20px;
+            padding: 20px;
             text-align: center;
         }
+
+        .header h1 {
+            font-size: 22px;
+            margin: 0 0 6px;
+        }
+
+        .header p {
+            margin: 0;
+        }
+
         .content {
             background: #ffffff;
-            padding: 20px;
-            border: 1px solid #e9ecef;
-            border-radius: 8px;
+            border: 1px solid #d9dde3;
             margin-bottom: 20px;
+            padding: 20px;
         }
-        .footer {
+
+        .content h2 {
+            color: #1f2933;
+            font-size: 20px;
+            margin: 0 0 14px;
+        }
+
+        .message {
+            background: #f7f8fa;
+            border: 1px solid #e1e4e8;
+            margin: 15px 0;
+            padding: 14px;
+        }
+
+        .download {
+            margin: 20px 0;
             text-align: center;
-            font-size: 12px;
-            color: #6c757d;
-            margin-top: 20px;
         }
+
         .btn {
+            background: #1f2933;
+            color: #ffffff;
             display: inline-block;
-            padding: 12px 24px;
-            background: #007bff;
-            color: white;
-            text-decoration: none;
-            border-radius: 6px;
             font-weight: bold;
             margin: 10px 0;
+            padding: 12px 24px;
+            text-decoration: none;
         }
+
+        .hint,
+        .footer {
+            color: #5f6b7a;
+            font-size: 12px;
+        }
+
+        .footer {
+            margin-top: 20px;
+            text-align: center;
+        }
+
         .invoice-details {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 6px;
+            background: #f7f8fa;
+            border: 1px solid #e1e4e8;
             margin: 15px 0;
+            padding: 15px;
         }
+
+        .invoice-details h3 {
+            color: #1f2933;
+            font-size: 15px;
+            margin: 0 0 8px;
+        }
+
         .invoice-details table {
-            width: 100%;
             border-collapse: collapse;
+            width: 100%;
         }
+
         .invoice-details td {
+            border-bottom: 1px solid #e1e4e8;
             padding: 8px 0;
-            border-bottom: 1px solid #e9ecef;
         }
+
+        .invoice-details tr:last-child td {
+            border-bottom: 0;
+        }
+
         .invoice-details td:last-child {
-            text-align: right;
             font-weight: bold;
+            text-align: right;
         }
     </style>
 </head>
@@ -71,6 +119,8 @@
         $companyEmail = $companyInfo['email'] ?? '';
         $companyWebsite = $companyInfo['website'] ?? '';
         $contactLine = trim(implode(' | ', array_filter([$companyPhone, $companyEmail])));
+        $documentNumber = $invoiceData['invoice_data']['invoice_number'] ?? $invoiceData['receipt_data']['receipt_number'];
+        $recipientName = $invoiceData['invoice_data']['order']->partner->name ?? $invoiceData['receipt_data']['payment']->partner->name ?? 'Valued Customer';
     @endphp
 
     <div class="header">
@@ -84,97 +134,87 @@
     </div>
 
     <div class="content">
-        <h2>{{ $options['subject_prefix'] }} #{{ $invoiceData['invoice_data']['invoice_number'] ?? $invoiceData['receipt_data']['receipt_number'] }}</h2>
-        
-        <p>Dear {{ $invoiceData['invoice_data']['order']->partner->name ?? $invoiceData['receipt_data']['payment']->partner->name ?? 'Valued Customer' }},</p>
-        
+        <h2>{{ $options['subject_prefix'] }} #{{ $documentNumber }}</h2>
+
+        <p>Dear {{ $recipientName }},</p>
+
         <p>Please find attached your {{ strtolower($options['subject_prefix']) }} document for your records.</p>
-        
-        @if(isset($invoiceData['invoice_data']['message']) && !empty($invoiceData['invoice_data']['message']))
-        <div style="background: #e3f2fd; padding: 15px; border-radius: 6px; margin: 15px 0; border-left: 4px solid #2196f3;">
-            <strong>Message:</strong><br>
-            {{ $invoiceData['invoice_data']['message'] }}
-        </div>
+
+        @if(isset($invoiceData['invoice_data']['message']) && ! empty($invoiceData['invoice_data']['message']))
+            <div class="message">
+                <strong>Message</strong><br>
+                {{ $invoiceData['invoice_data']['message'] }}
+            </div>
         @endif
-        
+
         @if(isset($download_url))
-        <div style="margin: 20px 0; text-align: center;">
-            <a href="{{ $download_url }}" style="background-color: #2196f3; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold; display: inline-block;">
-                📥 Download Document
-            </a>
-            <p style="font-size: 12px; color: #666; margin-top: 10px;">Link valid for 7 days. You can also find the document attached to this email.</p>
-        </div>
+            <div class="download">
+                <a href="{{ $download_url }}" class="btn">Download document</a>
+                <p class="hint">Link valid for 7 days. The document is also attached to this email.</p>
+            </div>
         @endif
-        
+
         @if(isset($invoiceData['invoice_data']))
-        <div class="invoice-details">
-            <h3>Invoice Details</h3>
-            <table>
-                <tr>
-                    <td>Invoice Number</td>
-                    <td>{{ $invoiceData['invoice_data']['invoice_number'] }}</td>
-                </tr>
-                <tr>
-                    <td>Invoice Date</td>
-                    <td>{{ $invoiceData['invoice_data']['invoice_date'] }}</td>
-                </tr>
-                <tr>
-                    <td>Due Date</td>
-                    <td>{{ $invoiceData['invoice_data']['due_date'] }}</td>
-                </tr>
-                <tr>
-                    <td>Total Amount</td>
-                    <td>{{ \App\Support\Money::format($invoiceData['invoice_data']['total_amount']) }}</td>
-                </tr>
-                @if($invoiceData['invoice_data']['balance_due'] > 0)
-                <tr>
-                    <td>Balance Due</td>
-                    <td>{{ \App\Support\Money::format($invoiceData['invoice_data']['balance_due']) }}</td>
-                </tr>
-                @endif
-            </table>
-        </div>
+            <div class="invoice-details">
+                <h3>Invoice Details</h3>
+                <table>
+                    <tr>
+                        <td>Invoice Number</td>
+                        <td>{{ $invoiceData['invoice_data']['invoice_number'] }}</td>
+                    </tr>
+                    <tr>
+                        <td>Invoice Date</td>
+                        <td>{{ $invoiceData['invoice_data']['invoice_date'] }}</td>
+                    </tr>
+                    <tr>
+                        <td>Due Date</td>
+                        <td>{{ $invoiceData['invoice_data']['due_date'] }}</td>
+                    </tr>
+                    <tr>
+                        <td>Total Amount</td>
+                        <td>{{ \App\Support\Money::format($invoiceData['invoice_data']['total_amount']) }}</td>
+                    </tr>
+                    @if($invoiceData['invoice_data']['balance_due'] > 0)
+                        <tr>
+                            <td>Balance Due</td>
+                            <td>{{ \App\Support\Money::format($invoiceData['invoice_data']['balance_due']) }}</td>
+                        </tr>
+                    @endif
+                </table>
+            </div>
         @endif
-        
+
         @if(isset($invoiceData['receipt_data']))
-        <div class="invoice-details">
-            <h3>Receipt Details</h3>
-            <table>
-                <tr>
-                    <td>Receipt Number</td>
-                    <td>{{ $invoiceData['receipt_data']['receipt_number'] }}</td>
-                </tr>
-                <tr>
-                    <td>Receipt Date</td>
-                    <td>{{ $invoiceData['receipt_data']['receipt_date'] }}</td>
-                </tr>
-                <tr>
-                    <td>Payment Method</td>
-                    <td>{{ ucfirst($invoiceData['receipt_data']['payment']->method) }}</td>
-                </tr>
-                <tr>
-                    <td>Amount Received</td>
-                    <td>{{ \App\Support\Money::format($invoiceData['receipt_data']['payment']->amount) }}</td>
-                </tr>
-            </table>
-        </div>
+            <div class="invoice-details">
+                <h3>Receipt Details</h3>
+                <table>
+                    <tr>
+                        <td>Receipt Number</td>
+                        <td>{{ $invoiceData['receipt_data']['receipt_number'] }}</td>
+                    </tr>
+                    <tr>
+                        <td>Receipt Date</td>
+                        <td>{{ $invoiceData['receipt_data']['receipt_date'] }}</td>
+                    </tr>
+                    <tr>
+                        <td>Payment Method</td>
+                        <td>{{ ucfirst($invoiceData['receipt_data']['payment']->method) }}</td>
+                    </tr>
+                    <tr>
+                        <td>Amount Received</td>
+                        <td>{{ \App\Support\Money::format($invoiceData['receipt_data']['payment']->amount) }}</td>
+                    </tr>
+                </table>
+            </div>
         @endif
-        
-        <p><strong>Important Information:</strong></p>
-        <ul>
-            <li>Please keep this document for your records</li>
-            @if(isset($invoiceData['invoice_data']['balance_due']) && $invoiceData['invoice_data']['balance_due'] > 0)
-            <li>Payment is due by {{ $invoiceData['invoice_data']['due_date'] }}</li>
-            @endif
-            <li>If you have any questions, please contact our billing department</li>
-        </ul>
-        
-        <p>If you have any questions or need assistance, please don't hesitate to contact us.</p>
-        
-        <p>Thank you for your business!</p>
-        
-        <p>Best regards,<br>
-        {{ $companyName }}</p>
+
+        <p>Please keep this document for your records.</p>
+
+        @if(isset($invoiceData['invoice_data']['balance_due']) && $invoiceData['invoice_data']['balance_due'] > 0)
+            <p>Payment is due by {{ $invoiceData['invoice_data']['due_date'] }}.</p>
+        @endif
+
+        <p>Regards,<br>{{ $companyName }}</p>
     </div>
 
     <div class="footer">

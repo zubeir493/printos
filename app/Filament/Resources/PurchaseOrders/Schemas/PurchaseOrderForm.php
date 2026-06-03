@@ -4,11 +4,11 @@ namespace App\Filament\Resources\PurchaseOrders\Schemas;
 
 use App\Filament\Support\Calculations;
 use App\Models\InventoryItem;
-use App\Models\PurchaseOrder;
 use App\Models\Setting;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Repeater\TableColumn;
 use Filament\Forms\Components\Select;
@@ -17,6 +17,8 @@ use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Illuminate\Support\HtmlString;
+use Illuminate\Support\Number;
 use Illuminate\Support\Str;
 
 class PurchaseOrderForm
@@ -30,20 +32,6 @@ class PurchaseOrderForm
 
                         Grid::make(3)
                             ->schema([
-                                TextInput::make('po_number')
-                                    ->label('Purchase Order no.')
-                                    ->default(function () {
-                                        $lastPO = PurchaseOrder::orderBy('id', 'desc')->first();
-                                        $lastNumber = 0;
-                                        if ($lastPO && preg_match('/PO-(\d+)/', $lastPO->po_number, $matches)) {
-                                            $lastNumber = (int) $matches[1];
-                                        }
-
-                                        return 'PO-'.str_pad($lastNumber + 1, 4, '0', STR_PAD_LEFT);
-                                    })
-                                    ->readOnly()
-                                    ->dehydrated(false),
-
                                 Select::make('partner_id')
                                     ->label('Supplier')
                                     ->relationship('partner', 'name', modifyQueryUsing: fn ($query) => $query->where('is_supplier', true))
@@ -66,6 +54,11 @@ class PurchaseOrderForm
                                     ->default(now())
                                     ->required()
                                     ->dehydrated(),
+
+                                DatePicker::make('due_date')
+                                    ->label('Payment Due Date')
+                                    ->default(fn () => now()->addDays(30))
+                                    ->required(),
                             ]),
 
                         Repeater::make('purchaseOrderItems')
@@ -101,6 +94,7 @@ class PurchaseOrderForm
                                 TextInput::make('quantity')
                                     ->numeric()
                                     ->required()
+                                    ->default(1)
                                     ->live()
                                     ->suffix(fn ($get) => $get('unit_label') ?: 'unit')
                                     ->afterStateUpdated(function ($set, $get, $state) {
@@ -203,35 +197,41 @@ class PurchaseOrderForm
                     ->schema([
                         Hidden::make('status')
                             ->default('draft'),
-
-                        DatePicker::make('due_date')
-                            ->label('Payment Due Date')
-                            ->default(fn () => now()->addDays(30))
-                            ->required(),
-                        TextInput::make('subtotal')
-                            ->numeric()
-                            ->suffix('Birr')
-                            ->readOnly()
+                        Hidden::make('subtotal')
                             ->default(0)
                             ->dehydrated(),
+                        Hidden::make('tax_amount')
+                            ->default(0)
+                            ->dehydrated(),
+                        Hidden::make('total')
+                            ->default(0)
+                            ->dehydrated(),
+                        Placeholder::make('summary_subtotal')
+                            ->label('Subtotal')
+                            ->content(fn ($get): HtmlString => self::summaryValue($get('subtotal')))
+                            ->extraAttributes(['class' => 'cost-summary-metric']),
 
-                        TextInput::make('tax_amount')
+                        Placeholder::make('summary_tax_amount')
                             ->label('Tax (VAT)')
-                            ->numeric()
-                            ->suffix('Birr')
-                            ->readOnly()
-                            ->default(0)
-                            ->dehydrated(),
+                            ->content(fn ($get): HtmlString => self::summaryValue($get('tax_amount')))
+                            ->extraAttributes(['class' => 'cost-summary-metric']),
 
-                        TextInput::make('total')
+                        Placeholder::make('summary_total')
                             ->label('Total')
-                            ->numeric()
-                            ->suffix('Birr')
-                            ->readOnly()
-                            ->default(0)
-                            ->dehydrated(),
+                            ->content(fn ($get): HtmlString => self::summaryValue($get('total'), isPrimary: true))
+                            ->extraAttributes(['class' => 'cost-summary-metric cost-summary-total']),
 
-                    ]),
+                    ])
+                    ->extraAttributes(['class' => 'lg:sticky lg:top-6 orderSummary']),
             ])->columns(4);
+    }
+
+    private static function summaryValue(mixed $amount, bool $isPrimary = false): HtmlString
+    {
+        return new HtmlString(sprintf(
+            '<span class="cost-summary-value%s">%s Birr</span>',
+            $isPrimary ? ' cost-summary-value-primary' : '',
+            e(Number::format((float) ($amount ?? 0), precision: 2)),
+        ));
     }
 }

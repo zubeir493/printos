@@ -26,6 +26,7 @@ class LabelCostingWizardSchema
                     TextInput::make('services.label.height')->numeric()->suffix('cm')->live(onBlur: true)->required(),
                     Select::make('services.label.shape')->options(['rectangle' => 'Rectangle', 'round' => 'Round', 'oval' => 'Oval', 'custom' => 'Custom'])->default('rectangle'),
                     TextInput::make('services.label.colors')->label('Number of Colors')->numeric()->default(4)->minValue(1)->live(onBlur: true),
+                    TextInput::make('services.label.print_coverage_percent')->label('Ink Coverage')->numeric()->suffix('%')->default(15)->live(onBlur: true),
                     Select::make('services.label.printing_sides')->options(['front' => 'Front', 'front_back' => 'Front & Back'])->default('front'),
                     TextInput::make('services.label.gap')->numeric()->suffix('cm')->default(0),
                     TextInput::make('services.label.yield')->numeric()->default(3)->minValue(1)->live(onBlur: true),
@@ -74,22 +75,6 @@ class LabelCostingWizardSchema
                         ->preload()
                         ->live()
                         ->visible(fn (Get $get): bool => in_array('lamination', $get('services.label.finishing_options') ?? [], true)),
-                    Section::make('Inventory Snapshot')
-                        ->schema([
-                            Placeholder::make('material_snapshot')
-                                ->label('Selected Material')
-                                ->content(fn (Get $get): HtmlString => self::itemSnapshot($get('services.material.material_item_id')))
-                                ->extraAttributes(['class' => 'cost-snapshot-field']),
-                            Placeholder::make('ink_snapshot')
-                                ->label('Selected Ink')
-                                ->content(fn (Get $get): HtmlString => self::itemSnapshot($get('services.material.ink_item_id')))
-                                ->extraAttributes(['class' => 'cost-snapshot-field']),
-                        ])
-                        ->secondary()
-                        ->compact()
-                        ->columns(2)
-                        ->extraAttributes(['class' => 'cost-snapshot-section'])
-                        ->columnSpanFull(),
                 ]),
             Step::make('Production Setup')
                 ->visible(fn (Get $get): bool => $get('job_type') === 'labels')
@@ -103,10 +88,17 @@ class LabelCostingWizardSchema
                         ->live(),
                     TextInput::make('services.production.printing_up')->numeric()->default(3)->minValue(1)->live(onBlur: true),
                     TextInput::make('services.production.diecutting_up')->numeric()->default(1)->minValue(1)->live(onBlur: true),
-                    Placeholder::make('machine_snapshot')
-                        ->label('Machine Rates')
-                        ->content(fn (Get $get): HtmlString => self::machineSnapshot($get('services.production.machine_id')))
-                        ->extraAttributes(['class' => 'cost-snapshot-field cost-snapshot-field-wide'])
+                    Section::make('Machine Rates Snapshot')
+                        ->schema([
+                            Placeholder::make('machine_snapshot')
+                                ->label('Printing')
+                                ->content(fn (Get $get): HtmlString => self::machineSnapshot($get('services.production.machine_id')))
+                                ->extraAttributes(['class' => 'cost-snapshot-field']),
+                        ])
+                        ->secondary()
+                        ->compact()
+                        ->columns(1)
+                        ->extraAttributes(['class' => 'cost-snapshot-section'])
                         ->columnSpanFull(),
                 ]),
             Step::make('Finishing & Packing')

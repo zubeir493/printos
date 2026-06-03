@@ -18,6 +18,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Filament\Schemas\Components\Grid;
+use Illuminate\Contracts\Support\Htmlable;
 
 class EditPurchaseOrder extends EditRecord
 {
@@ -26,6 +27,11 @@ class EditPurchaseOrder extends EditRecord
     public static function canAccess($record = null): bool
     {
         return PanelAccess::canManagePurchaseOrders();
+    }
+
+    public function getTitle(): string|Htmlable
+    {
+        return 'Edit '.$this->getRecord()->po_number;
     }
 
     protected function getHeaderActions(): array

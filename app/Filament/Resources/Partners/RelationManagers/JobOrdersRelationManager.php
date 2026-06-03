@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Partners\RelationManagers;
 
+use App\Filament\Resources\JobOrders\JobOrderResource;
 use App\Support\Money;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\AssociateAction;
@@ -88,12 +89,14 @@ class JobOrdersRelationManager extends RelationManager
             ])
             ->defaultSort('submission_date', 'desc')
             ->headerActions([
-                CreateAction::make(),
+                CreateAction::make()
+                    ->url(fn (): string => JobOrderResource::getUrl('create')),
                 AssociateAction::make(),
             ])
             ->recordActions([
                 ActionGroup::make([
-                    EditAction::make(),
+                    EditAction::make()
+                        ->url(fn ($record): string => JobOrderResource::getUrl('edit', ['record' => $record])),
                     DissociateAction::make(),
                     DeleteAction::make(),
                 ]),

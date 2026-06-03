@@ -27,16 +27,22 @@ use App\UserRole;
 use Database\Seeders\PayrollTaxRuleSeeder;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
 use Livewire\Livewire;
 
 uses(RefreshDatabase::class);
 
-it('creates a payroll run from the filament form without saving blank payroll rows', function () {
-    Filament::setCurrentPanel(Filament::getPanel('hr'));
+it('registers payroll run resource routes only in the finance panel', function (): void {
+    expect(Route::has('filament.finance.resources.payroll-runs.index'))->toBeTrue()
+        ->and(Route::has('filament.hr.resources.payroll-runs.index'))->toBeFalse();
+});
+
+it('creates a payroll run from the finance filament form without saving blank payroll rows', function () {
+    Filament::setCurrentPanel(Filament::getPanel('finance'));
 
     $this->actingAs(User::factory()->create([
-        'role' => UserRole::HR,
+        'role' => UserRole::Finance,
     ]));
 
     Livewire::test(CreatePayrollRun::class)

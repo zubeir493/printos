@@ -5,17 +5,6 @@
     <title>Proforma {{ $proformaData['proforma_number'] }}</title>
     @include('invoices._styles')
     <style>
-        .proforma-header {
-            text-align: center;
-            margin-bottom: 18px;
-        }
-
-        .proforma-title {
-            font-size: 24px;
-            font-weight: bold;
-            margin-bottom: 6px;
-        }
-
         .meta-table td {
             border: 0;
             padding: 2px 0;
@@ -27,24 +16,14 @@
 
         .items-table td,
         .items-table th {
-            border: 1px solid #d7d7d7;
-            padding: 8px;
+            border-bottom: 1px solid #e1e4e8;
+            padding: 8px 9px;
         }
 
         .items-table th {
-            background: #f4f4f4;
+            background: #1f2933;
+            color: #ffffff;
             font-weight: bold;
-        }
-
-        .totals-table {
-            width: 310px;
-            margin-left: auto;
-            margin-top: 0;
-        }
-
-        .totals-table td {
-            border: 1px solid #d7d7d7;
-            padding: 8px;
         }
 
         .section-block {
@@ -64,36 +43,43 @@
     @endphp
 
     <div class="invoice-box">
-        <div class="proforma-header">
-            <div class="proforma-title">{{ $company['name'] ?? config('app.name') }}</div>
-            <div>
-                @if(filled($company['phone'] ?? null))
-                    Tel: {{ $company['phone'] }}
-                @endif
-                @if(filled($company['email'] ?? null))
-                    Email: {{ $company['email'] }}
-                @endif
-                @if(filled($company['tax_id'] ?? null))
-                    TIN: {{ $company['tax_id'] }}
-                @endif
-            </div>
-        </div>
-
-        <table class="meta-table">
+        <table class="document-heading">
             <tr>
-                <td></td>
-                <td class="text-right"><strong>Date:</strong> {{ $proformaData['issue_date'] }}</td>
-            </tr>
-            <tr>
-                <td></td>
-                <td class="text-right"><strong>No:</strong> {{ $proformaData['proforma_number'] }}</td>
+                <td>
+                    @if(! empty($company['logo_data_uri']) || ! empty($company['logo']))
+                        <img src="{{ $company['logo_data_uri'] ?? $company['logo'] }}" class="document-logo" alt="{{ $company['name'] ?? config('app.name') }}">
+                    @endif
+                    <h1 class="document-title">Proforma Invoice</h1>
+                    <div class="document-subtitle">{{ $company['name'] ?? config('app.name') }}</div>
+                </td>
+                <td class="document-meta">
+                    <strong>No:</strong> {{ $proformaData['proforma_number'] }}<br>
+                    <strong>Date:</strong> {{ $proformaData['issue_date'] }}<br>
+                    @if(filled($company['tax_id'] ?? null))
+                        <strong>TIN:</strong> {{ $company['tax_id'] }}
+                    @endif
+                </td>
             </tr>
         </table>
 
-        <div class="section-block">
-            <strong>To</strong><br>
-            {{ $customer['name'] }}
-        </div>
+        <table>
+            <tr>
+                <td class="party-block">
+                    <span class="party-label">From</span>
+                    <strong>{{ $company['name'] ?? config('app.name') }}</strong><br>
+                    @if(filled($company['phone'] ?? null))
+                        {{ $company['phone'] }}<br>
+                    @endif
+                    @if(filled($company['email'] ?? null))
+                        {{ $company['email'] }}
+                    @endif
+                </td>
+                <td class="party-block">
+                    <span class="party-label">To</span>
+                    <strong>{{ $customer['name'] }}</strong>
+                </td>
+            </tr>
+        </table>
 
         <table class="items-table">
             <thead>
@@ -120,7 +106,7 @@
             </tbody>
         </table>
 
-        <table class="totals-table">
+        <table class="summary-table">
             <tr>
                 <td>Total</td>
                 <td class="text-right">{{ \App\Support\Money::format($proformaData['subtotal']) }}</td>
@@ -143,9 +129,9 @@
         <div class="section-block">
             <strong>Remark:</strong><br>
             @if(filled($proformaData['validity_days']))
-                &bull; Validity period: {{ $proformaData['validity_days'] }} days<br>
+                - Validity period: {{ $proformaData['validity_days'] }} days<br>
             @endif
-            &bull; Delivery period: Immediately after payment
+            - Delivery period: Immediately after payment
             @if(filled($proformaData['remarks']))
                 <br>{!! nl2br(e($proformaData['remarks'])) !!}
             @endif

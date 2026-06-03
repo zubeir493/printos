@@ -5,25 +5,29 @@
     <title>Job Order {{ $jobOrderPrint['job_order_number'] }}</title>
     <style>
         body {
-            color: #1f2937;
-            font-family: Arial, sans-serif;
+            background: #ffffff;
+            color: #222222;
+            font-family: Arial, Helvetica, sans-serif;
             font-size: 12px;
             line-height: 1.45;
             margin: 0;
         }
 
         .page {
+            background: #ffffff;
+            border: 0;
+            margin: 0 auto;
             padding: 32px;
         }
 
         .header {
-            border-bottom: 2px solid #111827;
+            border-bottom: 2px solid #1f2933;
             margin-bottom: 20px;
-            padding-bottom: 12px;
+            padding-bottom: 14px;
         }
 
         .brand {
-            color: #4b5563;
+            color: #384250;
             float: right;
             font-size: 10px;
             line-height: 1.35;
@@ -31,13 +35,23 @@
             width: 260px;
         }
 
+        .logo {
+            display: block;
+            margin: 0 0 8px auto;
+            max-height: 54px;
+            max-width: 128px;
+            object-fit: contain;
+        }
+
         h1 {
+            color: #1f2933;
             font-size: 24px;
             margin: 0 0 4px;
         }
 
         h2 {
-            border-bottom: 1px solid #d1d5db;
+            border-bottom: 1px solid #d9dde3;
+            color: #1f2933;
             font-size: 15px;
             margin: 20px 0 8px;
             padding-bottom: 4px;
@@ -51,23 +65,24 @@
 
         th,
         td {
-            border: 1px solid #d1d5db;
+            border: 1px solid #d9dde3;
             padding: 6px 8px;
             text-align: left;
             vertical-align: top;
         }
 
         th {
-            background: #f3f4f6;
+            background: #1f2933;
+            color: #ffffff;
             font-weight: bold;
         }
 
         .muted {
-            color: #6b7280;
+            color: #5f6b7a;
         }
 
         .meta-table td:first-child {
-            background: #f9fafb;
+            background: #f7f8fa;
             font-weight: bold;
             width: 28%;
         }
@@ -78,14 +93,14 @@
         }
 
         .task-title {
-            background: #111827;
+            background: #1f2933;
             color: #ffffff;
             font-weight: bold;
             padding: 8px 10px;
         }
 
         .empty {
-            color: #6b7280;
+            color: #5f6b7a;
             font-style: italic;
         }
 
@@ -96,8 +111,7 @@
         }
 
         .checkmark {
-            color: #111827;
-            font-family: 'DejaVu Sans', sans-serif;
+            color: #1f2933;
             font-weight: bold;
             padding-right: 5px;
         }
@@ -107,8 +121,9 @@
     <div class="page">
         <div class="header">
             <div class="brand">
-                <strong>{{ $jobOrderPrint['company']['name'] ?? $jobOrderPrint['app_name'] }}</strong><br>
-                {{ $jobOrderPrint['app_name'] }}
+                @if(! empty($jobOrderPrint['company']['logo_data_uri']) || ! empty($jobOrderPrint['company']['logo']))
+                    <img src="{{ $jobOrderPrint['company']['logo_data_uri'] ?? $jobOrderPrint['company']['logo'] }}" class="logo" alt="{{ $jobOrderPrint['company']['name'] ?? $jobOrderPrint['app_name'] }}"><br>
+                @endif
             </div>
             <h1>Job Order {{ $jobOrderPrint['job_order_number'] }}</h1>
             <div class="muted">Production printout</div>
@@ -195,7 +210,7 @@
                 @foreach(array_chunk($jobOrderPrint['services'], 2) as $serviceRow)
                     <tr>
                         @foreach($serviceRow as $service)
-                            <td><span class="checkmark">&check;</span>{{ $service }}</td>
+                            <td><span class="checkmark">-</span> {{ $service }}</td>
                         @endforeach
                         @if(count($serviceRow) === 1)
                             <td></td>

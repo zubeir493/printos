@@ -99,7 +99,7 @@
 
             <tr>
                 <td colspan="2">
-                    <table style="width: 300px; float: right;">
+                    <table class="summary-table">
                         <tr class="total">
                             <td><strong>Total Received:</strong></td>
                             <td class="text-right"><strong>{{ \App\Support\Money::format($receipt_data['payment']->amount) }}</strong></td>
@@ -110,7 +110,7 @@
 
             <tr>
                 <td colspan="2">
-                    <div class="paid-stamp">✓ PAID</div>
+                    <div class="paid-stamp">PAID</div>
                 </td>
             </tr>
         </table>

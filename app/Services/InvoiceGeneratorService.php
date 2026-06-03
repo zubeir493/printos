@@ -635,11 +635,64 @@ class InvoiceGeneratorService
     /**
      * Get stored invoice path
      */
-    public function getInvoicePath(string $filename): string
+    public function getInvoicePath(string $filename, ?string $filePath = null): ?string
     {
-        $path = "invoices/{$filename}";
+        return $this->getInvoiceDownloadUrl($filePath, $filename);
+    }
+
+    public function getInvoiceDownloadUrl(?string $filePath, ?string $filename = null): ?string
+    {
+        $path = filled($filePath) ? $filePath : (filled($filename) ? "invoices/{$filename}" : null);
 
         return PrivateStorage::downloadUrl($path, now()->addMinutes(60));
+    }
+
+    public function generateManualInvoicePdf(Invoice $invoice): bool
+    {
+        $invoice->loadMissing('partner');
+
+        $taxCalculations = $invoice->tax_calculations ?? [
+            'total_tax' => (float) $invoice->tax_amount,
+            'breakdown' => (float) $invoice->tax_amount > 0 ? ['VAT' => (float) $invoice->tax_amount] : [],
+        ];
+
+        $invoiceData = [
+            'invoice_number' => $invoice->invoice_number,
+            'invoice_date' => $invoice->invoice_date?->format('Y-m-d'),
+            'due_date' => $invoice->due_date?->format('Y-m-d'),
+            'order' => (object) [
+                'partner' => $invoice->partner,
+                'paid_amount' => max(0, (float) $invoice->total_amount - (float) $invoice->balance_due),
+            ],
+            'items' => collect(),
+            'payments' => collect(),
+            'company_info' => $this->loadCompanyInformation(),
+            'tax_calculations' => $taxCalculations,
+            'subtotal' => (float) $invoice->subtotal,
+            'tax_amount' => (float) $invoice->tax_amount,
+            'total_amount' => (float) $invoice->total_amount,
+            'balance_due' => (float) $invoice->balance_due,
+            'status' => $invoice->status,
+            'terms' => Setting::getSettings()->invoice_terms,
+            'currency_code' => Setting::getSettings()->currency_code ?? 'Birr',
+            'currency_symbol' => Setting::getSettings()->currency_symbol ?? 'Birr',
+            'options' => array_merge([
+                'show_tax_breakdown' => true,
+                'show_payment_status' => true,
+                'show_terms' => true,
+            ], $invoice->options ?? []),
+        ];
+
+        $pdf = Pdf::loadView('invoices.sales-order', ['invoiceData' => $invoiceData])
+            ->setPaper('a4')
+            ->setOption('defaultFont', 'Arial')
+            ->setOption('fontDir', public_path('fonts'))
+            ->setOption('fontCache', public_path('fonts'))
+            ->setOption('isRemoteEnabled', true);
+
+        $path = $invoice->file_path ?: "invoices/{$invoice->filename}";
+
+        return Storage::disk(PrivateStorage::diskName())->put($path, $pdf->output());
     }
 
     /**

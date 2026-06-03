@@ -54,22 +54,6 @@ class PackageCostingWizardSchema
                     Select::make('services.material.glue_item_id')->label('Glue Item')->options(fn (): array => InventoryItem::query()->glueMaterials()->pluck('name', 'id')->all())->searchable()->preload()->live(),
                     Select::make('services.material.lamination_item_id')->label('Lamination')->options(fn (): array => InventoryItem::query()->laminationMaterials()->pluck('name', 'id')->all())->searchable()->preload()->live(),
                     Select::make('services.material.coating_item_id')->label('Coating')->options(fn (): array => InventoryItem::query()->coatingMaterials()->pluck('name', 'id')->all())->searchable()->preload()->live(),
-                    Section::make('Inventory Snapshot')
-                        ->schema([
-                            Placeholder::make('board_snapshot')
-                                ->label('Board')
-                                ->content(fn (Get $get): HtmlString => self::itemSnapshot($get('services.material.board_item_id')))
-                                ->extraAttributes(['class' => 'cost-snapshot-field']),
-                            Placeholder::make('glue_snapshot')
-                                ->label('Glue')
-                                ->content(fn (Get $get): HtmlString => self::itemSnapshot($get('services.material.glue_item_id')))
-                                ->extraAttributes(['class' => 'cost-snapshot-field']),
-                        ])
-                        ->secondary()
-                        ->compact()
-                        ->columns(2)
-                        ->extraAttributes(['class' => 'cost-snapshot-section'])
-                        ->columnSpanFull(),
                 ]),
             Step::make('Production Operations')
                 ->visible(fn (Get $get): bool => $get('job_type') === 'packages')

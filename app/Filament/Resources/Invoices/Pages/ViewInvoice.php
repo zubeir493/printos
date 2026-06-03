@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Invoices\Pages;
 use App\Filament\Resources\Invoices\InvoiceResource;
 use App\Services\InvoiceGeneratorService;
 use Filament\Actions;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
 
 class ViewInvoice extends ViewRecord
@@ -17,8 +18,49 @@ class ViewInvoice extends ViewRecord
             Actions\Action::make('download')
                 ->label('Download')
                 ->icon('heroicon-o-arrow-down-tray')
-                ->url(fn ($record) => app(InvoiceGeneratorService::class)->getInvoicePath($record->filename))
+                ->url(fn ($record) => app(InvoiceGeneratorService::class)->getInvoiceDownloadUrl($record->file_path, $record->filename))
                 ->openUrlInNewTab(),
+
+            Actions\Action::make('mark_sent')
+                ->label('Mark Sent')
+                ->icon('heroicon-o-paper-airplane')
+                ->color('primary')
+                ->visible(fn (): bool => in_array($this->record->status, ['draft', 'unpaid'], true))
+                ->action(function (): void {
+                    $this->record->update(['status' => 'sent']);
+                    $this->record->refresh();
+
+                    Notification::make()->title('Invoice marked as sent')->success()->send();
+                }),
+
+            Actions\Action::make('mark_paid')
+                ->label('Mark Paid')
+                ->icon('heroicon-o-check-circle')
+                ->color('success')
+                ->requiresConfirmation()
+                ->visible(fn (): bool => in_array($this->record->status, ['sent', 'unpaid', 'partial', 'overdue'], true))
+                ->action(function (): void {
+                    $this->record->update([
+                        'status' => 'paid',
+                        'balance_due' => 0,
+                    ]);
+                    $this->record->refresh();
+
+                    Notification::make()->title('Invoice marked as paid')->success()->send();
+                }),
+
+            Actions\Action::make('cancel_invoice')
+                ->label('Cancel Invoice')
+                ->icon('heroicon-o-x-circle')
+                ->color('danger')
+                ->requiresConfirmation()
+                ->visible(fn (): bool => in_array($this->record->status, ['draft', 'sent', 'unpaid', 'partial', 'overdue'], true))
+                ->action(function (): void {
+                    $this->record->update(['status' => 'cancelled']);
+                    $this->record->refresh();
+
+                    Notification::make()->title('Invoice cancelled')->success()->send();
+                }),
         ];
     }
 }

@@ -5,6 +5,7 @@ namespace App\Filament\Finance\Widgets;
 use App\Mail\CustomerReminderMail;
 use App\Models\EmailLog;
 use App\Models\Partner;
+use App\Models\Payment;
 use App\Models\SalesOrder;
 use App\Support\Money;
 use Filament\Actions\Action;
@@ -26,16 +27,28 @@ class HighRiskReceivables extends BaseWidget
 
     public function table(Table $table): Table
     {
+        $paymentsByOrder = Payment::query()
+            ->select('payable_id')
+            ->selectRaw('SUM(amount) as paid_amount')
+            ->where('payable_type', SalesOrder::class)
+            ->whereNull('voided_at')
+            ->groupBy('payable_id');
+
+        $balancesByPartner = SalesOrder::query()
+            ->leftJoinSub($paymentsByOrder, 'order_payments', fn ($join) => $join->on('order_payments.payable_id', '=', 'sales_orders.id'))
+            ->select('sales_orders.partner_id')
+            ->selectRaw('SUM(sales_orders.total - COALESCE(order_payments.paid_amount, 0)) as total_balance')
+            ->groupBy('sales_orders.partner_id');
+
         return $table
             ->query(
                 Partner::query()
                     ->where('is_customer', true)
-                    ->join('sales_orders', 'partners.id', '=', 'sales_orders.partner_id')
+                    ->joinSub($balancesByPartner, 'receivable_balances', fn ($join) => $join->on('receivable_balances.partner_id', '=', 'partners.id'))
                     ->select('partners.*')
-                    ->selectRaw('SUM(sales_orders.total) - COALESCE((SELECT SUM(payments.amount) FROM payments WHERE payments.payable_type = ? AND payments.payable_id = sales_orders.id AND payments.voided_at IS NULL), 0) as total_balance', [SalesOrder::class])
-                    ->groupBy('partners.id')
-                    ->having('total_balance', '>', 0)
-                    ->orderByDesc('total_balance')
+                    ->selectRaw('receivable_balances.total_balance')
+                    ->where('receivable_balances.total_balance', '>', 0)
+                    ->orderByDesc('receivable_balances.total_balance')
                     ->limit(5)
             )
             ->searchable(false)
@@ -47,7 +60,7 @@ class HighRiskReceivables extends BaseWidget
                     ->label('Contact'),
                 Tables\Columns\TextColumn::make('total_balance')
                     ->label('Outstanding Balance')
-                    ->formatStateUsing(fn($state) => Money::format($state))
+                    ->formatStateUsing(fn ($state) => Money::format($state))
                     ->color('danger')
                     ->sortable(),
             ])
@@ -73,15 +86,15 @@ class HighRiskReceivables extends BaseWidget
 
                                 EmailLog::create([
                                     'recipient_email' => $record->email,
-                                    'subject' => 'Payment reminder from ' . config('app.name'),
-                                    'message' => 'High-risk receivables reminder sent to ' . $record->name,
+                                    'subject' => 'Payment reminder from '.config('app.name'),
+                                    'message' => 'High-risk receivables reminder sent to '.$record->name,
                                     'sent_by' => Auth::id(),
                                     'sent_at' => now(),
                                 ]);
 
                                 Notification::make()
                                     ->title('Reminder Sent')
-                                    ->body('Reminder sent to ' . $record->email)
+                                    ->body('Reminder sent to '.$record->email)
                                     ->success()
                                     ->send();
                             } catch (\Throwable $exception) {

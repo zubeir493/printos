@@ -28,6 +28,9 @@ class LabelCostCalculator implements CostingCalculator
         $printingUp = max(1, (float) ($production['printing_up'] ?? 1));
         $diecuttingUp = max(1, (float) ($production['diecutting_up'] ?? 1));
         $wasteAllowance = max(0, (float) ($spec['waste_allowance_percent'] ?? ($defaults['waste_percent'] ?? 3)));
+        $printedSides = ($spec['printing_sides'] ?? 'front') === 'front_back' ? 2 : 1;
+        $inkCoveragePercent = max(0, (float) ($spec['print_coverage_percent'] ?? ($defaults['label_ink_coverage_percent'] ?? 15)));
+        $inkMlPerSquareCentimeter = max(0, (float) ($defaults['label_ink_ml_per_square_centimeter'] ?? 0.002));
 
         $materialItem = InventoryItem::query()->find($material['material_item_id'] ?? null);
         $inkItem = InventoryItem::query()->find($material['ink_item_id'] ?? null);
@@ -38,13 +41,16 @@ class LabelCostCalculator implements CostingCalculator
         $machine = Machine::query()->find($production['machine_id'] ?? null);
 
         $paperQuantity = ceil($quantity / $yield * (1 + $wasteAllowance / 100));
+        $labelArea = max(0, (float) ($spec['width'] ?? 0)) * max(0, (float) ($spec['height'] ?? 0));
+        $inkMl = $labelArea * $quantity * $colors * $printedSides * ($inkCoveragePercent / 100) * $inkMlPerSquareCentimeter;
+        $inkQuantity = $this->inkQuantityForUnit($inkMl * (1 + $wasteAllowance / 100), $inkItem?->unit);
         $impressions = ceil($quantity * $colors / ($printingUp * 1000));
         $machineSpeed = max(1, (float) ($machine?->production_speed ?: 1000));
         $machineHours = ($quantity / $printingUp) / $machineSpeed;
 
         $lines = [
             $this->line('Material', 'Label stock', $paperQuantity, $materialItem?->unit, $this->itemCost($materialItem, (float) ($material['material_unit_cost'] ?? 0)), $materialItem),
-            $this->line('Ink', 'Ink consumption', $colors, $inkItem?->unit ?? 'color', $this->itemCost($inkItem, (float) ($material['ink_unit_cost'] ?? 0)), $inkItem),
+            $this->line('Ink', 'Ink consumption', $inkQuantity, $inkItem?->unit ?? 'ml', $this->itemCost($inkItem, (float) ($material['ink_unit_cost'] ?? 0)), $inkItem, ['coverage_percent' => $inkCoveragePercent]),
             $this->line('Material', 'Adhesive', $paperQuantity, $adhesiveItem?->unit ?? 'unit', $this->itemCost($adhesiveItem), $adhesiveItem),
             $this->line('Material', 'Liner', $paperQuantity, $linerItem?->unit ?? 'unit', $this->itemCost($linerItem), $linerItem),
             $this->line('Plate', 'Printing plates', $colors, 'plate', (float) ($defaults['plate_unit_cost'] ?? 1000)),
@@ -57,5 +63,13 @@ class LabelCostCalculator implements CostingCalculator
         ];
 
         return $this->commercialTotals($lines, $quantity, $commercial, $settings);
+    }
+
+    private function inkQuantityForUnit(float $milliliters, ?string $unit): float
+    {
+        return match (strtolower((string) $unit)) {
+            'l', 'lt', 'liter', 'litre', 'liters', 'litres', 'kg', 'kilogram', 'kilograms' => $milliliters / 1000,
+            default => $milliliters,
+        };
     }
 }

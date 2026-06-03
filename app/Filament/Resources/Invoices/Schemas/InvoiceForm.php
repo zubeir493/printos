@@ -6,11 +6,10 @@ use App\Models\Partner;
 use App\Models\Setting;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
-use Filament\Schemas\Components\Grid as ComponentsGrid;
-use Filament\Schemas\Components\Section as ComponentsSection;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 
@@ -20,18 +19,10 @@ class InvoiceForm
     {
         return $schema
             ->schema([
-                // Core Invoice Information
-                ComponentsSection::make('Invoice Details')
+                Group::make()
                     ->schema([
-                        ComponentsGrid::make(2)
+                        Grid::make(3)
                             ->schema([
-                                TextInput::make('invoice_number')
-                                    ->label('Invoice Number')
-                                    ->readOnly()
-                                    ->dehydrated(false)
-                                    ->placeholder('Auto-generated')
-                                    ->prefix('#'),
-
                                 Select::make('invoice_type')
                                     ->label('Type')
                                     ->options([
@@ -42,10 +33,7 @@ class InvoiceForm
                                     ])
                                     ->required()
                                     ->native(false),
-                            ]),
 
-                        ComponentsGrid::make(2)
-                            ->schema([
                                 DatePicker::make('invoice_date')
                                     ->label('Invoice Date')
                                     ->required()
@@ -54,16 +42,8 @@ class InvoiceForm
                                 DatePicker::make('due_date')
                                     ->label('Due Date')
                                     ->required()
-                                    ->default(fn() => now()->addDays(30))
+                                    ->default(fn () => now()->addDays(30))
                                     ->after('invoice_date'),
-                            ]),
-                    ]),
-
-                // Customer Information
-                ComponentsSection::make('Customer Information')
-                    ->schema([
-                        ComponentsGrid::make(2)
-                            ->schema([
                                 Select::make('partner_id')
                                     ->label('Customer')
                                     ->relationship('partner', 'name')
@@ -71,21 +51,17 @@ class InvoiceForm
                                     ->preload()
                                     ->required()
                                     ->live()
-                                    ->afterStateUpdated(fn($state, Set $set) => $set('email_recipient', Partner::find($state)?->email)),
+                                    ->afterStateUpdated(fn ($state, Set $set) => $set('email_recipient', Partner::find($state)?->email)),
 
                                 TextInput::make('email_recipient')
                                     ->label('Email')
                                     ->email()
                                     ->prefixIcon('heroicon-o-envelope')
                                     ->placeholder('customer@example.com'),
-                            ]),
-                    ]),
 
-                // Financial Information
-                ComponentsSection::make('Financial Details')
-                    ->schema([
-                        ComponentsGrid::make(3)
-                            ->schema([
+                                Toggle::make('send_email')
+                                    ->label('Send email immediately')
+                                    ->default(false),
                                 TextInput::make('subtotal')
                                     ->label('Subtotal')
                                     ->suffix('Birr')
@@ -104,12 +80,13 @@ class InvoiceForm
                                     }),
 
                                 TextInput::make('tax_amount')
-                                    ->label(fn() => 'Tax (' . (Setting::getSettings()->vat_rate ?? 0) . '%)')
+                                    ->label(fn () => 'Tax ('.(Setting::getSettings()->vat_rate ?? 0).'%)')
                                     ->suffix('Birr')
                                     ->numeric()
                                     ->step(0.01)
                                     ->required()
-                                    ->readOnly(),
+                                    ->readOnly()
+                                    ->dehydrated(),
 
                                 TextInput::make('total_amount')
                                     ->label('Total')
@@ -117,45 +94,12 @@ class InvoiceForm
                                     ->numeric()
                                     ->step(0.01)
                                     ->required()
-                                    ->readOnly(),
+                                    ->readOnly()
+                                    ->dehydrated(),
                             ]),
-                    ]),
-
-                // Status Management
-                ComponentsSection::make('Status Management')
-                    ->schema([
-                        ComponentsGrid::make(2)
-                            ->schema([
-                                Select::make('status')
-                                    ->label('Status')
-                                    ->options([
-                                        'draft' => 'Draft',
-                                        'sent' => 'Sent',
-                                        'paid' => 'Paid',
-                                        'overdue' => 'Overdue',
-                                        'cancelled' => 'Cancelled',
-                                    ])
-                                    ->required()
-                                    ->default('draft'),
-
-                                Toggle::make('send_email')
-                                    ->label('Send email immediately')
-                                    ->default(false)
-                                    ->helperText('Send invoice email to customer after creation'),
-                            ]),
-                    ]),
-
-                // Notes (Optional)
-                ComponentsSection::make('Additional Notes')
-                    ->schema([
-                        Textarea::make('notes')
-                            ->label('Internal Notes')
-                            ->rows(3)
-                            ->placeholder('Add any internal notes or special instructions...')
-                            ->helperText('These notes are for internal use only and will not appear on the invoice'),
                     ])
-                    ->collapsible()
-                    ->collapsed(),
-            ]);
+                    ->columnSpan(4),
+            ])
+            ->columns(5);
     }
 }

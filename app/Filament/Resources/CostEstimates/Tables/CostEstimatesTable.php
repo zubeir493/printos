@@ -27,12 +27,10 @@ class CostEstimatesTable
                 TextColumn::make('estimate_number')
                     ->label('Estimate #')
                     ->searchable()
+                    // ->description(fn(CostEstimate $record): string => $record->description)
                     ->sortable()
                     ->weight('bold')
                     ->color('primary'),
-                TextColumn::make('description')
-                    ->searchable()
-                    ->wrap(),
                 TextColumn::make('job_type')
                     ->label('Service')
                     ->badge()
@@ -41,17 +39,17 @@ class CostEstimatesTable
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
                         'draft' => 'gray',
-                        'finalized' => 'success',
-                        'converted' => 'info',
+                        'converted' => 'success',
+                        'finalized' => 'info',
                         'cancelled' => 'danger',
                         default => 'gray',
                     })
                     ->formatStateUsing(fn (string $state): string => str($state)->headline()->value()),
-                TextColumn::make('total')
-                    ->formatStateUsing(fn ($state): string => Money::format($state))
-                    ->sortable(),
                 TextColumn::make('unit_price')
                     ->formatStateUsing(fn ($state): string => number_format((float) $state, 4).' Birr')
+                    ->sortable(),
+                TextColumn::make('total')
+                    ->formatStateUsing(fn ($state): string => Money::format($state))
                     ->sortable(),
             ])
             ->filters([

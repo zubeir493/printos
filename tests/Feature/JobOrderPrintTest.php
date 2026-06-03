@@ -67,7 +67,7 @@ it('builds job order print data without money or status fields', function () {
         ->toHaveKeys(['job_order_number', 'created_at', 'submission_date', 'due_date', 'client', 'remarks', 'services', 'tasks'])
         ->not->toHaveKeys(['status', 'subtotal', 'tax_amount', 'total', 'balance', 'advance_amount'])
         ->and($data['app_name'])->toBe(config('app.name'))
-        ->and($data['company'])->toHaveKeys(['name', 'phone', 'email'])
+        ->and($data['company'])->toHaveKeys(['name', 'phone', 'email', 'logo', 'logo_data_uri'])
         ->and($data['client']['name'])->toBe('Acme Print Buyer')
         ->and($data['services'])->toBe(['Lamination', 'Number of Pages: 48', 'Binding Type: Saddle stitch'])
         ->and($data['tasks'][0]['materials'][0])->toMatchArray([

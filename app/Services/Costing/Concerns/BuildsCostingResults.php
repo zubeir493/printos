@@ -130,6 +130,8 @@ trait BuildsCostingResults
             ->map(fn (array $line): array => [
                 'inventory_item_id' => $line['inventory_item_id'],
                 'label' => $line['label'],
+                'name' => $line['snapshot']['inventory']['name'] ?? $line['label'],
+                'inventory' => $line['snapshot']['inventory'] ?? [],
                 'quantity' => $line['quantity'],
                 'unit' => $line['unit'],
             ])

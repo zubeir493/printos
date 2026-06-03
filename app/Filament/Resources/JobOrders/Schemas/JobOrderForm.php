@@ -5,13 +5,13 @@ namespace App\Filament\Resources\JobOrders\Schemas;
 use App\Filament\Support\Calculations;
 use App\Filament\Support\PanelAccess;
 use App\Models\InventoryItem;
-use App\Models\JobOrder;
 use App\Models\Setting;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Repeater\TableColumn;
 use Filament\Forms\Components\Select;
@@ -23,6 +23,8 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get as UtilitiesGet;
 use Filament\Schemas\Components\Utilities\Set as UtilitiesSet;
 use Filament\Schemas\Schema;
+use Illuminate\Support\HtmlString;
+use Illuminate\Support\Number;
 use Illuminate\Support\Str;
 
 class JobOrderForm
@@ -60,19 +62,6 @@ class JobOrderForm
                                     ->searchable()
                                     ->required(fn (UtilitiesGet $get) => $get('production_mode') !== 'make_to_stock')
                                     ->hidden(fn (UtilitiesGet $get) => $get('production_mode') === 'make_to_stock'),
-                                TextInput::make('job_order_number')
-                                    ->label('Job Order #')
-                                    ->default(function () {
-                                        $lastJobOrder = JobOrder::orderBy('id', 'desc')->first();
-                                        $lastNumber = 0;
-                                        if ($lastJobOrder && preg_match('/JO-(\d+)/', $lastJobOrder->job_order_number, $matches)) {
-                                            $lastNumber = (int) $matches[1];
-                                        }
-
-                                        return 'JO-'.str_pad($lastNumber + 1, 4, '0', STR_PAD_LEFT);
-                                    })
-                                    ->readOnly()
-                                    ->dehydrated(false),
                                 Select::make('job_type')
                                     ->options([
                                         'books' => 'Books',
@@ -408,36 +397,46 @@ class JobOrderForm
                 Section::make()
                     ->schema([
                         Hidden::make('status')->default('draft'),
+                        Hidden::make('subtotal')
+                            ->default(0)
+                            ->dehydrated(),
+                        Hidden::make('tax_amount')
+                            ->default(0)
+                            ->dehydrated(),
+                        Hidden::make('total')
+                            ->default(0)
+                            ->dehydrated(),
 
-                        TextInput::make('subtotal')
+                        Placeholder::make('summary_subtotal')
                             ->label('Subtotal')
-                            ->default(0)
-                            ->suffix(' Birr')
-                            ->readOnly()
-                            ->numeric()
+                            ->content(fn (UtilitiesGet $get): HtmlString => self::summaryValue($get('subtotal')))
                             ->hidden(fn () => ! PanelAccess::canSeeMoneyValues())
-                            ->dehydratedWhenHidden(),
+                            ->extraAttributes(['class' => 'cost-summary-metric']),
 
-                        TextInput::make('tax_amount')
+                        Placeholder::make('summary_tax_amount')
                             ->label('Tax (VAT)')
-                            ->default(0)
-                            ->suffix(' Birr')
-                            ->readOnly()
-                            ->numeric()
+                            ->content(fn (UtilitiesGet $get): HtmlString => self::summaryValue($get('tax_amount')))
                             ->hidden(fn () => ! PanelAccess::canSeeMoneyValues())
-                            ->dehydratedWhenHidden(),
+                            ->extraAttributes(['class' => 'cost-summary-metric']),
 
-                        TextInput::make('total')
+                        Placeholder::make('summary_total')
                             ->label('Total')
-                            ->default(0)
-                            ->suffix(' Birr')
-                            ->readOnly()
-                            ->numeric()
+                            ->content(fn (UtilitiesGet $get): HtmlString => self::summaryValue($get('total'), isPrimary: true))
                             ->hidden(fn () => ! PanelAccess::canSeeMoneyValues())
-                            ->dehydratedWhenHidden(),
+                            ->extraAttributes(['class' => 'cost-summary-metric cost-summary-total']),
 
                         Textarea::make('remarks'),
-                    ]),
+                    ])
+                    ->extraAttributes(['class' => 'lg:sticky lg:top-6 orderSummary']),
             ])->columns(4);
+    }
+
+    private static function summaryValue(mixed $amount, bool $isPrimary = false): HtmlString
+    {
+        return new HtmlString(sprintf(
+            '<span class="cost-summary-value%s">%s Birr</span>',
+            $isPrimary ? ' cost-summary-value-primary' : '',
+            e(Number::format((float) ($amount ?? 0), precision: 2)),
+        ));
     }
 }

@@ -17,11 +17,17 @@ use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Schemas\Components\Grid;
+use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\Facades\DB;
 
 class ViewSalesOrder extends ViewRecord
 {
     protected static string $resource = SalesOrderResource::class;
+
+    public function getTitle(): string|Htmlable
+    {
+        return $this->getRecord()->order_number;
+    }
 
     protected function getHeaderActions(): array
     {

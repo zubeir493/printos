@@ -41,7 +41,6 @@ test('purchase order form saves every item from the repeater', function (): void
 
     Livewire::test(CreatePurchaseOrder::class)
         ->fillForm([
-            'po_number' => 'PO-REPEATER-001',
             'partner_id' => $supplier->id,
             'order_date' => now()->toDateString(),
             'purchaseOrderItems' => [

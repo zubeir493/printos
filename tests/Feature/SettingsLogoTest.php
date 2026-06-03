@@ -68,6 +68,49 @@ test('invoice templates use embedded logo data when available', function (): voi
         ->not->toContain('src="/storage/logos/company.png"');
 });
 
+test('proforma pdf template uses embedded logo data when available', function (): void {
+    $html = view('proformas.pdf', [
+        'proformaData' => [
+            'proforma_number' => 'PRO-2026-000001',
+            'issue_date' => '2026-05-16',
+            'company_info' => [
+                'name' => 'PrintOS',
+                'phone' => null,
+                'email' => null,
+                'tax_id' => null,
+                'logo' => '/storage/logos/company.png',
+                'logo_data_uri' => 'data:image/png;base64,'.base64_encode('logo image contents'),
+            ],
+            'customer_info' => ['name' => 'Customer'],
+            'items' => [],
+            'subtotal' => 0,
+            'vat_rate' => 15,
+            'tax_amount' => 0,
+            'total' => 0,
+            'amount_in_words' => 'Zero Birr',
+            'validity_days' => 7,
+            'remarks' => null,
+            'bank_accounts' => [],
+        ],
+    ])->render();
+
+    expect($html)
+        ->toContain('class="document-logo"')
+        ->toContain('data:image/png;base64,')
+        ->not->toContain('src="/storage/logos/company.png"');
+});
+
+test('pdf shared styles keep the page white and totals understated', function (): void {
+    $styles = file_get_contents(resource_path('views/invoices/_styles.blade.php'));
+
+    expect($styles)
+        ->toContain('body {')
+        ->toContain('background: #ffffff;')
+        ->toContain('border-bottom: 1px dashed #cfd5dd;')
+        ->not->toContain('background: #f4f5f7;')
+        ->not->toContain('tr.total td:nth-child(2)');
+});
+
 test('settings page stores a single logo path and reloads it after saving', function (): void {
     Filament::setCurrentPanel(Filament::getPanel('admin'));
 

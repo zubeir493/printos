@@ -67,9 +67,16 @@ it('calculates a label estimate with inventory and VAT snapshots', function (): 
 
     expect($result->subtotal)->toBeGreaterThan(0.0)
         ->and($result->vatRate)->toBe(15.0)
+        ->and($result->taxAmount)->toBeGreaterThan(0.0)
+        ->and($result->total)->toBe(round(($result->subtotal + $result->overheadAmount + $result->profitAmount - $result->discountAmount) + $result->taxAmount, 2))
         ->and($result->settingsSnapshot['vat_rate'])->toBe(15.0)
         ->and($result->materialConsumption[0]['inventory_item_id'])->toBe($paper->id)
         ->and($result->lines[0]['snapshot']['inventory']['gsm'])->toBe(100.0);
+
+    $inkLine = collect($result->lines)->firstWhere('label', 'Ink consumption');
+
+    expect($inkLine['quantity'])->toBeGreaterThan(4.0)
+        ->and($inkLine['unit'])->toBe('ml');
 });
 
 it('calculates package material consumption from sheet layout', function (): void {
@@ -218,8 +225,8 @@ it('shows a waiting state in live summary until core estimate fields are filled'
     $this->actingAs(User::factory()->create(['role' => UserRole::Admin]));
 
     Livewire::test(CreateCostEstimate::class)
-        ->assertSee('Waiting for required fields')
-        ->assertSee('Complete product specs and material selection to calculate.');
+        ->assertSee('Awaiting inputs')
+        ->assertDontSee('Warnings');
 });
 
 it('requires customer data when converting an estimate to a proforma', function (): void {

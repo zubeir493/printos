@@ -19,10 +19,52 @@ class EditInvoice extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
+            Actions\Action::make('mark_sent')
+                ->label('Mark Sent')
+                ->icon('heroicon-o-paper-airplane')
+                ->color('primary')
+                ->visible(fn (): bool => in_array($this->record->status, ['draft', 'unpaid'], true))
+                ->action(function (): void {
+                    $this->record->update(['status' => 'sent']);
+                    $this->record->refresh();
+
+                    Notification::make()->title('Invoice marked as sent')->success()->send();
+                }),
+
+            Actions\Action::make('mark_paid')
+                ->label('Mark Paid')
+                ->icon('heroicon-o-check-circle')
+                ->color('success')
+                ->requiresConfirmation()
+                ->visible(fn (): bool => in_array($this->record->status, ['sent', 'unpaid', 'partial', 'overdue'], true))
+                ->action(function (): void {
+                    $this->record->update([
+                        'status' => 'paid',
+                        'balance_due' => 0,
+                    ]);
+                    $this->record->refresh();
+
+                    Notification::make()->title('Invoice marked as paid')->success()->send();
+                }),
+
+            Actions\Action::make('cancel_invoice')
+                ->label('Cancel Invoice')
+                ->icon('heroicon-o-x-circle')
+                ->color('danger')
+                ->requiresConfirmation()
+                ->visible(fn (): bool => in_array($this->record->status, ['draft', 'sent', 'unpaid', 'partial', 'overdue'], true))
+                ->action(function (): void {
+                    $this->record->update(['status' => 'cancelled']);
+                    $this->record->refresh();
+
+                    Notification::make()->title('Invoice cancelled')->success()->send();
+                }),
+
             Actions\DeleteAction::make()
                 ->label('Delete Invoice')
                 ->icon('heroicon-o-trash')
                 ->color('danger')
+                ->visible(fn (): bool => $this->record->status === 'draft')
                 ->requiresConfirmation()
                 ->modalHeading('Delete Invoice')
                 ->modalDescription('Are you sure you want to delete this invoice? This action cannot be undone.')

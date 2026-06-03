@@ -17,6 +17,7 @@ use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
 use Filament\Actions\ExportAction;
 use Filament\Actions\ExportBulkAction;
 use Filament\Forms\Components\DatePicker;
@@ -86,11 +87,12 @@ class SalesOrdersTable
                         ->label('Receive Payment')
                         ->icon('heroicon-o-banknotes')
                         ->color('success')
-                        ->visible(fn ($record) => $record->payment_mode === 'credit' &&
-                            $record->status !== SalesOrder::STATUS_VOID &&
-                            $record->balance > 0 &&
-                            PanelAccess::canAccessFinanceSection() &&
-                            in_array($record->status, [SalesOrder::STATUS_DRAFT, SalesOrder::STATUS_SUBMITTED], true)
+                        ->visible(
+                            fn ($record) => $record->payment_mode === 'credit' &&
+                                $record->status !== SalesOrder::STATUS_VOID &&
+                                $record->balance > 0 &&
+                                PanelAccess::canAccessFinanceSection() &&
+                                in_array($record->status, [SalesOrder::STATUS_DRAFT, SalesOrder::STATUS_SUBMITTED], true)
                         )
                         ->schema([
                             Grid::make(2)->schema([
@@ -157,7 +159,6 @@ class SalesOrdersTable
                                     ->body(Money::format($amount).' received for '.$record->order_number.'.')
                                     ->success()
                                     ->send();
-
                             } catch (\Exception $e) {
                                 DB::rollBack();
 
@@ -264,7 +265,6 @@ class SalesOrdersTable
                                     ->body($record->order_number.' has been voided. All payments, journal entries, and inventory movements have been reversed.')
                                     ->success()
                                     ->send();
-
                             } catch (\Exception $e) {
                                 DB::rollBack();
 
@@ -275,6 +275,9 @@ class SalesOrdersTable
                                     ->send();
                             }
                         }),
+                    EditAction::make()
+                        ->visible(fn ($record) => in_array($record->status, [SalesOrder::STATUS_DRAFT], true)),
+
                 ]),
             ])
             ->headerActions([

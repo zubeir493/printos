@@ -85,7 +85,7 @@
 
             <tr>
                 <td colspan="4">
-                    <table style="width: 300px; float: right;">
+                    <table class="summary-table">
                         <tr class="total">
                             <td>Subtotal:</td>
                             <td class="text-right">{{ \App\Support\Money::format($invoiceData['subtotal']) }}</td>

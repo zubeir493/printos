@@ -36,10 +36,6 @@ class EmployeesTable
                 TextColumn::make('hire_date')
                     ->date()
                     ->sortable(),
-                TextColumn::make('termination_date')
-                    ->date()
-                    ->placeholder('-')
-                    ->sortable(),
             ])
             ->filters([
                 SelectFilter::make('status')

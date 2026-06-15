@@ -145,11 +145,6 @@
                 @endforeach
             </div>
         @endif
-
-        <div class="signature">
-            ______________________________<br>
-            General Manager
-        </div>
     </div>
 </body>
 </html>

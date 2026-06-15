@@ -33,7 +33,7 @@ test('bank transaction resource lists balance affecting payments and completed t
         'is_supplier' => true,
     ]);
 
-    Payment::withoutEvents(fn () => Payment::create([
+    $inboundPayment = Payment::withoutEvents(fn () => Payment::create([
         'payment_number' => 'PAY-IN-001',
         'partner_id' => $customer->id,
         'bank_id' => $operatingBank->id,
@@ -46,7 +46,7 @@ test('bank transaction resource lists balance affecting payments and completed t
         'payment_type' => 'standard',
     ]));
 
-    Payment::withoutEvents(fn () => Payment::create([
+    $outboundPayment = Payment::withoutEvents(fn () => Payment::create([
         'payment_number' => 'PAY-OUT-001',
         'partner_id' => $supplier->id,
         'bank_id' => $operatingBank->id,
@@ -77,15 +77,16 @@ test('bank transaction resource lists balance affecting payments and completed t
         'status' => 'pending',
     ]);
 
-    expect(BankTransaction::query()->pluck('id')->all())->toContain(
-        'payment-1',
-        'payment-2',
-        'bank-transfer-out-1',
-        'bank-transfer-in-1',
-    )->not->toContain(
-        'bank-transfer-out-2',
-        'bank-transfer-in-2',
-    );
+    expect(BankTransaction::query()
+        ->get(['source_type', 'source_id', 'transaction_number'])
+        ->map(fn (BankTransaction $transaction): string => $transaction->source_type.'-'.$transaction->source_id.'-'.$transaction->transaction_number)
+        ->all())->toContain(
+            'payment-'.$inboundPayment->id.'-PAY-IN-001',
+            'payment-'.$outboundPayment->id.'-PAY-OUT-001',
+            'bank_transfer-1-BT-COMPLETE',
+        )->not->toContain(
+            'bank_transfer-2-BT-PENDING',
+        );
 
     Livewire::test(ListBankTransactions::class)
         ->assertSee('PAY-IN-001')

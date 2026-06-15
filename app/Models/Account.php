@@ -27,6 +27,10 @@ class Account extends Model
 
     public const CODE_AP = '2100';
 
+    public const CODE_BID_BONDS_RECEIVABLE = '1240';
+
+    public const CODE_PERFORMANCE_BONDS_RECEIVABLE = '1250';
+
     /**
      * The attributes that are mass assignable.
      *

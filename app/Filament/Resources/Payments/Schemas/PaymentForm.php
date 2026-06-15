@@ -46,31 +46,27 @@ class PaymentForm
                             })
                             ->required()
                             ->live(),
-                        // Single partner field — label, filter, and create form adapt to transaction type
                         Select::make('partner_id')
-                            ->label(fn ($get) => $get('transaction_type') === PaymentTransactionType::SUPPLIER_PAYMENT->value
-                                ? 'Supplier'
-                                : 'Customer')
+                            ->label(function ($get): string {
+                                return PaymentTransactionType::tryFrom(
+                                    $get('transaction_type') ?? PaymentTransactionType::CUSTOMER_RECEIPT->value
+                                )?->partnerLabel() ?? 'Counterparty';
+                            })
                             ->relationship(
                                 'partner',
                                 'name',
                                 modifyQueryUsing: function ($query, $get) {
-                                    $type = $get('transaction_type');
-                                    if ($type === PaymentTransactionType::SUPPLIER_PAYMENT->value) {
-                                        return $query->where('is_supplier', true);
-                                    }
-
-                                    return $query->where('is_customer', true);
+                                    return $get('transaction_type') === PaymentTransactionType::SUPPLIER_PAYMENT->value
+                                        ? $query->where('is_supplier', true)
+                                        : $query->where('is_customer', true);
                                 }
                             )
-                            ->visible(fn ($get) => in_array($get('transaction_type'), [
-                                PaymentTransactionType::CUSTOMER_RECEIPT->value,
-                                PaymentTransactionType::SUPPLIER_PAYMENT->value,
-                            ]))
-                            ->required(fn ($get) => in_array($get('transaction_type'), [
-                                PaymentTransactionType::CUSTOMER_RECEIPT->value,
-                                PaymentTransactionType::SUPPLIER_PAYMENT->value,
-                            ]))
+                            ->visible(fn ($get): bool => PaymentTransactionType::tryFrom(
+                                $get('transaction_type') ?? PaymentTransactionType::CUSTOMER_RECEIPT->value
+                            )?->requiresPartner() ?? false)
+                            ->required(fn ($get): bool => PaymentTransactionType::tryFrom(
+                                $get('transaction_type') ?? PaymentTransactionType::CUSTOMER_RECEIPT->value
+                            )?->requiresPartner() ?? false)
                             ->searchable()
                             ->preload()
                             ->createOptionForm(fn ($get) => $get('transaction_type') === PaymentTransactionType::SUPPLIER_PAYMENT->value
@@ -101,9 +97,10 @@ class PaymentForm
                                 'cash' => 'Cash',
                                 'bank' => 'Bank Transfer',
                                 'cheque' => 'Cheque',
+                                'cpo' => 'CPO',
                             ])
                             ->default('bank')
-                            ->afterStateHydrated(function (Select $component, $record) {
+                            ->afterStateHydrated(function (Select $component, $record): void {
                                 if (! $record) {
                                     return;
                                 }
@@ -121,8 +118,9 @@ class PaymentForm
                             ->relationship('bank', 'name')
                             ->searchable()
                             ->preload()
-                            ->visible(fn (callable $get) => $get('method') === 'bank')
-                            ->required(fn (callable $get) => $get('method') === 'bank')
+                            ->visible(fn (callable $get): bool => $get('method') === 'bank')
+                            ->required(fn (callable $get): bool => $get('method') === 'bank')
+                            ->dehydrated(fn (callable $get): bool => $get('method') === 'bank')
                             ->helperText('Select the bank account for this payment'),
                         TextInput::make('reference')
                             ->label('Memo / Reference')

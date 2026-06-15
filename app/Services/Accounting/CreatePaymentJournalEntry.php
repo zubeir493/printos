@@ -49,6 +49,10 @@ class CreatePaymentJournalEntry
             PaymentTransactionType::PETTY_CASH_EXPENSE => $this->createItems($journalEntry->id, $expenseAccountId, $pettyCashAccountId, $amount),
             PaymentTransactionType::PAYROLL_PAYMENT => $this->createItems($journalEntry->id, Account::getSystemAccount('2150', 'Payroll Payable', 'Liability')->id, $sourceAccountId, $amount),
             PaymentTransactionType::EMPLOYEE_LOAN_REPAYMENT => $this->createItems($journalEntry->id, $sourceAccountId, Account::getSystemAccount('1230', 'Employee Loans Receivable', 'Asset')->id, $amount),
+            PaymentTransactionType::BID_BOND_ISSUE => $this->createItems($journalEntry->id, $this->resolveBidBondReceivableAccountId(), $sourceAccountId, $amount),
+            PaymentTransactionType::BID_BOND_RECOVERY => $this->createItems($journalEntry->id, $sourceAccountId, $this->resolveBidBondReceivableAccountId(), $amount),
+            PaymentTransactionType::PERFORMANCE_BOND_ISSUE => $this->createItems($journalEntry->id, $this->resolvePerformanceBondReceivableAccountId(), $sourceAccountId, $amount),
+            PaymentTransactionType::PERFORMANCE_BOND_RECOVERY => $this->createItems($journalEntry->id, $sourceAccountId, $this->resolvePerformanceBondReceivableAccountId(), $amount),
         };
     }
 
@@ -92,6 +96,16 @@ class CreatePaymentJournalEntry
         }
 
         return Account::getSystemAccount('1090', 'Petty Cash', 'Asset')->id;
+    }
+
+    private function resolveBidBondReceivableAccountId(): int
+    {
+        return Account::getSystemAccount(Account::CODE_BID_BONDS_RECEIVABLE, 'Bid Bonds Receivable', 'Asset')->id;
+    }
+
+    private function resolvePerformanceBondReceivableAccountId(): int
+    {
+        return Account::getSystemAccount(Account::CODE_PERFORMANCE_BONDS_RECEIVABLE, 'Performance Bonds Receivable', 'Asset')->id;
     }
 
     private function resolveCashAccount(Payment $payment): Account

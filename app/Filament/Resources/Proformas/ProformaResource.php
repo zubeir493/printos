@@ -15,6 +15,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use UnitEnum;
 
 class ProformaResource extends Resource
@@ -22,10 +23,6 @@ class ProformaResource extends Resource
     protected static ?string $model = Proforma::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedDocumentText;
-
-    protected static string|UnitEnum|null $navigationGroup = 'Sales';
-
-    protected static ?int $navigationSort = 11;
 
     public static function canAccess(): bool
     {
@@ -50,6 +47,13 @@ class ProformaResource extends Resource
     public static function table(Table $table): Table
     {
         return ProformasTable::configure($table);
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()
+            ->with('partner')
+            ->withExists('jobOrders');
     }
 
     public static function getRelations(): array

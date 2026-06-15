@@ -11,6 +11,10 @@ enum PaymentTransactionType: string
     case PETTY_CASH_EXPENSE = 'petty_cash_expense';
     case PAYROLL_PAYMENT = 'payroll_payment';
     case EMPLOYEE_LOAN_REPAYMENT = 'employee_loan_repayment';
+    case BID_BOND_ISSUE = 'bid_bond_issue';
+    case BID_BOND_RECOVERY = 'bid_bond_recovery';
+    case PERFORMANCE_BOND_ISSUE = 'performance_bond_issue';
+    case PERFORMANCE_BOND_RECOVERY = 'performance_bond_recovery';
 
     public function label(): string
     {
@@ -22,6 +26,10 @@ enum PaymentTransactionType: string
             self::PETTY_CASH_EXPENSE => 'Petty Cash Expense',
             self::PAYROLL_PAYMENT => 'Payroll Payment',
             self::EMPLOYEE_LOAN_REPAYMENT => 'Employee Loan Repayment',
+            self::BID_BOND_ISSUE => 'Bid Bond Issue',
+            self::BID_BOND_RECOVERY => 'Bid Bond Recovery',
+            self::PERFORMANCE_BOND_ISSUE => 'Performance Bond Issue',
+            self::PERFORMANCE_BOND_RECOVERY => 'Performance Bond Recovery',
         };
     }
 
@@ -35,6 +43,10 @@ enum PaymentTransactionType: string
             self::PETTY_CASH_EXPENSE => 'Expense paid out of petty cash. Debits expense and credits petty cash.',
             self::PAYROLL_PAYMENT => 'Salary payment. Debits payroll payable and credits cash/bank.',
             self::EMPLOYEE_LOAN_REPAYMENT => 'Employee loan repayment. Debits cash/bank and credits employee loan receivable.',
+            self::BID_BOND_ISSUE => 'Refundable bid bond issued. Debits bid bond receivable and credits cash/bank.',
+            self::BID_BOND_RECOVERY => 'Refundable bid bond recovered. Debits cash/bank and credits bid bond receivable.',
+            self::PERFORMANCE_BOND_ISSUE => 'Refundable performance bond issued. Debits performance bond receivable and credits cash/bank.',
+            self::PERFORMANCE_BOND_RECOVERY => 'Refundable performance bond recovered. Debits cash/bank and credits performance bond receivable.',
         };
     }
 
@@ -43,6 +55,10 @@ enum PaymentTransactionType: string
         return in_array($this, [
             self::CUSTOMER_RECEIPT,
             self::SUPPLIER_PAYMENT,
+            self::BID_BOND_ISSUE,
+            self::BID_BOND_RECOVERY,
+            self::PERFORMANCE_BOND_ISSUE,
+            self::PERFORMANCE_BOND_RECOVERY,
         ], true);
     }
 
@@ -51,6 +67,7 @@ enum PaymentTransactionType: string
         return match ($this) {
             self::CUSTOMER_RECEIPT => 'Customer',
             self::SUPPLIER_PAYMENT => 'Supplier / Vendor',
+            self::BID_BOND_ISSUE, self::BID_BOND_RECOVERY, self::PERFORMANCE_BOND_ISSUE, self::PERFORMANCE_BOND_RECOVERY => 'Procuring Entity',
             default => 'Counterparty',
         };
     }
@@ -58,7 +75,7 @@ enum PaymentTransactionType: string
     public function direction(): string
     {
         return match ($this) {
-            self::CUSTOMER_RECEIPT, self::EMPLOYEE_LOAN_REPAYMENT => 'inbound',
+            self::CUSTOMER_RECEIPT, self::EMPLOYEE_LOAN_REPAYMENT, self::BID_BOND_RECOVERY, self::PERFORMANCE_BOND_RECOVERY => 'inbound',
             default => 'outbound',
         };
     }

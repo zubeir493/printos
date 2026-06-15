@@ -1,5 +1,8 @@
 <?php
 
+use App\Filament\Resources\Bids\Pages\CreateBid;
+use App\Filament\Resources\Bids\Pages\EditBid;
+use App\Filament\Resources\Bids\Pages\ViewBid;
 use App\Filament\Resources\JobOrders\Pages\CreateJobOrder;
 use App\Filament\Resources\JobOrders\Pages\EditJobOrder;
 use App\Filament\Resources\JobOrders\Pages\ViewJobOrder;
@@ -9,6 +12,7 @@ use App\Filament\Resources\PurchaseOrders\Pages\ViewPurchaseOrder;
 use App\Filament\Resources\SalesOrders\Pages\CreateSalesOrder;
 use App\Filament\Resources\SalesOrders\Pages\EditSalesOrder;
 use App\Filament\Resources\SalesOrders\Pages\ViewSalesOrder;
+use App\Models\Bid;
 use App\Models\JobOrder;
 use App\Models\Partner;
 use App\Models\PurchaseOrder;
@@ -39,6 +43,7 @@ it('hides generated order number fields in the main order forms', function (stri
     'sales order' => [CreateSalesOrder::class, 'order_number', 'sales'],
     'job order' => [CreateJobOrder::class, 'job_order_number', 'operations'],
     'purchase order' => [CreatePurchaseOrder::class, 'po_number', 'operations'],
+    'bid' => [CreateBid::class, 'bid_number', 'finance'],
 ]);
 
 it('uses order numbers as edit and view page titles', function (string $panel, object $record, string $editPage, string $viewPage, string $number): void {
@@ -84,5 +89,12 @@ it('uses order numbers as edit and view page titles', function (string $panel, o
         EditPurchaseOrder::class,
         ViewPurchaseOrder::class,
         'PO-TITLE-001',
+    ],
+    'bid' => fn (): array => [
+        'finance',
+        Bid::factory()->create(['bid_number' => 'BID-TITLE-001']),
+        EditBid::class,
+        ViewBid::class,
+        'BID-TITLE-001',
     ],
 ]);

@@ -14,6 +14,8 @@ class AccountSeeder extends Seeder
             ['code' => '1000', 'name' => 'Cash in Hand', 'type' => 'Asset'],
             ['code' => '1010', 'name' => 'Bank Current Account', 'type' => 'Asset'],
             ['code' => '1200', 'name' => 'Accounts Receivable (Debtors)', 'type' => 'Asset'],
+            ['code' => '1240', 'name' => 'Bid Bonds Receivable', 'type' => 'Asset'],
+            ['code' => '1250', 'name' => 'Performance Bonds Receivable', 'type' => 'Asset'],
             ['code' => '1500', 'name' => 'Inventory', 'type' => 'Asset'],
             ['code' => '1800', 'name' => 'Office Equipment', 'type' => 'Asset'],
 

@@ -21,4 +21,18 @@ class PartnerFactory extends Factory
             'is_customer' => fake()->boolean(),
         ];
     }
+
+    public function customer(): static
+    {
+        return $this->state(fn (array $attributes): array => [
+            'is_customer' => true,
+        ]);
+    }
+
+    public function supplier(): static
+    {
+        return $this->state(fn (array $attributes): array => [
+            'is_supplier' => true,
+        ]);
+    }
 }

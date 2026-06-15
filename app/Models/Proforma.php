@@ -109,7 +109,19 @@ class Proforma extends Model
 
     public function canCreateJobOrder(): bool
     {
-        return $this->status === 'approved' && ! $this->jobOrders()->exists();
+        if ($this->status !== 'approved') {
+            return false;
+        }
+
+        if ($this->relationLoaded('jobOrders')) {
+            return $this->jobOrders->isEmpty();
+        }
+
+        if (array_key_exists('job_orders_exists', $this->attributes)) {
+            return ! (bool) $this->attributes['job_orders_exists'];
+        }
+
+        return ! $this->jobOrders()->exists();
     }
 
     public function recalculateTotals(): void

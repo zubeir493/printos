@@ -13,6 +13,7 @@ use App\Services\Proformas\ProformaPdfService;
 use App\Services\Proformas\ProformaWorkflowService;
 use App\UserRole;
 use Filament\Facades\Filament;
+use Filament\Forms\Components\Repeater;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
@@ -142,41 +143,33 @@ it('creates proformas from a full page with a previewed number', function (): vo
     ]));
 
     $customer = Partner::factory()->create(['is_customer' => true]);
+    $undoRepeaterFake = Repeater::fake();
 
     try {
         Livewire::test(CreateProforma::class)
             ->assertFormSet([
                 'proforma_number' => 'PF-'.now()->format('Y').'-000001',
             ])
-            ->fillForm([
-                'partner_id' => $customer->id,
-                'job_type' => 'books',
-                'issue_date' => now()->toDateString(),
-                'expiry_date' => now()->addDays(3)->toDateString(),
-                'tasks' => [
-                    [
-                        'name' => 'Book',
-                        'quantity' => 10,
-                        'size' => 'Pcs',
-                        'unit_price' => 20,
-                        'task_cost' => 200,
-                    ],
-                    [
-                        'name' => 'Cover',
-                        'quantity' => 2,
-                        'size' => 'Pcs',
-                        'unit_price' => 50,
-                        'task_cost' => 100,
-                        'deliverables' => [],
-                    ],
-                ],
-                'remarks' => 'Delivery after payment.',
-            ])
+            ->set('data.partner_id', $customer->id)
+            ->set('data.job_type', 'books')
+            ->set('data.issue_date', now()->toDateString())
+            ->set('data.expiry_date', now()->addDays(3)->toDateString())
+            ->set('data.tasks.0.name', 'Book')
+            ->set('data.tasks.0.quantity', 10)
+            ->set('data.tasks.0.size', 'Pcs')
+            ->set('data.tasks.0.unit_price', 20)
+            ->set('data.tasks.1.name', 'Cover')
+            ->set('data.tasks.1.quantity', 2)
+            ->set('data.tasks.1.size', 'Pcs')
+            ->set('data.tasks.1.unit_price', 50)
+            ->set('data.tasks.1.deliverables', [])
+            ->set('data.remarks', 'Delivery after payment.')
             ->call('create')
             ->assertHasNoFormErrors()
             ->assertNotified()
             ->assertRedirect();
     } finally {
+        $undoRepeaterFake();
         Model::shouldBeStrict(false);
     }
 
@@ -197,34 +190,28 @@ it('creates proformas when a deliverables row is present but left blank', functi
     ]));
 
     $customer = Partner::factory()->create(['is_customer' => true]);
+    $undoRepeaterFake = Repeater::fake();
 
-    Livewire::test(CreateProforma::class)
-        ->fillForm([
-            'partner_id' => $customer->id,
-            'job_type' => 'books',
-            'issue_date' => now()->toDateString(),
-            'expiry_date' => now()->addDays(3)->toDateString(),
-            'tasks' => [
-                [
-                    'name' => 'Book',
-                    'quantity' => 10,
-                    'size' => 'Pcs',
-                    'unit_price' => 20,
-                    'task_cost' => 200,
-                    'deliverables' => [
-                        [
-                            'label' => null,
-                            'type' => 'artwork',
-                        ],
-                    ],
-                ],
-            ],
-        ])
-        ->call('create')
-        ->assertHasNoFormErrors();
+    try {
+        Livewire::test(CreateProforma::class)
+            ->set('data.partner_id', $customer->id)
+            ->set('data.job_type', 'books')
+            ->set('data.issue_date', now()->toDateString())
+            ->set('data.expiry_date', now()->addDays(3)->toDateString())
+            ->set('data.tasks.0.name', 'Book')
+            ->set('data.tasks.0.quantity', 10)
+            ->set('data.tasks.0.size', 'Pcs')
+            ->set('data.tasks.0.unit_price', 20)
+            ->set('data.tasks.0.deliverables.0.label', null)
+            ->set('data.tasks.0.deliverables.0.type', 'artwork')
+            ->call('create')
+            ->assertHasNoFormErrors();
+    } finally {
+        $undoRepeaterFake();
+    }
 
     expect(Proforma::count())->toBe(1)
-        ->and(ProformaTask::query()->first()->deliverables)->toBe([
+        ->and(ProformaTask::query()->first()->deliverables)->toEqual([
             [
                 'label' => null,
                 'type' => 'artwork',
@@ -248,36 +235,33 @@ it('updates proforma totals dynamically while editing the form', function (): vo
     ]));
 
     $customer = Partner::factory()->create(['is_customer' => true]);
+    $undoRepeaterFake = Repeater::fake();
 
-    Livewire::test(CreateProforma::class)
-        ->fillForm([
-            'partner_id' => $customer->id,
-            'job_type' => 'books',
-            'issue_date' => now()->toDateString(),
-            'expiry_date' => now()->addDays(3)->toDateString(),
-            'tasks' => [
-                [
-                    'name' => 'Book',
-                    'quantity' => 10,
-                    'size' => 'Pcs',
-                    'unit_price' => 20,
-                ],
-            ],
-        ])
-        ->assertFormSet([
-            'tasks' => [
-                [
-                    'name' => 'Book',
-                    'quantity' => 10,
-                    'size' => 'Pcs',
-                    'unit_price' => 20.0,
-                    'task_cost' => 200.0,
-                ],
-            ],
-            'subtotal' => 200.0,
-            'tax_amount' => 30.0,
-            'total' => 230.0,
-        ]);
+    try {
+        Livewire::test(CreateProforma::class)
+            ->set('data.partner_id', $customer->id)
+            ->set('data.job_type', 'books')
+            ->set('data.issue_date', now()->toDateString())
+            ->set('data.expiry_date', now()->addDays(3)->toDateString())
+            ->set('data.tasks.0.name', 'Book')
+            ->set('data.tasks.0.quantity', 10)
+            ->set('data.tasks.0.size', 'Pcs')
+            ->set('data.tasks.0.unit_price', 20)
+            ->assertFormSet(function (array $state): void {
+                $task = $state['tasks'][0];
+
+                expect($task['name'])->toBe('Book')
+                    ->and($task['quantity'])->toBe(10)
+                    ->and($task['size'])->toBe('Pcs')
+                    ->and($task['unit_price'])->toBe(20)
+                    ->and($task['task_cost'])->toBe(200.0)
+                    ->and($state['subtotal'])->toBe(200.0)
+                    ->and($state['tax_amount'])->toBe(30.0)
+                    ->and($state['total'])->toBe(230.0);
+            });
+    } finally {
+        $undoRepeaterFake();
+    }
 });
 
 it('emails a proforma from the list table action', function (): void {

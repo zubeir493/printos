@@ -59,6 +59,21 @@ class Partner extends Model
         return $this->hasMany(JobOrder::class);
     }
 
+    public function bids(): HasMany
+    {
+        return $this->hasMany(Bid::class);
+    }
+
+    public function issuedBidBonds(): HasMany
+    {
+        return $this->hasMany(Bond::class, 'issuing_partner_id')->where('type', Bond::TYPE_BID);
+    }
+
+    public function bonds(): HasMany
+    {
+        return $this->hasMany(Bond::class, 'issuing_partner_id');
+    }
+
     public function salesOrders(): HasMany
     {
         return $this->hasMany(SalesOrder::class);

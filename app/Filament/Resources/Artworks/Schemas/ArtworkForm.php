@@ -52,6 +52,7 @@ class ArtworkForm
                             ->directory('artworks')
                             ->preserveFilenames()
                             ->acceptedFileTypes(['application/pdf', 'image/jpeg', 'image/png', 'image/tiff', 'image/webp'])
+                            ->maxSize(102400)
                             ->previewable(false)
                             ->required()
                             ->columnSpanFull(),

@@ -6,8 +6,6 @@ use App\Services\InvoiceGeneratorService;
 use App\Support\Money;
 use Filament\Actions\Action as ActionsAction;
 use Filament\Actions\ActionGroup;
-use Filament\Actions\BulkActionGroup as ActionsBulkActionGroup;
-use Filament\Actions\DeleteBulkAction as ActionsDeleteBulkAction;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
@@ -179,10 +177,6 @@ class InvoicesTable
                         }),
                 ]),
             ])
-            ->bulkActions([
-                ActionsBulkActionGroup::make([
-                    ActionsDeleteBulkAction::make(),
-                ]),
-            ]);
+            ->bulkActions([]);
     }
 }

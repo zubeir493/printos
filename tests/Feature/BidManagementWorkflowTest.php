@@ -39,7 +39,6 @@ test('finance can create and filter bids', function (): void {
         ->set('data.deadline_date', '2026-06-15')
         ->set('data.estimated_value', 250000)
         ->set('data.bid_bond_amount', 5000)
-        ->set('data.bid_files', ['tender.pdf', 'specs.docx'])
         ->call('create')
         ->assertHasNoFormErrors();
 
@@ -48,7 +47,7 @@ test('finance can create and filter bids', function (): void {
     expect($bid->bid_number)->toStartWith('BID-')
         ->and($bid->status)->toBe(Bid::STATUS_DRAFT)
         ->and($bid->submission_date)->toBeNull()
-        ->and($bid->bid_files)->toBe(['tender.pdf', 'specs.docx']);
+        ->and($bid->bid_files)->toBe([]);
 
     Livewire::test(ListBids::class)
         ->filterTable('status', Bid::STATUS_DRAFT)

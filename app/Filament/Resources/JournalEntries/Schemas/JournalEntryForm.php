@@ -98,6 +98,13 @@ class JournalEntryForm
                         ])->columns(2),
                         FileUpload::make('attachment')
                             ->maxSize(5120)
+                            ->acceptedFileTypes([
+                                'application/pdf',
+                                'image/jpeg',
+                                'image/png',
+                                'image/webp',
+                                'text/plain',
+                            ])
                             ->disk('s3')
                             ->visibility('private')
                             ->getUploadedFileUsing(fn (BaseFileUpload $component, string $file, string|array|null $storedFileNames): ?array => PrivateStorage::uploadedFileInfo($component, $file, $storedFileNames))

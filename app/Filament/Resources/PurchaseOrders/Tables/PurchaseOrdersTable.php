@@ -12,7 +12,6 @@ use App\Support\Money;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\ExportAction;
 use Filament\Actions\ExportBulkAction;
 use Filament\Forms\Components\DatePicker;
@@ -133,7 +132,7 @@ class PurchaseOrdersTable
                                     ->live(),
                                 Select::make('bank_id')
                                     ->label('Bank Account')
-                                    ->options(Bank::pluck('name', 'id'))
+                                    ->options(fn (): array => Bank::query()->orderBy('name')->pluck('name', 'id')->all())
                                     ->searchable()
                                     ->preload()
                                     ->visible(fn (callable $get) => $get('method') === 'bank')
@@ -159,29 +158,32 @@ class PurchaseOrdersTable
                             try {
                                 DB::beginTransaction();
 
+                                $lockedRecord = $record->newQuery()
+                                    ->lockForUpdate()
+                                    ->findOrFail($record->getKey());
                                 $amount = (float) $data['amount'];
 
-                                if ($amount > $record->balance) {
-                                    throw new \Exception('Cannot pay more than the remaining balance of '.Money::format($record->balance).'.');
+                                if ($amount > $lockedRecord->balance) {
+                                    throw new \Exception('Cannot pay more than the remaining balance of '.Money::format($lockedRecord->balance).'.');
                                 }
 
                                 Payment::create([
-                                    'partner_id' => $record->partner_id,
+                                    'partner_id' => $lockedRecord->partner_id,
                                     'payment_date' => $data['payment_date'],
                                     'transaction_type' => PaymentTransactionType::SUPPLIER_PAYMENT->value,
                                     'amount' => $amount,
                                     'method' => $data['method'],
                                     'bank_id' => $data['bank_id'] ?? null,
-                                    'reference' => $data['reference'] ?? 'Payment for '.$record->po_number,
-                                    'payable_type' => get_class($record),
-                                    'payable_id' => $record->id,
+                                    'reference' => $data['reference'] ?? 'Payment for '.$lockedRecord->po_number,
+                                    'payable_type' => get_class($lockedRecord),
+                                    'payable_id' => $lockedRecord->id,
                                 ]);
 
                                 DB::commit();
 
                                 Notification::make()
                                     ->title('Payment Recorded')
-                                    ->body(Money::format($amount).' paid against '.$record->po_number.'.')
+                                    ->body(Money::format($amount).' paid against '.$lockedRecord->po_number.'.')
                                     ->success()
                                     ->send();
 
@@ -203,8 +205,6 @@ class PurchaseOrdersTable
             ])
             ->bulkActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make()
-                        ->visible(fn () => PanelAccess::canManagePurchaseOrders()),
                     ExportBulkAction::make()
                         ->exporter(PurchaseOrderExporter::class)
                         ->visible(fn () => PanelAccess::canManagePurchaseOrders()),

@@ -48,6 +48,8 @@ class Payment extends Model
         'expense_account_id',
         'petty_cash_account_id',
         'voided_at',
+        'voided_by',
+        'void_reason',
     ];
 
     /**
@@ -68,6 +70,7 @@ class Payment extends Model
             'expense_account_id' => 'integer',
             'petty_cash_account_id' => 'integer',
             'voided_at' => 'datetime',
+            'voided_by' => 'integer',
         ];
     }
 

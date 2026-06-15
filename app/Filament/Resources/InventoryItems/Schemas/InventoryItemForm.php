@@ -91,6 +91,7 @@ class InventoryItemForm
                         ->imageEditor()
                         ->imageAspectRatio('1:1')
                         ->maxSize(1024)
+                        ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
                         ->disk('s3')
                         ->visibility('private')
                         ->getUploadedFileUsing(fn (BaseFileUpload $component, string $file, string|array|null $storedFileNames): ?array => PrivateStorage::uploadedFileInfo($component, $file, $storedFileNames))

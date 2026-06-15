@@ -25,6 +25,7 @@ class ListAttendanceImports extends ListRecords
                         ->disk('local')
                         ->directory('attendance-imports')
                         ->acceptedFileTypes(['text/csv', 'text/plain', 'application/vnd.ms-excel'])
+                        ->maxSize(5120)
                         ->required(),
                 ])
                 ->action(function (array $data): void {

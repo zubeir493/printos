@@ -78,7 +78,7 @@ class PaymentObserver
             ->where('source_id', $payment->id)
             ->exists();
 
-        if ($hasJournalEntries) {
+        if ($hasJournalEntries && ! $this->isOnlyVoidMetadataBeingUpdated($payment)) {
             throw new \RuntimeException('Cannot edit payment after it has been posted to the accounting ledger.');
         }
     }
@@ -99,6 +99,19 @@ class PaymentObserver
     private function isBankPayment(Payment $payment): bool
     {
         return $payment->bank_id && in_array($payment->method, ['bank', 'bank_transfer'], true);
+    }
+
+    private function isOnlyVoidMetadataBeingUpdated(Payment $payment): bool
+    {
+        $updatedColumns = array_keys($payment->getDirty());
+
+        return $updatedColumns !== []
+            && collect($updatedColumns)->every(fn (string $column): bool => in_array($column, [
+                'voided_at',
+                'voided_by',
+                'void_reason',
+                'updated_at',
+            ], true));
     }
 
     protected function resolveInternalPartnerId(): int

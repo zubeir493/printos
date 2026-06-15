@@ -13,7 +13,7 @@ class InventoryItemFactory extends Factory
     {
         return [
             'name' => fake()->name(),
-            'sku' => fake()->word(),
+            'sku' => fake()->unique()->bothify('SKU-########'),
             'unit' => fake()->word(),
             'average_cost' => fake()->randomFloat(2, 0, 9999999999999.99),
         ];

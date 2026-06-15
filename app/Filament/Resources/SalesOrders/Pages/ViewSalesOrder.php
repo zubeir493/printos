@@ -123,7 +123,7 @@ class ViewSalesOrder extends ViewRecord
                             ->live(),
                         Select::make('bank_id')
                             ->label('Bank Account')
-                            ->options(fn (): array => Bank::query()->pluck('name', 'id')->all())
+                            ->options(fn (): array => Bank::query()->orderBy('name')->pluck('name', 'id')->all())
                             ->searchable()
                             ->preload()
                             ->visible(fn (callable $get): bool => $get('method') === 'bank')
@@ -149,22 +149,25 @@ class ViewSalesOrder extends ViewRecord
                 ->action(function ($record, array $data): void {
                     try {
                         DB::transaction(function () use ($record, $data): void {
+                            $lockedRecord = $record->newQuery()
+                                ->lockForUpdate()
+                                ->findOrFail($record->getKey());
                             $amount = (float) $data['amount'];
 
-                            if ($amount > $record->balance) {
-                                throw new \Exception('Cannot pay more than the remaining balance of '.Money::format($record->balance).'.');
+                            if ($amount > $lockedRecord->balance) {
+                                throw new \Exception('Cannot pay more than the remaining balance of '.Money::format($lockedRecord->balance).'.');
                             }
 
                             Payment::create([
-                                'partner_id' => $record->partner_id,
+                                'partner_id' => $lockedRecord->partner_id,
                                 'payment_date' => $data['payment_date'],
                                 'transaction_type' => PaymentTransactionType::CUSTOMER_RECEIPT->value,
                                 'amount' => $amount,
                                 'method' => $data['method'],
                                 'bank_id' => $data['bank_id'] ?? null,
-                                'reference' => $data['reference'] ?? 'Payment for '.$record->order_number,
+                                'reference' => $data['reference'] ?? 'Payment for '.$lockedRecord->order_number,
                                 'payable_type' => SalesOrder::class,
-                                'payable_id' => $record->id,
+                                'payable_id' => $lockedRecord->id,
                             ]);
                         });
 

@@ -35,6 +35,7 @@ use App\Observers\StockMovementObserver;
 use App\Observers\TextFileObserver;
 use App\Policies\PaymentPolicy;
 use Filament\Actions\CreateAction;
+use Filament\Forms\Components\FileUpload;
 use Filament\Support\Facades\FilamentTimezone;
 use Filament\Support\Facades\FilamentView;
 use Filament\Tables\Columns\TextColumn;
@@ -76,6 +77,7 @@ class AppServiceProvider extends ServiceProvider
         }
 
         CreateAction::configureUsing(fn (CreateAction $action) => $action->createAnother(false));
+        FileUpload::configureUsing(fn (FileUpload $component) => $component->preventFilePathTampering());
         TextColumn::configureUsing(
             fn (TextColumn $column) => $column->formatStateUsing(
                 fn (TextColumn $column, mixed $state): mixed => $column->isBadge()

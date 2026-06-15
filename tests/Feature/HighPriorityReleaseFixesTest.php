@@ -188,13 +188,12 @@ test('invoice edit actions transition status without exposing the status field',
     Livewire::test(EditInvoice::class, ['record' => $invoice->id])
         ->assertFormFieldDoesNotExist('invoice_number')
         ->assertFormFieldDoesNotExist('status')
+        ->assertActionDoesNotExist('mark_paid')
         ->callAction('mark_sent')
-        ->assertNotified('Invoice marked as sent')
-        ->callAction('mark_paid')
-        ->assertNotified('Invoice marked as paid');
+        ->assertNotified('Invoice marked as sent');
 
-    expect($invoice->refresh()->status)->toBe('paid')
-        ->and($invoice->balance_due)->toBe('0.00');
+    expect($invoice->refresh()->status)->toBe('sent')
+        ->and($invoice->balance_due)->toBe('100.00');
 });
 
 test('emailing an invoice from the table marks open invoices as sent', function (): void {

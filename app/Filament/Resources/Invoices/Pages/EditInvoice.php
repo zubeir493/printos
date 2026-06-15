@@ -31,22 +31,6 @@ class EditInvoice extends EditRecord
                     Notification::make()->title('Invoice marked as sent')->success()->send();
                 }),
 
-            Actions\Action::make('mark_paid')
-                ->label('Mark Paid')
-                ->icon('heroicon-o-check-circle')
-                ->color('success')
-                ->requiresConfirmation()
-                ->visible(fn (): bool => in_array($this->record->status, ['sent', 'unpaid', 'partial', 'overdue'], true))
-                ->action(function (): void {
-                    $this->record->update([
-                        'status' => 'paid',
-                        'balance_due' => 0,
-                    ]);
-                    $this->record->refresh();
-
-                    Notification::make()->title('Invoice marked as paid')->success()->send();
-                }),
-
             Actions\Action::make('cancel_invoice')
                 ->label('Cancel Invoice')
                 ->icon('heroicon-o-x-circle')
@@ -59,16 +43,6 @@ class EditInvoice extends EditRecord
 
                     Notification::make()->title('Invoice cancelled')->success()->send();
                 }),
-
-            Actions\DeleteAction::make()
-                ->label('Delete Invoice')
-                ->icon('heroicon-o-trash')
-                ->color('danger')
-                ->visible(fn (): bool => $this->record->status === 'draft')
-                ->requiresConfirmation()
-                ->modalHeading('Delete Invoice')
-                ->modalDescription('Are you sure you want to delete this invoice? This action cannot be undone.')
-                ->modalSubmitActionLabel('Yes, delete it'),
 
             Actions\Action::make('save')
                 ->label('Save Changes')

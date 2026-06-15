@@ -12,7 +12,6 @@ use App\Support\Money;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ExportAction;
 use Filament\Actions\ExportBulkAction;
@@ -159,7 +158,7 @@ class JobOrdersTable
                             }
                         }),
                     Action::make('pay')
-                        ->label('Recieve Payment')
+                        ->label('Receive Payment')
                         ->icon('heroicon-o-banknotes')
                         ->color('success')
                         ->visible(fn ($record) => is_object($record)
@@ -182,7 +181,7 @@ class JobOrdersTable
                                     ->live(),
                                 Select::make('bank_id')
                                     ->label('Bank Account')
-                                    ->options(Bank::pluck('name', 'id'))
+                                    ->options(fn (): array => Bank::query()->orderBy('name')->pluck('name', 'id')->all())
                                     ->searchable()
                                     ->preload()
                                     ->visible(fn (callable $get) => $get('method') === 'bank')
@@ -208,35 +207,38 @@ class JobOrdersTable
                             try {
                                 DB::beginTransaction();
 
+                                $lockedRecord = $record->newQuery()
+                                    ->lockForUpdate()
+                                    ->findOrFail($record->getKey());
                                 $amount = (float) $data['amount'];
 
-                                if ($amount > $record->balance) {
-                                    throw new \Exception('Cannot pay more than the remaining balance of '.Money::format($record->balance).'.');
+                                if ($amount > $lockedRecord->balance) {
+                                    throw new \Exception('Cannot pay more than the remaining balance of '.Money::format($lockedRecord->balance).'.');
                                 }
 
                                 Payment::create([
-                                    'partner_id' => $record->partner_id,
+                                    'partner_id' => $lockedRecord->partner_id,
                                     'payment_date' => $data['payment_date'],
                                     'transaction_type' => PaymentTransactionType::CUSTOMER_RECEIPT->value,
                                     'amount' => $amount,
                                     'method' => $data['method'],
                                     'bank_id' => $data['bank_id'] ?? null,
-                                    'reference' => $data['reference'] ?? 'Payment for '.$record->job_order_number,
-                                    'payable_type' => get_class($record),
-                                    'payable_id' => $record->id,
+                                    'reference' => $data['reference'] ?? 'Payment for '.$lockedRecord->job_order_number,
+                                    'payable_type' => get_class($lockedRecord),
+                                    'payable_id' => $lockedRecord->id,
                                 ]);
 
-                                $record->updateQuietly([
+                                $lockedRecord->updateQuietly([
                                     'advance_paid' => true,
-                                    'advance_amount' => $record->paid_amount + $amount,
+                                    'advance_amount' => $lockedRecord->paid_amount + $amount,
                                 ]);
-                                $record->refresh()->syncCompletionStatus();
+                                $lockedRecord->refresh()->syncCompletionStatus();
 
                                 DB::commit();
 
                                 Notification::make()
                                     ->title('Payment Recorded')
-                                    ->body(Money::format($amount)." received for {$record->job_order_number}.")
+                                    ->body(Money::format($amount)." received for {$lockedRecord->job_order_number}.")
                                     ->success()
                                     ->send();
 
@@ -254,8 +256,6 @@ class JobOrdersTable
             ])
             ->bulkActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make()
-                        ->visible(fn () => PanelAccess::canManageJobOrders()),
                     ExportBulkAction::make()
                         ->exporter(JobOrderExporter::class)
                         ->visible(fn () => PanelAccess::canManageJobOrders()),

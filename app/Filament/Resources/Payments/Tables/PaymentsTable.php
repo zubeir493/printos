@@ -6,7 +6,6 @@ use App\Enums\PaymentTransactionType;
 use App\Filament\Exports\PaymentExporter;
 use App\Support\Money;
 use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\ExportAction;
 use Filament\Actions\ExportBulkAction;
 use Filament\Tables\Columns\TextColumn;
@@ -65,7 +64,8 @@ class PaymentsTable
                     ->options([
                         'cash' => 'Cash',
                         'bank' => 'Bank Transfer',
-                        'check' => 'Check',
+                        'cheque' => 'Cheque',
+                        'cpo' => 'CPO',
                     ]),
             ])
             ->defaultSort('payment_date', 'desc')
@@ -73,7 +73,6 @@ class PaymentsTable
             ])
             ->bulkActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
                     ExportBulkAction::make()
                         ->exporter(PaymentExporter::class),
                 ]),

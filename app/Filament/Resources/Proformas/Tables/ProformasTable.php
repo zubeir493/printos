@@ -16,6 +16,7 @@ use Filament\Actions\EditAction;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
+use Filament\Support\Colors\Color;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -78,11 +79,13 @@ class ProformasTable
                     Action::make('download')
                         ->label('Download')
                         ->icon('heroicon-o-arrow-down-tray')
+                        ->color('gray')
                         ->url(fn (Proforma $record): ?string => app(ProformaPdfService::class)->downloadUrl($record))
                         ->openUrlInNewTab(),
                     Action::make('email')
                         ->label('Email')
                         ->icon('heroicon-o-envelope')
+                        ->color('info')
                         ->schema([
                             TextInput::make('email')
                                 ->email()
@@ -121,7 +124,7 @@ class ProformasTable
                     Action::make('create_job_order')
                         ->label('Create Job Order')
                         ->icon('heroicon-o-briefcase')
-                        ->color('primary')
+                        ->color(Color::Indigo)
                         ->visible(fn (Proforma $record): bool => $record->canCreateJobOrder())
                         ->action(function (Proforma $record): void {
                             $jobOrder = app(ProformaWorkflowService::class)->createJobOrder($record);

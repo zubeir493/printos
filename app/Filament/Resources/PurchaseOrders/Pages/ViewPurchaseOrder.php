@@ -50,7 +50,7 @@ class ViewPurchaseOrder extends ViewRecord
             Action::make('receive')
                 ->label('Receive Items')
                 ->icon('heroicon-o-archive-box-arrow-down')
-                ->color('primary')
+                ->color('success')
                 ->visible(fn ($record) => $record->status === 'approved' && PanelAccess::canAccessWarehouseSection())
                 ->modalHeading('Receive Items')
                 ->modalDescription(fn ($record) => "Record stock received against {$record->po_number}. Items will be added to inventory immediately.")
@@ -58,7 +58,7 @@ class ViewPurchaseOrder extends ViewRecord
                     Grid::make(2)->schema([
                         Select::make('warehouse_id')
                             ->label('Receiving Warehouse')
-                            ->options(Warehouse::pluck('name', 'id'))
+                            ->options(fn (): array => Warehouse::query()->orderBy('name')->pluck('name', 'id')->all())
                             ->default(fn () => Warehouse::where('is_default', true)->value('id'))
                             ->searchable()
                             ->preload()

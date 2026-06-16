@@ -101,7 +101,11 @@ class PurchaseOrdersTable
                     ]),
                 SelectFilter::make('partner_id')
                     ->label('Supplier')
-                    ->options(Partner::where('is_supplier', true)->pluck('name', 'id')->toArray()),
+                    ->options(fn (): array => Partner::query()
+                        ->where('is_supplier', true)
+                        ->orderBy('name')
+                        ->pluck('name', 'id')
+                        ->all()),
                 Filter::make('unpaid')
                     ->label('Unpaid Only')
                     ->query(fn ($query) => $query->where('balance', '>', 0))
@@ -121,7 +125,7 @@ class PurchaseOrdersTable
                         ->schema([
                             Grid::make(2)->schema([
                                 Select::make('method')
-                                    ->label('Paid Via')
+                                    ->label('Payment method')
                                     ->options([
                                         'cash' => 'Cash',
                                         'bank' => 'Bank Transfer',

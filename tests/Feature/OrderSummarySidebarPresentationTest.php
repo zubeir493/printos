@@ -14,6 +14,7 @@ it('uses placeholder summary rows on order form sidebars', function (string $pat
         ->not->toContain("TextInput::make('subtotal')");
 })->with([
     'job order form' => ['app/Filament/Resources/JobOrders/Schemas/JobOrderForm.php'],
+    'proforma form' => ['app/Filament/Resources/Proformas/Schemas/ProformaForm.php'],
     'purchase order form' => ['app/Filament/Resources/PurchaseOrders/Schemas/PurchaseOrderForm.php'],
     'sales order form' => ['app/Filament/Resources/SalesOrders/Schemas/SalesOrderForm.php'],
 ]);

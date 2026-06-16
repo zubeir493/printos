@@ -11,6 +11,7 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
+use Filament\Support\Colors\Color;
 
 class EditProforma extends EditRecord
 {
@@ -22,11 +23,13 @@ class EditProforma extends EditRecord
             Action::make('download')
                 ->label('Download')
                 ->icon('heroicon-o-arrow-down-tray')
+                ->color('gray')
                 ->url(fn (): ?string => app(ProformaPdfService::class)->downloadUrl($this->record))
                 ->openUrlInNewTab(),
             Action::make('email')
                 ->label('Email')
                 ->icon('heroicon-o-envelope')
+                ->color('info')
                 ->schema([
                     TextInput::make('email')
                         ->email()
@@ -56,7 +59,7 @@ class EditProforma extends EditRecord
             Action::make('create_job_order')
                 ->label('Create Job Order')
                 ->icon('heroicon-o-briefcase')
-                ->color('primary')
+                ->color(Color::Indigo)
                 ->visible(fn (): bool => $this->record->canCreateJobOrder())
                 ->action(function (): void {
                     $jobOrder = app(ProformaWorkflowService::class)->createJobOrder($this->record);

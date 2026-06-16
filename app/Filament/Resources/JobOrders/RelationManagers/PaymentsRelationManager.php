@@ -34,7 +34,7 @@ class PaymentsRelationManager extends RelationManager
                 ->suffix('Birr')
                 ->maxValue(fn (?Model $record): float => $this->remainingBalance($record)),
             Select::make('method')
-                ->label('Paid Via')
+                ->label('Payment method')
                 ->options([
                     'cash' => 'Cash',
                     'bank' => 'Bank Transfer',

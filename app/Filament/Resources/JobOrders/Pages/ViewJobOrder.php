@@ -121,7 +121,7 @@ class ViewJobOrder extends ViewRecord
                 ->form(fn ($record) => [
                     Select::make('warehouse_id')
                         ->label('Warehouse')
-                        ->options(Warehouse::pluck('name', 'id'))
+                        ->options(fn (): array => Warehouse::query()->orderBy('name')->pluck('name', 'id')->all())
                         ->default(fn () => Warehouse::where('is_default', true)->value('id'))
                         ->required()
                         ->searchable()
@@ -134,7 +134,7 @@ class ViewJobOrder extends ViewRecord
                             Hidden::make('material_request_id'),
                             Select::make('inventory_item_id')
                                 ->label('Material')
-                                ->options(InventoryItem::pluck('name', 'id'))
+                                ->options(fn (): array => InventoryItem::query()->orderBy('name')->pluck('name', 'id')->all())
                                 ->disabled()
                                 ->dehydrated(),
                             TextInput::make('quantity')
@@ -203,7 +203,7 @@ class ViewJobOrder extends ViewRecord
             Action::make('return_materials')
                 ->label('Return Materials')
                 ->icon('heroicon-o-arrow-path')
-                ->color('danger')
+                ->color('warning')
                 ->visible(fn ($record) => PanelAccess::canAccessWarehouseSection() &&
                     $record->status !== 'completed' &&
                     $record->materialRequests()
@@ -221,7 +221,7 @@ class ViewJobOrder extends ViewRecord
                             Hidden::make('original_warehouse_id'),
                             Select::make('inventory_item_id')
                                 ->label('Material')
-                                ->options(InventoryItem::pluck('name', 'id'))
+                                ->options(fn (): array => InventoryItem::query()->orderBy('name')->pluck('name', 'id')->all())
                                 ->disabled()
                                 ->dehydrated(),
                             TextInput::make('quantity')
@@ -310,7 +310,11 @@ class ViewJobOrder extends ViewRecord
                 ->form([
                     Select::make('partner_id')
                         ->label('Supplier')
-                        ->options(Partner::where('is_supplier', true)->pluck('name', 'id'))
+                        ->options(fn (): array => Partner::query()
+                            ->where('is_supplier', true)
+                            ->orderBy('name')
+                            ->pluck('name', 'id')
+                            ->all())
                         ->required()
                         ->searchable()
                         ->preload(),

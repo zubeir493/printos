@@ -46,7 +46,7 @@ class EditPurchaseOrder extends EditRecord
                     Grid::make(2)->schema([
                         Select::make('warehouse_id')
                             ->label('Receiving Warehouse')
-                            ->options(Warehouse::pluck('name', 'id'))
+                            ->options(fn (): array => Warehouse::query()->orderBy('name')->pluck('name', 'id')->all())
                             ->default(fn () => Warehouse::where('is_default', true)->value('id'))
                             ->searchable()
                             ->preload()

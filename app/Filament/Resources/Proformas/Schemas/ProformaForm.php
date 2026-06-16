@@ -8,6 +8,8 @@ use App\Models\Proforma;
 use App\Models\Setting;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Repeater\TableColumn;
 use Filament\Forms\Components\Select;
@@ -19,6 +21,8 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
+use Illuminate\Support\HtmlString;
+use Illuminate\Support\Number;
 use Illuminate\Support\Str;
 
 class ProformaForm
@@ -54,7 +58,14 @@ class ProformaForm
                                 ->relationship('partner', 'name', modifyQueryUsing: fn ($query) => $query->where('is_customer', true))
                                 ->searchable()
                                 ->preload()
-                                ->required(),
+                                ->required()
+                                ->createOptionForm([
+                                    TextInput::make('name')->required(),
+                                    TextInput::make('phone'),
+                                    TextInput::make('email')->email(),
+                                    TextInput::make('address'),
+                                    Hidden::make('is_customer')->default(true),
+                                ]),
                             Select::make('job_type')
                                 ->options([
                                     'books' => 'Books',
@@ -104,15 +115,18 @@ class ProformaForm
                                     ->afterStateHydrated(fn (Get $get, Set $set): mixed => self::refreshCurrentTaskTotals($get, $set)),
                                 TextInput::make('task_cost')->numeric()->suffix('Birr')->default(0)->readOnly()->required(),
                                 Repeater::make('paper')
+                                    ->label('Paper used for this task')
                                     ->table([
                                         TableColumn::make('Paper')->alignLeft(),
-                                        TableColumn::make('Required qty')->alignLeft(),
-                                        TableColumn::make('Reserve qty')->alignLeft(),
+                                        TableColumn::make('Required qty (sheets)')->alignLeft(),
+                                        TableColumn::make('Reserve qty (sheets)')->alignLeft(),
                                     ])
+                                    ->compact()
                                     ->schema([
                                         Select::make('inventory_item_id')
                                             ->label('Material')
                                             ->options(fn (): array => InventoryItem::query()
+                                                ->orderBy('name')
                                                 ->rawMaterials()
                                                 ->pluck('name', 'id')
                                                 ->all())
@@ -121,11 +135,53 @@ class ProformaForm
                                         TextInput::make('required_quantity')->numeric()->minValue(0)->default(0),
                                         TextInput::make('reserve_quantity')->numeric()->minValue(0)->default(0),
                                     ])
+                                    ->defaultItems(1)
+                                    ->addable(false)
+                                    ->reorderable(false)
+                                    ->extraItemActions([
+                                        Action::make('add_paper')
+                                            ->label('Add Paper')
+                                            ->icon('heroicon-o-plus')
+                                            ->action(function (Repeater $component): void {
+                                                $state = $component->getState() ?? [];
+                                                $state[(string) Str::uuid()] = [
+                                                    'inventory_item_id' => null,
+                                                    'required_quantity' => 0,
+                                                    'reserve_quantity' => 0,
+                                                ];
+                                                $component->state($state);
+                                            }),
+                                    ])
                                     ->columnSpanFull(),
                                 Repeater::make('deliverables')
+                                    ->label('Required files for this task')
+                                    ->table([
+                                        TableColumn::make('Name')->alignLeft(),
+                                        TableColumn::make('File Type')->alignLeft(),
+                                    ])
+                                    ->compact()
+                                    ->defaultItems(1)
+                                    ->addable(false)
+                                    ->reorderable(false)
+                                    ->extraItemActions([
+                                        Action::make('add_deliverable')
+                                            ->label('Add Deliverable')
+                                            ->icon('heroicon-o-plus')
+                                            ->action(function (Repeater $component): void {
+                                                $state = $component->getState() ?? [];
+                                                $state[(string) Str::uuid()] = [
+                                                    'label' => '',
+                                                    'type' => 'artwork',
+                                                ];
+                                                $component->state($state);
+                                            }),
+                                    ])
                                     ->schema([
-                                        TextInput::make('label'),
+                                        TextInput::make('label')
+                                            ->label('Deliverable')
+                                            ->placeholder('Cover Artwork'),
                                         Select::make('type')
+                                            ->label('Type')
                                             ->options([
                                                 'artwork' => 'Artwork',
                                                 'text_file' => 'Text File',
@@ -170,26 +226,35 @@ class ProformaForm
                     ->columnSpan(3),
                 Section::make()
                     ->schema([
-                        TextInput::make('subtotal')
-                            ->numeric()
-                            ->suffix('Birr')
-                            ->readOnly()
+                        Hidden::make('subtotal')
+                            ->default(0)
+                            ->dehydrated(),
+                        Hidden::make('tax_amount')
+                            ->default(0)
+                            ->dehydrated(),
+                        Hidden::make('total')
+                            ->default(0)
+                            ->dehydrated(),
+
+                        Placeholder::make('summary_subtotal')
+                            ->label('Subtotal')
+                            ->content(fn (Get $get): HtmlString => self::summaryValue($get('subtotal')))
                             ->hidden(fn () => ! PanelAccess::canSeeMoneyValues())
-                            ->dehydratedWhenHidden(),
-                        TextInput::make('tax_amount')
-                            ->label('VAT')
-                            ->numeric()
-                            ->suffix('Birr')
-                            ->readOnly()
+                            ->extraAttributes(['class' => 'cost-summary-metric']),
+
+                        Placeholder::make('summary_tax_amount')
+                            ->label('Tax (VAT)')
+                            ->content(fn (Get $get): HtmlString => self::summaryValue($get('tax_amount')))
                             ->hidden(fn () => ! PanelAccess::canSeeMoneyValues())
-                            ->dehydratedWhenHidden(),
-                        TextInput::make('total')
-                            ->numeric()
-                            ->suffix('Birr')
-                            ->readOnly()
+                            ->extraAttributes(['class' => 'cost-summary-metric']),
+
+                        Placeholder::make('summary_total')
+                            ->label('Total')
+                            ->content(fn (Get $get): HtmlString => self::summaryValue($get('total'), isPrimary: true))
                             ->hidden(fn () => ! PanelAccess::canSeeMoneyValues())
-                            ->dehydratedWhenHidden(),
-                    ]),
+                            ->extraAttributes(['class' => 'cost-summary-metric cost-summary-total']),
+                    ])
+                    ->extraAttributes(['class' => 'lg:sticky lg:top-6 orderSummary']),
             ])
             ->columns(4);
     }
@@ -225,5 +290,14 @@ class ProformaForm
         $set('../../subtotal', $subtotal);
         $set('../../tax_amount', $taxAmount);
         $set('../../total', round($subtotal + $taxAmount, 2));
+    }
+
+    private static function summaryValue(mixed $amount, bool $isPrimary = false): HtmlString
+    {
+        return new HtmlString(sprintf(
+            '<span class="cost-summary-value%s">%s Birr</span>',
+            $isPrimary ? ' cost-summary-value-primary' : '',
+            e(Number::format((float) ($amount ?? 0), precision: 2)),
+        ));
     }
 }

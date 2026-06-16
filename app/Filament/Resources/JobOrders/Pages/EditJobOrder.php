@@ -41,7 +41,7 @@ class EditJobOrder extends EditRecord
             Action::make('issue_materials')
                 ->label('Issue Materials')
                 ->icon('heroicon-o-archive-box-arrow-down')
-                ->color('primary')
+                ->color('warning')
                 ->visible(
                     fn ($record) => PanelAccess::canAccessWarehouseSection() &&
                     ! in_array($record->status, ['completed', 'cancelled']) &&
@@ -54,7 +54,7 @@ class EditJobOrder extends EditRecord
                 ->form(fn ($record) => [
                     Select::make('warehouse_id')
                         ->label('Warehouse')
-                        ->options(Warehouse::pluck('name', 'id'))
+                        ->options(fn (): array => Warehouse::query()->orderBy('name')->pluck('name', 'id')->all())
                         ->default(fn () => Warehouse::where('is_default', true)->value('id'))
                         ->required()
                         ->searchable()
@@ -67,7 +67,7 @@ class EditJobOrder extends EditRecord
                             Hidden::make('material_request_id'),
                             Select::make('inventory_item_id')
                                 ->label('Material')
-                                ->options(InventoryItem::pluck('name', 'id'))
+                                ->options(fn (): array => InventoryItem::query()->orderBy('name')->pluck('name', 'id')->all())
                                 ->disabled()
                                 ->dehydrated(),
                             TextInput::make('quantity')
@@ -158,7 +158,7 @@ class EditJobOrder extends EditRecord
                             Hidden::make('original_warehouse_id'),
                             Select::make('inventory_item_id')
                                 ->label('Material')
-                                ->options(InventoryItem::pluck('name', 'id'))
+                                ->options(fn (): array => InventoryItem::query()->orderBy('name')->pluck('name', 'id')->all())
                                 ->disabled()
                                 ->dehydrated(),
                             TextInput::make('quantity')

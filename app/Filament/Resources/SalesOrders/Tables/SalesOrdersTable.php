@@ -96,7 +96,7 @@ class SalesOrdersTable
                         ->schema([
                             Grid::make(2)->schema([
                                 Select::make('method')
-                                    ->label('Paid Via')
+                                    ->label('Payment method')
                                     ->options([
                                         'cash' => 'Cash',
                                         'bank' => 'Bank Transfer',

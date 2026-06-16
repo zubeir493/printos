@@ -309,7 +309,7 @@ class JobOrderForm
                                                     TextInput::make('services.amount_of_colors')->label('Amount of Colors'),
                                                     TextInput::make('services.printing_ups')->label('Printing Ups'),
                                                     TextInput::make('services.diecutting_ups')->label('Diecutting Ups'),
-                                                    TextInput::make('services.pieces_per_sheet')->label('Peices per sheet'),
+                                                    TextInput::make('services.pieces_per_sheet')->label('Pieces per sheet'),
                                                     CheckboxList::make('services.colors_used')
                                                         ->options([
                                                             'C' => 'C',
@@ -319,9 +319,9 @@ class JobOrderForm
                                                         ])
                                                         ->label('Colors Used')
                                                         ->columns(4),
-                                                    TextInput::make('services.panton_no1')->label('Panton No'),
-                                                    TextInput::make('services.panton_no2')->label('Panton No'),
-                                                    TextInput::make('services.panton_no3')->label('Panton No'),
+                                                    TextInput::make('services.panton_no1')->label('Pantone No'),
+                                                    TextInput::make('services.panton_no2')->label('Pantone No'),
+                                                    TextInput::make('services.panton_no3')->label('Pantone No'),
                                                 ])->columnSpan(2)->columns(2),
                                             ]),
                                         Grid::make(3)
@@ -341,7 +341,7 @@ class JobOrderForm
                                                     TextInput::make('services.amount_of_colors')->label('Amount of Colors'),
                                                     TextInput::make('services.printing_ups')->label('Printing Ups'),
                                                     TextInput::make('services.diecutting_ups')->label('Diecutting Ups'),
-                                                    TextInput::make('services.pieces_per_sheet')->label('Peices per sheet'),
+                                                    TextInput::make('services.pieces_per_sheet')->label('Pieces per sheet'),
                                                     CheckboxList::make('services.colors_used')
                                                         ->options([
                                                             'C' => 'C',
@@ -351,9 +351,9 @@ class JobOrderForm
                                                         ])
                                                         ->label('Colors Used')
                                                         ->columns(4),
-                                                    TextInput::make('services.panton_no1')->label('Panton No'),
-                                                    TextInput::make('services.panton_no2')->label('Panton No'),
-                                                    TextInput::make('services.panton_no3')->label('Panton No'),
+                                                    TextInput::make('services.panton_no1')->label('Pantone No'),
+                                                    TextInput::make('services.panton_no2')->label('Pantone No'),
+                                                    TextInput::make('services.panton_no3')->label('Pantone No'),
                                                 ])->columnSpan(2)->columns(2),
                                             ]),
                                         Grid::make(3)
@@ -373,7 +373,7 @@ class JobOrderForm
                                                     TextInput::make('services.amount_of_colors')->label('Amount of Colors'),
                                                     TextInput::make('services.printing_ups')->label('Printing Ups'),
                                                     TextInput::make('services.numbering_ups')->label('Numbering Ups'),
-                                                    TextInput::make('services.pieces_per_sheet')->label('Peices per sheet'),
+                                                    TextInput::make('services.pieces_per_sheet')->label('Pieces per sheet'),
                                                     CheckboxList::make('services.colors_used')
                                                         ->options([
                                                             'C' => 'C',
@@ -383,9 +383,9 @@ class JobOrderForm
                                                         ])
                                                         ->label('Colors Used')
                                                         ->columns(4),
-                                                    TextInput::make('services.panton_no1')->label('Panton No'),
-                                                    TextInput::make('services.panton_no2')->label('Panton No'),
-                                                    TextInput::make('services.panton_no3')->label('Panton No'),
+                                                    TextInput::make('services.panton_no1')->label('Pantone No'),
+                                                    TextInput::make('services.panton_no2')->label('Pantone No'),
+                                                    TextInput::make('services.panton_no3')->label('Pantone No'),
                                                 ])->columnSpan(2)->columns(2),
                                             ]),
                                     ])

@@ -233,7 +233,7 @@ class BidsTable
     {
         $fields = [
             Select::make('method')
-                ->label('Paid Via')
+                ->label('Payment method')
                 ->options([
                     'cash' => 'Cash',
                     'bank' => 'Bank Transfer',

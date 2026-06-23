@@ -16,12 +16,13 @@ class ViewPartner extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
+            EditAction::make()
+                ->color(Color::Indigo),
             Action::make('statement')
                 ->label('Statement')
                 ->icon(Heroicon::OutlinedDocumentText)
-                ->color(Color::Indigo)
+                ->color('gray')
                 ->url(fn () => static::getResource()::getUrl('statement', ['record' => $this->record])),
-            EditAction::make(),
         ];
     }
 }

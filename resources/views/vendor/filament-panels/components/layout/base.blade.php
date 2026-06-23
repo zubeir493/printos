@@ -29,6 +29,13 @@
         @php
             $title = trim(strip_tags($livewire?->getTitle() ?? ''));
             $brandName = trim(strip_tags(filament()->getBrandName()));
+
+            if (filled($brandName) && filled($title)) {
+                $title = str($title)
+                    ->explode(' - ')
+                    ->reject(fn (string $segment): bool => str($segment)->trim()->lower()->toString() === str($brandName)->lower()->toString())
+                    ->implode(' - ');
+            }
         @endphp
 
         <title>
@@ -36,6 +43,23 @@
             {{ filled($brandName) && filled($title) ? ' - ' : null }}
             {{ filled($brandName) ? $brandName : null }}
         </title>
+
+        <script data-navigate-once>
+            const normalizeStandaloneTitle = () => {
+                if (! window.matchMedia('(display-mode: standalone)').matches) {
+                    return
+                }
+
+                document.title = document.title
+                    .split(' - ')
+                    .filter((segment) => segment.trim().toLowerCase() !== @js(str($brandName)->lower()->toString()))
+                    .join(' - ')
+            }
+
+            normalizeStandaloneTitle()
+
+            document.addEventListener('livewire:navigated', normalizeStandaloneTitle)
+        </script>
 
         {{ \Filament\Support\Facades\FilamentView::renderHook(\Filament\View\PanelsRenderHook::STYLES_BEFORE, scopes: $renderHookScopes) }}
 

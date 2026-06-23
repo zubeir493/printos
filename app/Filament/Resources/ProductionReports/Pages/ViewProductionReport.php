@@ -7,6 +7,7 @@ use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
+use Filament\Support\Colors\Color;
 
 class ViewProductionReport extends ViewRecord
 {
@@ -31,7 +32,8 @@ class ViewProductionReport extends ViewRecord
                         ->send();
                 }),
             EditAction::make()
-                ->visible(fn ($record) => $record->status === 'draft'),
+                ->visible(fn ($record) => $record->status === 'draft')
+                ->color(Color::Indigo),
         ];
     }
 }

@@ -5,8 +5,10 @@ namespace App\Filament\Resources\Bids\Pages\Concerns;
 use App\Filament\Support\PanelAccess;
 use App\Models\Bank;
 use App\Models\Bid;
+use App\Models\Bond;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -102,16 +104,12 @@ trait InteractsWithBidActions
             ->visible(fn (): bool => filled($this->record->currentBidBond()?->issue_payment_id)
                 && blank($this->record->currentBidBond()?->recovery_payment_id)
                 && PanelAccess::canAccessFinanceSection())
-            ->schema($this->bidBondPaymentSchema())
+            ->schema(fn (): array => $this->bidBondPaymentSchema($this->record->currentBidBond()))
             ->action(fn (array $data): mixed => $this->handleBidBondAction(
                 fn () => DB::transaction(function () use ($data): void {
-                    $this->record->currentBidBond()?->recover(
-                        paymentDate: $data['payment_date'],
-                        method: $data['method'],
-                        bankId: $data['bank_id'] ?? null,
-                        reference: $data['reference'] ?? null,
-                        cpoBankName: $data['cpo_bank_name'] ?? null,
-                    );
+                    $bond = $this->record->currentBidBond();
+
+                    $bond?->recover(...$this->bondRecoveryData($bond, $data));
 
                     if ($this->record->status === Bid::STATUS_SUBMITTED) {
                         $this->record->markLost();
@@ -158,16 +156,12 @@ trait InteractsWithBidActions
             ->visible(fn (): bool => in_array($this->record->status, [Bid::STATUS_AWARDED, Bid::STATUS_BOND_SENT], true)
                 && filled($this->record->activePerformanceBond())
                 && PanelAccess::canAccessFinanceSection())
-            ->schema($this->bidBondPaymentSchema())
+            ->schema(fn (): array => $this->bidBondPaymentSchema($this->record->activePerformanceBond()))
             ->action(fn (array $data): mixed => $this->handleBidBondAction(
                 fn () => DB::transaction(function () use ($data): void {
-                    $this->record->activePerformanceBond()?->recover(
-                        paymentDate: $data['payment_date'],
-                        method: $data['method'],
-                        bankId: $data['bank_id'] ?? null,
-                        reference: $data['reference'] ?? null,
-                        cpoBankName: $data['cpo_bank_name'] ?? null,
-                    );
+                    $bond = $this->record->activePerformanceBond();
+
+                    $bond?->recover(...$this->bondRecoveryData($bond, $data));
 
                     $this->record->markBondRecovered();
                 }),
@@ -175,10 +169,10 @@ trait InteractsWithBidActions
             ));
     }
 
-    protected function bidBondPaymentSchema(): array
+    protected function bidBondPaymentSchema(?Bond $bond = null): array
     {
         return [
-            Grid::make(2)->schema($this->bondPaymentFields()),
+            Grid::make(2)->schema($this->bondPaymentFields(bond: $bond)),
         ];
     }
 
@@ -199,8 +193,12 @@ trait InteractsWithBidActions
         ];
     }
 
-    protected function bondPaymentFields(bool $includeReference = true): array
+    protected function bondPaymentFields(bool $includeReference = true, ?Bond $bond = null): array
     {
+        if ($bond?->issuePayment?->method === 'cpo') {
+            return $this->cpoRecoveryPaymentFields($includeReference, $bond);
+        }
+
         $fields = [
             Select::make('method')
                 ->label('Payment method')
@@ -239,6 +237,36 @@ trait InteractsWithBidActions
         }
 
         return $fields;
+    }
+
+    protected function cpoRecoveryPaymentFields(bool $includeReference, Bond $bond): array
+    {
+        $fields = [
+            Hidden::make('method')->default('cpo'),
+            Hidden::make('cpo_bank_name')->default($bond->cpo_bank_name),
+            DatePicker::make('payment_date')
+                ->default(now())
+                ->required(),
+        ];
+
+        if ($includeReference) {
+            $fields[] = TextInput::make('reference')
+                ->label('Memo / Reference')
+                ->maxLength(255);
+        }
+
+        return $fields;
+    }
+
+    protected function bondRecoveryData(?Bond $bond, array $data): array
+    {
+        return [
+            'paymentDate' => $data['payment_date'],
+            'method' => $bond?->issuePayment?->method === 'cpo' ? 'cpo' : $data['method'],
+            'bankId' => $data['bank_id'] ?? null,
+            'reference' => $data['reference'] ?? null,
+            'cpoBankName' => $data['cpo_bank_name'] ?? $bond?->cpo_bank_name,
+        ];
     }
 
     protected function handleBidBondAction(callable $callback, string $message): null

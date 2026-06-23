@@ -17,6 +17,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Schemas\Components\Grid;
+use Filament\Support\Colors\Color;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\Facades\DB;
 
@@ -33,7 +34,8 @@ class ViewSalesOrder extends ViewRecord
     {
         return [
             EditAction::make()
-                ->visible(fn ($record) => $record->status === SalesOrder::STATUS_DRAFT),
+                ->visible(fn ($record) => $record->status === SalesOrder::STATUS_DRAFT)
+                ->color(Color::Indigo),
             Action::make('complete')
                 ->label('Complete Sale')
                 ->icon('heroicon-o-check-circle')

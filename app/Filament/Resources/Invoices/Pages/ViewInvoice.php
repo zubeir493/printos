@@ -15,12 +15,6 @@ class ViewInvoice extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
-            Actions\Action::make('download')
-                ->label('Download')
-                ->icon('heroicon-o-arrow-down-tray')
-                ->url(fn ($record) => app(InvoiceGeneratorService::class)->getInvoiceDownloadUrl($record->file_path, $record->filename))
-                ->openUrlInNewTab(),
-
             Actions\Action::make('mark_sent')
                 ->label('Mark Sent')
                 ->icon('heroicon-o-paper-airplane')
@@ -45,6 +39,16 @@ class ViewInvoice extends ViewRecord
 
                     Notification::make()->title('Invoice cancelled')->success()->send();
                 }),
+            Actions\ActionGroup::make([
+                Actions\Action::make('download')
+                    ->label('Download')
+                    ->icon('heroicon-o-arrow-down-tray')
+                    ->color('gray')
+                    ->url(fn ($record) => app(InvoiceGeneratorService::class)->getInvoiceDownloadUrl($record->file_path, $record->filename))
+                    ->openUrlInNewTab(),
+            ])
+                ->label('More actions')
+                ->color('gray'),
         ];
     }
 }

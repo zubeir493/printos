@@ -37,6 +37,7 @@ class AdminPanelProvider extends PanelProvider
             ->font('Albert Sans')
             ->darkMode(false)
             ->defaultThemeMode(ThemeMode::Light)
+            ->spa()
             ->login()
             ->profile(EditProfile::class)
             ->databaseNotifications()

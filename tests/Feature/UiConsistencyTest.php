@@ -56,12 +56,12 @@ it('keeps proforma actions visually distinct by intent', function (): void {
 
     Livewire::test(EditProforma::class, ['record' => $draft->getKey()])
         ->assertActionHasColor('download', 'gray')
-        ->assertActionHasColor('email', 'info')
+        ->assertActionHasColor('email', 'gray')
         ->assertActionHasColor('approve', 'success');
 
     Livewire::test(ViewProforma::class, ['record' => $draft->getKey()])
         ->assertActionHasColor('download', 'gray')
-        ->assertActionHasColor('email', 'info')
+        ->assertActionHasColor('email', 'gray')
         ->assertActionHasColor('approve', 'success');
 
     foreach ([
@@ -75,6 +75,67 @@ it('keeps proforma actions visually distinct by intent', function (): void {
     }
 
     expect($approved->canCreateJobOrder())->toBeTrue();
+});
+
+it('separates passive header actions at the end with gray styling', function (): void {
+    $sources = [
+        'proforma edit' => file_get_contents(base_path('app/Filament/Resources/Proformas/Pages/EditProforma.php')),
+        'proforma view' => file_get_contents(base_path('app/Filament/Resources/Proformas/Pages/ViewProforma.php')),
+        'invoice view' => file_get_contents(base_path('app/Filament/Resources/Invoices/Pages/ViewInvoice.php')),
+        'invoice edit' => file_get_contents(base_path('app/Filament/Resources/Invoices/Pages/EditInvoice.php')),
+        'payroll edit' => file_get_contents(base_path('app/Filament/Resources/PayrollRuns/Pages/EditPayrollRun.php')),
+        'partner view' => file_get_contents(base_path('app/Filament/Resources/Partners/Pages/ViewPartner.php')),
+        'partner statement' => file_get_contents(base_path('app/Filament/Resources/Partners/Pages/PartnerStatement.php')),
+    ];
+
+    foreach (['proforma edit', 'proforma view', 'invoice view', 'payroll edit'] as $key) {
+        expect($sources[$key])
+            ->toContain('ActionGroup::make([')
+            ->toContain("->label('More actions')")
+            ->toContain("->color('gray')");
+    }
+
+    expect(strpos($sources['proforma edit'], 'ActionGroup::make(['))
+        ->toBeGreaterThan(strpos($sources['proforma edit'], 'DeleteAction::make()'));
+    expect(strpos($sources['proforma view'], 'ActionGroup::make(['))
+        ->toBeGreaterThan(strpos($sources['proforma view'], 'EditAction::make()'));
+    expect(strpos($sources['invoice view'], 'ActionGroup::make(['))
+        ->toBeGreaterThan(strpos($sources['invoice view'], "Action::make('cancel_invoice')"));
+    expect(strpos($sources['invoice edit'], "Action::make('cancel')"))
+        ->toBeGreaterThan(strpos($sources['invoice edit'], "Action::make('cancel_invoice')"));
+    expect(strpos($sources['payroll edit'], 'ActionGroup::make(['))
+        ->toBeGreaterThan(strpos($sources['payroll edit'], "Action::make('generatePayments')"));
+    expect(strpos($sources['partner view'], "Action::make('statement')"))
+        ->toBeGreaterThan(strpos($sources['partner view'], 'EditAction::make()'));
+
+    expect($sources['partner view'])
+        ->toContain("Action::make('statement')")
+        ->toContain("->color('gray')");
+    expect($sources['partner statement'])
+        ->toContain("Action::make('viewPartner')")
+        ->toContain("->color('gray')");
+});
+
+it('uses indigo edit actions in multi action page headers', function (): void {
+    foreach ([
+        'app/Filament/Resources/Bids/Pages/ViewBid.php',
+        'app/Filament/Resources/CostEstimates/Pages/ViewCostEstimate.php',
+        'app/Filament/Resources/Dispatches/Pages/ViewDispatch.php',
+        'app/Filament/Resources/JobOrders/Pages/ViewJobOrder.php',
+        'app/Filament/Resources/JobOrderTasks/Pages/ViewJobOrderTask.php',
+        'app/Filament/Resources/Partners/Pages/ViewPartner.php',
+        'app/Filament/Resources/ProductionPlans/Pages/ViewProductionPlan.php',
+        'app/Filament/Resources/ProductionReports/Pages/ViewProductionReport.php',
+        'app/Filament/Resources/PurchaseOrders/Pages/ViewPurchaseOrder.php',
+        'app/Filament/Resources/SalesOrders/Pages/ViewSalesOrder.php',
+        'app/Filament/Resources/StockAdjustments/Pages/ViewStockAdjustment.php',
+    ] as $path) {
+        $source = file_get_contents(base_path($path));
+
+        expect($source)
+            ->toContain('EditAction::make()')
+            ->toContain('->color(Color::Indigo)');
+    }
 });
 
 it('renders create and edit proforma forms with the styled summary panel', function (): void {

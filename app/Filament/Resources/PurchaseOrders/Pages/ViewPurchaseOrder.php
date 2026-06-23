@@ -19,6 +19,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Schemas\Components\Grid;
+use Filament\Support\Colors\Color;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\Facades\DB;
 
@@ -179,7 +180,8 @@ class ViewPurchaseOrder extends ViewRecord
                 }),
 
             Actions\EditAction::make()
-                ->visible(fn ($record) => $record->status === 'draft' && PanelAccess::canManagePurchaseOrders()),
+                ->visible(fn ($record) => $record->status === 'draft' && PanelAccess::canManagePurchaseOrders())
+                ->color(Color::Indigo),
         ];
     }
 }

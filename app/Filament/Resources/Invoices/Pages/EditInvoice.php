@@ -19,6 +19,12 @@ class EditInvoice extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
+            Actions\Action::make('save')
+                ->label('Save Changes')
+                ->action('save')
+                ->icon('heroicon-o-check')
+                ->color('success'),
+
             Actions\Action::make('mark_sent')
                 ->label('Mark Sent')
                 ->icon('heroicon-o-paper-airplane')
@@ -43,12 +49,6 @@ class EditInvoice extends EditRecord
 
                     Notification::make()->title('Invoice cancelled')->success()->send();
                 }),
-
-            Actions\Action::make('save')
-                ->label('Save Changes')
-                ->action('save')
-                ->icon('heroicon-o-check')
-                ->color('success'),
 
             Actions\Action::make('cancel')
                 ->label('Cancel')

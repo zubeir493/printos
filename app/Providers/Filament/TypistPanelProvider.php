@@ -34,6 +34,7 @@ class TypistPanelProvider extends PanelProvider
             ->font('Albert Sans')
             ->darkMode(false)
             ->defaultThemeMode(ThemeMode::Light)
+            ->spa()
             ->databaseNotifications()
             ->defaultAvatarProvider(PrimaryColorAvatarProvider::class)
             ->profile(EditProfile::class)

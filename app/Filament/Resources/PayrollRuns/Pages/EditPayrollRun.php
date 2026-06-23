@@ -10,6 +10,7 @@ use App\Services\Hr\GeneratePayrollPayments;
 use App\Services\Hr\PostPayrollRun;
 use App\Support\Money;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Forms\Components\Select;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
@@ -41,10 +42,6 @@ class EditPayrollRun extends EditRecord
                         ->success()
                         ->send();
                 }),
-            Action::make('exportRegister')
-                ->label('Export CSV')
-                ->visible(fn (): bool => $this->record->employees()->exists())
-                ->action(fn () => app(ExportPayrollRegisterCsv::class)->download($this->record)),
             Action::make('approve')
                 ->label('Approve')
                 ->visible(fn (): bool => $this->record->status === 'draft')
@@ -79,6 +76,15 @@ class EditPayrollRun extends EditRecord
                     $this->record->refresh();
                     Notification::make()->title('Payroll payments generated')->success()->send();
                 }),
+            ActionGroup::make([
+                Action::make('exportRegister')
+                    ->label('Export CSV')
+                    ->color('gray')
+                    ->visible(fn (): bool => $this->record->employees()->exists())
+                    ->action(fn () => app(ExportPayrollRegisterCsv::class)->download($this->record)),
+            ])
+                ->label('More actions')
+                ->color('gray'),
         ];
     }
 

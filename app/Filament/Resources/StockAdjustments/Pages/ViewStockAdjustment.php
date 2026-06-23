@@ -7,6 +7,7 @@ use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
+use Filament\Support\Colors\Color;
 
 class ViewStockAdjustment extends ViewRecord
 {
@@ -15,7 +16,8 @@ class ViewStockAdjustment extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
-            EditAction::make(),
+            EditAction::make()
+                ->color(Color::Indigo),
             Action::make('post')
                 ->label('Post Adjustment')
                 ->color('success')

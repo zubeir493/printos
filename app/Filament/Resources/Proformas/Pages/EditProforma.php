@@ -6,6 +6,7 @@ use App\Filament\Resources\Proformas\ProformaResource;
 use App\Services\Proformas\ProformaPdfService;
 use App\Services\Proformas\ProformaWorkflowService;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -20,27 +21,6 @@ class EditProforma extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            Action::make('download')
-                ->label('Download')
-                ->icon('heroicon-o-arrow-down-tray')
-                ->color('gray')
-                ->url(fn (): ?string => app(ProformaPdfService::class)->downloadUrl($this->record))
-                ->openUrlInNewTab(),
-            Action::make('email')
-                ->label('Email')
-                ->icon('heroicon-o-envelope')
-                ->color('info')
-                ->schema([
-                    TextInput::make('email')
-                        ->email()
-                        ->required()
-                        ->default(fn () => $this->record->email_recipient ?? $this->record->partner?->email),
-                    Textarea::make('message')->rows(3),
-                ])
-                ->action(function (array $data): void {
-                    app(ProformaPdfService::class)->email($this->record, $data['email'], $data['message'] ?? null);
-                    Notification::make()->title('Proforma emailed')->success()->send();
-                }),
             Action::make('approve')
                 ->label('Approve')
                 ->icon('heroicon-o-check-circle')
@@ -72,6 +52,31 @@ class EditProforma extends EditRecord
                 }),
             DeleteAction::make()
                 ->visible(fn (): bool => $this->record->status === 'draft'),
+            ActionGroup::make([
+                Action::make('download')
+                    ->label('Download')
+                    ->icon('heroicon-o-arrow-down-tray')
+                    ->color('gray')
+                    ->url(fn (): ?string => app(ProformaPdfService::class)->downloadUrl($this->record))
+                    ->openUrlInNewTab(),
+                Action::make('email')
+                    ->label('Email')
+                    ->icon('heroicon-o-envelope')
+                    ->color('gray')
+                    ->schema([
+                        TextInput::make('email')
+                            ->email()
+                            ->required()
+                            ->default(fn () => $this->record->email_recipient ?? $this->record->partner?->email),
+                        Textarea::make('message')->rows(3),
+                    ])
+                    ->action(function (array $data): void {
+                        app(ProformaPdfService::class)->email($this->record, $data['email'], $data['message'] ?? null);
+                        Notification::make()->title('Proforma emailed')->success()->send();
+                    }),
+            ])
+                ->label('More actions')
+                ->color('gray'),
         ];
     }
 

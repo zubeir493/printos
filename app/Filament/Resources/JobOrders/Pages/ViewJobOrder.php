@@ -298,7 +298,8 @@ class ViewJobOrder extends ViewRecord
                     }
                 }),
             Actions\EditAction::make()
-                ->visible(fn () => PanelAccess::canManageJobOrders()),
+                ->visible(fn () => PanelAccess::canManageJobOrders())
+                ->color(Color::Indigo),
             Action::make('generate_po')
                 ->label('Generate PO')
                 ->icon('heroicon-o-shopping-cart')

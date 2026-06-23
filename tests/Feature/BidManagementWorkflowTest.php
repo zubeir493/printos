@@ -273,8 +273,6 @@ test('awarded bid can send and return performance bond from bid actions', functi
 
     Livewire::test(EditBid::class, ['record' => $bid->id])
         ->callAction('return_performance_bond', [
-            'method' => 'cpo',
-            'cpo_bank_name' => 'CBE',
             'payment_date' => '2026-06-20',
         ])
         ->assertNotified();
@@ -304,8 +302,8 @@ test('bid resource can send and return bid bond from bid actions', function (): 
 
     Livewire::test(EditBid::class, ['record' => $bid->id])
         ->callAction('send_bond', [
-            'method' => 'bank',
-            'bank_id' => $bank->id,
+            'method' => 'cpo',
+            'cpo_bank_name' => 'CBE',
             'payment_date' => '2026-06-02',
             'reference' => 'Sent from bid page',
         ])
@@ -318,12 +316,11 @@ test('bid resource can send and return bid bond from bid actions', function (): 
         ->and($bond)->not->toBeNull()
         ->and($bond->issuing_partner_id)->toBe($entity->id)
         ->and($bond->status)->toBe(Bond::STATUS_ACTIVE)
-        ->and((float) $bank->fresh()->current_balance)->toBe(8000.0);
+        ->and($bond->cpo_bank_name)->toBe('CBE')
+        ->and((float) $bank->fresh()->current_balance)->toBe(10000.0);
 
     Livewire::test(EditBid::class, ['record' => $bid->id])
         ->callAction('return_bond', [
-            'method' => 'bank',
-            'bank_id' => $bank->id,
             'payment_date' => '2026-06-10',
             'reference' => 'Returned from bid page',
         ])
@@ -331,6 +328,7 @@ test('bid resource can send and return bid bond from bid actions', function (): 
 
     expect($bid->refresh()->status)->toBe(Bid::STATUS_LOST)
         ->and($bond->fresh()->status)->toBe(Bond::STATUS_RECOVERED)
+        ->and($bond->fresh()->recoveryPayment->method)->toBe('cpo')
         ->and((float) $bank->fresh()->current_balance)->toBe(10000.0);
 });
 
@@ -511,7 +509,7 @@ test('bond tracker lists bonds and returns active bonds', function (): void {
         'amount' => 2000,
     ]);
 
-    $performanceBond->issue('2026-06-12', 'bank', $bank->id);
+    $performanceBond->issue('2026-06-12', 'cpo', cpoBankName: 'CBE');
 
     Livewire::test(ListBonds::class)
         ->assertCanSeeTableRecords([$bidBond, $performanceBond])
@@ -521,8 +519,6 @@ test('bond tracker lists bonds and returns active bonds', function (): void {
         ->assertCanSeeTableRecords([$performanceBond])
         ->assertCanNotSeeTableRecords([$bidBond])
         ->callTableAction('return_bond', $performanceBond, [
-            'method' => 'bank',
-            'bank_id' => $bank->id,
             'payment_date' => '2026-06-20',
             'reference' => 'Tracker returned',
         ])
@@ -530,6 +526,7 @@ test('bond tracker lists bonds and returns active bonds', function (): void {
         ->assertNotified();
 
     expect($performanceBond->fresh()->status)->toBe(Bond::STATUS_RECOVERED)
+        ->and($performanceBond->fresh()->recoveryPayment->method)->toBe('cpo')
         ->and((float) $bank->fresh()->current_balance)->toBe(10000.0);
 });
 

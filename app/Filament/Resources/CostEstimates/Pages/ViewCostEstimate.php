@@ -18,7 +18,8 @@ class ViewCostEstimate extends ViewRecord
     {
         return [
             EditAction::make()
-                ->visible(fn (): bool => $this->record->isEditable()),
+                ->visible(fn (): bool => $this->record->isEditable())
+                ->color(Color::Indigo),
             Action::make('finalize')
                 ->label('Finalize')
                 ->icon('heroicon-o-check-circle')

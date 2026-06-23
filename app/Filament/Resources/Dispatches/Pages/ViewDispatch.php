@@ -7,6 +7,7 @@ use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
+use Filament\Support\Colors\Color;
 
 class ViewDispatch extends ViewRecord
 {
@@ -41,7 +42,8 @@ class ViewDispatch extends ViewRecord
                     Notification::make()->title('Dispatch cancelled')->danger()->send();
                 }),
 
-            EditAction::make(),
+            EditAction::make()
+                ->color(Color::Indigo),
         ];
     }
 }

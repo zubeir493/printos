@@ -7,6 +7,7 @@ use App\Models\Bond;
 use App\Support\Money;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
@@ -76,23 +77,32 @@ class BondsTable
                     ->icon('heroicon-o-arrow-down-tray')
                     ->color('success')
                     ->visible(fn (Bond $record): bool => filled($record->issue_payment_id) && blank($record->recovery_payment_id))
-                    ->schema(self::bondPaymentSchema())
+                    ->schema(fn (Bond $record): array => self::bondPaymentSchema($record))
                     ->action(fn (Bond $record, array $data): mixed => self::handleBondAction(
-                        fn () => $record->recover(
-                            paymentDate: $data['payment_date'],
-                            method: $data['method'],
-                            bankId: $data['bank_id'] ?? null,
-                            reference: $data['reference'] ?? null,
-                            cpoBankName: $data['cpo_bank_name'] ?? null,
-                        ),
+                        fn () => $record->recover(...self::bondRecoveryData($record, $data)),
                         'Bond returned',
                     )),
             ])
             ->defaultSort('issue_date', 'desc');
     }
 
-    private static function bondPaymentSchema(): array
+    private static function bondPaymentSchema(Bond $bond): array
     {
+        if ($bond->issuePayment?->method === 'cpo') {
+            return [
+                Grid::make(2)->schema([
+                    Hidden::make('method')->default('cpo'),
+                    Hidden::make('cpo_bank_name')->default($bond->cpo_bank_name),
+                    DatePicker::make('payment_date')
+                        ->default(now())
+                        ->required(),
+                    TextInput::make('reference')
+                        ->label('Memo / Reference')
+                        ->maxLength(255),
+                ]),
+            ];
+        }
+
         return [
             Grid::make(2)->schema([
                 Select::make('method')
@@ -127,6 +137,17 @@ class BondsTable
                     ->label('Memo / Reference')
                     ->maxLength(255),
             ]),
+        ];
+    }
+
+    private static function bondRecoveryData(Bond $bond, array $data): array
+    {
+        return [
+            'paymentDate' => $data['payment_date'],
+            'method' => $bond->issuePayment?->method === 'cpo' ? 'cpo' : $data['method'],
+            'bankId' => $data['bank_id'] ?? null,
+            'reference' => $data['reference'] ?? null,
+            'cpoBankName' => $data['cpo_bank_name'] ?? $bond->cpo_bank_name,
         ];
     }
 

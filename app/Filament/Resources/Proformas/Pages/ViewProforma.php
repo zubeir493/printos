@@ -26,7 +26,7 @@ class ViewProforma extends ViewRecord
                 ->icon('heroicon-o-check-circle')
                 ->color('success')
                 ->requiresConfirmation()
-                ->visible(fn(): bool => in_array($this->record->status, ['draft', 'sent'], true))
+                ->visible(fn (): bool => in_array($this->record->status, ['draft', 'sent'], true))
                 ->action(function (): void {
                     $this->record->update([
                         'status' => 'approved',
@@ -39,25 +39,26 @@ class ViewProforma extends ViewRecord
             Action::make('create_job_order')
                 ->label('Create Job Order')
                 ->icon('heroicon-o-briefcase')
-                ->visible(fn(): bool => $this->record->canCreateJobOrder())
+                ->color(Color::Indigo)
+                ->visible(fn (): bool => $this->record->canCreateJobOrder())
                 ->action(function (): void {
                     $jobOrder = app(ProformaWorkflowService::class)->createJobOrder($this->record);
 
                     Notification::make()
                         ->title('Job order created')
-                        ->body($jobOrder->job_order_number . ' was created.')
+                        ->body($jobOrder->job_order_number.' was created.')
                         ->success()
                         ->send();
                 }),
             EditAction::make()
-                ->visible(fn(): bool => $this->record->status === 'draft')
+                ->visible(fn (): bool => $this->record->status === 'draft')
                 ->color(Color::Indigo),
             ActionGroup::make([
                 Action::make('download')
                     ->label('Download')
                     ->icon('heroicon-o-arrow-down-tray')
                     ->color('gray')
-                    ->url(fn(): ?string => app(ProformaPdfService::class)->downloadUrl($this->record))
+                    ->url(fn (): ?string => app(ProformaPdfService::class)->downloadUrl($this->record))
                     ->openUrlInNewTab(),
                 Action::make('email')
                     ->label('Email')
@@ -67,14 +68,16 @@ class ViewProforma extends ViewRecord
                         TextInput::make('email')
                             ->email()
                             ->required()
-                            ->default(fn() => $this->record->email_recipient ?? $this->record->partner?->email),
+                            ->default(fn () => $this->record->email_recipient ?? $this->record->partner?->email),
                         Textarea::make('message')->rows(3),
                     ])
                     ->action(function (array $data): void {
                         app(ProformaPdfService::class)->email($this->record, $data['email'], $data['message'] ?? null);
                         Notification::make()->title('Proforma emailed')->success()->send();
-                    })
-            ]),
+                    }),
+            ])
+                ->label('More actions')
+                ->color('gray'),
         ];
     }
 }

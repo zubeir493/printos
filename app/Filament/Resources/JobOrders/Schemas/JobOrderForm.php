@@ -393,41 +393,42 @@ class JobOrderForm
                                     ->columnSpanFull(),
                             ]),
                     ])->columnSpan(3),
+                Group::make([
+                    Section::make()
+                        ->schema([
+                            Hidden::make('status')->default('draft'),
+                            Hidden::make('subtotal')
+                                ->default(0)
+                                ->dehydrated(),
+                            Hidden::make('tax_amount')
+                                ->default(0)
+                                ->dehydrated(),
+                            Hidden::make('total')
+                                ->default(0)
+                                ->dehydrated(),
 
-                Section::make()
-                    ->schema([
-                        Hidden::make('status')->default('draft'),
-                        Hidden::make('subtotal')
-                            ->default(0)
-                            ->dehydrated(),
-                        Hidden::make('tax_amount')
-                            ->default(0)
-                            ->dehydrated(),
-                        Hidden::make('total')
-                            ->default(0)
-                            ->dehydrated(),
+                            Placeholder::make('summary_subtotal')
+                                ->label('Subtotal')
+                                ->content(fn (UtilitiesGet $get): HtmlString => self::summaryValue($get('subtotal')))
+                                ->hidden(fn () => ! PanelAccess::canSeeMoneyValues())
+                                ->extraAttributes(['class' => 'cost-summary-metric']),
 
-                        Placeholder::make('summary_subtotal')
-                            ->label('Subtotal')
-                            ->content(fn (UtilitiesGet $get): HtmlString => self::summaryValue($get('subtotal')))
-                            ->hidden(fn () => ! PanelAccess::canSeeMoneyValues())
-                            ->extraAttributes(['class' => 'cost-summary-metric']),
+                            Placeholder::make('summary_tax_amount')
+                                ->label('Tax (VAT)')
+                                ->content(fn (UtilitiesGet $get): HtmlString => self::summaryValue($get('tax_amount')))
+                                ->hidden(fn () => ! PanelAccess::canSeeMoneyValues())
+                                ->extraAttributes(['class' => 'cost-summary-metric']),
 
-                        Placeholder::make('summary_tax_amount')
-                            ->label('Tax (VAT)')
-                            ->content(fn (UtilitiesGet $get): HtmlString => self::summaryValue($get('tax_amount')))
-                            ->hidden(fn () => ! PanelAccess::canSeeMoneyValues())
-                            ->extraAttributes(['class' => 'cost-summary-metric']),
+                            Placeholder::make('summary_total')
+                                ->label('Total')
+                                ->content(fn (UtilitiesGet $get): HtmlString => self::summaryValue($get('total'), isPrimary: true))
+                                ->hidden(fn () => ! PanelAccess::canSeeMoneyValues())
+                                ->extraAttributes(['class' => 'cost-summary-metric cost-summary-total']),
+                        ])
+                        ->extraAttributes(['class' => 'lg:sticky lg:top-6 orderSummary']),
 
-                        Placeholder::make('summary_total')
-                            ->label('Total')
-                            ->content(fn (UtilitiesGet $get): HtmlString => self::summaryValue($get('total'), isPrimary: true))
-                            ->hidden(fn () => ! PanelAccess::canSeeMoneyValues())
-                            ->extraAttributes(['class' => 'cost-summary-metric cost-summary-total']),
-
-                        Textarea::make('remarks'),
-                    ])
-                    ->extraAttributes(['class' => 'lg:sticky lg:top-6 orderSummary']),
+                    Textarea::make('remarks'),
+                ]),
             ])->columns(4);
     }
 

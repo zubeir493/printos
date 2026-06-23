@@ -221,6 +221,7 @@ class PartnerStatement extends ViewRecord implements HasTable
             Action::make('viewPartner')
                 ->label('Partner Details')
                 ->icon(Heroicon::OutlinedArrowLeft)
+                ->color('gray')
                 ->url(fn () => static::getResource()::getUrl('view', ['record' => $this->record])),
         ];
     }

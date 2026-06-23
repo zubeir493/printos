@@ -22,6 +22,7 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
+use Filament\Support\Colors\Color;
 
 class ViewJobOrderTask extends ViewRecord
 {
@@ -367,7 +368,8 @@ class ViewJobOrderTask extends ViewRecord
                     }
                 }),
             EditAction::make()
-                ->visible(fn () => PanelAccess::canManageJobOrderTasks()),
+                ->visible(fn () => PanelAccess::canManageJobOrderTasks())
+                ->color(Color::Indigo),
         ];
     }
 }

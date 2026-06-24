@@ -9,7 +9,6 @@
 
 .fi-main-ctn {
     background: var(--color-gray-50);
-    border-top-right-radius: .75rem;
     height: calc(100vh - 64px);
     overflow-y: scroll;
     position: fixed;
@@ -54,7 +53,6 @@
 .fi-sidebar {
     width: 15rem !important;
     background: var(--color-gray-100);
-    border-top-left-radius: .75rem;
 }
 
 nav.fi-sidebar-nav {

@@ -1,9 +1,11 @@
 <?php
 
+use App\Filament\Resources\JobOrders\Pages\CreateJobOrder;
 use App\Filament\Resources\Proformas\Pages\CreateProforma;
 use App\Filament\Resources\Proformas\Pages\ListProformas;
 use App\Mail\ProformaGenerated;
 use App\Models\Bank;
+use App\Models\InventoryItem;
 use App\Models\Partner;
 use App\Models\Proforma;
 use App\Models\ProformaTask;
@@ -46,7 +48,7 @@ it('creates one linked job order from an approved proforma', function (): void {
 
     $jobOrder = app(ProformaWorkflowService::class)->createJobOrder($proforma);
 
-    expect($jobOrder->proforma_id)->toBe($proforma->id)
+    expect($jobOrder->cost_calc_file)->toContain('proforma-'.$proforma->id)
         ->and($jobOrder->partner_id)->toBe($customer->id)
         ->and($jobOrder->jobOrderTasks)->toHaveCount(1)
         ->and($jobOrder->jobOrderTasks->first()->deliverables[0]['label'])->toBe('Dieline')
@@ -328,7 +330,54 @@ it('renders the proforma list without lazy loading the partner relation', functi
     }
 });
 
-it('removes the legacy cost calculation file column from job orders', function (): void {
-    expect(Schema::hasColumn('job_orders', 'cost_calc_file'))->toBeFalse()
-        ->and(Schema::hasColumn('job_orders', 'proforma_id'))->toBeTrue();
+it('restores the required cost calculation file and removes proforma id from job orders', function (): void {
+    Filament::setCurrentPanel(Filament::getPanel('admin'));
+
+    $this->actingAs(User::factory()->create([
+        'role' => UserRole::Admin,
+    ]));
+
+    expect(Schema::hasColumn('job_orders', 'cost_calc_file'))->toBeTrue()
+        ->and(Schema::hasColumn('job_orders', 'proforma_id'))->toBeFalse();
+
+    $customer = Partner::factory()->create(['is_customer' => true]);
+    $paper = InventoryItem::factory()->create([
+        'type' => 'raw_material',
+        'category' => 'paper',
+    ]);
+    $undoRepeaterFake = Repeater::fake();
+
+    try {
+        Livewire::test(CreateJobOrder::class)
+            ->fillForm([
+                'production_mode' => 'make_to_order',
+                'partner_id' => $customer->id,
+                'job_type' => 'packages',
+                'submission_date' => now()->toDateString(),
+                'due_date' => now()->addDays(30)->toDateString(),
+                'jobOrderTasks' => [
+                    [
+                        'name' => 'Carton',
+                        'quantity' => 100,
+                        'task_cost' => 1000,
+                        'paper' => [
+                            [
+                                'inventory_item_id' => $paper->id,
+                                'required_quantity' => 20,
+                            ],
+                        ],
+                        'deliverables' => [
+                            [
+                                'label' => 'Dieline',
+                                'type' => 'artwork',
+                            ],
+                        ],
+                    ],
+                ],
+            ])
+            ->call('create')
+            ->assertHasFormErrors(['cost_calc_file' => 'required']);
+    } finally {
+        $undoRepeaterFake();
+    }
 });

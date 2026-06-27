@@ -1,18 +1,19 @@
 <?php
 
-use App\Filament\Design\Widgets\ArtworkPipelineChart;
+use App\Filament\Design\Widgets\ArtworkPipelineWidget;
 use App\Filament\Design\Widgets\DesignSLAStats;
-use App\Filament\Finance\Widgets\ExpectedCashflowChart;
+use App\Filament\Finance\Widgets\CashflowActivityWidget;
 use App\Filament\Production\Widgets\FloorEfficiencyStats;
 use App\Filament\Retail\Widgets\RetailCounterStats;
 use App\Filament\Widgets\AdminHealthStats;
-use App\Filament\Widgets\BankBalancesChart;
-use App\Filament\Widgets\SystemBottlenecksChart;
+use App\Filament\Widgets\BankBalanceMixWidget;
+use App\Filament\Widgets\OperationalBottlenecksWidget;
 use App\Models\Artwork;
 use App\Models\Bank;
 use App\Models\JobOrder;
 use App\Models\JobOrderTask;
 use App\Models\Partner;
+use App\Models\Payment;
 use App\Models\PurchaseOrder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -60,7 +61,7 @@ test('design stats use design task queue data instead of active job orders', fun
     expect($stats)->not->toHaveKey('Pending Internal Approval');
 });
 
-test('artwork pipeline separates missing uploads from approval stages and uses doughnut chart', function () {
+test('artwork pipeline separates missing uploads from approval stages', function () {
     $jobOrder = JobOrder::factory()->create(['status' => 'active']);
 
     JobOrderTask::create([
@@ -99,19 +100,16 @@ test('artwork pipeline separates missing uploads from approval stages and uses d
         'is_approved' => true,
     ]);
 
-    $widget = new ArtworkPipelineChart;
-    $data = invokeWidgetMethod($widget, 'getData');
+    $data = invokeWidgetMethod(new ArtworkPipelineWidget, 'getData')->toArray();
 
-    expect($data['datasets'][0]['data'])->toBe([1, 1, 1]);
-    expect($data['labels'])->toBe([
-        'Waiting Upload (1)',
-        'Awaiting Approval (1)',
-        'Approved (1)',
+    expect(collect($data['items'])->pluck('value', 'label')->all())->toBe([
+        'Waiting upload' => 1.0,
+        'Awaiting approval' => 1.0,
+        'Approved' => 1.0,
     ]);
-    expect(invokeWidgetMethod($widget, 'getType'))->toBe('doughnut');
 });
 
-test('bank balances widget reports active bank balances and is registered on admin and finance panels', function () {
+test('bank balance mix widget reports active bank balances and is registered on admin and finance panels', function () {
     Bank::create([
         'name' => 'Main',
         'code' => 'MAIN',
@@ -142,16 +140,16 @@ test('bank balances widget reports active bank balances and is registered on adm
         'status' => 'closed',
     ]);
 
-    $widget = new BankBalancesChart;
-    $data = invokeWidgetMethod($widget, 'getData');
+    $data = invokeWidgetMethod(new BankBalanceMixWidget, 'getData')->toArray();
+    $items = collect($data['items'])->pluck('value', 'label')->all();
 
-    expect($widget->getHeading())->toContain('4.00K');
-    expect($data['datasets'][0]['data'])->toBe([2500.0, 1500.0]);
-    expect($data['labels'][0])->toContain('Savings');
-    expect($data['labels'][1])->toContain('Main');
+    expect($items)->toBe([
+        'Savings' => 2500.0,
+        'Main' => 1500.0,
+    ]);
 
-    expect(file_get_contents(app_path('Providers/Filament/AdminPanelProvider.php')))->toContain(BankBalancesChart::class);
-    expect(file_get_contents(app_path('Providers/Filament/FinancePanelProvider.php')))->toContain(BankBalancesChart::class);
+    expect(file_get_contents(app_path('Providers/Filament/AdminPanelProvider.php')))->toContain(BankBalanceMixWidget::class);
+    expect(file_get_contents(app_path('Providers/Filament/FinancePanelProvider.php')))->toContain(BankBalanceMixWidget::class);
 });
 
 test('production queue stat counts task statuses that actually represent production queue work', function () {
@@ -196,7 +194,7 @@ test('admin and retail stats do not display synthetic or duplicated sparkline ch
     expect($retailStats['Counter Sales Today']->getChart())->toBeNull();
 });
 
-test('system bottlenecks chart counts open purchase orders using valid workflow statuses', function () {
+test('operational bottlenecks widget counts open purchase orders using valid workflow statuses', function () {
     $supplier = Partner::create([
         'name' => 'Widget Supplier',
         'is_supplier' => true,
@@ -229,40 +227,58 @@ test('system bottlenecks chart counts open purchase orders using valid workflow 
         'total' => 300,
     ]);
 
-    $data = invokeWidgetMethod(new SystemBottlenecksChart, 'getData');
+    $items = collect(invokeWidgetMethod(new OperationalBottlenecksWidget, 'getData')->toArray()['items'])
+        ->pluck('value', 'label')
+        ->all();
 
-    expect($data['datasets'][0]['data'][2])->toBe(2);
+    expect($items['Open purchase orders'])->toBe(2.0);
 });
 
-test('expected cashflow chart counts open purchase order outflows from valid statuses and totals', function () {
-    $supplier = Partner::create([
-        'name' => 'Cashflow Supplier',
-        'is_supplier' => true,
+test('cashflow activity heatmap counts daily inbound and outbound payments', function () {
+    Payment::factory()->create([
+        'payment_date' => today(),
+        'amount' => 321,
+        'direction' => 'inbound',
     ]);
 
-    PurchaseOrder::create([
-        'po_number' => 'PO-CASH-001',
-        'partner_id' => $supplier->id,
-        'order_date' => now(),
-        'status' => 'approved',
-        'subtotal' => 321,
-        'total' => 321,
-        'created_at' => now()->subDay(),
+    Payment::factory()->create([
+        'payment_date' => today(),
+        'amount' => 99,
+        'direction' => 'outbound',
     ]);
 
-    PurchaseOrder::create([
-        'po_number' => 'PO-CASH-002',
-        'partner_id' => $supplier->id,
-        'order_date' => now(),
-        'status' => 'received',
-        'subtotal' => 999,
-        'total' => 999,
-        'created_at' => now()->subDay(),
+    Payment::factory()->create([
+        'payment_date' => today(),
+        'amount' => 50,
+        'direction' => 'outbound',
+        'voided_at' => now(),
     ]);
 
-    $data = invokeWidgetMethod(new ExpectedCashflowChart, 'getData');
+    $data = invokeWidgetMethod(new CashflowActivityWidget, 'getData')->toArray();
 
-    expect((float) $data['datasets'][1]['data'][0])->toBe(321.0);
+    expect($data['entries'][today()->toDateString()])->toBe(420.0);
+});
+
+test('dashboard providers register filawidgets replacements', function () {
+    $expectations = [
+        'AdminPanelProvider.php' => ['ExecutivePulseWidget::class', 'OperationalBottlenecksWidget::class', 'BankBalanceMixWidget::class'],
+        'FinancePanelProvider.php' => ['BankBalanceMixWidget::class', 'ReceivablesRiskWidget::class', 'InvoiceCollectionRateWidget::class', 'CashflowActivityWidget::class'],
+        'SalesPanelProvider.php' => ['SalesMomentumWidget::class', 'SalesStageMixWidget::class', 'SalesCompletionRateWidget::class'],
+        'ProductionPanelProvider.php' => ['MachineOutputPaceWidget::class', 'MachineLoadMixWidget::class', 'ProductionCompletionWidget::class'],
+        'WarehousePanelProvider.php' => ['LogisticsActivityWidget::class', 'WipAvailabilityWidget::class', 'StockMovementPulseWidget::class'],
+        'DesignPanelProvider.php' => ['ArtworkPipelineWidget::class', 'DesignQueueWidget::class', 'DesignCompletionRateWidget::class'],
+        'HrPanelProvider.php' => ['WorkforceMixWidget::class', 'AttendanceActivityWidget::class', 'LeaveApprovalRateWidget::class'],
+        'RetailPanelProvider.php' => ['CounterDemandWidget::class', 'RefillPressureWidget::class'],
+        'OperationsPanelProvider.php' => ['JobPipelineMixWidget::class', 'PriorityJobValueWidget::class'],
+    ];
+
+    foreach ($expectations as $provider => $widgets) {
+        $contents = file_get_contents(app_path("Providers/Filament/{$provider}"));
+
+        foreach ($widgets as $widget) {
+            expect($contents)->toContain($widget);
+        }
+    }
 });
 
 test('dashboard table widgets disable the global search bar', function () {

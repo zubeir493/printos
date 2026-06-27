@@ -61,7 +61,8 @@ class Bank extends Model
     {
         return (float) $this->payments()
             ->where('direction', 'inbound')
-            ->sum('amount') +
+            ->selectRaw('COALESCE(SUM(amount - COALESCE(withholding_amount, 0)), 0) as total')
+            ->value('total') +
             (float) $this->transfersTo()
                 ->where('status', 'completed')
                 ->sum('amount');
@@ -71,7 +72,8 @@ class Bank extends Model
     {
         return (float) $this->payments()
             ->where('direction', 'outbound')
-            ->sum('amount') +
+            ->selectRaw('COALESCE(SUM(amount - COALESCE(withholding_amount, 0)), 0) as total')
+            ->value('total') +
             (float) $this->transfersFrom()
                 ->where('status', 'completed')
                 ->sum('amount');

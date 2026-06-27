@@ -3,6 +3,7 @@
 namespace App\Observers;
 
 use App\Models\JobOrder;
+use App\Services\Accounting\CreateSalesJournalEntry;
 use App\Support\SequentialNumber;
 
 class JobOrderObserver
@@ -36,5 +37,18 @@ class JobOrderObserver
         if (! $jobOrder->production_started_at) {
             $jobOrder->production_started_at = now();
         }
+    }
+
+    public function updated(JobOrder $jobOrder): void
+    {
+        if (! $jobOrder->wasChanged('status')) {
+            return;
+        }
+
+        if ((string) $jobOrder->status !== 'completed') {
+            return;
+        }
+
+        app(CreateSalesJournalEntry::class)->handle($jobOrder);
     }
 }

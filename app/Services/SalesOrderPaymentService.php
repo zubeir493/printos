@@ -33,7 +33,7 @@ class SalesOrderPaymentService
                 'partner_id' => $salesOrder->partner_id,
                 'amount' => $amount,
                 'direction' => 'inbound',
-                'transaction_type' => PaymentTransactionType::CUSTOMER_RECEIPT->value,
+                'transaction_type' => PaymentTransactionType::CASH_SALE_RECEIPT->value,
                 'method' => $salesOrder->payment_method ?: 'cash',
                 'reference' => $salesOrder->payment_reference ?: 'Immediate receipt for sale '.$salesOrder->order_number,
                 'payment_date' => $salesOrder->order_date,

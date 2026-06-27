@@ -13,9 +13,10 @@ use App\Filament\Resources\StockAdjustments\StockAdjustmentResource;
 use App\Filament\Resources\StockMovements\StockMovementResource;
 use App\Filament\Resources\StockTransfers\StockTransferResource;
 use App\Filament\Resources\Warehouses\WarehouseResource;
-use App\Filament\Warehouse\Widgets\LogisticsPulseChart;
-use App\Filament\Warehouse\Widgets\PendingPickListTable;
+use App\Filament\Warehouse\Widgets\LogisticsActivityWidget;
+use App\Filament\Warehouse\Widgets\StockMovementPulseWidget;
 use App\Filament\Warehouse\Widgets\WarehouseHealthStats;
+use App\Filament\Warehouse\Widgets\WipAvailabilityWidget;
 use Filament\Enums\ThemeMode;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -69,8 +70,9 @@ class WarehousePanelProvider extends PanelProvider
             ])
             ->widgets([
                 WarehouseHealthStats::class,
-                LogisticsPulseChart::class,
-                PendingPickListTable::class,
+                LogisticsActivityWidget::class,
+                WipAvailabilityWidget::class,
+                StockMovementPulseWidget::class,
             ])
             ->globalSearch(true)
             ->middleware([

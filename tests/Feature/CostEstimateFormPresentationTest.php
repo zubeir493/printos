@@ -1,5 +1,6 @@
 <?php
 
+use App\Filament\Pages\Settings;
 use App\Filament\Resources\CostEstimates\Pages\CreateCostEstimate;
 use App\Models\InventoryItem;
 use App\Models\Machine;
@@ -23,6 +24,9 @@ it('renders the live summary as a styled estimator panel', function (): void {
     Livewire::test(CreateCostEstimate::class)
         ->assertSee('Final Price')
         ->assertSee('Unit Price')
+        ->assertDontSee('Service Type')
+        ->assertDontSee('Deadline')
+        ->assertDontSee('Remarks')
         ->assertDontSee('Material Consumption')
         ->assertSee('Awaiting inputs')
         ->assertDontSee('Warnings')
@@ -76,9 +80,12 @@ it('renders inventory and machine snapshots with structured costing details', fu
         ])
         ->goToWizardStep(3)
         ->assertSee('Material Consumption')
+        ->assertSee('Machine Usage')
         ->assertSee('Premium Label Stock')
+        ->assertSee('Flexo Press')
         ->assertSee('Profit Margin (20%)')
         ->assertSee('VAT (14%)')
+        ->assertSee('Discount')
         ->assertSeeHtml('x-tooltip')
         ->assertSee('120 gsm')
         ->goToWizardStep(4)
@@ -114,4 +121,68 @@ it('shows material consumption when a material-backed estimate is calculable', f
         ->assertSee('Premium Label Stock')
         ->assertDontSee('Label stock')
         ->assertSeeHtml('cost-summary-list');
+});
+
+it('keeps book material and machine details in the sidebar only', function (): void {
+    Livewire::test(CreateCostEstimate::class)
+        ->fillForm([
+            'description' => 'Book job',
+            'job_type' => 'books',
+            'quantity' => 1000,
+            'services' => [
+                'book' => [
+                    'page_count' => 64,
+                    'size' => 'A5',
+                    'binding' => 'Perfect',
+                ],
+                'material' => [
+                    'text_paper_unit_cost' => 7000 / 1.15,
+                    'cover_paper_unit_cost' => 0,
+                ],
+                'production' => [
+                    'printing_speed' => 2500,
+                    'printing_rate' => 200,
+                ],
+                'commercial' => [
+                    'discount_percent' => 5,
+                ],
+            ],
+        ])
+        ->assertSee('Material Consumption')
+        ->assertSee('Text paper')
+        ->assertSee('4.4 ream')
+        ->assertSee('Machine Usage')
+        ->assertSee('Printing')
+        ->assertSee('4.8 hour')
+        ->assertDontSee('5,000 hour')
+        ->assertSee('Discount')
+        ->assertDontSee('Selected Material Details')
+        ->assertDontSee('Machine Snapshots');
+});
+
+it('hides hard cover cover paper inputs and trims noisy settings defaults', function (): void {
+    Livewire::test(CreateCostEstimate::class)
+        ->fillForm([
+            'description' => 'Hard cover book',
+            'job_type' => 'books',
+            'quantity' => 1000,
+            'services' => [
+                'book' => [
+                    'page_count' => 64,
+                    'size' => 'A5',
+                    'binding' => 'Hard cover',
+                ],
+            ],
+        ])
+        ->assertFormFieldIsHidden('services.book.cover_paper_format')
+        ->assertFormFieldIsHidden('services.material.cover_paper_unit_cost')
+        ->assertFormFieldIsVisible('services.material.case_paper_unit_cost');
+
+    Livewire::test(Settings::class)
+        ->assertDontSee('Costing Settings')
+        ->assertDontSee('Book Plate Cost')
+        ->assertDontSee('Book Text Paper Fallback')
+        ->assertDontSee('Book Cover Paper Fallback')
+        ->assertDontSee('Book Printing Fallback Speed')
+        ->assertDontSee('Book Artwork Fallback Rate');
 });

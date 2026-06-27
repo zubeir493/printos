@@ -55,6 +55,7 @@ class CostEstimatesTable
             ->filters([
                 SelectFilter::make('job_type')
                     ->options([
+                        'books' => 'Books',
                         'labels' => 'Labels',
                         'packages' => 'Packages',
                     ]),

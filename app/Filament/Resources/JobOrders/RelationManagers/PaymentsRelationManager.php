@@ -29,10 +29,18 @@ class PaymentsRelationManager extends RelationManager
     {
         return $schema->components([
             TextInput::make('amount')
+                ->label('Total Applied')
                 ->numeric()
                 ->required()
                 ->suffix('Birr')
                 ->maxValue(fn (?Model $record): float => $this->remainingBalance($record)),
+            TextInput::make('withholding_amount')
+                ->label('Withholding')
+                ->numeric()
+                ->default(0)
+                ->minValue(0)
+                ->maxValue(fn (callable $get): float => (float) ($get('amount') ?? 0))
+                ->suffix('Birr'),
             Select::make('method')
                 ->label('Payment method')
                 ->options([
@@ -69,8 +77,12 @@ class PaymentsRelationManager extends RelationManager
                 TextColumn::make('reference')->limit(40),
                 TextColumn::make('payment_date')->date()->sortable(),
                 TextColumn::make('amount')
+                    ->label('Applied')
                     ->formatStateUsing(fn ($state) => Money::format($state))
                     ->weight('bold'),
+                TextColumn::make('withholding_amount')
+                    ->label('Withholding')
+                    ->formatStateUsing(fn ($state) => Money::format($state)),
             ])
             ->headerActions([
                 CreateAction::make()

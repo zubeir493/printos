@@ -5,9 +5,9 @@ namespace App\Providers\Filament;
 use App\Filament\AvatarProviders\PrimaryColorAvatarProvider;
 use App\Filament\Pages\Auth\EditProfile;
 use App\Filament\Widgets\AdminHealthStats;
-use App\Filament\Widgets\BankBalancesChart;
-use App\Filament\Widgets\ProfitabilityMarginChart;
-use App\Filament\Widgets\SystemBottlenecksChart;
+use App\Filament\Widgets\BankBalanceMixWidget;
+use App\Filament\Widgets\ExecutivePulseWidget;
+use App\Filament\Widgets\OperationalBottlenecksWidget;
 use App\Http\Middleware\RedirectToCorrectPanel;
 use Filament\Enums\ThemeMode;
 use Filament\Http\Middleware\Authenticate;
@@ -54,9 +54,9 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->widgets([
                 AdminHealthStats::class,
-                BankBalancesChart::class,
-                ProfitabilityMarginChart::class,
-                SystemBottlenecksChart::class,
+                ExecutivePulseWidget::class,
+                OperationalBottlenecksWidget::class,
+                BankBalanceMixWidget::class,
             ])
             ->globalSearch(true)
             ->middleware([

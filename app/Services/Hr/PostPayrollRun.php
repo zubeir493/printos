@@ -26,6 +26,9 @@ class PostPayrollRun
             }
 
             $grossEarning = (float) $payrollRun->employees->sum('gross_earning');
+            $overtime = (float) $payrollRun->employees->sum('overtime_amount');
+            $employerPension = (float) $payrollRun->employees->sum('employer_pension_contribution');
+            $salaryExpense = round($grossEarning - $overtime - $employerPension, 2);
             $netPay = (float) $payrollRun->employees->sum('net_pay');
             $incomeTax = (float) $payrollRun->employees->sum('income_tax');
             $penalty = (float) $payrollRun->employees->sum('penalty_amount');
@@ -33,7 +36,7 @@ class PostPayrollRun
             $loan = (float) $payrollRun->employees->sum('loan');
             $workersUnion = (float) $payrollRun->employees->sum('workers_union');
 
-            $totalDebit = round($grossEarning, 2);
+            $totalDebit = round($salaryExpense + $overtime + $employerPension, 2);
             $totalCredit = round($netPay + $incomeTax + $penalty + $pension + $loan + $workersUnion, 2);
 
             $journalEntry = JournalEntry::create([
@@ -48,7 +51,9 @@ class PostPayrollRun
                 'posted_at' => now(),
             ]);
 
-            $this->item($journalEntry, '5100', 'Salary Expense', 'Expense', $grossEarning, 0);
+            $this->item($journalEntry, '5100', 'Salary Expense', 'Expense', $salaryExpense, 0);
+            $this->item($journalEntry, '5110', 'Overtime Expense', 'Expense', $overtime, 0);
+            $this->item($journalEntry, '5120', 'Pension Expense', 'Expense', $employerPension, 0);
             $this->item($journalEntry, '2150', 'Payroll Payable', 'Liability', 0, $netPay);
             $this->item($journalEntry, '2160', 'PAYE Tax Payable', 'Liability', 0, $incomeTax);
             $this->item($journalEntry, '2165', 'Payroll Penalty Clearing', 'Liability', 0, $penalty);

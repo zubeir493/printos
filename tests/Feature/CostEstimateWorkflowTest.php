@@ -1,6 +1,8 @@
 <?php
 
 use App\Filament\Resources\CostEstimates\Pages\CreateCostEstimate;
+use App\Filament\Resources\CostEstimates\Pages\ViewCostEstimate;
+use App\Filament\Resources\CostEstimates\RelationManagers\CostEstimateLinesRelationManager;
 use App\Filament\Resources\InventoryItems\Pages\CreateInventoryItem;
 use App\Models\CostEstimate;
 use App\Models\InventoryItem;
@@ -9,6 +11,7 @@ use App\Models\Partner;
 use App\Models\Proforma;
 use App\Models\Setting;
 use App\Models\User;
+use App\Services\Costing\BookCostCalculator;
 use App\Services\Costing\CostEstimateService;
 use App\Services\Costing\LabelCostCalculator;
 use App\Services\Costing\PackageCostCalculator;
@@ -19,6 +22,157 @@ use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
 
 uses(RefreshDatabase::class);
+
+it('calculates a book estimate from the workbook sample formula', function (): void {
+    Setting::createDefault();
+
+    $result = app(BookCostCalculator::class)->calculate([
+        'quantity' => 1000,
+        'services' => [
+            'book' => [
+                'page_count' => 64,
+                'size' => 'A5',
+                'binding' => 'Perfect',
+                'cover_laminated' => 'Yes',
+                'inside_printing' => 'Yes',
+                'text_colors' => 1,
+                'cover_colors' => 4,
+                'text_allowance_per_signature' => 50,
+                'cover_allowance' => 20,
+                'text_ink_coverage' => 1,
+                'cover_ink_coverage' => 1,
+                'cover_paper_format' => 'A1',
+            ],
+            'commercial' => [
+                'overhead_percent' => 15,
+                'profit_margin_percent' => 25,
+            ],
+        ],
+    ]);
+
+    $textPlates = collect($result->lines)->firstWhere('label', 'Text plates');
+
+    expect($textPlates['quantity'])->toBe(8.0)
+        ->and($textPlates['unit_cost'])->toBe(900.0)
+        ->and($result->total)->toBeGreaterThan(91797.82)
+        ->and($result->total)->toBeLessThan(91797.84)
+        ->and($result->unitPrice)->toBeGreaterThan(91.7978)
+        ->and($result->unitPrice)->toBeLessThan(91.7979);
+});
+
+it('calculates hard cover book-only material and gluing lines', function (): void {
+    Setting::createDefault();
+
+    $result = app(BookCostCalculator::class)->calculate([
+        'quantity' => 1000,
+        'services' => [
+            'book' => [
+                'page_count' => 64,
+                'size' => 'A5',
+                'binding' => 'Hard cover',
+            ],
+            'commercial' => [
+                'overhead_percent' => 0,
+                'profit_margin_percent' => 0,
+            ],
+        ],
+    ]);
+
+    $lines = collect($result->lines);
+
+    expect($lines->firstWhere('label', 'Case paper')['quantity'])->toBe(270.0)
+        ->and($lines->firstWhere('label', 'Grey board')['quantity'])->toBe(102.0)
+        ->and($lines->firstWhere('label', 'Endsheet')['quantity'])->toBe(263.0)
+        ->and($lines->firstWhere('label', 'Gluing')['quantity'])->toBe(40.0)
+        ->and($lines->firstWhere('label', 'Perfect binding')['quantity'])->toBe(0.0);
+});
+
+it('calculates saddle book wire without perfect binding', function (): void {
+    Setting::createDefault();
+
+    $result = app(BookCostCalculator::class)->calculate([
+        'quantity' => 1000,
+        'services' => [
+            'book' => [
+                'page_count' => 64,
+                'size' => 'A5',
+                'binding' => 'Saddle',
+            ],
+            'commercial' => [
+                'overhead_percent' => 0,
+                'profit_margin_percent' => 0,
+            ],
+        ],
+    ]);
+
+    $lines = collect($result->lines);
+
+    expect($lines->firstWhere('label', 'Wire')['quantity'])->toBe(0.1)
+        ->and($lines->firstWhere('label', 'Perfect binding')['quantity'])->toBe(0.0);
+});
+
+it('reports manual book material consumption without inventory items', function (): void {
+    Setting::createDefault();
+
+    $result = app(BookCostCalculator::class)->calculate([
+        'quantity' => 1000,
+        'services' => [
+            'book' => [
+                'page_count' => 64,
+                'size' => 'A5',
+                'binding' => 'Perfect',
+            ],
+            'commercial' => [
+                'overhead_percent' => 0,
+                'profit_margin_percent' => 0,
+            ],
+        ],
+    ]);
+
+    $materials = collect($result->materialConsumption);
+
+    expect($materials->firstWhere('label', 'Text paper')['quantity'])->toBe(4.4)
+        ->and($materials->firstWhere('label', 'Cover paper')['quantity'])->toBe(1.45)
+        ->and($materials->firstWhere('label', 'Ink')['unit'])->toBe('kg');
+});
+
+it('uses manual book rates and speeds instead of external machines', function (): void {
+    Setting::createDefault();
+
+    $result = app(BookCostCalculator::class)->calculate([
+        'quantity' => 1000,
+        'services' => [
+            'book' => [
+                'page_count' => 64,
+                'size' => 'A5',
+                'binding' => 'Perfect',
+            ],
+            'production' => [
+                'printing_speed' => 2500,
+                'printing_rate' => 333,
+                'folding_speed' => 2500,
+                'laminating_speed' => 300,
+            ],
+            'commercial' => [
+                'overhead_percent' => 0,
+                'profit_margin_percent' => 0,
+            ],
+        ],
+    ]);
+
+    $lines = collect($result->lines);
+    $printing = $lines->firstWhere('label', 'Printing');
+    $folding = $lines->firstWhere('label', 'Folding');
+    $laminating = $lines->firstWhere('label', 'Laminating');
+    $inkLine = $lines->firstWhere('label', 'Ink');
+
+    expect($printing['quantity'])->toBe(4.8)
+        ->and($printing['unit_cost'])->toBe(333.0)
+        ->and($folding['quantity'])->toBe(1.6)
+        ->and($laminating['quantity'])->toBe(3.3333)
+        ->and($inkLine['unit'])->toBe('kg')
+        ->and(collect($result->machineUsage)->firstWhere('name', 'Printing')['costing_speed'])->toBe(2500.0);
+});
 
 it('calculates a label estimate with inventory and VAT snapshots', function (): void {
     Setting::createDefault();
@@ -218,6 +372,97 @@ it('creates a cost estimate from the Filament wizard', function (): void {
         ->and($estimate->subtotal)->toBeGreaterThan('0.00');
 });
 
+it('creates a book cost estimate from the Filament wizard', function (): void {
+    Setting::createDefault();
+    Filament::setCurrentPanel(Filament::getPanel('admin'));
+
+    $this->actingAs(User::factory()->create(['role' => UserRole::Admin]));
+
+    $paper = InventoryItem::factory()->create([
+        'name' => 'Book Text Paper',
+        'sku' => 'BOOK-TEXT-PAPER',
+        'unit' => 'sheet',
+        'purchase_unit' => 'ream',
+        'conversion_factor' => 500,
+        'type' => 'raw_material',
+        'category' => 'paper',
+        'average_cost' => 0,
+        'price' => 7000,
+    ]);
+
+    Livewire::test(CreateCostEstimate::class)
+        ->fillForm([
+            'description' => 'Yeselat metshafe',
+            'job_type' => 'books',
+            'quantity' => 1000,
+            'services' => [
+                'book' => [
+                    'page_count' => 64,
+                    'size' => 'A5',
+                    'binding' => 'Perfect',
+                ],
+                'material' => [
+                    'text_paper_item_id' => $paper->id,
+                ],
+            ],
+        ])
+        ->call('create')
+        ->assertHasNoFormErrors();
+
+    $estimate = CostEstimate::query()->with('lines')->firstOrFail();
+
+    expect($estimate->job_type)->toBe('books')
+        ->and($estimate->lines)->not->toBeEmpty()
+        ->and($estimate->subtotal)->toBeGreaterThan('0.00');
+});
+
+it('presents the cost breakdown table with only costed rows and compact quantities', function (): void {
+    Filament::setCurrentPanel(Filament::getPanel('admin'));
+
+    $this->actingAs(User::factory()->create(['role' => UserRole::Admin]));
+
+    $paper = InventoryItem::factory()->create([
+        'name' => '250gsm Duplex',
+        'unit' => 'kg',
+    ]);
+
+    $estimate = CostEstimate::factory()->create();
+
+    $costedLine = $estimate->lines()->create([
+        'category' => 'material',
+        'label' => 'Cover paper',
+        'inventory_item_id' => $paper->id,
+        'quantity' => 100,
+        'unit' => 'kg',
+        'unit_cost' => 12.5,
+        'total' => 1250,
+        'sort' => 1,
+    ]);
+
+    $zeroLine = $estimate->lines()->create([
+        'category' => 'labour',
+        'label' => 'Unused make ready',
+        'quantity' => 0,
+        'unit' => 'hr',
+        'unit_cost' => 0,
+        'total' => 0,
+        'sort' => 2,
+    ]);
+
+    Livewire::test(CostEstimateLinesRelationManager::class, [
+        'ownerRecord' => $estimate,
+        'pageClass' => ViewCostEstimate::class,
+    ])
+        ->assertCanSeeTableRecords([$costedLine])
+        ->assertCanNotSeeTableRecords([$zeroLine])
+        ->assertSee('250gsm Duplex (Cover paper)')
+        ->assertSee('100 kg')
+        ->filterTable('category', 'material')
+        ->assertCanSeeTableRecords([$costedLine])
+        ->filterTable('category', 'labour')
+        ->assertCanNotSeeTableRecords([$costedLine]);
+});
+
 it('shows a waiting state in live summary until core estimate fields are filled', function (): void {
     Setting::createDefault();
     Filament::setCurrentPanel(Filament::getPanel('admin'));
@@ -227,6 +472,29 @@ it('shows a waiting state in live summary until core estimate fields are filled'
     Livewire::test(CreateCostEstimate::class)
         ->assertSee('Awaiting inputs')
         ->assertDontSee('Warnings');
+});
+
+it('previews a book estimate without material selectors', function (): void {
+    Setting::createDefault();
+    Filament::setCurrentPanel(Filament::getPanel('admin'));
+
+    $this->actingAs(User::factory()->create(['role' => UserRole::Admin]));
+
+    Livewire::test(CreateCostEstimate::class)
+        ->fillForm([
+            'description' => 'Book job',
+            'job_type' => 'books',
+            'quantity' => 1000,
+            'services' => [
+                'book' => [
+                    'page_count' => 64,
+                    'size' => 'A5',
+                    'binding' => 'Perfect',
+                ],
+            ],
+        ])
+        ->assertSee('Material Consumption')
+        ->assertSee('Final Price');
 });
 
 it('requires customer data when converting an estimate to a proforma', function (): void {

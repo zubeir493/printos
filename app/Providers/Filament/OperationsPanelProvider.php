@@ -3,9 +3,9 @@
 namespace App\Providers\Filament;
 
 use App\Filament\AvatarProviders\PrimaryColorAvatarProvider;
-use App\Filament\Operations\Widgets\HighPriorityJobsTable;
-use App\Filament\Operations\Widgets\OperationsJobStatusChart;
+use App\Filament\Operations\Widgets\JobPipelineMixWidget;
 use App\Filament\Operations\Widgets\OperationsPanelStats;
+use App\Filament\Operations\Widgets\PriorityJobValueWidget;
 use App\Filament\Pages\Auth\EditProfile;
 use App\Filament\Resources\Artworks\ArtworkResource;
 use App\Filament\Resources\Bids\BidResource;
@@ -80,8 +80,8 @@ class OperationsPanelProvider extends PanelProvider
             ])
             ->widgets([
                 OperationsPanelStats::class,
-                OperationsJobStatusChart::class,
-                HighPriorityJobsTable::class,
+                JobPipelineMixWidget::class,
+                PriorityJobValueWidget::class,
             ])
             ->globalSearch(true)
             ->middleware([

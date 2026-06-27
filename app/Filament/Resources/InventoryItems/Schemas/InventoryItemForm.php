@@ -99,8 +99,7 @@ class InventoryItemForm
                         ->getDownloadableFileUrlUsing(fn (string $file): ?string => PrivateStorage::downloadUrl($file))
                         ->directory('inventory/items')
                         ->previewable(false)
-                        ->hiddenOn('view')
-                        ->hidden(fn ($get) => $get('type') === 'spare_parts'),
+                        ->hiddenOn('view'),
                 ])->columnSpan(2),
             ])->columns(6);
     }

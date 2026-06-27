@@ -76,10 +76,12 @@ class VoidPaymentJournalEntry
             }
 
             if ($payment->bank_id && in_array($payment->method, ['bank', 'bank_transfer'], true)) {
+                $cashAmount = max(0, round((float) $payment->amount - (float) $payment->withholding_amount, 2));
+
                 if ($payment->direction === 'outbound') {
-                    $payment->bank()->increment('current_balance', $payment->amount);
+                    $payment->bank()->increment('current_balance', $cashAmount);
                 } else {
-                    $payment->bank()->decrement('current_balance', $payment->amount);
+                    $payment->bank()->decrement('current_balance', $cashAmount);
                 }
             }
 

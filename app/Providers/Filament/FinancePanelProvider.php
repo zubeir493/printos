@@ -11,8 +11,10 @@ use App\Filament\Finance\Pages\PayablesAgingReport;
 use App\Filament\Finance\Pages\ProfitLossStatementReport;
 use App\Filament\Finance\Pages\ReceivablesAgingReport;
 use App\Filament\Finance\Pages\TrialBalanceReport;
+use App\Filament\Finance\Widgets\CashflowActivityWidget;
 use App\Filament\Finance\Widgets\FinancePanelStats;
-use App\Filament\Finance\Widgets\OverdueInvoicesTable;
+use App\Filament\Finance\Widgets\InvoiceCollectionRateWidget;
+use App\Filament\Finance\Widgets\ReceivablesRiskWidget;
 use App\Filament\Pages\Auth\EditProfile;
 use App\Filament\Resources\Accounts\AccountResource;
 use App\Filament\Resources\Banks\BankResource;
@@ -31,7 +33,7 @@ use App\Filament\Resources\PayrollRuns\PayrollRunResource;
 use App\Filament\Resources\PurchaseOrderItems\PurchaseOrderItemResource;
 use App\Filament\Resources\PurchaseOrders\PurchaseOrderResource;
 use App\Filament\Resources\SalesOrders\SalesOrderResource;
-use App\Filament\Widgets\BankBalancesChart;
+use App\Filament\Widgets\BankBalanceMixWidget;
 use Filament\Enums\ThemeMode;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -102,8 +104,10 @@ class FinancePanelProvider extends PanelProvider
             ])
             ->widgets([
                 FinancePanelStats::class,
-                BankBalancesChart::class,
-                OverdueInvoicesTable::class,
+                BankBalanceMixWidget::class,
+                ReceivablesRiskWidget::class,
+                InvoiceCollectionRateWidget::class,
+                CashflowActivityWidget::class,
             ])
             ->globalSearch(true)
             ->middleware([

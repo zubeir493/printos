@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "994483f0b39fa2f47ff5777477896563",
+    "content-hash": "414b247e76966381ccc33e9c98b2c776",
     "packages": [
         {
             "name": "aws/aws-crt-php",
@@ -3430,6 +3430,53 @@
                 "source": "https://github.com/laravel/tinker/tree/v2.11.1"
             },
             "time": "2026-02-06T14:12:35+00:00"
+        },
+        {
+            "name": "laraveldaily/filawidgets",
+            "version": "v0.1.2",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/LaravelDaily/FilaWidgets.git",
+                "reference": "59bc01958ad5a6450c3655d758fb00cd1058d84c"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/LaravelDaily/FilaWidgets/zipball/59bc01958ad5a6450c3655d758fb00cd1058d84c",
+                "reference": "59bc01958ad5a6450c3655d758fb00cd1058d84c",
+                "shasum": ""
+            },
+            "require": {
+                "filament/filament": "^4.0|^5.0",
+                "laravel/framework": "^11.0|^12.0|^13.0",
+                "php": "^8.2"
+            },
+            "require-dev": {
+                "orchestra/testbench": "^9.0|^10.0",
+                "pestphp/pest": "^3.0"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "LaravelDaily\\FilaWidgets\\FilaWidgetsServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "LaravelDaily\\FilaWidgets\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "description": "Reusable Filament dashboard widgets.",
+            "support": {
+                "issues": "https://github.com/LaravelDaily/FilaWidgets/issues",
+                "source": "https://github.com/LaravelDaily/FilaWidgets/tree/v0.1.2"
+            },
+            "time": "2026-03-24T18:37:29+00:00"
         },
         {
             "name": "league/commonmark",

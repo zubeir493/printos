@@ -6,9 +6,10 @@ use App\Filament\AvatarProviders\PrimaryColorAvatarProvider;
 use App\Filament\Pages\Auth\EditProfile;
 use App\Filament\Resources\CostEstimates\CostEstimateResource;
 use App\Filament\Resources\SalesOrders\SalesOrderResource;
-use App\Filament\Sales\Widgets\SalesOrdersFocusTable;
+use App\Filament\Sales\Widgets\SalesCompletionRateWidget;
+use App\Filament\Sales\Widgets\SalesMomentumWidget;
 use App\Filament\Sales\Widgets\SalesPanelStats;
-use App\Filament\Sales\Widgets\SalesPipelineChart;
+use App\Filament\Sales\Widgets\SalesStageMixWidget;
 use Filament\Enums\ThemeMode;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -55,8 +56,9 @@ class SalesPanelProvider extends PanelProvider
             ])
             ->widgets([
                 SalesPanelStats::class,
-                SalesPipelineChart::class,
-                SalesOrdersFocusTable::class,
+                SalesMomentumWidget::class,
+                SalesStageMixWidget::class,
+                SalesCompletionRateWidget::class,
             ])
             ->middleware([
                 EncryptCookies::class,

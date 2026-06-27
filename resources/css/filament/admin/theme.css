@@ -2,6 +2,7 @@
 
 @source '../../../../app/Filament/**/*';
 @source '../../../../resources/views/filament/**/*';
+@source '../../../../vendor/laraveldaily/filawidgets/resources/views/**/*';
 
 .fi-layout {
     background: #1a1a1a;

@@ -5,9 +5,9 @@ namespace App\Providers\Filament;
 use App\Filament\AvatarProviders\PrimaryColorAvatarProvider;
 use App\Filament\Pages\Auth\EditProfile;
 use App\Filament\Production\Widgets\FloorEfficiencyStats;
-use App\Filament\Production\Widgets\MachineEfficiencyChart;
-use App\Filament\Production\Widgets\MaterialShortageWarnings;
-use App\Filament\Production\Widgets\TodaysProductionScheduleTable;
+use App\Filament\Production\Widgets\MachineLoadMixWidget;
+use App\Filament\Production\Widgets\MachineOutputPaceWidget;
+use App\Filament\Production\Widgets\ProductionCompletionWidget;
 use App\Filament\Resources\JobOrders\JobOrderResource;
 use App\Filament\Resources\JobOrderTasks\JobOrderTaskResource;
 use App\Filament\Resources\Machines\MachineResource;
@@ -65,9 +65,9 @@ class ProductionPanelProvider extends PanelProvider
             ])
             ->widgets([
                 FloorEfficiencyStats::class,
-                MachineEfficiencyChart::class,
-                MaterialShortageWarnings::class,
-                TodaysProductionScheduleTable::class,
+                MachineOutputPaceWidget::class,
+                MachineLoadMixWidget::class,
+                ProductionCompletionWidget::class,
             ])
             ->middleware([
                 EncryptCookies::class,

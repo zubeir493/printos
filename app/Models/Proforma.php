@@ -9,7 +9,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Proforma extends Model
 {
@@ -92,16 +91,6 @@ class Proforma extends Model
         return $this->hasMany(ProformaTask::class);
     }
 
-    public function jobOrders(): HasMany
-    {
-        return $this->hasMany(JobOrder::class);
-    }
-
-    public function jobOrder(): HasOne
-    {
-        return $this->hasOne(JobOrder::class);
-    }
-
     public function getFormattedTotalAttribute(): string
     {
         return Money::format($this->total);
@@ -113,15 +102,7 @@ class Proforma extends Model
             return false;
         }
 
-        if ($this->relationLoaded('jobOrders')) {
-            return $this->jobOrders->isEmpty();
-        }
-
-        if (array_key_exists('job_orders_exists', $this->attributes)) {
-            return ! (bool) $this->attributes['job_orders_exists'];
-        }
-
-        return ! $this->jobOrders()->exists();
+        return true;
     }
 
     public function recalculateTotals(): void

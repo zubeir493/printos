@@ -2,6 +2,7 @@
 
 use App\Filament\Resources\JournalEntries\Pages\CreateJournalEntry;
 use App\Filament\Resources\JournalEntries\Pages\ListJournalEntries;
+use App\Filament\Resources\JournalEntries\Pages\ViewJournalEntry;
 use App\Models\Account;
 use App\Models\JournalEntry;
 use App\Models\User;
@@ -9,6 +10,7 @@ use App\UserRole;
 use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Schema;
 use Livewire\Livewire;
 
 uses(RefreshDatabase::class);
@@ -95,4 +97,26 @@ test('journal entries cannot be bulk deleted from the table', function (): void 
 
     Livewire::test(ListJournalEntries::class)
         ->assertActionDoesNotExist(TestAction::make('delete')->table()->bulk());
+});
+
+test('journal entry view loads attachment state without missing attribute errors', function (): void {
+    Filament::setCurrentPanel(Filament::getPanel('finance'));
+
+    $this->actingAs(User::factory()->create([
+        'role' => UserRole::Finance,
+    ]));
+
+    expect(Schema::hasColumn('journal_entries', 'attachment'))->toBeTrue();
+
+    $journalEntry = JournalEntry::create([
+        'reference' => 'MAN-003',
+        'date' => '2026-05-18',
+        'attachment' => null,
+        'total_debit' => 100,
+        'total_credit' => 100,
+        'status' => 'posted',
+    ]);
+
+    Livewire::test(ViewJournalEntry::class, ['record' => $journalEntry->id])
+        ->assertSuccessful();
 });

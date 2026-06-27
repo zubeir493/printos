@@ -6,7 +6,8 @@ class CostingResult
 {
     /**
      * @param  array<int, array<string, mixed>>  $lines
-     * @param  array<string, mixed>  $materialConsumption
+     * @param  array<int, array<string, mixed>>  $materialConsumption
+     * @param  array<int, array<string, mixed>>  $machineUsage
      * @param  array<string, mixed>  $settingsSnapshot
      */
     public function __construct(
@@ -21,6 +22,7 @@ class CostingResult
         public float $marginPercent,
         public array $lines,
         public array $materialConsumption,
+        public array $machineUsage,
         public array $settingsSnapshot,
         public string $formulaVersion = 'v1',
     ) {}

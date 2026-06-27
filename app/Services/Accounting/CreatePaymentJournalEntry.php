@@ -21,10 +21,15 @@ class CreatePaymentJournalEntry
             ? PaymentTransactionType::tryFrom($payment->transaction_type) ?? $this->legacyTransactionType($payment->payment_type, $payment->direction)
             : $this->legacyTransactionType($payment->payment_type, $payment->direction);
 
+        if ($transactionType === PaymentTransactionType::CASH_SALE_RECEIPT) {
+            return;
+        }
+
         $cashAccount = $this->resolveCashAccount($payment);
         $bankAccount = $this->resolveBankAccount();
         $arAccount = Account::getSystemAccount(Account::CODE_AR, 'Accounts Receivable', 'Asset');
         $apAccount = Account::getSystemAccount(Account::CODE_AP, 'Accounts Payable', 'Liability');
+        $withholdingAccount = Account::getSystemAccount(Account::CODE_WITHHOLDING_RECEIVABLE, 'Withholding Receivable', 'Asset');
         $sourceAccountId = $this->resolveSourceAccountId($payment, $cashAccount, $bankAccount);
         $expenseAccountId = $this->resolveExpenseAccountId($payment);
         $pettyCashAccountId = $this->resolvePettyCashAccountId($payment);
@@ -42,12 +47,14 @@ class CreatePaymentJournalEntry
         ]);
 
         match ($transactionType) {
-            PaymentTransactionType::CUSTOMER_RECEIPT => $this->createItems($journalEntry->id, $sourceAccountId, $arAccount->id, $amount),
+            PaymentTransactionType::CUSTOMER_RECEIPT => $this->createCustomerReceiptItems($journalEntry->id, $sourceAccountId, $withholdingAccount->id, $arAccount->id, $amount, (float) $payment->withholding_amount),
             PaymentTransactionType::SUPPLIER_PAYMENT => $this->createItems($journalEntry->id, $apAccount->id, $sourceAccountId, $amount),
             PaymentTransactionType::DIRECT_EXPENSE => $this->createItems($journalEntry->id, $expenseAccountId, $sourceAccountId, $amount),
             PaymentTransactionType::PETTY_CASH_FUNDING => $this->createItems($journalEntry->id, $pettyCashAccountId, $sourceAccountId, $amount),
             PaymentTransactionType::PETTY_CASH_EXPENSE => $this->createItems($journalEntry->id, $expenseAccountId, $pettyCashAccountId, $amount),
+            PaymentTransactionType::CASH_SALE_RECEIPT => null,
             PaymentTransactionType::PAYROLL_PAYMENT => $this->createItems($journalEntry->id, Account::getSystemAccount('2150', 'Payroll Payable', 'Liability')->id, $sourceAccountId, $amount),
+            PaymentTransactionType::EMPLOYEE_LOAN_DISBURSEMENT => $this->createItems($journalEntry->id, Account::getSystemAccount('1230', 'Employee Loans Receivable', 'Asset')->id, $sourceAccountId, $amount),
             PaymentTransactionType::EMPLOYEE_LOAN_REPAYMENT => $this->createItems($journalEntry->id, $sourceAccountId, Account::getSystemAccount('1230', 'Employee Loans Receivable', 'Asset')->id, $amount),
             PaymentTransactionType::BID_BOND_ISSUE => $this->createItems($journalEntry->id, $this->resolveBidBondReceivableAccountId(), $sourceAccountId, $amount),
             PaymentTransactionType::BID_BOND_RECOVERY => $this->createItems($journalEntry->id, $sourceAccountId, $this->resolveBidBondReceivableAccountId(), $amount),
@@ -133,6 +140,37 @@ class CreatePaymentJournalEntry
         JournalItem::create([
             'journal_entry_id' => $entryId,
             'account_id' => $creditAccountId,
+            'debit' => 0,
+            'credit' => $amount,
+        ]);
+    }
+
+    private function createCustomerReceiptItems(int $entryId, int $sourceAccountId, int $withholdingAccountId, int $receivableAccountId, float $amount, float $withholdingAmount): void
+    {
+        $withholdingAmount = min($amount, max(0, round($withholdingAmount, 2)));
+        $cashAmount = round($amount - $withholdingAmount, 2);
+
+        if ($cashAmount > 0) {
+            JournalItem::create([
+                'journal_entry_id' => $entryId,
+                'account_id' => $sourceAccountId,
+                'debit' => $cashAmount,
+                'credit' => 0,
+            ]);
+        }
+
+        if ($withholdingAmount > 0) {
+            JournalItem::create([
+                'journal_entry_id' => $entryId,
+                'account_id' => $withholdingAccountId,
+                'debit' => $withholdingAmount,
+                'credit' => 0,
+            ]);
+        }
+
+        JournalItem::create([
+            'journal_entry_id' => $entryId,
+            'account_id' => $receivableAccountId,
             'debit' => 0,
             'credit' => $amount,
         ]);

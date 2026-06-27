@@ -18,7 +18,7 @@ class ProformaWorkflowService
             }
 
             $jobOrder = JobOrder::create([
-                'proforma_id' => $proforma->id,
+                'cost_calc_file' => $proforma->file_path ?: 'job-order-cost-calculations/proforma-'.$proforma->id.'.pdf',
                 'partner_id' => $proforma->partner_id,
                 'job_type' => $proforma->job_type,
                 'production_mode' => $proforma->partner_id ? 'make_to_order' : 'make_to_stock',

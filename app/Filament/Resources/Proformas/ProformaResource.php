@@ -16,7 +16,6 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use UnitEnum;
 
 class ProformaResource extends Resource
 {
@@ -52,8 +51,7 @@ class ProformaResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
-            ->with('partner')
-            ->withExists('jobOrders');
+            ->with('partner');
     }
 
     public static function getRelations(): array

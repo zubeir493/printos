@@ -35,10 +35,20 @@ class PaymentObserver
             $payment->payment_type = 'standard';
         }
 
+        $payment->withholding_amount ??= 0;
+
+        if ((float) $payment->withholding_amount < 0) {
+            throw new \RuntimeException('Withholding cannot be negative.');
+        }
+
+        if ((float) $payment->withholding_amount > (float) $payment->amount) {
+            throw new \RuntimeException('Withholding cannot be greater than the settled payment amount.');
+        }
+
         if ($this->isBankPayment($payment) && $payment->direction === 'outbound') {
             $bank = Bank::query()->find($payment->bank_id);
 
-            if (! $bank || (float) $bank->current_balance < (float) $payment->amount) {
+            if (! $bank || (float) $bank->current_balance < $this->cashAmount($payment)) {
                 throw new \RuntimeException(sprintf(
                     'Insufficient balance in %s. Available: %s.',
                     $bank?->name ?? 'the selected bank',
@@ -64,12 +74,12 @@ class PaymentObserver
         }
 
         if ($payment->direction === 'outbound') {
-            $payment->bank()->decrement('current_balance', $payment->amount);
+            $payment->bank()->decrement('current_balance', $this->cashAmount($payment));
 
             return;
         }
 
-        $payment->bank()->increment('current_balance', $payment->amount);
+        $payment->bank()->increment('current_balance', $this->cashAmount($payment));
     }
 
     public function updating(Payment $payment): void
@@ -99,6 +109,11 @@ class PaymentObserver
     private function isBankPayment(Payment $payment): bool
     {
         return $payment->bank_id && in_array($payment->method, ['bank', 'bank_transfer'], true);
+    }
+
+    private function cashAmount(Payment $payment): float
+    {
+        return max(0, round((float) $payment->amount - (float) $payment->withholding_amount, 2));
     }
 
     private function isOnlyVoidMetadataBeingUpdated(Payment $payment): bool

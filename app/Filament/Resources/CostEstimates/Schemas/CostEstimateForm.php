@@ -3,14 +3,13 @@
 namespace App\Filament\Resources\CostEstimates\Schemas;
 
 use App\Filament\Support\PanelAccess;
+use App\Models\Partner;
 use App\Services\Costing\CostingRegistry;
 use App\Services\Costing\CostingResult;
 use Filament\Actions\Action;
-use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Section;
@@ -32,6 +31,7 @@ class CostEstimateForm
                     ->schema([
                         Wizard::make([
                             self::jobStep(),
+                            ...BookCostingWizardSchema::steps(),
                             ...LabelCostingWizardSchema::steps(),
                             ...PackageCostingWizardSchema::steps(),
                         ])
@@ -45,6 +45,11 @@ class CostEstimateForm
                             ->label('Material Consumption')
                             ->content(fn (Get $get): HtmlString => self::materials($get))
                             ->hidden(fn (Get $get): bool => ! self::hasMaterialConsumption($get))
+                            ->extraAttributes(['class' => 'cost-summary-block']),
+                        Placeholder::make('machine_usage')
+                            ->label('Machine Usage')
+                            ->content(fn (Get $get): HtmlString => self::machines($get))
+                            ->hidden(fn (Get $get): bool => ! self::hasMachineUsage($get))
                             ->extraAttributes(['class' => 'cost-summary-block']),
                         Placeholder::make('unit_price')
                             ->label('Unit Price')
@@ -62,6 +67,10 @@ class CostEstimateForm
                             ->label(fn (Get $get): string => self::taxLabel($get))
                             ->content(fn (Get $get): HtmlString => self::summaryText($get, 'taxAmount'))
                             ->hidden(fn (Get $get): bool => ! self::hasTax($get))
+                            ->extraAttributes(['class' => 'cost-summary-metric']),
+                        Placeholder::make('discount_amount')
+                            ->label('Discount')
+                            ->content(fn (Get $get): HtmlString => self::summaryText($get, 'discountAmount'))
                             ->extraAttributes(['class' => 'cost-summary-metric']),
                         Placeholder::make('total')
                             ->label('Final Price')
@@ -82,25 +91,23 @@ class CostEstimateForm
             ->schema([
                 Hidden::make('estimate_number')
                     ->dehydrated(false),
+                Select::make('partner_id')
+                    ->label('Customer')
+                    ->options(fn (): array => Partner::query()->where('is_customer', true)->pluck('name', 'id')->all())
+                    ->searchable()
+                    ->preload(),
                 TextInput::make('description')
                     ->label('Product Name')
                     ->required()
                     ->maxLength(255),
-                Select::make('job_type')
-                    ->label('Service Type')
-                    ->options(fn (): array => app(CostingRegistry::class)->options())
-                    ->default('labels')
-                    ->live()
-                    ->required(),
+                Hidden::make('job_type')
+                    ->default('labels'),
                 TextInput::make('quantity')
                     ->numeric()
                     ->minValue(1)
                     ->default(1)
                     ->live(onBlur: true)
                     ->required(),
-                DatePicker::make('deadline'),
-                Textarea::make('remarks')
-                    ->columnSpanFull(),
             ]);
     }
 
@@ -126,6 +133,9 @@ class CostEstimateForm
         }
 
         return match ($get('job_type') ?: 'labels') {
+            'books' => filled($get('services.book.page_count'))
+                && filled($get('services.book.size'))
+                && filled($get('services.book.binding')),
             'packages' => filled($get('services.box.length'))
                 && filled($get('services.box.width'))
                 && filled($get('services.box.height'))
@@ -153,11 +163,29 @@ class CostEstimateForm
         return CostingSnapshotPresenter::materials($preview->materialConsumption);
     }
 
+    private static function machines(Get $get): HtmlString
+    {
+        $preview = self::preview($get);
+
+        if (! $preview) {
+            return CostingSnapshotPresenter::waitingValue();
+        }
+
+        return CostingSnapshotPresenter::machines($preview->machineUsage);
+    }
+
     private static function hasMaterialConsumption(Get $get): bool
     {
         $preview = self::preview($get);
 
         return $preview !== null && $preview->materialConsumption !== [];
+    }
+
+    private static function hasMachineUsage(Get $get): bool
+    {
+        $preview = self::preview($get);
+
+        return $preview !== null && $preview->machineUsage !== [];
     }
 
     private static function summaryText(Get $get, string $field, int $precision = 2, bool $isPrimary = false, bool $fixedPrecision = false): HtmlString

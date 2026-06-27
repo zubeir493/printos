@@ -59,6 +59,29 @@ class CostingSnapshotPresenter
     }
 
     /**
+     * @param  array<int, array{label: string, name?: string|null, quantity: int|float|string, unit?: string|null, machine?: array<string, mixed>, costing_speed?: int|float|string|null}>  $machines
+     */
+    public static function machines(array $machines): HtmlString
+    {
+        if ($machines === []) {
+            return self::emptyState('No selected machines yet.');
+        }
+
+        return new HtmlString(sprintf(
+            '<div class="cost-summary-list">%s</div>',
+            collect($machines)
+                ->map(fn (array $machine): string => sprintf(
+                    '<div class="cost-summary-list-row"><span class="cost-summary-material-name" tabindex="0" x-tooltip="{ content: %s, theme: $store.theme }">%s</span><strong>%s %s</strong></div>',
+                    Js::from(self::machineTooltip($machine))->toHtml(),
+                    e($machine['name'] ?? $machine['label']),
+                    e(Number::format((float) $machine['quantity'], maxPrecision: 2)),
+                    e($machine['unit'] ?? ''),
+                ))
+                ->implode(''),
+        ));
+    }
+
+    /**
      * @param  array{name?: string|null, quantity: int|float|string, unit?: string|null, inventory?: array<string, mixed>}  $material
      */
     private static function materialTooltip(array $material): string
@@ -79,6 +102,31 @@ class CostingSnapshotPresenter
         }
 
         return implode(' • ', $details) ?: 'Inventory item selected';
+    }
+
+    /**
+     * @param  array{name?: string|null, quantity: int|float|string, unit?: string|null, machine?: array<string, mixed>, costing_speed?: int|float|string|null}  $machine
+     */
+    private static function machineTooltip(array $machine): string
+    {
+        $snapshot = $machine['machine'] ?? [];
+        $details = [];
+
+        if (isset($snapshot['operation_type'])) {
+            $details[] = Machine::OPERATION_TYPES[$snapshot['operation_type']] ?? $snapshot['operation_type'];
+        }
+
+        if (filled($machine['costing_speed'] ?? null)) {
+            $details[] = Number::format((float) $machine['costing_speed'], maxPrecision: 2).' costing units/hr';
+        } elseif (isset($snapshot['production_speed'])) {
+            $details[] = Number::format((float) $snapshot['production_speed'], maxPrecision: 2).' units/hr';
+        }
+
+        if (isset($snapshot['hourly_cost'])) {
+            $details[] = Number::format((float) $snapshot['hourly_cost'], maxPrecision: 2).' Birr/hr';
+        }
+
+        return implode(' | ', $details) ?: 'Machine selected';
     }
 
     /**

@@ -6,10 +6,13 @@ use App\Filament\Support\Calculations;
 use App\Filament\Support\PanelAccess;
 use App\Models\InventoryItem;
 use App\Models\Setting;
+use App\Support\PrivateStorage;
 use Filament\Actions\Action;
+use Filament\Forms\Components\BaseFileUpload;
 use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
@@ -79,6 +82,24 @@ class JobOrderForm
                                 DatePicker::make('due_date')
                                     ->label('Payment Due Date')
                                     ->default(fn () => now()->addDays(30))
+                                    ->required(),
+                                FileUpload::make('cost_calc_file')
+                                    ->label('Cost Calculation File')
+                                    ->disk(config('filesystems.private_disk', 's3'))
+                                    ->visibility('private')
+                                    ->getUploadedFileUsing(fn (BaseFileUpload $component, string $file, string|array|null $storedFileNames): ?array => PrivateStorage::uploadedFileInfo($component, $file, $storedFileNames))
+                                    ->getOpenableFileUrlUsing(fn (string $file): ?string => PrivateStorage::url($file))
+                                    ->getDownloadableFileUrlUsing(fn (string $file): ?string => PrivateStorage::downloadUrl($file))
+                                    ->directory('job-order-cost-calculations')
+                                    ->preserveFilenames()
+                                    ->acceptedFileTypes([
+                                        'text/csv',
+                                        'text/plain',
+                                        'application/vnd.ms-excel',
+                                        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                                    ])
+                                    ->maxSize(51200)
+                                    ->previewable(false)
                                     ->required(),
                             ])
                             ->columns(3),

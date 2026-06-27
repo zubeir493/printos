@@ -50,6 +50,7 @@ trait BuildsCostingResults
             marginPercent: $profitPercent,
             lines: array_values($lines),
             materialConsumption: $this->materialConsumption($lines),
+            machineUsage: $this->machineUsage($lines),
             settingsSnapshot: $this->settingsSnapshot($settings, $overheadPercent, $profitPercent, $discountPercent),
         );
     }
@@ -126,7 +127,8 @@ trait BuildsCostingResults
     protected function materialConsumption(array $lines): array
     {
         return collect($lines)
-            ->filter(fn (array $line): bool => filled($line['inventory_item_id'] ?? null))
+            ->filter(fn (array $line): bool => (float) ($line['quantity'] ?? 0) > 0
+                && (filled($line['inventory_item_id'] ?? null) || in_array($line['category'] ?? null, ['Material', 'Ink', 'Finishing', 'Packing'], true)))
             ->map(fn (array $line): array => [
                 'inventory_item_id' => $line['inventory_item_id'],
                 'label' => $line['label'],
@@ -135,6 +137,44 @@ trait BuildsCostingResults
                 'quantity' => $line['quantity'],
                 'unit' => $line['unit'],
             ])
+            ->groupBy(fn (array $line): string => ($line['inventory_item_id'] ?? $line['name']).'|'.($line['unit'] ?? ''))
+            ->map(function ($lines): array {
+                $first = $lines->first();
+
+                return [
+                    ...$first,
+                    'quantity' => round((float) $lines->sum('quantity'), 4),
+                    'label' => $lines->pluck('label')->unique()->implode(', '),
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    protected function machineUsage(array $lines): array
+    {
+        return collect($lines)
+            ->filter(fn (array $line): bool => (float) ($line['quantity'] ?? 0) > 0
+                && (filled($line['snapshot']['machine']['machine_id'] ?? null) || ($line['category'] ?? null) === 'Machine'))
+            ->map(fn (array $line): array => [
+                'machine_id' => $line['snapshot']['machine']['machine_id'] ?? null,
+                'label' => $line['label'],
+                'name' => $line['snapshot']['machine']['name'] ?? $line['label'],
+                'machine' => $line['snapshot']['machine'] ?? [],
+                'costing_speed' => $line['snapshot']['costing_speed'] ?? null,
+                'quantity' => $line['quantity'],
+                'unit' => $line['unit'],
+            ])
+            ->groupBy(fn (array $line): string => ($line['machine_id'] ?? $line['name']).'|'.($line['unit'] ?? ''))
+            ->map(function ($lines): array {
+                $first = $lines->first();
+
+                return [
+                    ...$first,
+                    'quantity' => round((float) $lines->sum('quantity'), 4),
+                    'label' => $lines->pluck('label')->unique()->implode(', '),
+                ];
+            })
             ->values()
             ->all();
     }

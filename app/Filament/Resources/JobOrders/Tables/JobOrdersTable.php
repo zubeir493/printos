@@ -191,12 +191,19 @@ class JobOrdersTable
                                     ->default(now())
                                     ->required(),
                                 TextInput::make('amount')
-                                    ->label('Payment Amount')
+                                    ->label('Total Applied')
                                     ->required()
                                     ->numeric()
                                     ->suffix('Birr')
                                     ->default(fn ($record) => $record->balance)
                                     ->helperText(fn ($record) => 'Balance: '.Money::format($record->balance)),
+                                TextInput::make('withholding_amount')
+                                    ->label('Withholding')
+                                    ->numeric()
+                                    ->default(0)
+                                    ->minValue(0)
+                                    ->maxValue(fn (callable $get): float => (float) ($get('amount') ?? 0))
+                                    ->suffix('Birr'),
                                 TextInput::make('reference')
                                     ->label('Memo / Reference')
                                     ->placeholder('Receipt number, cheque number, or short note')
@@ -211,9 +218,14 @@ class JobOrdersTable
                                     ->lockForUpdate()
                                     ->findOrFail($record->getKey());
                                 $amount = (float) $data['amount'];
+                                $withholdingAmount = (float) ($data['withholding_amount'] ?? 0);
 
                                 if ($amount > $lockedRecord->balance) {
                                     throw new \Exception('Cannot pay more than the remaining balance of '.Money::format($lockedRecord->balance).'.');
+                                }
+
+                                if ($withholdingAmount > $amount) {
+                                    throw new \Exception('Withholding cannot be greater than the settled payment amount.');
                                 }
 
                                 Payment::create([
@@ -221,6 +233,7 @@ class JobOrdersTable
                                     'payment_date' => $data['payment_date'],
                                     'transaction_type' => PaymentTransactionType::CUSTOMER_RECEIPT->value,
                                     'amount' => $amount,
+                                    'withholding_amount' => $withholdingAmount,
                                     'method' => $data['method'],
                                     'bank_id' => $data['bank_id'] ?? null,
                                     'reference' => $data['reference'] ?? 'Payment for '.$lockedRecord->job_order_number,
@@ -238,7 +251,7 @@ class JobOrdersTable
 
                                 Notification::make()
                                     ->title('Payment Recorded')
-                                    ->body(Money::format($amount)." received for {$lockedRecord->job_order_number}.")
+                                    ->body(Money::format($amount)." applied to {$lockedRecord->job_order_number}.")
                                     ->success()
                                     ->send();
 

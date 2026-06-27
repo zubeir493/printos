@@ -3,9 +3,10 @@
 namespace App\Providers\Filament;
 
 use App\Filament\AvatarProviders\PrimaryColorAvatarProvider;
+use App\Filament\Hr\Widgets\AttendanceActivityWidget;
 use App\Filament\Hr\Widgets\HrPanelStats;
-use App\Filament\Hr\Widgets\SalaryRevisionHistoryTable;
-use App\Filament\Hr\Widgets\WorkforceCompositionChart;
+use App\Filament\Hr\Widgets\LeaveApprovalRateWidget;
+use App\Filament\Hr\Widgets\WorkforceMixWidget;
 use App\Filament\Pages\Auth\EditProfile;
 use App\Filament\Resources\AttendanceImports\AttendanceImportResource;
 use App\Filament\Resources\AttendanceSegments\AttendanceSegmentResource;
@@ -65,8 +66,9 @@ class HrPanelProvider extends PanelProvider
             ])
             ->widgets([
                 HrPanelStats::class,
-                WorkforceCompositionChart::class,
-                SalaryRevisionHistoryTable::class,
+                WorkforceMixWidget::class,
+                AttendanceActivityWidget::class,
+                LeaveApprovalRateWidget::class,
             ])
             ->middleware([
                 EncryptCookies::class,

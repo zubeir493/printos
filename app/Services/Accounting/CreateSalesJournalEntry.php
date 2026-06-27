@@ -3,22 +3,24 @@
 namespace App\Services\Accounting;
 
 use App\Models\Account;
+use App\Models\JobOrder;
 use App\Models\JournalEntry;
 use App\Models\JournalItem;
 use App\Models\SalesOrder;
 
 class CreateSalesJournalEntry
 {
-    public function handle(SalesOrder $sale): void
+    public function handle(SalesOrder|JobOrder $sale): void
     {
-        $sale = $sale->fresh(['salesOrderItems']) ?? $sale->load('salesOrderItems');
+        $sale = $sale instanceof SalesOrder
+            ? ($sale->fresh(['salesOrderItems']) ?? $sale->load('salesOrderItems'))
+            : ($sale->fresh() ?? $sale);
 
         $subtotal = (float) $sale->subtotal;
         $taxAmount = (float) $sale->tax_amount;
         $total = (float) $sale->total;
 
-        // Fall back to items sum if totals are not yet persisted
-        if ($total <= 0) {
+        if ($total <= 0 && $sale instanceof SalesOrder) {
             $subtotal = $sale->salesOrderItems->sum(fn ($item) => (float) $item->quantity * (float) $item->unit_price);
             $total = $subtotal + $taxAmount;
         }
@@ -27,8 +29,10 @@ class CreateSalesJournalEntry
             return;
         }
 
+        $sourceType = $sale::class;
+        $referenceNumber = $sale instanceof SalesOrder ? $sale->order_number : $sale->job_order_number;
         $existingEntry = JournalEntry::query()
-            ->where('source_type', SalesOrder::class)
+            ->where('source_type', $sourceType)
             ->where('source_id', $sale->id)
             ->exists();
 
@@ -36,16 +40,18 @@ class CreateSalesJournalEntry
             return;
         }
 
-        $receivablesAccount = Account::getSystemAccount(Account::CODE_AR, 'Accounts Receivable', 'Asset');
+        $debitAccount = $sale instanceof SalesOrder && $sale->payment_mode === 'credit'
+            ? Account::getSystemAccount(Account::CODE_AR, 'Accounts Receivable', 'Asset')
+            : Account::getSystemAccount('1000', 'Cash in Hand', 'Asset');
         $revenueAccount = Account::getSystemAccount('4000', 'Sales Revenue', 'Revenue');
         $taxPayableAccount = Account::getSystemAccount('2100', 'VAT Payable', 'Liability');
 
         $journalEntry = JournalEntry::create([
-            'date' => $sale->order_date ?? now(),
-            'reference' => 'Sale #'.$sale->order_number,
-            'source_type' => SalesOrder::class,
+            'date' => $sale instanceof SalesOrder ? ($sale->order_date ?? now()) : ($sale->submission_date ?? now()),
+            'reference' => 'Sale #'.$referenceNumber,
+            'source_type' => $sourceType,
             'source_id' => $sale->id,
-            'narration' => 'Sale #'.$sale->order_number,
+            'narration' => 'Sale #'.$referenceNumber,
             'total_debit' => $total,
             'total_credit' => $total,
             'status' => 'posted',
@@ -55,7 +61,7 @@ class CreateSalesJournalEntry
         // Debit: Accounts Receivable (full invoice amount)
         JournalItem::create([
             'journal_entry_id' => $journalEntry->id,
-            'account_id' => $receivablesAccount->id,
+            'account_id' => $debitAccount->id,
             'debit' => $total,
             'credit' => 0,
         ]);

@@ -536,7 +536,7 @@ class DemoPortfolioSeeder extends Seeder
                 $paymentNumber = str_replace(['INV', 'PI'], $paymentPrefix, $document['number']);
                 $this->updateOrCreate('payments', ['payment_number' => $paymentNumber], [
                     'partner_id' => $partners[$document['partner']],
-                    'bank_id' => $banks['BOAZ'],
+                    'bank_id' => $banks['BOAN'],
                     'payment_date' => '2026-06-23',
                     'amount' => $document['paid'],
                     'direction' => ($document['invoice_type'] ?? 'sales') === 'purchase' ? 'outbound' : 'inbound',
@@ -560,11 +560,13 @@ class DemoPortfolioSeeder extends Seeder
             'posted_at' => '2026-06-23 17:30:00',
         ]);
 
-        foreach ([
-            ['account' => '1200', 'debit' => 760150, 'credit' => 0],
-            ['account' => '4000', 'debit' => 0, 'credit' => 660999.99],
-            ['account' => '2100', 'debit' => 0, 'credit' => 99150.01],
-        ] as $line) {
+        foreach (
+            [
+                ['account' => '1200', 'debit' => 760150, 'credit' => 0],
+                ['account' => '4000', 'debit' => 0, 'credit' => 660999.99],
+                ['account' => '2100', 'debit' => 0, 'credit' => 99150.01],
+            ] as $line
+        ) {
             $this->updateOrCreate('journal_items', [
                 'journal_entry_id' => $entryId,
                 'account_id' => $accounts[$line['account']],
@@ -600,7 +602,7 @@ class DemoPortfolioSeeder extends Seeder
             'type' => 'bid',
             'bid_id' => $bidId,
             'issuing_partner_id' => $partners['TIN-CBE-003'],
-            'bank_id' => $banks['CBEZ'],
+            'bank_id' => $banks['CBEN'],
             'amount' => 37000,
             'issue_date' => '2026-06-19',
             'expiry_date' => '2026-08-27',

@@ -2,6 +2,7 @@
 
 namespace App\Services\Costing;
 
+use App\Filament\Resources\CostEstimates\Schemas\BookCostingWizardSchema;
 use App\Filament\Resources\CostEstimates\Schemas\LabelCostingWizardSchema;
 use App\Filament\Resources\CostEstimates\Schemas\PackageCostingWizardSchema;
 use App\Models\CostingServiceType;
@@ -24,6 +25,11 @@ class CostingRegistry
                 'name' => 'Package Printing',
                 'calculator' => PackageCostCalculator::class,
                 'schema' => PackageCostingWizardSchema::class,
+            ],
+            'books' => [
+                'name' => 'Book Printing',
+                'calculator' => BookCostCalculator::class,
+                'schema' => BookCostingWizardSchema::class,
             ],
         ];
     }

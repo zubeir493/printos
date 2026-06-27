@@ -5,9 +5,9 @@ namespace App\Providers\Filament;
 use App\Filament\AvatarProviders\PrimaryColorAvatarProvider;
 use App\Filament\Pages\Auth\EditProfile;
 use App\Filament\Resources\SalesOrders\SalesOrderResource;
+use App\Filament\Retail\Widgets\CounterDemandWidget;
+use App\Filament\Retail\Widgets\RefillPressureWidget;
 use App\Filament\Retail\Widgets\RetailCounterStats;
-use App\Filament\Retail\Widgets\RetailDemandChart;
-use App\Filament\Retail\Widgets\RetailReorderTable;
 use Filament\Enums\ThemeMode;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -53,8 +53,8 @@ class RetailPanelProvider extends PanelProvider
             ])
             ->widgets([
                 RetailCounterStats::class,
-                RetailDemandChart::class,
-                RetailReorderTable::class,
+                CounterDemandWidget::class,
+                RefillPressureWidget::class,
             ])
             ->middleware([
                 EncryptCookies::class,

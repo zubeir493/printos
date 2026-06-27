@@ -12,6 +12,7 @@ use App\Models\JournalEntry;
 use App\Models\LeaveType;
 use App\Models\Payment;
 use App\Models\PayrollRun;
+use App\Models\PayrollRunEmployee;
 use App\Models\PayrollTaxRule;
 use App\Models\Shift;
 use App\Models\User;
@@ -459,6 +460,52 @@ it('deducts only due loan installments and closes them when payroll is posted', 
         ->and((float) $firstInstallment->paid_amount)->toBe(400.0)
         ->and($loan->refresh()->status)->toBe('partially_paid')
         ->and($loan->installments()->where('status', 'pending')->count())->toBe(2);
+});
+
+it('posts payroll approval to salary overtime pension and deduction accounts', function () {
+    $payrollRun = PayrollRun::create([
+        'name' => 'Posting split payroll',
+        'period_start' => '2026-05-01',
+        'period_end' => '2026-05-31',
+    ]);
+    $employee = Employee::create([
+        'employee_id' => 'EMP-POST-1',
+        'attendance_device_id' => 'POST-1',
+        'first_name' => 'Posting',
+        'last_name' => 'Split',
+        'phone' => '0911555604',
+        'hire_date' => '2026-01-01',
+        'status' => 'active',
+        'basic_salary' => 12000,
+    ]);
+
+    $payrollEmployee = PayrollRunEmployee::withoutEvents(fn () => $payrollRun->employees()->create([
+        'employee_id' => $employee->id,
+        'basic_salary' => 1000,
+        'overtime_amount' => 200,
+        'employer_pension_contribution' => 110,
+        'gross_earning' => 1310,
+        'income_tax' => 100,
+        'penalty_amount' => 10,
+        'pension_contribution' => 180,
+        'loan' => 20,
+        'workers_union' => 0,
+        'total_deduction' => 310,
+        'net_pay' => 1000,
+    ]));
+
+    $entry = app(PostPayrollRun::class)->handle($payrollRun);
+
+    expect((float) $entry->total_debit)->toBe(1310.0)
+        ->and((float) $entry->total_credit)->toBe(1310.0)
+        ->and((float) $entry->journalItems()->whereBelongsTo(Account::where('code', '5100')->firstOrFail())->firstOrFail()->debit)->toBe(1000.0)
+        ->and((float) $entry->journalItems()->whereBelongsTo(Account::where('code', '5110')->firstOrFail())->firstOrFail()->debit)->toBe(200.0)
+        ->and((float) $entry->journalItems()->whereBelongsTo(Account::where('code', '5120')->firstOrFail())->firstOrFail()->debit)->toBe(110.0)
+        ->and((float) $entry->journalItems()->whereBelongsTo(Account::where('code', '2160')->firstOrFail())->firstOrFail()->credit)->toBe(100.0)
+        ->and((float) $entry->journalItems()->whereBelongsTo(Account::where('code', '2170')->firstOrFail())->firstOrFail()->credit)->toBe(180.0)
+        ->and((float) $entry->journalItems()->whereBelongsTo(Account::where('code', '1230')->firstOrFail())->firstOrFail()->credit)->toBe(20.0);
+
+    expect($payrollEmployee->refresh()->payment_id)->toBeNull();
 });
 
 it('records manual employee loan repayments through payments and journals', function () {

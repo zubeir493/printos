@@ -3,9 +3,10 @@
 namespace App\Providers\Filament;
 
 use App\Filament\AvatarProviders\PrimaryColorAvatarProvider;
-use App\Filament\Design\Widgets\ArtworkPipelineChart;
+use App\Filament\Design\Widgets\ArtworkPipelineWidget;
+use App\Filament\Design\Widgets\DesignCompletionRateWidget;
+use App\Filament\Design\Widgets\DesignQueueWidget;
 use App\Filament\Design\Widgets\DesignSLAStats;
-use App\Filament\Design\Widgets\MyActiveTasksTable;
 use App\Filament\Pages\Auth\EditProfile;
 use App\Filament\Resources\Artworks\ArtworkResource;
 use App\Filament\Resources\EmailLogs\EmailLogResource;
@@ -63,8 +64,9 @@ class DesignPanelProvider extends PanelProvider
             ])
             ->widgets([
                 DesignSLAStats::class,
-                ArtworkPipelineChart::class,
-                MyActiveTasksTable::class,
+                ArtworkPipelineWidget::class,
+                DesignQueueWidget::class,
+                DesignCompletionRateWidget::class,
             ])
             ->middleware([
                 EncryptCookies::class,

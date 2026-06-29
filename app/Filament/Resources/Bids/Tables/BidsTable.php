@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Bids\Tables;
 
+use App\Filament\Resources\Bids\BidResource;
 use App\Filament\Support\PanelAccess;
 use App\Models\Bank;
 use App\Models\Bid;
@@ -74,8 +75,7 @@ class BidsTable
             ->recordActions([
                 ActionGroup::make([
                     EditAction::make()
-                        ->authorize(true)
-                        ->visible(fn (Bid $record): bool => $record->status === Bid::STATUS_DRAFT),
+                        ->visible(fn (Bid $record): bool => BidResource::canEdit($record)),
                     Action::make('send_bond')
                         ->label('Send Bid Bond')
                         ->icon('heroicon-o-arrow-up-tray')
@@ -83,7 +83,7 @@ class BidsTable
                         ->visible(fn (Bid $record): bool => $record->status === Bid::STATUS_DRAFT
                             && (float) ($record->bid_bond_amount ?? 0) > 0
                             && blank($record->currentBidBond()?->issue_payment_id)
-                            && PanelAccess::canAccessFinanceSection())
+                            && PanelAccess::canManageBidBonds())
                         ->schema(self::bidBondPaymentSchema())
                         ->action(fn (Bid $record, array $data): mixed => self::handleBidBondAction(
                             fn () => DB::transaction(function () use ($record, $data): void {
@@ -116,7 +116,7 @@ class BidsTable
                         ->color('success')
                         ->visible(fn (Bid $record): bool => filled($record->currentBidBond()?->issue_payment_id)
                             && blank($record->currentBidBond()?->recovery_payment_id)
-                            && PanelAccess::canAccessFinanceSection())
+                            && PanelAccess::canManageBidBonds())
                         ->schema(fn (Bid $record): array => self::bidBondPaymentSchema($record->currentBidBond()))
                         ->action(fn (Bid $record, array $data): mixed => self::handleBidBondAction(
                             fn () => DB::transaction(function () use ($record, $data): void {
@@ -158,7 +158,7 @@ class BidsTable
                         ->color('warning')
                         ->visible(fn (Bid $record): bool => $record->status === Bid::STATUS_AWARDED
                             && blank($record->activePerformanceBond())
-                            && PanelAccess::canAccessFinanceSection())
+                            && PanelAccess::canManageBidBonds())
                         ->schema(self::performanceBondPaymentSchema())
                         ->action(fn (Bid $record, array $data): mixed => self::handleBidBondAction(
                             fn () => DB::transaction(function () use ($record, $data): void {
@@ -182,7 +182,7 @@ class BidsTable
                         ->color('success')
                         ->visible(fn (Bid $record): bool => in_array($record->status, [Bid::STATUS_AWARDED, Bid::STATUS_BOND_SENT], true)
                             && filled($record->activePerformanceBond())
-                            && PanelAccess::canAccessFinanceSection())
+                            && PanelAccess::canManageBidBonds())
                         ->schema(fn (Bid $record): array => self::bidBondPaymentSchema($record->activePerformanceBond()))
                         ->action(fn (Bid $record, array $data): mixed => self::handleBidBondAction(
                             fn () => DB::transaction(function () use ($record, $data): void {
@@ -198,7 +198,8 @@ class BidsTable
             ])
             ->bulkActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                    DeleteBulkAction::make()
+                        ->visible(fn (): bool => BidResource::canDeleteAny()),
                 ]),
             ]);
     }

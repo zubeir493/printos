@@ -19,42 +19,44 @@ class EditInvoice extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            Actions\Action::make('save')
-                ->label('Save Changes')
-                ->action('save')
-                ->icon('heroicon-o-check')
-                ->color('success'),
+            Actions\ActionGroup::make([
+                Actions\Action::make('save')
+                    ->label('Save Changes')
+                    ->action('save')
+                    ->icon('heroicon-o-check')
+                    ->color('success'),
 
-            Actions\Action::make('mark_sent')
-                ->label('Mark Sent')
-                ->icon('heroicon-o-paper-airplane')
-                ->color('primary')
-                ->visible(fn (): bool => in_array($this->record->status, ['draft', 'unpaid'], true))
-                ->action(function (): void {
-                    $this->record->update(['status' => 'sent']);
-                    $this->record->refresh();
+                Actions\Action::make('mark_sent')
+                    ->label('Mark Sent')
+                    ->icon('heroicon-o-paper-airplane')
+                    ->color('primary')
+                    ->visible(fn (): bool => in_array($this->record->status, ['draft', 'unpaid'], true))
+                    ->action(function (): void {
+                        $this->record->update(['status' => 'sent']);
+                        $this->record->refresh();
 
-                    Notification::make()->title('Invoice marked as sent')->success()->send();
-                }),
+                        Notification::make()->title('Invoice marked as sent')->success()->send();
+                    }),
 
-            Actions\Action::make('cancel_invoice')
-                ->label('Cancel Invoice')
-                ->icon('heroicon-o-x-circle')
-                ->color('danger')
-                ->requiresConfirmation()
-                ->visible(fn (): bool => in_array($this->record->status, ['draft', 'sent', 'unpaid', 'partial', 'overdue'], true))
-                ->action(function (): void {
-                    $this->record->update(['status' => 'cancelled']);
-                    $this->record->refresh();
+                Actions\Action::make('cancel_invoice')
+                    ->label('Cancel Invoice')
+                    ->icon('heroicon-o-x-circle')
+                    ->color('danger')
+                    ->requiresConfirmation()
+                    ->visible(fn (): bool => in_array($this->record->status, ['draft', 'sent', 'unpaid', 'partial', 'overdue'], true))
+                    ->action(function (): void {
+                        $this->record->update(['status' => 'cancelled']);
+                        $this->record->refresh();
 
-                    Notification::make()->title('Invoice cancelled')->success()->send();
-                }),
+                        Notification::make()->title('Invoice cancelled')->success()->send();
+                    }),
 
-            Actions\Action::make('cancel')
-                ->label('Cancel')
-                ->url($this->getResource()::getUrl('index'))
-                ->icon('heroicon-o-x-mark')
-                ->color('gray'),
+                Actions\Action::make('cancel')
+                    ->label('Cancel')
+                    ->url($this->getResource()::getUrl('index'))
+                    ->icon('heroicon-o-x-mark')
+                    ->color('gray'),
+            ]),
         ];
     }
 

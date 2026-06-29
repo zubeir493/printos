@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\JobOrderTasks\Tables;
 
 use App\Filament\Exports\JobOrderTaskExporter;
+use App\Filament\Resources\JobOrderTasks\Actions\JobOrderTaskWorkflowActions;
 use App\Filament\Support\PanelAccess;
 use App\Models\InventoryBalance;
 use App\Models\InventoryItem;
@@ -25,7 +26,6 @@ use Filament\Facades\Filament;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
@@ -101,82 +101,15 @@ class JobOrderTasksTable
                 ActionGroup::make([
                     EditAction::make()
                         ->visible(fn () => PanelAccess::canManageJobOrderTasks()),
-                    Action::make('assign_designer')
-                        ->label('Assign Designer')
-                        ->icon('heroicon-o-user-plus')
-                        ->color('info')
-                        ->visible(fn ($record) => blank($record->designer_id)
-                            && ! in_array($record->status, ['completed', 'cancelled'])
-                            && ! in_array($record->jobOrder->status, ['completed', 'draft'])
-                            && in_array(Filament::getCurrentPanel()?->getId(), ['admin', 'operations']))
-                        ->form([
-                            Select::make('designer_id')
-                                ->label('Designer')
-                                ->options(User::where('role', UserRole::Design->value)->pluck('name', 'id'))
-                                ->required(),
-                            Textarea::make('instructions')
-                                ->label('Brief / Instructions')
-                                ->placeholder('Describe what needs to be designed, any specific requirements, references, or deadlines...')
-                                ->rows(4)
-                                ->helperText('This will be included in the notification sent to the designer and saved on the task.'),
-                        ])
-                        ->action(function (array $data, $record) {
-                            $record->update([
-                                'designer_id' => $data['designer_id'],
-                                'instructions' => $data['instructions'] ?? null,
-                            ]);
-
-                            $record->updateStatus();
-
-                            Notification::make()
-                                ->title('Designer assigned')
-                                ->success()
-                                ->send();
-                        }),
-                    Action::make('assign_typist')
-                        ->label('Assign Typist')
-                        ->icon('heroicon-o-document-text')
-                        ->color('warning')
-                        ->visible(fn ($record) => blank($record->typist_id)
-                            && ! in_array($record->status, ['completed', 'cancelled'])
-                            && in_array(Filament::getCurrentPanel()?->getId(), ['admin', 'operations']))
-                        ->form([
-                            Select::make('typist_id')
-                                ->label('Typist')
-                                ->options(User::where('role', UserRole::Typist->value)->pluck('name', 'id'))
-                                ->required(),
-                        ])
-                        ->action(function (array $data, $record) {
-                            $record->update(['typist_id' => $data['typist_id']]);
-                            $record->updateStatus();
-
-                            Notification::make()
-                                ->title('Typist assigned')
-                                ->success()
-                                ->send();
-                        }),
-                    Action::make('send_to_production')
-                        ->label('Send to Production')
-                        ->icon('heroicon-o-arrow-up-tray')
-                        ->color('success')
-                        ->visible(fn ($record) => in_array(Filament::getCurrentPanel()?->getId(), ['admin', 'operations'])
-                            && $record->status === 'design')
-                        ->requiresConfirmation()
-                        ->modalDescription('Move this task to production once the required files are ready?')
-                        ->action(function ($record) {
-                            $record->update(['status' => 'production']);
-
-                            Notification::make()
-                                ->title('Task sent to production')
-                                ->success()
-                                ->send();
-                        }),
+                    JobOrderTaskWorkflowActions::assignDesigner(),
+                    JobOrderTaskWorkflowActions::assignTypist(),
+                    JobOrderTaskWorkflowActions::sendToProduction(),
                     Action::make('request_materials')
                         ->label('Request Materials')
                         ->icon('heroicon-o-document-plus')
                         ->color('info')
                         ->visible(fn ($record) => ! in_array($record->status, ['completed', 'cancelled'])
-                            && Filament::getCurrentPanel()?->getId() === 'production')
+                            && in_array(Filament::getCurrentPanel()?->getId(), ['production', 'admin', 'operations']))
                         ->form(fn ($record) => [
                             Repeater::make('items')
                                 ->addable(false)

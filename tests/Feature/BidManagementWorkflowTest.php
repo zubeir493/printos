@@ -22,7 +22,7 @@ use Livewire\Livewire;
 
 uses(RefreshDatabase::class);
 
-test('finance can create and filter bids', function (): void {
+test('finance can read and filter bids without mutation actions', function (): void {
     Filament::setCurrentPanel(Filament::getPanel('finance'));
 
     $this->actingAs(User::factory()->create([
@@ -33,28 +33,27 @@ test('finance can create and filter bids', function (): void {
         'name' => 'Public Procurement Entity',
     ]);
 
-    Livewire::test(CreateBid::class)
-        ->set('data.title', 'Annual Packaging Tender')
-        ->set('data.tender_reference', 'TDR-2026-01')
-        ->set('data.partner_id', $entity->id)
-        ->set('data.deadline_date', '2026-06-15')
-        ->set('data.estimated_value', 250000)
-        ->set('data.bid_bond_amount', 5000)
-        ->call('create')
-        ->assertHasNoFormErrors();
+    $bid = Bid::factory()->create([
+        'title' => 'Annual Packaging Tender',
+        'tender_reference' => 'TDR-2026-01',
+        'partner_id' => $entity->id,
+        'deadline_date' => '2026-06-15',
+        'estimated_value' => 250000,
+        'bid_bond_amount' => 5000,
+        'status' => Bid::STATUS_DRAFT,
+    ]);
 
-    $bid = Bid::firstOrFail();
-
-    expect($bid->bid_number)->toStartWith('BID-')
-        ->and($bid->status)->toBe(Bid::STATUS_DRAFT)
-        ->and($bid->submission_date)->toBeNull()
-        ->and($bid->bid_files)->toBe([]);
+    expect(BidResource::canCreate())->toBeFalse()
+        ->and(BidResource::canEdit($bid))->toBeFalse()
+        ->and(BidResource::canDelete($bid))->toBeFalse()
+        ->and(BidResource::canDeleteAny())->toBeFalse();
 
     Livewire::test(ListBids::class)
+        ->assertActionHidden('create')
         ->filterTable('status', Bid::STATUS_DRAFT)
         ->assertCanSeeTableRecords([$bid])
-        ->assertTableActionVisible('edit', $bid)
-        ->assertTableActionVisible('send_bond', $bid)
+        ->assertTableActionHidden('edit', $bid)
+        ->assertTableActionHidden('send_bond', $bid)
         ->filterTable('status', Bid::STATUS_AWARDED)
         ->assertCanNotSeeTableRecords([$bid]);
 
@@ -74,14 +73,16 @@ test('finance can create and filter bids', function (): void {
         ->assertCanNotSeeTableRecords([$bid, $bondSentBid]);
 
     Livewire::test(ViewBid::class, ['record' => $bid->id])
-        ->assertSet('data.title', 'Annual Packaging Tender');
+        ->assertSet('data.title', 'Annual Packaging Tender')
+        ->assertActionHidden('edit')
+        ->assertActionHidden('send_bond');
 });
 
 test('bid bond amount cannot exceed estimated bid value', function (): void {
-    Filament::setCurrentPanel(Filament::getPanel('finance'));
+    Filament::setCurrentPanel(Filament::getPanel('operations'));
 
     $this->actingAs(User::factory()->create([
-        'role' => UserRole::Finance,
+        'role' => UserRole::Operations,
     ]));
 
     $entity = Partner::factory()->customer()->create();
@@ -100,10 +101,10 @@ test('bid bond amount cannot exceed estimated bid value', function (): void {
 });
 
 test('bids are editable only while draft', function (): void {
-    Filament::setCurrentPanel(Filament::getPanel('finance'));
+    Filament::setCurrentPanel(Filament::getPanel('operations'));
 
     $this->actingAs(User::factory()->create([
-        'role' => UserRole::Finance,
+        'role' => UserRole::Operations,
     ]));
 
     $draft = Bid::factory()->create([
@@ -136,10 +137,10 @@ test('bids are editable only while draft', function (): void {
 });
 
 test('bid view groups header actions', function (): void {
-    Filament::setCurrentPanel(Filament::getPanel('finance'));
+    Filament::setCurrentPanel(Filament::getPanel('admin'));
 
     $this->actingAs(User::factory()->create([
-        'role' => UserRole::Finance,
+        'role' => UserRole::Admin,
     ]));
 
     $bid = Bid::factory()->create([
@@ -302,10 +303,10 @@ test('bid bond issue and recovery cannot be duplicated', function (): void {
 });
 
 test('awarded bid can send and return performance bond from bid actions', function (): void {
-    Filament::setCurrentPanel(Filament::getPanel('finance'));
+    Filament::setCurrentPanel(Filament::getPanel('admin'));
 
     $this->actingAs(User::factory()->create([
-        'role' => UserRole::Finance,
+        'role' => UserRole::Admin,
     ]));
 
     $bank = createBidManagementBank(10000);
@@ -363,10 +364,10 @@ test('awarded bid can send and return performance bond from bid actions', functi
 });
 
 test('bid resource can send and return bid bond from bid actions', function (): void {
-    Filament::setCurrentPanel(Filament::getPanel('finance'));
+    Filament::setCurrentPanel(Filament::getPanel('admin'));
 
     $this->actingAs(User::factory()->create([
-        'role' => UserRole::Finance,
+        'role' => UserRole::Admin,
     ]));
 
     $bank = createBidManagementBank(10000);
@@ -412,10 +413,10 @@ test('bid resource can send and return bid bond from bid actions', function (): 
 });
 
 test('bid table can send and return bid bond', function (): void {
-    Filament::setCurrentPanel(Filament::getPanel('finance'));
+    Filament::setCurrentPanel(Filament::getPanel('admin'));
 
     $this->actingAs(User::factory()->create([
-        'role' => UserRole::Finance,
+        'role' => UserRole::Admin,
     ]));
 
     $bank = createBidManagementBank(10000);

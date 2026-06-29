@@ -33,6 +33,7 @@ use App\Filament\Resources\PayrollRuns\PayrollRunResource;
 use App\Filament\Resources\PurchaseOrderItems\PurchaseOrderItemResource;
 use App\Filament\Resources\PurchaseOrders\PurchaseOrderResource;
 use App\Filament\Resources\SalesOrders\SalesOrderResource;
+use App\Filament\Resources\StockMovements\StockMovementResource;
 use App\Filament\Widgets\BankBalanceMixWidget;
 use Filament\Enums\ThemeMode;
 use Filament\Http\Middleware\Authenticate;
@@ -89,6 +90,7 @@ class FinancePanelProvider extends PanelProvider
                 PurchaseOrderItemResource::class,
                 SalesOrderResource::class,
                 PaymentResource::class,
+                StockMovementResource::class,
             ])
             ->discoverPages(in: app_path('Filament/Finance/Pages'), for: 'App\Filament\Finance\Pages')
             ->pages([

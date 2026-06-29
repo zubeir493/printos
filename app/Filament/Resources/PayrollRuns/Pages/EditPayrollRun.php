@@ -25,66 +25,64 @@ class EditPayrollRun extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            Action::make('calculate')
-                ->label(fn (): string => $this->record->employees()->exists() ? 'Recalculate' : 'Calculate')
-                ->requiresConfirmation()
-                ->visible(fn (): bool => $this->record->status === 'draft')
-                ->action(function (): void {
-                    app(CalculatePayrollRun::class)->handle($this->record);
-                    $this->record->refresh();
-                    $this->fillForm();
-                    $count = $this->record->employees()->count();
-                    $netPay = $this->record->employees()->sum('net_pay');
-
-                    Notification::make()
-                        ->title("Payroll calculated for {$count} employees")
-                        ->body('Net pay total: '.number_format((float) $netPay, 2).' Birr')
-                        ->success()
-                        ->send();
-                }),
-            Action::make('approve')
-                ->label('Approve')
-                ->visible(fn (): bool => $this->record->status === 'draft')
-                ->requiresConfirmation()
-                ->action(function (): void {
-                    $this->ensureCalculatedPayrollExists();
-
-                    app(PostPayrollRun::class)->handle($this->record);
-                    $this->record->refresh();
-
-                    Notification::make()->title('Payroll approved and journal posted')->success()->send();
-                }),
-            Action::make('generatePayments')
-                ->label('Generate Payments')
-                ->visible(fn (): bool => $this->record->status === 'approved')
-                ->schema([
-                    Select::make('bank_id')
-                        ->label('Pay From Bank')
-                        ->options(fn (): array => $this->bankOptions())
-                        ->searchable()
-                        ->preload()
-                        ->live()
-                        ->required(),
-                    Callout::make('Insufficient bank balance')
-                        ->description(fn (Get $get): string => $this->insufficientBankBalanceMessage((int) $get('bank_id')))
-                        ->danger()
-                        ->visible(fn (Get $get): bool => $this->selectedBankCannotCoverPayroll((int) $get('bank_id'))),
-                ])
-                ->requiresConfirmation()
-                ->action(function (array $data): void {
-                    app(GeneratePayrollPayments::class)->handle($this->record, 'bank', (int) $data['bank_id']);
-                    $this->record->refresh();
-                    Notification::make()->title('Payroll payments generated')->success()->send();
-                }),
             ActionGroup::make([
+                Action::make('calculate')
+                    ->label(fn (): string => $this->record->employees()->exists() ? 'Recalculate' : 'Calculate')
+                    ->requiresConfirmation()
+                    ->visible(fn (): bool => $this->record->status === 'draft')
+                    ->action(function (): void {
+                        app(CalculatePayrollRun::class)->handle($this->record);
+                        $this->record->refresh();
+                        $this->fillForm();
+                        $count = $this->record->employees()->count();
+                        $netPay = $this->record->employees()->sum('net_pay');
+
+                        Notification::make()
+                            ->title("Payroll calculated for {$count} employees")
+                            ->body('Net pay total: '.number_format((float) $netPay, 2).' Birr')
+                            ->success()
+                            ->send();
+                    }),
+                Action::make('approve')
+                    ->label('Approve')
+                    ->visible(fn (): bool => $this->record->status === 'draft')
+                    ->requiresConfirmation()
+                    ->action(function (): void {
+                        $this->ensureCalculatedPayrollExists();
+
+                        app(PostPayrollRun::class)->handle($this->record);
+                        $this->record->refresh();
+
+                        Notification::make()->title('Payroll approved and journal posted')->success()->send();
+                    }),
+                Action::make('generatePayments')
+                    ->label('Generate Payments')
+                    ->visible(fn (): bool => $this->record->status === 'approved')
+                    ->schema([
+                        Select::make('bank_id')
+                            ->label('Pay From Bank')
+                            ->options(fn (): array => $this->bankOptions())
+                            ->searchable()
+                            ->preload()
+                            ->live()
+                            ->required(),
+                        Callout::make('Insufficient bank balance')
+                            ->description(fn (Get $get): string => $this->insufficientBankBalanceMessage((int) $get('bank_id')))
+                            ->danger()
+                            ->visible(fn (Get $get): bool => $this->selectedBankCannotCoverPayroll((int) $get('bank_id'))),
+                    ])
+                    ->requiresConfirmation()
+                    ->action(function (array $data): void {
+                        app(GeneratePayrollPayments::class)->handle($this->record, 'bank', (int) $data['bank_id']);
+                        $this->record->refresh();
+                        Notification::make()->title('Payroll payments generated')->success()->send();
+                    }),
                 Action::make('exportRegister')
                     ->label('Export CSV')
                     ->color('gray')
                     ->visible(fn (): bool => $this->record->employees()->exists())
                     ->action(fn () => app(ExportPayrollRegisterCsv::class)->download($this->record)),
-            ])
-                ->label('More actions')
-                ->color('gray'),
+            ]),
         ];
     }
 

@@ -24,6 +24,7 @@ class DatabaseSeeder extends Seeder
             PartnerSeeder::class,
             UserSeeder::class,
             PayrollTaxRuleSeeder::class,
+            AttendanceDemoSeeder::class,
             DemoPortfolioSeeder::class,
         ]);
     }

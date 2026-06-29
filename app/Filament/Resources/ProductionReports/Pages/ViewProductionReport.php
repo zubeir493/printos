@@ -4,6 +4,7 @@ namespace App\Filament\Resources\ProductionReports\Pages;
 
 use App\Filament\Resources\ProductionReports\ProductionReportResource;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\EditAction;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
@@ -16,24 +17,26 @@ class ViewProductionReport extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
-            Action::make('submit')
-                ->label('Submit Report')
-                ->icon('heroicon-o-check-circle')
-                ->color('success')
-                ->requiresConfirmation()
-                ->visible(fn ($record) => $record->status === 'draft')
-                ->action(function ($record) {
-                    $record->update(['status' => 'submitted']);
-                    $this->record->refresh();
+            ActionGroup::make([
+                Action::make('submit')
+                    ->label('Submit Report')
+                    ->icon('heroicon-o-check-circle')
+                    ->color('success')
+                    ->requiresConfirmation()
+                    ->visible(fn ($record) => $record->status === 'draft')
+                    ->action(function ($record) {
+                        $record->update(['status' => 'submitted']);
+                        $this->record->refresh();
 
-                    Notification::make()
-                        ->title('Production report submitted')
-                        ->success()
-                        ->send();
-                }),
-            EditAction::make()
-                ->visible(fn ($record) => $record->status === 'draft')
-                ->color(Color::Indigo),
+                        Notification::make()
+                            ->title('Production report submitted')
+                            ->success()
+                            ->send();
+                    }),
+                EditAction::make()
+                    ->visible(fn ($record) => $record->status === 'draft')
+                    ->color(Color::Indigo),
+            ]),
         ];
     }
 }

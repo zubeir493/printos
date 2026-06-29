@@ -1,10 +1,24 @@
 <?php
 
+use App\Filament\Resources\StockMovements\Pages\ListStockMovements;
+use App\Filament\Resources\StockMovements\Pages\ViewStockMovement;
 use App\Filament\Resources\StockMovements\Schemas\StockMovementForm;
+use App\Filament\Resources\StockMovements\StockMovementResource;
+use App\Models\InventoryItem;
+use App\Models\JobOrder;
+use App\Models\StockMovement;
 use App\Models\StockTransfer;
+use App\Models\User;
+use App\Models\Warehouse;
 use App\Support\DateTimeDisplay;
+use App\UserRole;
+use Filament\Facades\Filament;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Schemas\Schema;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
+
+uses(RefreshDatabase::class);
 
 it('uses a datetime picker for movement date so time is preserved', function () {
     $schema = StockMovementForm::configure(Schema::make());
@@ -58,4 +72,83 @@ it('preserves stock transfer time', function (): void {
         ->toBe('14:45')
         ->and(file_get_contents(base_path('app/Filament/Resources/StockTransfers/Schemas/StockTransferForm.php')))
         ->toContain(DateTimePicker::class);
+});
+
+it('filters stock movements by movement date', function (): void {
+    Filament::setCurrentPanel(Filament::getPanel('warehouse'));
+
+    $this->actingAs(User::factory()->create([
+        'role' => UserRole::Admin,
+    ]));
+
+    $warehouse = Warehouse::factory()->create(['name' => 'Main Store']);
+    $includedItem = InventoryItem::factory()->create(['name' => 'Included Paper']);
+    $excludedItem = InventoryItem::factory()->create(['name' => 'Excluded Ink']);
+
+    StockMovement::factory()->create([
+        'inventory_item_id' => $includedItem->id,
+        'warehouse_id' => $warehouse->id,
+        'movement_date' => '2026-05-10 14:45:00',
+    ]);
+
+    StockMovement::factory()->create([
+        'inventory_item_id' => $excludedItem->id,
+        'warehouse_id' => $warehouse->id,
+        'movement_date' => '2026-05-12 09:00:00',
+    ]);
+
+    Livewire::test(ListStockMovements::class)
+        ->filterTable('movement_date', [
+            'moved_from' => '2026-05-10',
+            'moved_until' => '2026-05-10',
+        ])
+        ->assertSee('Included Paper')
+        ->assertDontSee('Excluded Ink');
+});
+
+it('shows stock movement references as readable source documents', function (): void {
+    Filament::setCurrentPanel(Filament::getPanel('warehouse'));
+
+    $this->actingAs(User::factory()->create([
+        'role' => UserRole::Admin,
+    ]));
+
+    $jobOrder = JobOrder::factory()->create([
+        'job_order_number' => 'JO-STOCK-001',
+    ]);
+
+    $movement = StockMovement::factory()->create([
+        'inventory_item_id' => InventoryItem::factory()->create(['unit' => 'Reem'])->id,
+        'quantity' => 123.40,
+        'unit_cost' => 45.50,
+        'reference_type' => JobOrder::class,
+        'reference_id' => $jobOrder->id,
+    ]);
+
+    Livewire::test(ViewStockMovement::class, ['record' => $movement->id])
+        ->assertSuccessful()
+        ->assertSee('123.40')
+        ->assertSee('Price per Reem')
+        ->assertSee('Job Order, JO-STOCK-001')
+        ->assertDontSee(JobOrder::class);
+});
+
+it('gives finance read only access to stock movements', function (): void {
+    Filament::setCurrentPanel(Filament::getPanel('finance'));
+
+    $this->actingAs(User::factory()->create([
+        'role' => UserRole::Finance,
+    ]));
+
+    $movement = StockMovement::factory()->create();
+
+    expect(StockMovementResource::canViewAny())->toBeTrue()
+        ->and(StockMovementResource::canCreate())->toBeFalse();
+
+    Livewire::test(ListStockMovements::class)
+        ->assertSuccessful()
+        ->assertCanSeeTableRecords([$movement]);
+
+    Livewire::test(ViewStockMovement::class, ['record' => $movement->id])
+        ->assertSuccessful();
 });

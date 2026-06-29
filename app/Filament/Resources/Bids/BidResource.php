@@ -32,11 +32,28 @@ class BidResource extends Resource
         return PanelAccess::canAccessFinanceSection() || PanelAccess::canManageJobOrders();
     }
 
+    public static function canCreate(): bool
+    {
+        return PanelAccess::canManageJobOrders();
+    }
+
     public static function canEdit(Model $record): bool
     {
         return $record instanceof Bid
             && $record->status === Bid::STATUS_DRAFT
-            && static::canViewAny();
+            && PanelAccess::canManageJobOrders();
+    }
+
+    public static function canDelete(Model $record): bool
+    {
+        return $record instanceof Bid
+            && $record->status === Bid::STATUS_DRAFT
+            && PanelAccess::canManageJobOrders();
+    }
+
+    public static function canDeleteAny(): bool
+    {
+        return PanelAccess::canManageJobOrders();
     }
 
     public static function form(Schema $schema): Schema

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Bids\Pages\Concerns;
 
+use App\Filament\Resources\Bids\BidResource;
 use App\Filament\Support\PanelAccess;
 use App\Models\Bank;
 use App\Models\Bid;
@@ -34,12 +35,12 @@ trait InteractsWithBidActions
         if ($includeEdit) {
             array_unshift($draftActions, EditAction::make()
                 ->color(Color::Indigo)
-                ->visible(fn (): bool => $this->record->status === Bid::STATUS_DRAFT));
+                ->visible(fn (): bool => BidResource::canEdit($this->record)));
         }
 
         if ($includeDelete) {
             $draftActions[] = DeleteAction::make()
-                ->visible(fn (): bool => $this->record->status === Bid::STATUS_DRAFT);
+                ->visible(fn (): bool => BidResource::canDelete($this->record));
         }
 
         return [
@@ -113,7 +114,7 @@ trait InteractsWithBidActions
             ->visible(fn (): bool => $this->record->status === Bid::STATUS_DRAFT
                 && (float) ($this->record->bid_bond_amount ?? 0) > 0
                 && blank($this->record->currentBidBond()?->issue_payment_id)
-                && PanelAccess::canAccessFinanceSection())
+                && PanelAccess::canManageBidBonds())
             ->schema($this->bidBondPaymentSchema())
             ->action(fn (array $data): mixed => $this->handleBidBondAction(
                 fn () => DB::transaction(function () use ($data): void {
@@ -139,7 +140,7 @@ trait InteractsWithBidActions
             ->color('success')
             ->visible(fn (): bool => filled($this->record->currentBidBond()?->issue_payment_id)
                 && blank($this->record->currentBidBond()?->recovery_payment_id)
-                && PanelAccess::canAccessFinanceSection())
+                && PanelAccess::canManageBidBonds())
             ->schema(fn (): array => $this->bidBondPaymentSchema($this->record->currentBidBond()))
             ->action(fn (array $data): mixed => $this->handleBidBondAction(
                 fn () => DB::transaction(function () use ($data): void {
@@ -163,7 +164,7 @@ trait InteractsWithBidActions
             ->color('warning')
             ->visible(fn (): bool => $this->record->status === Bid::STATUS_AWARDED
                 && blank($this->record->activePerformanceBond())
-                && PanelAccess::canAccessFinanceSection())
+                && PanelAccess::canManageBidBonds())
             ->schema($this->performanceBondPaymentSchema())
             ->action(fn (array $data): mixed => $this->handleBidBondAction(
                 fn () => DB::transaction(function () use ($data): void {
@@ -191,7 +192,7 @@ trait InteractsWithBidActions
             ->color('success')
             ->visible(fn (): bool => in_array($this->record->status, [Bid::STATUS_AWARDED, Bid::STATUS_BOND_SENT], true)
                 && filled($this->record->activePerformanceBond())
-                && PanelAccess::canAccessFinanceSection())
+                && PanelAccess::canManageBidBonds())
             ->schema(fn (): array => $this->bidBondPaymentSchema($this->record->activePerformanceBond()))
             ->action(fn (array $data): mixed => $this->handleBidBondAction(
                 fn () => DB::transaction(function () use ($data): void {

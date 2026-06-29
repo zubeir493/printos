@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\PaymentTransactionType;
 use App\Models\Account;
 use App\Models\InventoryBalance;
 use App\Models\InventoryItem;
@@ -89,7 +90,7 @@ class SalesOrderWorkflowTest extends TestCase
         $this->assertDatabaseHas('payments', [
             'partner_id' => $customer->id,
             'amount' => 230.00,
-            'transaction_type' => 'customer_receipt',
+            'transaction_type' => PaymentTransactionType::CASH_SALE_RECEIPT->value,
             'method' => 'cash',
         ]);
 
@@ -111,10 +112,10 @@ class SalesOrderWorkflowTest extends TestCase
             'type' => 'sale',
         ]);
 
-        $arAccount = Account::getSystemAccount(Account::CODE_AR, 'Accounts Receivable', 'Asset');
+        $cashAccount = Account::getSystemAccount('1000', 'Cash in Hand', 'Asset');
 
         $this->assertDatabaseHas('journal_items', [
-            'account_id' => $arAccount->id,
+            'account_id' => $cashAccount->id,
             'debit' => 230.00,
             'credit' => 0.00,
         ]);

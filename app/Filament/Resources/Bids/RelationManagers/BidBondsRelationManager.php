@@ -6,6 +6,7 @@ use App\Models\Bank;
 use App\Models\BidBond;
 use App\Support\Money;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
@@ -92,46 +93,48 @@ class BidBondsRelationManager extends RelationManager
                     ]),
             ])
             ->recordActions([
-                Action::make('issue')
-                    ->label('Issue Bond')
-                    ->icon('heroicon-o-arrow-up-tray')
-                    ->color('warning')
-                    ->visible(fn (BidBond $record): bool => blank($record->issue_payment_id))
-                    ->schema($this->paymentSchema())
-                    ->action(fn (BidBond $record, array $data) => $this->handleBondAction(
-                        fn () => $record->issue(
-                            paymentDate: $data['payment_date'],
-                            method: $data['method'],
-                            bankId: $data['bank_id'] ?? null,
-                            reference: $data['reference'] ?? null,
-                        ),
-                        'Bid bond issued',
-                    )),
-                Action::make('recover')
-                    ->label('Recover Bond')
-                    ->icon('heroicon-o-arrow-down-tray')
-                    ->color('success')
-                    ->visible(fn (BidBond $record): bool => filled($record->issue_payment_id) && blank($record->recovery_payment_id) && $record->status !== BidBond::STATUS_FORFEITED)
-                    ->schema($this->paymentSchema())
-                    ->action(fn (BidBond $record, array $data) => $this->handleBondAction(
-                        fn () => $record->recover(
-                            paymentDate: $data['payment_date'],
-                            method: $data['method'],
-                            bankId: $data['bank_id'] ?? null,
-                            reference: $data['reference'] ?? null,
-                        ),
-                        'Bid bond recovered',
-                    )),
-                Action::make('forfeit')
-                    ->label('Mark Forfeited')
-                    ->icon('heroicon-o-x-circle')
-                    ->color('danger')
-                    ->requiresConfirmation()
-                    ->visible(fn (BidBond $record): bool => filled($record->issue_payment_id) && blank($record->recovery_payment_id) && $record->status !== BidBond::STATUS_FORFEITED)
-                    ->action(fn (BidBond $record) => $this->handleBondAction(
-                        fn () => $record->markForfeited(),
-                        'Bid bond marked forfeited',
-                    )),
+                ActionGroup::make([
+                    Action::make('issue')
+                        ->label('Issue Bond')
+                        ->icon('heroicon-o-arrow-up-tray')
+                        ->color('warning')
+                        ->visible(fn (BidBond $record): bool => blank($record->issue_payment_id))
+                        ->schema($this->paymentSchema())
+                        ->action(fn (BidBond $record, array $data) => $this->handleBondAction(
+                            fn () => $record->issue(
+                                paymentDate: $data['payment_date'],
+                                method: $data['method'],
+                                bankId: $data['bank_id'] ?? null,
+                                reference: $data['reference'] ?? null,
+                            ),
+                            'Bid bond issued',
+                        )),
+                    Action::make('recover')
+                        ->label('Recover Bond')
+                        ->icon('heroicon-o-arrow-down-tray')
+                        ->color('success')
+                        ->visible(fn (BidBond $record): bool => filled($record->issue_payment_id) && blank($record->recovery_payment_id) && $record->status !== BidBond::STATUS_FORFEITED)
+                        ->schema($this->paymentSchema())
+                        ->action(fn (BidBond $record, array $data) => $this->handleBondAction(
+                            fn () => $record->recover(
+                                paymentDate: $data['payment_date'],
+                                method: $data['method'],
+                                bankId: $data['bank_id'] ?? null,
+                                reference: $data['reference'] ?? null,
+                            ),
+                            'Bid bond recovered',
+                        )),
+                    Action::make('forfeit')
+                        ->label('Mark Forfeited')
+                        ->icon('heroicon-o-x-circle')
+                        ->color('danger')
+                        ->requiresConfirmation()
+                        ->visible(fn (BidBond $record): bool => filled($record->issue_payment_id) && blank($record->recovery_payment_id) && $record->status !== BidBond::STATUS_FORFEITED)
+                        ->action(fn (BidBond $record) => $this->handleBondAction(
+                            fn () => $record->markForfeited(),
+                            'Bid bond marked forfeited',
+                        )),
+                ]),
             ])
             ->defaultSort('expiry_date');
     }

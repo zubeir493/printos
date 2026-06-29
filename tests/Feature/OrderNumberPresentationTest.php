@@ -43,7 +43,7 @@ it('hides generated order number fields in the main order forms', function (stri
     'sales order' => [CreateSalesOrder::class, 'order_number', 'sales'],
     'job order' => [CreateJobOrder::class, 'job_order_number', 'operations'],
     'purchase order' => [CreatePurchaseOrder::class, 'po_number', 'operations'],
-    'bid' => [CreateBid::class, 'bid_number', 'finance'],
+    'bid' => [CreateBid::class, 'bid_number', 'operations'],
 ]);
 
 it('uses order numbers as edit and view page titles', function (string $panel, object $record, string $editPage, string $viewPage, string $number): void {
@@ -91,7 +91,7 @@ it('uses order numbers as edit and view page titles', function (string $panel, o
         'PO-TITLE-001',
     ],
     'bid' => fn (): array => [
-        'finance',
+        'operations',
         Bid::factory()->create(['bid_number' => 'BID-TITLE-001']),
         EditBid::class,
         ViewBid::class,

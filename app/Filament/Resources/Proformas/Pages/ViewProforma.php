@@ -21,39 +21,39 @@ class ViewProforma extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
-            Action::make('approve')
-                ->label('Approve')
-                ->icon('heroicon-o-check-circle')
-                ->color('success')
-                ->requiresConfirmation()
-                ->visible(fn (): bool => in_array($this->record->status, ['draft', 'sent'], true))
-                ->action(function (): void {
-                    $this->record->update([
-                        'status' => 'approved',
-                        'approved_at' => now(),
-                        'approved_by' => auth()->id(),
-                    ]);
-
-                    Notification::make()->title('Proforma approved')->success()->send();
-                }),
-            Action::make('create_job_order')
-                ->label('Create Job Order')
-                ->icon('heroicon-o-briefcase')
-                ->color(Color::Indigo)
-                ->visible(fn (): bool => $this->record->canCreateJobOrder())
-                ->action(function (): void {
-                    $jobOrder = app(ProformaWorkflowService::class)->createJobOrder($this->record);
-
-                    Notification::make()
-                        ->title('Job order created')
-                        ->body($jobOrder->job_order_number.' was created.')
-                        ->success()
-                        ->send();
-                }),
-            EditAction::make()
-                ->visible(fn (): bool => $this->record->status === 'draft')
-                ->color(Color::Indigo),
             ActionGroup::make([
+                Action::make('approve')
+                    ->label('Approve')
+                    ->icon('heroicon-o-check-circle')
+                    ->color('success')
+                    ->requiresConfirmation()
+                    ->visible(fn (): bool => in_array($this->record->status, ['draft', 'sent'], true))
+                    ->action(function (): void {
+                        $this->record->update([
+                            'status' => 'approved',
+                            'approved_at' => now(),
+                            'approved_by' => auth()->id(),
+                        ]);
+
+                        Notification::make()->title('Proforma approved')->success()->send();
+                    }),
+                Action::make('create_job_order')
+                    ->label('Create Job Order')
+                    ->icon('heroicon-o-briefcase')
+                    ->color(Color::Indigo)
+                    ->visible(fn (): bool => $this->record->canCreateJobOrder())
+                    ->action(function (): void {
+                        $jobOrder = app(ProformaWorkflowService::class)->createJobOrder($this->record);
+
+                        Notification::make()
+                            ->title('Job order created')
+                            ->body($jobOrder->job_order_number.' was created.')
+                            ->success()
+                            ->send();
+                    }),
+                EditAction::make()
+                    ->visible(fn (): bool => $this->record->status === 'draft')
+                    ->color(Color::Indigo),
                 Action::make('download')
                     ->label('Download')
                     ->icon('heroicon-o-arrow-down-tray')
@@ -75,9 +75,7 @@ class ViewProforma extends ViewRecord
                         app(ProformaPdfService::class)->email($this->record, $data['email'], $data['message'] ?? null);
                         Notification::make()->title('Proforma emailed')->success()->send();
                     }),
-            ])
-                ->label('More actions')
-                ->color('gray'),
+            ]),
         ];
     }
 }

@@ -21,6 +21,11 @@ class PanelAccess
         return in_array(self::panelId(), ['admin', 'finance'], true);
     }
 
+    public static function canManageBidBonds(): bool
+    {
+        return self::panelId() === 'admin';
+    }
+
     public static function canSeeMoneyValues(): bool
     {
         return in_array(self::panelId(), ['admin', 'finance', 'operations'], true);

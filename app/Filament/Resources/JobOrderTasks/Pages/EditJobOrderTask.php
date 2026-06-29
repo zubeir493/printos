@@ -2,8 +2,10 @@
 
 namespace App\Filament\Resources\JobOrderTasks\Pages;
 
+use App\Filament\Resources\JobOrderTasks\Actions\JobOrderTaskWorkflowActions;
 use App\Filament\Resources\JobOrderTasks\JobOrderTaskResource;
 use App\Filament\Support\PanelAccess;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
 
@@ -19,7 +21,12 @@ class EditJobOrderTask extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            DeleteAction::make(),
+            ActionGroup::make([
+                JobOrderTaskWorkflowActions::assignDesigner(),
+                JobOrderTaskWorkflowActions::assignTypist(),
+                JobOrderTaskWorkflowActions::sendToProduction(),
+                DeleteAction::make(),
+            ]),
         ];
     }
 }

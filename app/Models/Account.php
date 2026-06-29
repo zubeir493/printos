@@ -25,7 +25,7 @@ class Account extends Model
 
     public const CODE_AR = '1200';
 
-    public const CODE_AP = '2100';
+    public const CODE_AP = '2000';
 
     public const CODE_BID_BONDS_RECEIVABLE = '1240';
 

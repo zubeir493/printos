@@ -81,12 +81,24 @@ class Bank extends Model
 
     public function getExpectedBalanceAttribute(): float
     {
-        return $this->total_inflow - $this->total_outflow;
+        return $this->opening_balance + $this->transaction_balance;
     }
 
     public function getCalculatedBalanceAttribute(): float
     {
         return $this->expected_balance;
+    }
+
+    public function getTransactionBalanceAttribute(): float
+    {
+        return (float) BankTransaction::query()
+            ->where('bank_id', $this->id)
+            ->sum('balance_delta');
+    }
+
+    public function getOpeningBalanceAttribute(): float
+    {
+        return round((float) $this->current_balance - $this->transaction_balance, 2);
     }
 
     public function updateBalance(): void

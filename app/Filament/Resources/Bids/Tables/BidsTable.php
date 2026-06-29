@@ -11,6 +11,7 @@ use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
@@ -72,17 +73,9 @@ class BidsTable
             ->defaultSort('deadline_date')
             ->recordActions([
                 ActionGroup::make([
-                    Action::make('submit')
-                        ->label('Submit Bid')
-                        ->icon('heroicon-o-paper-airplane')
-                        ->color('primary')
-                        ->visible(fn (Bid $record): bool => $record->status === Bid::STATUS_DRAFT && PanelAccess::canManageJobOrders())
-                        ->requiresConfirmation()
-                        ->action(function (Bid $record): void {
-                            $record->markSubmitted();
-
-                            Notification::make()->title('Bid submitted')->success()->send();
-                        }),
+                    EditAction::make()
+                        ->authorize(true)
+                        ->visible(fn (Bid $record): bool => $record->status === Bid::STATUS_DRAFT),
                     Action::make('send_bond')
                         ->label('Send Bid Bond')
                         ->icon('heroicon-o-arrow-up-tray')
@@ -106,6 +99,17 @@ class BidsTable
                             }),
                             'Bid bond sent',
                         )),
+                    Action::make('submit')
+                        ->label('Submit Bid')
+                        ->icon('heroicon-o-paper-airplane')
+                        ->color('primary')
+                        ->visible(fn (Bid $record): bool => $record->status === Bid::STATUS_DRAFT && PanelAccess::canManageJobOrders())
+                        ->requiresConfirmation()
+                        ->action(function (Bid $record): void {
+                            $record->markSubmitted();
+
+                            Notification::make()->title('Bid submitted')->success()->send();
+                        }),
                     Action::make('return_bond')
                         ->label('Return Bid Bond')
                         ->icon('heroicon-o-arrow-down-tray')
@@ -126,6 +130,28 @@ class BidsTable
                             }),
                             'Bid bond returned',
                         )),
+                    Action::make('award')
+                        ->label('Mark Awarded')
+                        ->icon('heroicon-o-trophy')
+                        ->color('success')
+                        ->visible(fn (Bid $record): bool => $record->status === Bid::STATUS_SUBMITTED && PanelAccess::canManageJobOrders())
+                        ->requiresConfirmation()
+                        ->action(function (Bid $record): void {
+                            $record->markAwarded();
+
+                            Notification::make()->title('Bid awarded')->success()->send();
+                        }),
+                    Action::make('mark_lost')
+                        ->label('Mark Lost')
+                        ->icon('heroicon-o-x-circle')
+                        ->color('danger')
+                        ->visible(fn (Bid $record): bool => $record->status === Bid::STATUS_SUBMITTED && PanelAccess::canManageJobOrders())
+                        ->requiresConfirmation()
+                        ->action(function (Bid $record): void {
+                            $record->markLost();
+
+                            Notification::make()->title('Bid marked lost')->danger()->send();
+                        }),
                     Action::make('send_performance_bond')
                         ->label('Send Performance Bond')
                         ->icon('heroicon-o-shield-check')
@@ -168,28 +194,6 @@ class BidsTable
                             }),
                             'Performance bond recovered',
                         )),
-                    Action::make('award')
-                        ->label('Mark Awarded')
-                        ->icon('heroicon-o-trophy')
-                        ->color('success')
-                        ->visible(fn (Bid $record): bool => $record->status === Bid::STATUS_SUBMITTED && PanelAccess::canManageJobOrders())
-                        ->requiresConfirmation()
-                        ->action(function (Bid $record): void {
-                            $record->markAwarded();
-
-                            Notification::make()->title('Bid awarded')->success()->send();
-                        }),
-                    Action::make('mark_lost')
-                        ->label('Mark Lost')
-                        ->icon('heroicon-o-x-circle')
-                        ->color('danger')
-                        ->visible(fn (Bid $record): bool => $record->status === Bid::STATUS_SUBMITTED && PanelAccess::canManageJobOrders())
-                        ->requiresConfirmation()
-                        ->action(function (Bid $record): void {
-                            $record->markLost();
-
-                            Notification::make()->title('Bid marked lost')->danger()->send();
-                        }),
                 ]),
             ])
             ->bulkActions([

@@ -14,6 +14,16 @@ class PostPayrollRun
 {
     public function handle(PayrollRun $payrollRun): JournalEntry
     {
+        $existingJournalEntry = JournalEntry::query()
+            ->where('source_type', PayrollRun::class)
+            ->where('source_id', $payrollRun->id)
+            ->whereNull('reversal_of_journal_entry_id')
+            ->first();
+
+        if ($existingJournalEntry) {
+            return $existingJournalEntry;
+        }
+
         if ($payrollRun->status !== 'draft') {
             throw new RuntimeException('Only draft payroll runs can be approved.');
         }

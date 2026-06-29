@@ -78,6 +78,21 @@ class AccountingWorkflowTest extends TestCase
             'journal_entry_id' => $journalEntry->id,
             'debit' => 10000.00,
         ]);
+
+        $accountsPayable = Account::getSystemAccount(Account::CODE_AP, 'Accounts Payable', 'Liability');
+        $vatPayable = Account::getSystemAccount('2100', 'VAT Payable', 'Liability');
+
+        $this->assertSame('2000', Account::CODE_AP);
+        $this->assertDatabaseHas('journal_items', [
+            'journal_entry_id' => $journalEntry->id,
+            'account_id' => $accountsPayable->id,
+            'credit' => 10000.00,
+        ]);
+        $this->assertDatabaseMissing('journal_items', [
+            'journal_entry_id' => $journalEntry->id,
+            'account_id' => $vatPayable->id,
+            'credit' => 10000.00,
+        ]);
     }
 
     public function test_inbound_payment_creates_payment_journal_entry()
@@ -345,6 +360,112 @@ class AccountingWorkflowTest extends TestCase
             'account_id' => $cashAccount->id,
             'credit' => 1250.00,
         ]);
+    }
+
+    public function test_supplier_payment_debits_accounts_payable_not_vat_payable()
+    {
+        $supplier = Partner::create([
+            'name' => 'Supplier AP',
+            'is_supplier' => true,
+        ]);
+
+        $payment = Payment::create([
+            'partner_id' => $supplier->id,
+            'payment_date' => now(),
+            'amount' => 600.00,
+            'transaction_type' => 'supplier_payment',
+            'method' => 'cash',
+        ]);
+
+        $journalEntry = JournalEntry::where('source_type', Payment::class)
+            ->where('source_id', $payment->id)
+            ->firstOrFail();
+        $accountsPayable = Account::getSystemAccount(Account::CODE_AP, 'Accounts Payable', 'Liability');
+        $vatPayable = Account::getSystemAccount('2100', 'VAT Payable', 'Liability');
+
+        $this->assertDatabaseHas('journal_items', [
+            'journal_entry_id' => $journalEntry->id,
+            'account_id' => $accountsPayable->id,
+            'debit' => 600.00,
+        ]);
+        $this->assertDatabaseMissing('journal_items', [
+            'journal_entry_id' => $journalEntry->id,
+            'account_id' => $vatPayable->id,
+            'debit' => 600.00,
+        ]);
+    }
+
+    public function test_finance_repair_command_backfills_missing_journals_once()
+    {
+        $customer = Partner::create(['name' => 'Repair Customer', 'is_customer' => true]);
+        $supplier = Partner::create(['name' => 'Repair Supplier', 'is_supplier' => true]);
+        $warehouse = Warehouse::create(['name' => 'Repair Warehouse', 'code' => 'RWH']);
+        $item = InventoryItem::create([
+            'name' => 'Repair Item',
+            'sku' => 'REP-ITEM',
+            'unit' => 'pcs',
+            'purchase_unit' => 'pcs',
+            'conversion_factor' => 1,
+            'type' => 'finished_good',
+            'is_sellable' => true,
+            'price' => 100.00,
+            'average_cost' => 80.00,
+        ]);
+
+        $payment = Payment::withoutEvents(fn () => Payment::create([
+            'payment_number' => 'PAY-REPAIR-001',
+            'partner_id' => $customer->id,
+            'payment_date' => now(),
+            'amount' => 100.00,
+            'direction' => 'inbound',
+            'method' => 'cash',
+            'transaction_type' => 'customer_receipt',
+        ]));
+
+        $salesOrder = SalesOrder::withoutEvents(fn () => SalesOrder::create([
+            'order_number' => 'SO-REPAIR-001',
+            'warehouse_id' => $warehouse->id,
+            'partner_id' => $customer->id,
+            'order_date' => now(),
+            'payment_mode' => 'credit',
+            'status' => 'submitted',
+            'subtotal' => 200.00,
+            'tax_amount' => 0.00,
+            'total' => 200.00,
+        ]));
+        SalesOrderItem::create(['sales_order_id' => $salesOrder->id, 'inventory_item_id' => $item->id, 'quantity' => 1, 'unit_price' => 200.00, 'total' => 200.00]);
+
+        $jobOrder = JobOrder::withoutEvents(fn () => JobOrder::create([
+            'job_order_number' => 'JO-REPAIR-001',
+            'partner_id' => $customer->id,
+            'job_type' => 'books',
+            'cost_calc_file' => 'repair.pdf',
+            'services' => ['printing'],
+            'submission_date' => now(),
+            'advance_amount' => 0,
+            'subtotal' => 300.00,
+            'tax_amount' => 0.00,
+            'total' => 300.00,
+            'status' => 'completed',
+        ]));
+
+        $purchaseOrder = PurchaseOrder::withoutEvents(fn () => PurchaseOrder::create([
+            'po_number' => 'PO-REPAIR-001',
+            'partner_id' => $supplier->id,
+            'order_date' => now(),
+            'status' => 'received',
+            'subtotal' => 400.00,
+            'tax_amount' => 0.00,
+            'total' => 400.00,
+        ]));
+
+        $this->artisan('finance:repair-journals')->assertSuccessful();
+        $this->artisan('finance:repair-journals')->assertSuccessful();
+
+        $this->assertSame(1, JournalEntry::where('source_type', Payment::class)->where('source_id', $payment->id)->count());
+        $this->assertSame(1, JournalEntry::where('source_type', SalesOrder::class)->where('source_id', $salesOrder->id)->count());
+        $this->assertSame(1, JournalEntry::where('source_type', JobOrder::class)->where('source_id', $jobOrder->id)->count());
+        $this->assertSame(1, JournalEntry::where('source_type', PurchaseOrder::class)->where('source_id', $purchaseOrder->id)->count());
     }
 
     public function test_payment_void_creates_reversal_journal_entry()

@@ -47,18 +47,19 @@ class BidForm
                                 TextInput::make('estimated_value')
                                     ->numeric()
                                     ->default(0)
+                                    ->live(onBlur: true)
                                     ->suffix('Birr')
                                     ->required(),
                                 DatePicker::make('deadline_date')
                                     ->label('Closing Date'),
                                 TextInput::make('bid_bond_amount')
-                                    ->label('Bid Amount')
+                                    ->label('Bond Amount')
                                     ->numeric()
+                                    ->minValue(0)
+                                    ->maxValue(fn (callable $get): float => (float) ($get('estimated_value') ?? 0))
                                     ->suffix('Birr'),
-                                TextInput::make('status')
-                                    ->formatStateUsing(fn (?string $state): string => Bid::statusOptions()[$state ?? Bid::STATUS_DRAFT] ?? 'Draft')
-                                    ->disabled()
-                                    ->dehydrated(false),
+                                Hidden::make('status')
+                                    ->default(Bid::STATUS_DRAFT),
                             ]),
                         Textarea::make('notes')
                             ->label('Notes / Summary')

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Filament\Resources\StockAdjustments\StockAdjustmentResource;
 use App\Models\InventoryBalance;
 use App\Models\InventoryItem;
 use App\Models\StockAdjustment;
@@ -67,6 +68,8 @@ class StockAdjustmentWorkflowTest extends TestCase
             'warehouse_id' => $warehouse->id,
             'quantity_on_hand' => 80.00,
         ]);
+
+        $this->assertFalse(StockAdjustmentResource::canEdit($adjustment->fresh()));
     }
 
     public function test_stock_adjustment_cannot_post_when_resulting_stock_is_negative()

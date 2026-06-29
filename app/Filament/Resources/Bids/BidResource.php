@@ -32,6 +32,13 @@ class BidResource extends Resource
         return PanelAccess::canAccessFinanceSection() || PanelAccess::canManageJobOrders();
     }
 
+    public static function canEdit(Model $record): bool
+    {
+        return $record instanceof Bid
+            && $record->status === Bid::STATUS_DRAFT
+            && static::canViewAny();
+    }
+
     public static function form(Schema $schema): Schema
     {
         return BidForm::configure($schema);

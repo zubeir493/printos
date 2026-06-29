@@ -11,14 +11,30 @@ class CreatePurchaseOrderJournalEntry
 {
     public function handle(PurchaseOrder $purchaseOrder)
     {
+        if ($this->hasPostedJournalEntry($purchaseOrder)) {
+            return;
+        }
+
         $purchaseOrder->load('purchaseOrderItems');
 
-        $total = $purchaseOrder->purchaseOrderItems->sum(function ($item) {
-            return (float) $item->quantity * (float) $item->unit_price;
-        });
+        $total = (float) $purchaseOrder->total;
+
+        if ($total <= 0) {
+            $total = $purchaseOrder->purchaseOrderItems->sum(function ($item) {
+                return (float) $item->quantity * (float) $item->unit_price;
+            });
+        }
 
         if ($total <= 0) {
             $total = (float) $purchaseOrder->subtotal;
+        }
+
+        $inventoryTotal = $purchaseOrder->purchaseOrderItems->sum(function ($item) {
+            return (float) $item->quantity * (float) $item->unit_price;
+        });
+
+        if ($inventoryTotal <= 0) {
+            $inventoryTotal = $total;
         }
 
         if ($total <= 0) {
@@ -43,9 +59,20 @@ class CreatePurchaseOrderJournalEntry
         JournalItem::create([
             'journal_entry_id' => $journalEntry->id,
             'account_id' => $inventoryAccount->id,
-            'debit' => $total,
+            'debit' => $inventoryTotal,
             'credit' => 0,
         ]);
+
+        $taxAmount = round($total - $inventoryTotal, 2);
+
+        if ($taxAmount > 0) {
+            JournalItem::create([
+                'journal_entry_id' => $journalEntry->id,
+                'account_id' => Account::getSystemAccount('2100', 'VAT Payable', 'Liability')->id,
+                'debit' => $taxAmount,
+                'credit' => 0,
+            ]);
+        }
 
         JournalItem::create([
             'journal_entry_id' => $journalEntry->id,
@@ -53,5 +80,14 @@ class CreatePurchaseOrderJournalEntry
             'debit' => 0,
             'credit' => $total,
         ]);
+    }
+
+    private function hasPostedJournalEntry(PurchaseOrder $purchaseOrder): bool
+    {
+        return JournalEntry::query()
+            ->where('source_type', PurchaseOrder::class)
+            ->where('source_id', $purchaseOrder->id)
+            ->whereNull('reversal_of_journal_entry_id')
+            ->exists();
     }
 }

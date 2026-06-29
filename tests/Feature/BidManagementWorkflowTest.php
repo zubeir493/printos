@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\PaymentTransactionType;
+use App\Filament\Resources\Bids\BidResource;
 use App\Filament\Resources\Bids\Pages\CreateBid;
 use App\Filament\Resources\Bids\Pages\EditBid;
 use App\Filament\Resources\Bids\Pages\ListBids;
@@ -52,6 +53,8 @@ test('finance can create and filter bids', function (): void {
     Livewire::test(ListBids::class)
         ->filterTable('status', Bid::STATUS_DRAFT)
         ->assertCanSeeTableRecords([$bid])
+        ->assertTableActionVisible('edit', $bid)
+        ->assertTableActionVisible('send_bond', $bid)
         ->filterTable('status', Bid::STATUS_AWARDED)
         ->assertCanNotSeeTableRecords([$bid]);
 
@@ -72,6 +75,82 @@ test('finance can create and filter bids', function (): void {
 
     Livewire::test(ViewBid::class, ['record' => $bid->id])
         ->assertSet('data.title', 'Annual Packaging Tender');
+});
+
+test('bid bond amount cannot exceed estimated bid value', function (): void {
+    Filament::setCurrentPanel(Filament::getPanel('finance'));
+
+    $this->actingAs(User::factory()->create([
+        'role' => UserRole::Finance,
+    ]));
+
+    $entity = Partner::factory()->customer()->create();
+
+    Livewire::test(CreateBid::class)
+        ->set('data.title', 'Bond Limit Tender')
+        ->set('data.partner_id', $entity->id)
+        ->set('data.estimated_value', 1000)
+        ->set('data.bid_bond_amount', 1001)
+        ->call('create')
+        ->assertHasFormErrors([
+            'bid_bond_amount' => 'max',
+        ]);
+
+    expect(Bid::query()->where('title', 'Bond Limit Tender')->exists())->toBeFalse();
+});
+
+test('bids are editable only while draft', function (): void {
+    Filament::setCurrentPanel(Filament::getPanel('finance'));
+
+    $this->actingAs(User::factory()->create([
+        'role' => UserRole::Finance,
+    ]));
+
+    $draft = Bid::factory()->create([
+        'status' => Bid::STATUS_DRAFT,
+    ]);
+    $submitted = Bid::factory()->create([
+        'status' => Bid::STATUS_SUBMITTED,
+    ]);
+
+    expect(BidResource::canEdit($draft))->toBeTrue()
+        ->and(BidResource::canEdit($submitted))->toBeFalse();
+
+    Livewire::test(ViewBid::class, ['record' => $draft->id])
+        ->assertActionVisible('edit');
+
+    Livewire::test(ViewBid::class, ['record' => $submitted->id])
+        ->assertActionHidden('edit');
+
+    Livewire::test(ListBids::class)
+        ->filterTable('status', Bid::STATUS_DRAFT)
+        ->assertCanSeeTableRecords([$draft])
+        ->assertCanNotSeeTableRecords([$submitted])
+        ->assertTableActionVisible('edit', $draft);
+
+    Livewire::test(ListBids::class)
+        ->filterTable('status', Bid::STATUS_SUBMITTED)
+        ->assertCanSeeTableRecords([$submitted])
+        ->assertCanNotSeeTableRecords([$draft])
+        ->assertTableActionHidden('edit', $submitted);
+});
+
+test('bid view groups header actions', function (): void {
+    Filament::setCurrentPanel(Filament::getPanel('finance'));
+
+    $this->actingAs(User::factory()->create([
+        'role' => UserRole::Finance,
+    ]));
+
+    $bid = Bid::factory()->create([
+        'status' => Bid::STATUS_DRAFT,
+        'bid_bond_amount' => 1000,
+    ]);
+
+    Livewire::test(ViewBid::class, ['record' => $bid->id])
+        ->assertActionExists('submit')
+        ->assertActionExists('send_bond')
+        ->assertActionExists('edit');
 });
 
 test('bid workflow actions manage status and submission date', function (): void {
@@ -236,7 +315,7 @@ test('awarded bid can send and return performance bond from bid actions', functi
         'status' => Bid::STATUS_AWARDED,
     ]);
 
-    Livewire::test(EditBid::class, ['record' => $bid->id])
+    Livewire::test(ViewBid::class, ['record' => $bid->id])
         ->callAction('send_performance_bond', [
             'amount' => 2500,
             'method' => 'cpo',
@@ -271,7 +350,7 @@ test('awarded bid can send and return performance bond from bid actions', functi
         'credit' => 0,
     ]);
 
-    Livewire::test(EditBid::class, ['record' => $bid->id])
+    Livewire::test(ViewBid::class, ['record' => $bid->id])
         ->callAction('return_performance_bond', [
             'payment_date' => '2026-06-20',
         ])
@@ -319,7 +398,7 @@ test('bid resource can send and return bid bond from bid actions', function (): 
         ->and($bond->cpo_bank_name)->toBe('CBE')
         ->and((float) $bank->fresh()->current_balance)->toBe(10000.0);
 
-    Livewire::test(EditBid::class, ['record' => $bid->id])
+    Livewire::test(ViewBid::class, ['record' => $bid->id])
         ->callAction('return_bond', [
             'payment_date' => '2026-06-10',
             'reference' => 'Returned from bid page',
@@ -418,24 +497,24 @@ test('bid actions are hidden outside valid states', function (): void {
         ->assertActionHidden('award')
         ->assertActionHidden('mark_lost');
 
-    Livewire::test(EditBid::class, ['record' => $submitted->id])
+    Livewire::test(ViewBid::class, ['record' => $submitted->id])
         ->assertActionHidden('submit')
         ->assertActionHidden('send_bond')
         ->assertActionVisible('award')
         ->assertActionVisible('mark_lost');
 
-    Livewire::test(EditBid::class, ['record' => $awarded->id])
+    Livewire::test(ViewBid::class, ['record' => $awarded->id])
         ->assertActionHidden('submit')
         ->assertActionHidden('award')
         ->assertActionHidden('mark_lost')
         ->assertActionVisible('send_performance_bond')
         ->assertActionHidden('return_performance_bond');
 
-    Livewire::test(EditBid::class, ['record' => $bondSent->id])
+    Livewire::test(ViewBid::class, ['record' => $bondSent->id])
         ->assertActionHidden('send_performance_bond')
         ->assertActionVisible('return_performance_bond');
 
-    Livewire::test(EditBid::class, ['record' => $bondRecovered->id])
+    Livewire::test(ViewBid::class, ['record' => $bondRecovered->id])
         ->assertActionHidden('send_performance_bond')
         ->assertActionHidden('return_performance_bond');
 
@@ -476,6 +555,7 @@ test('bid table actions are hidden outside valid states', function (): void {
     ]);
 
     Livewire::test(ListBids::class)
+        ->assertTableActionHidden('edit', $submitted)
         ->assertTableActionHidden('send_bond', $draftWithoutAmount)
         ->assertTableActionHidden('award', $draftWithoutAmount)
         ->assertTableActionHidden('mark_lost', $draftWithoutAmount)

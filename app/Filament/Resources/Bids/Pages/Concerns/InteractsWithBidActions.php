@@ -7,6 +7,9 @@ use App\Models\Bank;
 use App\Models\Bid;
 use App\Models\Bond;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
@@ -14,12 +17,45 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Grid;
+use Filament\Support\Colors\Color;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use RuntimeException;
 
 trait InteractsWithBidActions
 {
+    protected function bidHeaderActions(bool $includeEdit = false, bool $includeDelete = false): array
+    {
+        $draftActions = [
+            $this->sendBidBondAction(),
+            $this->submitBidAction(),
+        ];
+
+        if ($includeEdit) {
+            array_unshift($draftActions, EditAction::make()
+                ->color(Color::Indigo)
+                ->visible(fn (): bool => $this->record->status === Bid::STATUS_DRAFT));
+        }
+
+        if ($includeDelete) {
+            $draftActions[] = DeleteAction::make()
+                ->visible(fn (): bool => $this->record->status === Bid::STATUS_DRAFT);
+        }
+
+        return [
+            ActionGroup::make($draftActions)
+                ->visible(fn (): bool => $this->record->status === Bid::STATUS_DRAFT),
+            ActionGroup::make([
+                $this->returnBidBondAction(),
+                $this->awardBidAction(),
+                $this->loseBidAction(),
+            ])
+                ->visible(fn (): bool => $this->record->status === Bid::STATUS_SUBMITTED),
+            $this->sendPerformanceBondAction(),
+            $this->returnPerformanceBondAction(),
+        ];
+    }
+
     protected function submitBidAction(): Action
     {
         return Action::make('submit')
@@ -41,7 +77,7 @@ trait InteractsWithBidActions
         return Action::make('award')
             ->label('Mark Awarded')
             ->icon('heroicon-o-trophy')
-            ->color('success')
+            ->color(Color::Indigo)
             ->visible(fn (): bool => $this->record->status === Bid::STATUS_SUBMITTED && PanelAccess::canManageJobOrders())
             ->requiresConfirmation()
             ->action(function (): void {

@@ -3,8 +3,11 @@
 use App\Filament\Finance\Pages\AccountStatementReport;
 use App\Filament\Finance\Pages\PayablesAgingReport;
 use App\Filament\Finance\Pages\ProfitLossStatementReport;
+use App\Filament\Finance\Pages\ReceivablesAgingReport;
 use App\Filament\Finance\Pages\TrialBalanceReport;
 use App\Models\Account;
+use App\Models\Invoice;
+use App\Models\JobOrder;
 use App\Models\JournalEntry;
 use App\Models\JournalItem;
 use App\Models\Partner;
@@ -107,6 +110,60 @@ test('payables aging uses tax inclusive purchase order totals', function (): voi
     $row = financialReportQuery($page, 'agingQuery')->first();
 
     expect((float) $row->balance)->toBe(950.0);
+});
+
+test('payables aging includes standalone purchase invoices', function (): void {
+    $supplier = Partner::factory()->create(['is_supplier' => true]);
+
+    Invoice::create([
+        'invoice_number' => 'PINV-001',
+        'invoice_type' => 'purchase',
+        'order_type' => 'payment',
+        'order_id' => 1,
+        'partner_id' => $supplier->id,
+        'invoice_date' => '2026-01-10',
+        'due_date' => '2026-01-31',
+        'subtotal' => 1000,
+        'tax_amount' => 150,
+        'total_amount' => 1150,
+        'balance_due' => 1150,
+        'status' => 'unpaid',
+        'filename' => 'pinv-001.pdf',
+        'file_path' => 'invoices/pinv-001.pdf',
+    ]);
+
+    $page = new PayablesAgingReport;
+    $page->asOfDate = '2026-01-31';
+
+    $row = financialReportQuery($page, 'agingQuery')->first();
+
+    expect($row->po_number)->toBe('PINV-001')
+        ->and((float) $row->balance)->toBe(1150.0);
+});
+
+test('receivables aging includes job orders with open balances', function (): void {
+    $customer = Partner::factory()->create(['is_customer' => true]);
+
+    JobOrder::create([
+        'partner_id' => $customer->id,
+        'job_type' => 'books',
+        'cost_calc_file' => 'aging.pdf',
+        'services' => ['printing'],
+        'submission_date' => '2026-01-10',
+        'advance_amount' => 0,
+        'subtotal' => 700,
+        'tax_amount' => 0,
+        'total' => 700,
+        'status' => 'active',
+    ]);
+
+    $page = new ReceivablesAgingReport;
+    $page->asOfDate = '2026-01-31';
+
+    $row = financialReportQuery($page, 'agingQuery')->first();
+
+    expect($row->order_number)->toStartWith('JO-')
+        ->and((float) $row->balance)->toBe(700.0);
 });
 
 test('account statement running balance includes opening balance', function (): void {

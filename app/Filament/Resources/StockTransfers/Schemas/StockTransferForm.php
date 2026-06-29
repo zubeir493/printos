@@ -41,12 +41,8 @@ class StockTransferForm
                             ->seconds(false)
                             ->default(now())
                             ->required(),
-                        TextInput::make('status')
-                            ->default('Draft')
-                            ->columnSpan(2)
-                            ->readOnly()
-                            ->dehydrated(false)
-                            ->required(),
+                        Hidden::make('status')
+                            ->default('draft'),
                         Select::make('from_warehouse_id')
                             ->relationship('fromWarehouse', 'name')
                             ->default(fn () => Warehouse::where('is_default', true)->value('id'))

@@ -4,9 +4,7 @@ namespace App\Filament\Resources\Bids\Pages;
 
 use App\Filament\Resources\Bids\BidResource;
 use App\Filament\Resources\Bids\Pages\Concerns\InteractsWithBidActions;
-use Filament\Actions\EditAction;
 use Filament\Resources\Pages\ViewRecord;
-use Filament\Support\Colors\Color;
 use Illuminate\Contracts\Support\Htmlable;
 
 class ViewBid extends ViewRecord
@@ -22,16 +20,6 @@ class ViewBid extends ViewRecord
 
     protected function getHeaderActions(): array
     {
-        return [
-            $this->sendBidBondAction(),
-            $this->returnBidBondAction(),
-            $this->sendPerformanceBondAction(),
-            $this->returnPerformanceBondAction(),
-            $this->submitBidAction(),
-            $this->awardBidAction(),
-            $this->loseBidAction(),
-            EditAction::make()
-                ->color(Color::Indigo),
-        ];
+        return $this->bidHeaderActions(includeEdit: true);
     }
 }

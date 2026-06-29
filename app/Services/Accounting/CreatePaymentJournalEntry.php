@@ -17,6 +17,10 @@ class CreatePaymentJournalEntry
             return;
         }
 
+        if ($this->hasPostedJournalEntry($payment)) {
+            return;
+        }
+
         $transactionType = $payment->transaction_type
             ? PaymentTransactionType::tryFrom($payment->transaction_type) ?? $this->legacyTransactionType($payment->payment_type, $payment->direction)
             : $this->legacyTransactionType($payment->payment_type, $payment->direction);
@@ -74,6 +78,15 @@ class CreatePaymentJournalEntry
                 ? PaymentTransactionType::SUPPLIER_PAYMENT
                 : PaymentTransactionType::CUSTOMER_RECEIPT,
         };
+    }
+
+    private function hasPostedJournalEntry(Payment $payment): bool
+    {
+        return JournalEntry::query()
+            ->where('source_type', Payment::class)
+            ->where('source_id', $payment->id)
+            ->whereNull('reversal_of_journal_entry_id')
+            ->exists();
     }
 
     private function resolveSourceAccountId(Payment $payment, Account $cashAccount, Account $bankAccount): int

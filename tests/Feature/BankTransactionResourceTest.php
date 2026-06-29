@@ -99,6 +99,30 @@ test('bank transaction resource lists balance affecting payments and completed t
         ->assertSee('Paper Supplier');
 });
 
+test('bank opening balance separates stored balance from transaction movement', function (): void {
+    $bank = createBankTransactionResourceBank('Opening Bank', 1000);
+    $customer = Partner::factory()->create([
+        'is_customer' => true,
+    ]);
+
+    Payment::create([
+        'payment_number' => 'PAY-OPEN-001',
+        'partner_id' => $customer->id,
+        'bank_id' => $bank->id,
+        'payment_date' => '2026-05-01',
+        'amount' => 250,
+        'transaction_type' => PaymentTransactionType::CUSTOMER_RECEIPT->value,
+        'method' => 'bank',
+    ]);
+
+    $bank = $bank->fresh();
+
+    expect((float) $bank->transaction_balance)->toBe(250.0)
+        ->and((float) $bank->opening_balance)->toBe(1000.0)
+        ->and((float) $bank->expected_balance)->toBe(1250.0)
+        ->and((float) $bank->current_balance)->toBe(1250.0);
+});
+
 function createBankTransactionResourceBank(string $name, float $currentBalance): Bank
 {
     return Bank::create([

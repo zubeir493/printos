@@ -16,6 +16,7 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 
 class StockAdjustmentResource extends Resource
 {
@@ -40,6 +41,13 @@ class StockAdjustmentResource extends Resource
     public static function canViewAny(): bool
     {
         return PanelAccess::canAccessWarehouseSection();
+    }
+
+    public static function canEdit(Model $record): bool
+    {
+        return $record instanceof StockAdjustment
+            && $record->status === 'draft'
+            && static::canViewAny();
     }
 
     public static function table(Table $table): Table

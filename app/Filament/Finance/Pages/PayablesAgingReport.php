@@ -3,6 +3,7 @@
 namespace App\Filament\Finance\Pages;
 
 use App\Filament\Exports\PayablesAgingExporter;
+use App\Models\Invoice;
 use App\Models\PurchaseOrder;
 use App\Support\Money;
 use BackedEnum;
@@ -102,13 +103,47 @@ class PayablesAgingReport extends Page implements HasForms, HasTable
 
     protected function agingQuery(): Builder
     {
+        $invoiceQuery = Invoice::query()
+            ->selectRaw('invoices.id as id')
+            ->selectRaw('invoices.invoice_number as po_number')
+            ->selectRaw('invoices.partner_id as partner_id')
+            ->selectRaw('invoices.invoice_date as order_date')
+            ->selectRaw('invoices.due_date as due_date')
+            ->selectRaw("'received' as status")
+            ->selectRaw('invoices.created_at as created_at')
+            ->selectRaw('invoices.updated_at as updated_at')
+            ->selectRaw('invoices.subtotal as subtotal')
+            ->selectRaw('invoices.tax_amount as tax_amount')
+            ->selectRaw('invoices.total_amount as total')
+            ->selectRaw('invoices.balance_due as balance')
+            ->where('invoices.invoice_type', 'purchase')
+            ->whereNotIn('invoices.status', ['cancelled', 'paid'])
+            ->where('invoices.balance_due', '>', 0)
+            ->where(function ($query): void {
+                $query->whereNull('invoices.order_type')
+                    ->orWhere('invoices.order_type', '!=', 'purchase_order')
+                    ->orWhereNull('invoices.order_id');
+            })
+            ->when($this->asOfDate, fn ($query) => $query->whereDate('invoices.invoice_date', '<=', Carbon::parse($this->asOfDate)->toDateString()));
+
         return PurchaseOrder::query()
             ->with('partner')
-            ->select('purchase_orders.*')
+            ->selectRaw('purchase_orders.id as id')
+            ->selectRaw('purchase_orders.po_number as po_number')
+            ->selectRaw('purchase_orders.partner_id as partner_id')
+            ->selectRaw('purchase_orders.order_date as order_date')
+            ->selectRaw('purchase_orders.due_date as due_date')
+            ->selectRaw('purchase_orders.status as status')
+            ->selectRaw('purchase_orders.created_at as created_at')
+            ->selectRaw('purchase_orders.updated_at as updated_at')
+            ->selectRaw('purchase_orders.subtotal as subtotal')
+            ->selectRaw('purchase_orders.tax_amount as tax_amount')
+            ->selectRaw('purchase_orders.total as total')
             ->selectRaw('(COALESCE(purchase_orders.total, 0) - COALESCE((SELECT SUM(payments.amount) FROM payments WHERE payments.payable_type = ? AND payments.payable_id = purchase_orders.id AND payments.payment_date <= ? AND payments.voided_at IS NULL), 0)) as balance', [PurchaseOrder::class, $this->asOfDate])
             ->whereRaw('(COALESCE(purchase_orders.total, 0) - COALESCE((SELECT SUM(payments.amount) FROM payments WHERE payments.payable_type = ? AND payments.payable_id = purchase_orders.id AND payments.payment_date <= ? AND payments.voided_at IS NULL), 0)) > 0', [PurchaseOrder::class, $this->asOfDate])
             ->when($this->asOfDate, fn ($query) => $query->whereDate('purchase_orders.order_date', '<=', Carbon::parse($this->asOfDate)->toDateString()))
-            ->orderByDesc('purchase_orders.order_date');
+            ->unionAll($invoiceQuery)
+            ->orderByDesc('order_date');
     }
 
     public function ageDays($record): int

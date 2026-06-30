@@ -33,6 +33,7 @@ class Setting extends Model
         'receipt_prefix',
         'currency_code',
         'currency_symbol',
+        'fiscal_calendar',
         'email_from_name',
         'email_from_address',
         'email_footer',
@@ -50,6 +51,9 @@ class Setting extends Model
             'tax_configuration' => 'array',
             'costing_defaults' => 'array',
             'invoice_due_days' => 'integer',
+            'currency_code' => 'string',
+            'currency_symbol' => 'string',
+            'fiscal_calendar' => 'string',
         ];
     }
 
@@ -140,8 +144,9 @@ class Setting extends Model
             'invoice_due_days' => 30,
             'invoice_prefix' => 'INV',
             'receipt_prefix' => 'RCP',
-            'currency_code' => 'Birr',
+            'currency_code' => 'ETB',
             'currency_symbol' => 'Birr',
+            'fiscal_calendar' => 'gregorian',
         ]);
     }
 

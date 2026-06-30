@@ -5,6 +5,7 @@ namespace App\Filament\Resources\PurchaseOrders\Schemas;
 use App\Filament\Support\Calculations;
 use App\Models\InventoryItem;
 use App\Models\Setting;
+use App\Support\Money;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
@@ -113,7 +114,7 @@ class PurchaseOrderForm
                                 TextInput::make('unit_price')
                                     ->numeric()
                                     ->required()
-                                    ->suffix('Birr')
+                                    ->suffix(fn (): string => Money::suffix())
                                     ->live(onBlur: true)
                                     ->afterStateUpdated(function ($set, $get, $state) {
                                         $set('total', (float) ($state ?? 0) * (float) ($get('quantity') ?? 0));
@@ -132,7 +133,7 @@ class PurchaseOrderForm
                                     ->numeric()
                                     ->readOnly()
                                     ->dehydrated()
-                                    ->suffix('Birr')
+                                    ->suffix(fn (): string => Money::suffix())
                                     ->afterStateHydrated(function ($set, $get) {
                                         $set('total', round((float) ($get('quantity') ?? 0) * (float) ($get('unit_price') ?? 0), 2));
                                         Calculations::updateSubtotal($get, $set, '../../purchaseOrderItems', '../../subtotal');
@@ -229,9 +230,10 @@ class PurchaseOrderForm
     private static function summaryValue(mixed $amount, bool $isPrimary = false): HtmlString
     {
         return new HtmlString(sprintf(
-            '<span class="cost-summary-value%s">%s Birr</span>',
+            '<span class="cost-summary-value%s">%s %s</span>',
             $isPrimary ? ' cost-summary-value-primary' : '',
             e(Number::format((float) ($amount ?? 0), precision: 2)),
+            e(Money::suffix()),
         ));
     }
 }

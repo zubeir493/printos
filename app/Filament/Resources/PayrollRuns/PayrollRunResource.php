@@ -8,6 +8,7 @@ use App\Filament\Resources\PayrollRuns\Pages\ListPayrollRuns;
 use App\Models\Employee;
 use App\Models\PayrollRun;
 use App\Services\Hr\RecalculatePayrollRegisterRow;
+use App\Support\Money;
 use BackedEnum;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
@@ -25,7 +26,6 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
-use UnitEnum;
 
 class PayrollRunResource extends Resource
 {
@@ -51,7 +51,7 @@ class PayrollRunResource extends Resource
                 ]),
             Group::make()
                 ->columnSpanFull()
-                ->visible(fn(?PayrollRun $record, string $operation): bool => $operation !== 'create' && filled($record?->id))
+                ->visible(fn (?PayrollRun $record, string $operation): bool => $operation !== 'create' && filled($record?->id))
                 ->schema([
                     Repeater::make('employees')
                         ->extraAttributes(['class' => 'payrollTable'])
@@ -61,7 +61,7 @@ class PayrollRunResource extends Resource
                         ->addable(false)
                         ->deletable(false)
                         ->reorderable(false)
-                        ->disabled(fn(?PayrollRun $record): bool => $record?->status !== 'draft')
+                        ->disabled(fn (?PayrollRun $record): bool => $record?->status !== 'draft')
                         ->compact()
                         ->table([
                             TableColumn::make('Employee'),
@@ -88,7 +88,7 @@ class PayrollRunResource extends Resource
                             Hidden::make('calculation_snapshot'),
                             Select::make('employee_id')
                                 ->relationship('employee', 'first_name')
-                                ->getOptionLabelFromRecordUsing(fn(Employee $record): string => $record->full_name)
+                                ->getOptionLabelFromRecordUsing(fn (Employee $record): string => $record->full_name)
                                 ->searchable()
                                 ->preload()
                                 ->disabled()
@@ -111,9 +111,9 @@ class PayrollRunResource extends Resource
                             static::editableMoneyInput('loan'),
                             static::moneyInput('workers_union')->disabled(),
                             static::moneyInput('total_deduction')->disabled(),
-                            static::moneyInput('net_pay')->disabled()->suffix('Birr'),
+                            static::moneyInput('net_pay')->disabled()->suffix(fn (): string => Money::suffix()),
                         ])
-                        ->mutateRelationshipDataBeforeSaveUsing(fn(array $data, Model $record): array => app(RecalculatePayrollRegisterRow::class)->forData($data, $record->payrollRun()->first())),
+                        ->mutateRelationshipDataBeforeSaveUsing(fn (array $data, Model $record): array => app(RecalculatePayrollRegisterRow::class)->forData($data, $record->payrollRun()->first())),
                 ]),
         ]);
     }
@@ -127,13 +127,13 @@ class PayrollRunResource extends Resource
                 TextColumn::make('period_end')->date(),
                 TextColumn::make('status')
                     ->badge()
-                    ->color(fn(string $state): string => match ($state) {
+                    ->color(fn (string $state): string => match ($state) {
                         'approved' => 'warning',
                         'paid' => 'success',
                         default => 'gray',
                     }),
                 TextColumn::make('employees_count')->counts('employees')->label('Employees'),
-                TextColumn::make('employees_sum_net_pay')->sum('employees', 'net_pay')->money('ETB')->label('Net Pay'),
+                TextColumn::make('employees_sum_net_pay')->sum('employees', 'net_pay')->formatStateUsing(fn ($state): string => Money::format($state, 2))->label('Net Pay'),
             ])
             ->defaultSort('created_at', 'desc');
     }
@@ -175,7 +175,7 @@ class PayrollRunResource extends Resource
             ->extraInputAttributes(['class' => 'payroll-register-number-input'])
             ->dehydrated()
             ->live(onBlur: true)
-            ->afterStateUpdated(fn(Get $get, Set $set): null => static::recalculatePayrollRow($get, $set));
+            ->afterStateUpdated(fn (Get $get, Set $set): null => static::recalculatePayrollRow($get, $set));
     }
 
     private static function recalculatePayrollRow(Get $get, Set $set): null

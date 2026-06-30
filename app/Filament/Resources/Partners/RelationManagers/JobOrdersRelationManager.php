@@ -47,7 +47,7 @@ class JobOrdersRelationManager extends RelationManager
                 TextInput::make('total')
                     ->required()
                     ->numeric()
-                    ->prefix('$'),
+                    ->prefix(fn (): string => Money::suffix()),
                 TextInput::make('status')
                     ->required(),
                 TextInput::make('advance_amount')

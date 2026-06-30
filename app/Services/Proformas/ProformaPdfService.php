@@ -7,6 +7,7 @@ use App\Models\Bank;
 use App\Models\EmailLog;
 use App\Models\Proforma;
 use App\Models\Setting;
+use App\Support\Money;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
@@ -128,8 +129,8 @@ class ProformaPdfService
             'total' => (float) $proforma->total,
             'amount_in_words' => $this->amountInWords((float) $proforma->total),
             'remarks' => $proforma->remarks,
-            'currency_code' => $settings->currency_code ?? 'Birr',
-            'currency_symbol' => $settings->currency_symbol ?? 'Birr',
+            'currency_code' => Money::currencyCode(),
+            'currency_symbol' => Money::suffix(),
             'vat_rate' => (float) ($settings->vat_rate ?? 15),
             'bank_accounts' => Bank::query()
                 ->where('status', 'active')

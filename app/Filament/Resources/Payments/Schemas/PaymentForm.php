@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Payments\Schemas;
 
 use App\Enums\PaymentTransactionType;
 use App\Models\Payment;
+use App\Support\Money;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
@@ -87,7 +88,7 @@ class PaymentForm
                         TextInput::make('amount')
                             ->required()
                             ->numeric()
-                            ->suffix('Birr'),
+                            ->suffix(fn (): string => Money::suffix()),
                         DatePicker::make('payment_date')
                             ->default(now())
                             ->required(),

@@ -46,7 +46,7 @@ class CostEstimatesTable
                     })
                     ->formatStateUsing(fn (string $state): string => str($state)->headline()->value()),
                 TextColumn::make('unit_price')
-                    ->formatStateUsing(fn ($state): string => number_format((float) $state, 4).' Birr')
+                    ->formatStateUsing(fn ($state): string => Money::format($state, 4))
                     ->sortable(),
                 TextColumn::make('total')
                     ->formatStateUsing(fn ($state): string => Money::format($state))

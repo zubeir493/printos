@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Machines\Schemas;
 
 use App\Models\Machine;
+use App\Support\Money;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Schema;
@@ -30,7 +31,7 @@ class MachineForm
                 TextInput::make('hourly_cost')
                     ->numeric()
                     ->default(0)
-                    ->suffix('Birr'),
+                    ->suffix(fn (): string => Money::suffix()),
                 TextInput::make('production_speed')
                     ->numeric()
                     ->default(0)

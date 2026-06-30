@@ -5,6 +5,7 @@ namespace App\Filament\Finance\Pages;
 use App\Filament\Exports\FinancialAccountExporter;
 use App\Models\Account;
 use App\Services\Accounting\FinancialReportService;
+use App\Support\FiscalCalendar;
 use App\Support\Money;
 use BackedEnum;
 use Filament\Actions\ExportAction;
@@ -49,7 +50,7 @@ class TrialBalanceReport extends Page implements HasForms, HasTable
 
     public function mount(): void
     {
-        $this->startDate = now()->startOfYear()->toDateString();
+        $this->startDate = FiscalCalendar::currentFiscalYearStart()->toDateString();
         $this->endDate = now()->toDateString();
     }
 

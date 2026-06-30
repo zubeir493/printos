@@ -3,6 +3,7 @@
 namespace App\Filament\Widgets;
 
 use App\Services\Accounting\FinancialReportService;
+use App\Support\FiscalCalendar;
 use Livewire\Component;
 
 class TrialBalanceDifferenceWidget extends Component
@@ -10,7 +11,7 @@ class TrialBalanceDifferenceWidget extends Component
     public function render()
     {
         $report = app(FinancialReportService::class)->trialBalance(
-            now()->startOfYear()->toDateString(),
+            FiscalCalendar::currentFiscalYearStart()->toDateString(),
             now()->toDateString()
         );
 

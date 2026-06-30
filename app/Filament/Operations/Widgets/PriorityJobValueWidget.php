@@ -16,8 +16,6 @@ class PriorityJobValueWidget extends SparklineTableWidget
 
     protected ?string $widgetLabel = 'Priority Job Value';
 
-    protected string $widgetCurrency = 'ETB';
-
     protected function getData(): SparklineTableWidgetData
     {
         $periods = $this->comparisonPeriods();

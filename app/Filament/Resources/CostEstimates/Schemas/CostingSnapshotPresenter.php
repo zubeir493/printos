@@ -4,6 +4,7 @@ namespace App\Filament\Resources\CostEstimates\Schemas;
 
 use App\Models\InventoryItem;
 use App\Models\Machine;
+use App\Support\Money;
 use Illuminate\Support\HtmlString;
 use Illuminate\Support\Js;
 use Illuminate\Support\Number;
@@ -123,7 +124,7 @@ class CostingSnapshotPresenter
         }
 
         if (isset($snapshot['hourly_cost'])) {
-            $details[] = Number::format((float) $snapshot['hourly_cost'], maxPrecision: 2).' Birr/hr';
+            $details[] = Number::format((float) $snapshot['hourly_cost'], maxPrecision: 2).' '.Money::suffix().'/hr';
         }
 
         return implode(' | ', $details) ?: 'Machine selected';
@@ -157,8 +158,9 @@ class CostingSnapshotPresenter
 
         $purchaseCost = $item->hasPurchaseUnit()
             ? sprintf(
-                '<div class="cost-snapshot-muted">%s Birr/%s, %s %s per %s</div>',
+                '<div class="cost-snapshot-muted">%s %s/%s, %s %s per %s</div>',
                 e(number_format($item->pricePerPurchaseUnit(), 2)),
+                e(Money::suffix()),
                 e($item->purchase_unit),
                 e(number_format((float) $item->conversion_factor, 2)),
                 e($item->unit),
@@ -169,7 +171,7 @@ class CostingSnapshotPresenter
         return new HtmlString(sprintf(
             '<div class="cost-snapshot-card cost-snapshot-card-inventory">
                 <div class="cost-snapshot-heading">%s</div>
-                <div class="cost-snapshot-rate">%s Birr/%s</div>
+                <div class="cost-snapshot-rate">%s %s/%s</div>
                 %s
                 <dl class="cost-snapshot-grid">
                     <div><dt>GSM</dt><dd>%s</dd></div>
@@ -179,6 +181,7 @@ class CostingSnapshotPresenter
             </div>',
             e($item->name),
             e(number_format($item->baseUnitCost(), 2)),
+            e(Money::suffix()),
             e($item->unit),
             $purchaseCost,
             e($item->gsm ?: 'N/A'),
@@ -200,13 +203,14 @@ class CostingSnapshotPresenter
                 <div class="cost-snapshot-heading">%s</div>
                 <dl class="cost-snapshot-grid">
                     <div><dt>Speed</dt><dd>%s units/hr</dd></div>
-                    <div><dt>Hourly cost</dt><dd>%s Birr</dd></div>
+                    <div><dt>Hourly cost</dt><dd>%s %s</dd></div>
                     <div><dt>Operation</dt><dd>%s</dd></div>
                 </dl>
             </div>',
             e($machine->name),
             e(number_format((float) $machine->production_speed, 2)),
             e(number_format((float) $machine->hourly_cost, 2)),
+            e(Money::suffix()),
             e(Machine::OPERATION_TYPES[$machine->operation_type] ?? $machine->operation_type),
         ));
     }

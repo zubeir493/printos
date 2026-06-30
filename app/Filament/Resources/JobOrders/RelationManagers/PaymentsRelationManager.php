@@ -32,7 +32,7 @@ class PaymentsRelationManager extends RelationManager
                 ->label('Total Applied')
                 ->numeric()
                 ->required()
-                ->suffix('Birr')
+                ->suffix(fn (): string => Money::suffix())
                 ->maxValue(fn (?Model $record): float => $this->remainingBalance($record)),
             TextInput::make('withholding_amount')
                 ->label('Withholding')
@@ -40,7 +40,7 @@ class PaymentsRelationManager extends RelationManager
                 ->default(0)
                 ->minValue(0)
                 ->maxValue(fn (callable $get): float => (float) ($get('amount') ?? 0))
-                ->suffix('Birr'),
+                ->suffix(fn (): string => Money::suffix()),
             Select::make('method')
                 ->label('Payment method')
                 ->options([

@@ -31,7 +31,7 @@ class PaymentsRelationManager extends RelationManager
             TextInput::make('amount')
                 ->numeric()
                 ->required()
-                ->suffix('Birr')
+                ->suffix(fn (): string => Money::suffix())
                 ->maxValue(fn (?Model $record): float => $this->remainingBalance($record)),
             Select::make('method')
                 ->label('Payment method')

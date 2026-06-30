@@ -4,6 +4,7 @@ namespace App\Filament\Resources\CostEstimates\Schemas;
 
 use App\Models\InventoryItem;
 use App\Models\Machine;
+use App\Support\Money;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
@@ -61,9 +62,9 @@ class PackageCostingWizardSchema
                 ->schema([
                     Select::make('services.operations.printing_machine_id')->label('Printing Machine')->options(fn (): array => Machine::query()->operation('printing')->pluck('name', 'id')->all())->searchable()->preload()->live(),
                     Select::make('services.operations.diecutting_machine_id')->label('Die Cutting Machine')->options(fn (): array => Machine::query()->operation('die_cutting')->pluck('name', 'id')->all())->searchable()->preload()->live(),
-                    TextInput::make('services.operations.die_unit_cost')->numeric()->suffix('Birr')->default(10000)->live(onBlur: true),
+                    TextInput::make('services.operations.die_unit_cost')->numeric()->suffix(fn (): string => Money::suffix())->default(10000)->live(onBlur: true),
                     Select::make('services.operations.folder_gluer_machine_id')->label('Folder Gluer')->options(fn (): array => Machine::query()->operation('folder_gluer')->pluck('name', 'id')->all())->searchable()->preload()->live(),
-                    TextInput::make('services.operations.manual_finishing_unit_cost')->numeric()->suffix('Birr')->default(0.05)->live(onBlur: true),
+                    TextInput::make('services.operations.manual_finishing_unit_cost')->numeric()->suffix(fn (): string => Money::suffix())->default(0.05)->live(onBlur: true),
                     Section::make('Machine Snapshots')
                         ->schema([
                             Placeholder::make('printing_machine_snapshot')

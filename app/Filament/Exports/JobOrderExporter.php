@@ -3,6 +3,7 @@
 namespace App\Filament\Exports;
 
 use App\Models\JobOrder;
+use App\Support\Money;
 use Filament\Actions\Exports\ExportColumn;
 use Filament\Actions\Exports\Exporter;
 use Filament\Actions\Exports\Models\Export;
@@ -26,15 +27,15 @@ class JobOrderExporter extends Exporter
             ExportColumn::make('submission_date')
                 ->label('Submission Date'),
             ExportColumn::make('subtotal')
-                ->label('Subtotal (Birr)'),
+                ->label('Subtotal ('.Money::suffix().')'),
             ExportColumn::make('tax_amount')
-                ->label('Tax Amount (Birr)'),
+                ->label('Tax Amount ('.Money::suffix().')'),
             ExportColumn::make('total')
-                ->label('Total (Birr)'),
+                ->label('Total ('.Money::suffix().')'),
             ExportColumn::make('paid_amount')
-                ->label('Paid Amount (Birr)'),
+                ->label('Paid Amount ('.Money::suffix().')'),
             ExportColumn::make('balance')
-                ->label('Balance (Birr)'),
+                ->label('Balance ('.Money::suffix().')'),
             ExportColumn::make('status')
                 ->label('Status'),
             ExportColumn::make('production_started_at'),
@@ -43,7 +44,7 @@ class JobOrderExporter extends Exporter
                 ->label('Advance Paid')
                 ->getStateUsing(fn ($record) => $record->payments()->whereNull('voided_at')->exists() ? 'Yes' : 'No'),
             ExportColumn::make('advance_amount')
-                ->label('Advance Amount (Birr)'),
+                ->label('Advance Amount ('.Money::suffix().')'),
             ExportColumn::make('production_mode'),
         ];
     }

@@ -39,7 +39,7 @@ class EditPayrollRun extends EditRecord
 
                         Notification::make()
                             ->title("Payroll calculated for {$count} employees")
-                            ->body('Net pay total: '.number_format((float) $netPay, 2).' Birr')
+                            ->body('Net pay total: '.Money::format($netPay, 2))
                             ->success()
                             ->send();
                     }),

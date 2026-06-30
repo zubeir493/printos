@@ -4,6 +4,7 @@ namespace App\Notifications;
 
 use App\Models\Invoice;
 use App\Notifications\Concerns\SendsWebPushNotifications;
+use App\Support\Money;
 use Filament\Notifications\Notification as FilamentNotification;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueueAfterCommit;
@@ -26,7 +27,7 @@ class InvoiceOverdueNotification extends Notification implements ShouldQueueAfte
         $partner = $this->invoice->partner?->name ?? 'Unknown';
         $overdueDays = now()->diffInDays($this->invoice->due_date);
 
-        return "Invoice {$this->invoice->invoice_number} for {$partner} is {$overdueDays} day(s) overdue. Balance due: ".number_format($this->invoice->balance_due, 2).' Birr.';
+        return "Invoice {$this->invoice->invoice_number} for {$partner} is {$overdueDays} day(s) overdue. Balance due: ".Money::format($this->invoice->balance_due, 2).'.';
     }
 
     public function toDatabase(object $notifiable): array

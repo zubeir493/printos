@@ -5,6 +5,7 @@ namespace App\Filament\Finance\Pages;
 use App\Filament\Exports\GeneralLedgerExporter;
 use App\Models\Account;
 use App\Models\JournalItem;
+use App\Support\FiscalCalendar;
 use App\Support\Money;
 use BackedEnum;
 use Carbon\Carbon;
@@ -49,7 +50,7 @@ class GeneralLedgerReport extends Page implements HasForms, HasTable
     public function mount(): void
     {
         $this->accountId = null;
-        $this->startDate = now()->startOfYear()->toDateString();
+        $this->startDate = FiscalCalendar::currentFiscalYearStart()->toDateString();
         $this->endDate = now()->toDateString();
     }
 

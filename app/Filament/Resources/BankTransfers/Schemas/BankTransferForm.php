@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\BankTransfers\Schemas;
 
 use App\Models\BankTransfer;
+use App\Support\Money;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
@@ -60,7 +61,7 @@ class BankTransferForm
                     ->label('Transfer Amount')
                     ->required()
                     ->numeric()
-                    ->suffix(' Birr')
+                    ->suffix(fn (): string => Money::suffix())
                     ->rules(['min:0.01'])
                     ->helperText('Amount to transfer between banks'),
 

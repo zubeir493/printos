@@ -3,6 +3,7 @@
 namespace App\Filament\Exports;
 
 use App\Models\InventoryBalance;
+use App\Support\Money;
 use Filament\Actions\Exports\ExportColumn;
 use Filament\Actions\Exports\Exporter;
 use Filament\Actions\Exports\Models\Export;
@@ -36,7 +37,7 @@ class InventoryBalanceExporter extends Exporter
                     return number_format($state).' '.$item->unit;
                 }),
             ExportColumn::make('total_value')
-                ->label('Total Value (Birr)')
+                ->label('Total Value ('.Money::suffix().')')
                 ->state(function (InventoryBalance $record): float {
                     $item = $record->inventoryItem;
                     if (! $item || in_array($item->type, ['tools', 'spare_parts', 'wip'])) {

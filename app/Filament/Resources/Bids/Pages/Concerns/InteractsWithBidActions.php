@@ -7,6 +7,7 @@ use App\Filament\Support\PanelAccess;
 use App\Models\Bank;
 use App\Models\Bid;
 use App\Models\Bond;
+use App\Support\Money;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
@@ -221,7 +222,7 @@ trait InteractsWithBidActions
                     ->label('Performance Bond Amount')
                     ->numeric()
                     ->required()
-                    ->suffix('Birr'),
+                    ->suffix(fn (): string => Money::suffix()),
                 ...$this->bondPaymentFields(includeReference: false),
                 Textarea::make('notes')
                     ->maxLength(65535)

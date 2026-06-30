@@ -15,8 +15,6 @@ class CashflowActivityWidget extends HeatmapCalendarWidget
 
     protected ?string $widgetLabel = 'Cashflow Activity';
 
-    protected string $widgetCurrency = 'ETB';
-
     protected function getData(): HeatmapCalendarWidgetData
     {
         return new HeatmapCalendarWidgetData(

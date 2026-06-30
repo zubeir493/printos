@@ -4,6 +4,7 @@ namespace App\Filament\Resources\CostEstimates\Schemas;
 
 use App\Models\InventoryItem;
 use App\Models\Machine;
+use App\Support\Money;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
@@ -105,7 +106,7 @@ class LabelCostingWizardSchema
                 ->visible(fn (Get $get): bool => $get('job_type') === 'labels')
                 ->columns(3)
                 ->schema([
-                    TextInput::make('services.finishing.cutting_unit_cost')->numeric()->suffix('Birr')->default(25)->live(onBlur: true),
+                    TextInput::make('services.finishing.cutting_unit_cost')->numeric()->suffix(fn (): string => Money::suffix())->default(25)->live(onBlur: true),
                     TextInput::make('services.finishing.bundle_size')->numeric()->default(2000)->minValue(1)->live(onBlur: true),
                     Select::make('services.finishing.packing_item_id')
                         ->label('Packing Item')

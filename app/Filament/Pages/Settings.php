@@ -3,10 +3,13 @@
 namespace App\Filament\Pages;
 
 use App\Models\Setting;
+use App\Support\FiscalCalendar;
+use App\Support\Money;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\BaseFileUpload;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -164,20 +167,22 @@ class Settings extends Page implements HasForms
                             ->placeholder('Enter default terms to appear on invoices'),
                     ]),
 
-                Section::make('Currency Settings')
-                    ->description('Default currency configuration')
+                Section::make('Currency & Fiscal Year')
+                    ->description('Company-wide display currency and reporting period defaults')
                     ->schema([
                         Grid::make()
                             ->columns(2)
                             ->schema([
-                                TextInput::make('currency_code')
-                                    ->label('Currency Code')
-                                    ->placeholder('Birr')
+                                Select::make('currency_code')
+                                    ->label('Currency')
+                                    ->options(Money::currencyOptions())
+                                    ->native(false)
                                     ->required()
-                                    ->maxLength(3),
-                                TextInput::make('currency_symbol')
-                                    ->label('Currency Symbol')
-                                    ->placeholder('Birr')
+                                    ->afterStateUpdated(fn (string $state, callable $set): mixed => $set('currency_symbol', Money::currencies()[$state]['suffix'] ?? $state)),
+                                Select::make('fiscal_calendar')
+                                    ->label('Fiscal Year')
+                                    ->options(FiscalCalendar::calendarOptions())
+                                    ->native(false)
                                     ->required(),
                             ]),
                     ]),
@@ -231,6 +236,8 @@ class Settings extends Page implements HasForms
         if (blank($data['company_logo'] ?? null) && filled($existingSettings?->company_logo)) {
             $data['company_logo'] = $existingSettings->company_logo;
         }
+
+        $data['currency_symbol'] = Money::currencies()[$data['currency_code']]['suffix'] ?? $data['currency_code'];
 
         if ($existingSettings) {
             $existingSettings->update($data);

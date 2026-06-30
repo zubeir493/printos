@@ -5,6 +5,7 @@ namespace App\Filament\Finance\Pages;
 use App\Filament\Exports\AccountStatementExporter;
 use App\Models\Account;
 use App\Models\JournalItem;
+use App\Support\FiscalCalendar;
 use App\Support\Money;
 use BackedEnum;
 use Carbon\Carbon;
@@ -49,7 +50,7 @@ class AccountStatementReport extends Page implements HasForms, HasTable
     public function mount(): void
     {
         $this->accountId = Account::orderBy('code')->value('id');
-        $this->startDate = now()->startOfYear()->toDateString();
+        $this->startDate = FiscalCalendar::currentFiscalYearStart()->toDateString();
         $this->endDate = now()->toDateString();
     }
 

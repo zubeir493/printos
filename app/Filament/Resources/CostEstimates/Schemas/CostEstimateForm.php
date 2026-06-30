@@ -6,6 +6,7 @@ use App\Filament\Support\PanelAccess;
 use App\Models\Partner;
 use App\Services\Costing\CostingRegistry;
 use App\Services\Costing\CostingResult;
+use App\Support\Money;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
@@ -149,7 +150,7 @@ class CostEstimateForm
 
     private static function money(float $amount, int $maxPrecision = 2, bool $fixedPrecision = false): string
     {
-        return Number::format($amount, precision: $fixedPrecision ? $maxPrecision : null, maxPrecision: $fixedPrecision ? null : $maxPrecision).' Birr';
+        return Number::format($amount, precision: $fixedPrecision ? $maxPrecision : null, maxPrecision: $fixedPrecision ? null : $maxPrecision).' '.Money::suffix();
     }
 
     private static function materials(Get $get): HtmlString

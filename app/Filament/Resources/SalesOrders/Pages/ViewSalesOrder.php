@@ -136,7 +136,7 @@ class ViewSalesOrder extends ViewRecord
                                 ->label('Payment Amount')
                                 ->required()
                                 ->numeric()
-                                ->suffix('Birr')
+                                ->suffix(fn (): string => Money::suffix())
                                 ->default(fn ($record) => $record->balance)
                                 ->maxValue(fn ($record): float => $record->balance)
                                 ->helperText(fn ($record) => 'Balance: '.Money::format($record->balance)),

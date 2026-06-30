@@ -51,7 +51,7 @@ class BidBondsRelationManager extends RelationManager
             TextInput::make('amount')
                 ->numeric()
                 ->required()
-                ->suffix('Birr'),
+                ->suffix(fn (): string => Money::suffix()),
             DatePicker::make('expiry_date'),
             TextInput::make('reference')
                 ->maxLength(255),

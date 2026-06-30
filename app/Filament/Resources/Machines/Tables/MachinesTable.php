@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Machines\Tables;
 
+use App\Support\Money;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
@@ -28,7 +29,7 @@ class MachinesTable
                     ->state(fn ($record): string => number_format((float) $record->production_speed, 2).' units/hr'),
                 TextColumn::make('hourly_cost')
                     ->label('Hourly')
-                    ->money('ETB'),
+                    ->formatStateUsing(fn ($state): string => Money::format($state, 2)),
                 TextColumn::make('baseline_rounds_per_week')
                     ->label('Baseline/Week')
                     ->numeric()

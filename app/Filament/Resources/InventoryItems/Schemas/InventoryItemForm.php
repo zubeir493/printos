@@ -4,6 +4,7 @@ namespace App\Filament\Resources\InventoryItems\Schemas;
 
 use App\Filament\Support\PanelAccess;
 use App\Models\InventoryItem;
+use App\Support\Money;
 use App\Support\PrivateStorage;
 use Filament\Forms\Components\BaseFileUpload;
 use Filament\Forms\Components\FileUpload;
@@ -61,7 +62,7 @@ class InventoryItemForm
                         ->numeric()
                         ->hidden(fn ($get) => in_array($get('type'), ['tools', 'spare_parts']) || ! PanelAccess::canSeeMoneyValues())
                         ->required(fn ($get) => ! in_array($get('type'), ['tools', 'spare_parts']) && PanelAccess::canSeeMoneyValues())
-                        ->suffix('Birr')
+                        ->suffix(fn (): string => Money::suffix())
                         ->dehydratedWhenHidden(),
                     TextInput::make('gsm')
                         ->label('GSM')

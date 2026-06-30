@@ -2,6 +2,7 @@
 
 namespace App\Filament\Widgets\Concerns;
 
+use App\Support\Money;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use LaravelDaily\FilaWidgets\Support\DateRangeFilter;
@@ -68,5 +69,10 @@ trait HasFilaWidgetMetrics
             ->pluck('value', 'date')
             ->map(fn ($value): float => round((float) $value, $precision))
             ->all();
+    }
+
+    protected function getWidgetCurrency(): string
+    {
+        return Money::currencyCode();
     }
 }

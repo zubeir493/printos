@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Models\SalesOrder;
+use App\Support\Money;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueueAfterCommit;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -25,7 +26,7 @@ class SalesOrderCreatedNotification extends Notification implements ShouldQueueA
             ->subject('New Sales Order Created: '.$this->salesOrder->order_number)
             ->line('A new sales order '.$this->salesOrder->order_number.' has been created.')
             ->line('Customer: '.$this->salesOrder->partner?->name)
-            ->line('Total: '.number_format($this->salesOrder->total, 2).' Birr')
+            ->line('Total: '.Money::format($this->salesOrder->total, 2))
             ->action('View Sales Order', url('/admin/sales-orders/'.$this->salesOrder->id))
             ->line('Thank you for using our application!');
     }

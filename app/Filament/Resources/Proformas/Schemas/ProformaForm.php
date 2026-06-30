@@ -6,6 +6,7 @@ use App\Filament\Support\PanelAccess;
 use App\Models\InventoryItem;
 use App\Models\Proforma;
 use App\Models\Setting;
+use App\Support\Money;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
@@ -107,13 +108,13 @@ class ProformaForm
                                 TextInput::make('unit_price')
                                     ->numeric()
                                     ->minValue(0)
-                                    ->suffix('Birr')
+                                    ->suffix(fn (): string => Money::suffix())
                                     ->default(0)
                                     ->required()
                                     ->live(onBlur: true)
                                     ->afterStateUpdated(fn (Get $get, Set $set): mixed => self::refreshCurrentTaskTotals($get, $set))
                                     ->afterStateHydrated(fn (Get $get, Set $set): mixed => self::refreshCurrentTaskTotals($get, $set)),
-                                TextInput::make('task_cost')->numeric()->suffix('Birr')->default(0)->readOnly()->required(),
+                                TextInput::make('task_cost')->numeric()->suffix(fn (): string => Money::suffix())->default(0)->readOnly()->required(),
                                 Repeater::make('paper')
                                     ->label('Paper used for this task')
                                     ->table([
@@ -295,9 +296,10 @@ class ProformaForm
     private static function summaryValue(mixed $amount, bool $isPrimary = false): HtmlString
     {
         return new HtmlString(sprintf(
-            '<span class="cost-summary-value%s">%s Birr</span>',
+            '<span class="cost-summary-value%s">%s %s</span>',
             $isPrimary ? ' cost-summary-value-primary' : '',
             e(Number::format((float) ($amount ?? 0), precision: 2)),
+            e(Money::suffix()),
         ));
     }
 }

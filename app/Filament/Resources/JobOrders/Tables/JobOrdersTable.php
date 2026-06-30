@@ -194,7 +194,7 @@ class JobOrdersTable
                                     ->label('Total Applied')
                                     ->required()
                                     ->numeric()
-                                    ->suffix('Birr')
+                                    ->suffix(fn (): string => Money::suffix())
                                     ->default(fn ($record) => $record->balance)
                                     ->helperText(fn ($record) => 'Balance: '.Money::format($record->balance)),
                                 TextInput::make('withholding_amount')
@@ -203,7 +203,7 @@ class JobOrdersTable
                                     ->default(0)
                                     ->minValue(0)
                                     ->maxValue(fn (callable $get): float => (float) ($get('amount') ?? 0))
-                                    ->suffix('Birr'),
+                                    ->suffix(fn (): string => Money::suffix()),
                                 TextInput::make('reference')
                                     ->label('Memo / Reference')
                                     ->placeholder('Receipt number, cheque number, or short note')

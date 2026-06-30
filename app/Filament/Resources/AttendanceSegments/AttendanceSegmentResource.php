@@ -70,8 +70,6 @@ class AttendanceSegmentResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('employee.full_name')->label('Employee'),
-                TextColumn::make('fp_no')->label('FP No'),
                 TextColumn::make('date')->date()->sortable(),
                 TextColumn::make('schedule_name')->label('Schedule'),
                 TextColumn::make('clock_in'),

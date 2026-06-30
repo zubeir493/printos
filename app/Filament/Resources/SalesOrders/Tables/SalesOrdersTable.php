@@ -116,7 +116,7 @@ class SalesOrdersTable
                                     ->label('Payment Amount')
                                     ->required()
                                     ->numeric()
-                                    ->suffix('Birr')
+                                    ->suffix(fn (): string => Money::suffix())
                                     ->default(fn ($record) => $record->balance)
                                     ->helperText(fn ($record) => 'Balance: '.Money::format($record->balance)),
                                 DatePicker::make('payment_date')

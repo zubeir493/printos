@@ -4,6 +4,7 @@ namespace App\Services\Hr;
 
 use App\Models\AttendanceDailySummary;
 use App\Models\AttendancePeriodSummary;
+use App\Models\AttendanceSegment;
 use App\Models\Employee;
 use App\Models\EmployeeLoanInstallment;
 use App\Models\PayrollRun;
@@ -16,7 +17,11 @@ use RuntimeException;
 
 class CalculatePayrollRun
 {
-    public function __construct(private CalculatePayrollTax $taxCalculator) {}
+    public function __construct(
+        private CalculatePayrollTax $taxCalculator,
+        private RebuildAttendanceDailySummaries $dailySummaryBuilder,
+        private GeneratePayrollOvertimeEntries $overtimeEntries,
+    ) {}
 
     /**
      * @param  array<int>|null  $employeeIds
@@ -33,8 +38,12 @@ class CalculatePayrollRun
             $employees = $this->employees($periodStart, $periodEnd, $employeeIds);
 
             if ($employees->isEmpty()) {
-                throw new RuntimeException('No active employees were found for this payroll run.');
+                $payrollRun->employees()->delete();
+
+                return $payrollRun->refresh();
             }
+
+            $this->rebuildSegmentSummaries($employees, $periodStart, $periodEnd);
 
             $payrollRun->employees()->delete();
 
@@ -44,6 +53,28 @@ class CalculatePayrollRun
 
             return $payrollRun->refresh();
         });
+    }
+
+    /**
+     * @param  Collection<int, Employee>  $employees
+     */
+    private function rebuildSegmentSummaries(Collection $employees, string $periodStart, string $periodEnd): void
+    {
+        $employeeIds = $employees->pluck('id')->all();
+        $employeesWithSegments = AttendanceSegment::query()
+            ->whereIn('employee_id', $employeeIds)
+            ->whereDate('date', '>=', $periodStart)
+            ->whereDate('date', '<=', $periodEnd)
+            ->distinct()
+            ->pluck('employee_id')
+            ->map(fn ($id): int => (int) $id)
+            ->all();
+
+        if ($employeesWithSegments === []) {
+            return;
+        }
+
+        $this->dailySummaryBuilder->forPeriod($employeesWithSegments, $periodStart, $periodEnd);
     }
 
     /**
@@ -59,7 +90,7 @@ class CalculatePayrollRun
                     ->whereRaw('LOWER(status) = ?', ['active'])
                     ->orWhereDate('termination_date', '>=', $periodStart);
             })
-            ->when($employeeIds, fn ($query) => $query->whereIn('id', $employeeIds))
+            ->when($employeeIds !== null, fn ($query) => $query->whereIn('id', $employeeIds))
             ->get();
     }
 
@@ -69,8 +100,6 @@ class CalculatePayrollRun
         $periodEnd = CarbonImmutable::parse($payrollRun->getRawOriginal('period_end'))->toDateString();
         $fullBasicSalary = $this->salaryForPeriod($employee, $periodEnd);
         $employment = $this->employmentWindow($employee, $periodStart, $periodEnd);
-        $basicSalary = round($fullBasicSalary * $employment['ratio'], 2);
-        $overtimeMultiplier = $this->overtimeMultiplierForPeriod($employee, $periodEnd);
         $dailySummaries = AttendanceDailySummary::query()
             ->where('employee_id', $employee->id)
             ->whereDate('date', '>=', $periodStart)
@@ -82,22 +111,29 @@ class CalculatePayrollRun
             ->whereDate('period_end', $periodEnd)
             ->get();
         $attendance = $dailySummaries->isNotEmpty()
-            ? $this->attendanceFromDailySummaries($dailySummaries, $periodStart, $periodEnd)
+            ? $this->attendanceFromDailySummaries($dailySummaries, $periodStart, $periodEnd, $employment['employed_days'])
             : $this->attendanceFromPeriodSummaries($periodSummaries, $periodStart, $periodEnd);
         $leave = $this->approvedLeaveMinutes($employee, $periodStart, $periodEnd);
+        $paidLeaveDays = round($leave['paid_minutes'] / 480, 2);
+        $paidDays = $attendance['has_attendance_data']
+            ? min($attendance['base_days'], round($attendance['attended_days'] + $paidLeaveDays, 2))
+            : $paidLeaveDays;
+        $payRatio = $attendance['base_days'] > 0 ? min(1, round($paidDays / $attendance['base_days'], 6)) : 0.0;
+        $basicSalary = round($fullBasicSalary * $payRatio, 2);
         $absenceMinutes = (int) round($attendance['absent_days'] * 480);
         $deductibleAbsentMinutes = $dailySummaries->isNotEmpty()
             ? $this->deductibleAbsentMinutesFromDailySummaries($dailySummaries, $leave['by_date'])
             : max(max(0, $absenceMinutes - $leave['paid_minutes']), $leave['unpaid_minutes']);
         $penaltyMinutes = $attendance['late_minutes'] + $deductibleAbsentMinutes;
         $penaltyHours = round($penaltyMinutes / 60, 2);
-        $payPerHour = $basicSalary / 30 / 8;
-        $penaltyAmount = round($payPerHour * $penaltyHours, 2);
-        $holidayOngoingMinutes = (int) round(($attendance['holiday_days'] + $attendance['dayoff_days']) * 480);
-        $overtimeHours = round(($attendance['normal_overtime_minutes'] + $attendance['night_overtime_minutes'] + $holidayOngoingMinutes) / 60, 2);
-        $overtimeAmount = round(($basicSalary / 24 / 8) * $overtimeHours * $overtimeMultiplier, 2);
+        $payPerHour = $this->regularHourlyRate($fullBasicSalary, $attendance['base_days']);
+        $penaltyAmount = round($this->penaltyHourlyRate($fullBasicSalary) * $penaltyHours, 2);
+        $this->overtimeEntries->syncForEmployee($payrollRun, $employee, $dailySummaries, $periodSummaries, $fullBasicSalary, $attendance['base_days']);
+        $approvedOvertime = $this->overtimeEntries->approvedTotals($payrollRun, $employee);
+        $overtimeHours = $approvedOvertime['hours'];
+        $overtimeAmount = $approvedOvertime['amount'];
         $bonus = 0.0;
-        $transportAllowance = round((float) ($employee->transport_allowance ?? 0), 2);
+        $transportAllowance = round((float) ($employee->transport_allowance ?? 0) * $payRatio, 2);
         $settings = Setting::getSettings();
         $employeePensionRate = (float) $settings->employee_pension_rate;
         $employerPensionRate = (float) $settings->employer_pension_rate;
@@ -114,7 +150,7 @@ class CalculatePayrollRun
             ? round($basicSalary * ((float) $settings->workers_union_rate / 100), 2)
             : 0.0;
         $totalDeduction = round($tax['amount'] + $penaltyAmount + $pensionContribution + $loan + $workersUnion, 2);
-        $netPay = round($grossEarning - $totalDeduction, 2);
+        $netPay = max(0, round($grossEarning - $totalDeduction, 2));
 
         $payrollEmployee = $payrollRun->employees()->create([
             'employee_id' => $employee->id,
@@ -147,20 +183,28 @@ class CalculatePayrollRun
                 'employment_business_days' => $employment['employed_days'],
                 'period_business_days' => $employment['period_days'],
                 'employment_ratio' => $employment['ratio'],
+                'base_days' => $attendance['base_days'],
                 'work_days' => $attendance['work_days'],
+                'attended_days' => $attendance['attended_days'],
+                'actual_days' => $attendance['actual_days'],
+                'has_attendance_data' => $attendance['has_attendance_data'],
+                'paid_days' => $paidDays,
+                'pay_ratio' => $payRatio,
                 'time_on_duty' => $attendance['time_on_duty'],
                 'absent_days' => $attendance['absent_days'],
                 'paid_leave_minutes' => $leave['paid_minutes'],
                 'unpaid_leave_minutes' => $leave['unpaid_minutes'],
                 'deductible_absent_minutes' => $deductibleAbsentMinutes,
                 'penalty_minutes' => $penaltyMinutes,
+                'penalty_hourly_rate' => $this->penaltyHourlyRate($fullBasicSalary),
+                'penalty_day_divisor' => 30,
                 'late_minutes' => $attendance['late_minutes'],
                 'normal_overtime_minutes' => $attendance['normal_overtime_minutes'],
                 'night_overtime_minutes' => $attendance['night_overtime_minutes'],
-                'holiday_overtime_minutes' => $holidayOngoingMinutes,
+                'holiday_overtime_minutes' => (int) round(($attendance['holiday_days'] + $attendance['dayoff_days']) * 480),
                 'holiday_days' => $attendance['holiday_days'],
                 'dayoff_days' => $attendance['dayoff_days'],
-                'overtime_multiplier' => $overtimeMultiplier,
+                'approved_overtime_entry_ids' => $approvedOvertime['ids'],
                 'pension_enabled' => (bool) $employee->pension_enabled,
                 'employee_pension_rate' => $employeePensionRate,
                 'employer_pension_rate' => $employerPensionRate,
@@ -170,6 +214,7 @@ class CalculatePayrollRun
             ],
         ]);
 
+        $this->overtimeEntries->linkEntriesToPayrollRow($payrollEmployee);
         $this->createLineItems($payrollEmployee);
 
         return $payrollEmployee;
@@ -183,16 +228,6 @@ class CalculatePayrollRun
             ->first();
 
         return (float) ($history?->basic_salary ?? $employee->basic_salary);
-    }
-
-    private function overtimeMultiplierForPeriod(Employee $employee, string $periodEnd): float
-    {
-        $history = $employee->salaryHistories()
-            ->whereDate('effective_date', '<=', $periodEnd)
-            ->latest('effective_date')
-            ->first();
-
-        return (float) ($history?->overtime_multiplier ?? $employee->overtime_multiplier ?? 1);
     }
 
     /**
@@ -237,17 +272,36 @@ class CalculatePayrollRun
         return max(1, $days);
     }
 
+    private function regularHourlyRate(float $fullBasicSalary, float $baseDays): float
+    {
+        return $fullBasicSalary / max(1, $baseDays) / 8;
+    }
+
+    private function penaltyHourlyRate(float $fullBasicSalary): float
+    {
+        return $fullBasicSalary / 30 / 8;
+    }
+
     /**
      * @param  Collection<int, AttendanceDailySummary>  $summaries
-     * @return array{work_days: float, time_on_duty: float, absent_days: float, late_minutes: int, normal_overtime_minutes: int, night_overtime_minutes: int, holiday_days: float, dayoff_days: float}
+     * @return array{base_days: float, work_days: float, attended_days: float, actual_days: float, has_attendance_data: bool, time_on_duty: float, absent_days: float, late_minutes: int, normal_overtime_minutes: int, night_overtime_minutes: int, holiday_days: float, dayoff_days: float}
      */
-    private function attendanceFromDailySummaries(Collection $summaries, string $periodStart, string $periodEnd): array
+    private function attendanceFromDailySummaries(Collection $summaries, string $periodStart, string $periodEnd, int $employedDays): array
     {
         $workDays = max(1.0, round((float) $summaries->sum('expected_minutes') / 480, 2) ?: $this->businessDays($periodStart, $periodEnd));
+        $baseDays = max($workDays, $employedDays, 1.0);
+        $timeOnDuty = round((float) $summaries->sum('worked_minutes') / 60, 2);
+        $attendedDays = (float) $summaries
+            ->filter(fn (AttendanceDailySummary $summary): bool => (int) $summary->worked_minutes > 0)
+            ->count();
 
         return [
+            'base_days' => $baseDays,
             'work_days' => $workDays,
-            'time_on_duty' => round((float) $summaries->sum('worked_minutes') / 60, 2),
+            'attended_days' => $attendedDays,
+            'actual_days' => round($timeOnDuty / 8, 2),
+            'has_attendance_data' => true,
+            'time_on_duty' => $timeOnDuty,
             'absent_days' => round((float) $summaries->sum('absence_minutes') / 480, 2),
             'late_minutes' => (int) $summaries->sum('late_minutes'),
             'normal_overtime_minutes' => (int) $summaries->sum('overtime_minutes'),
@@ -259,14 +313,22 @@ class CalculatePayrollRun
 
     /**
      * @param  Collection<int, AttendancePeriodSummary>  $summaries
-     * @return array{work_days: float, time_on_duty: float, absent_days: float, late_minutes: int, normal_overtime_minutes: int, night_overtime_minutes: int, holiday_days: float, dayoff_days: float}
+     * @return array{base_days: float, work_days: float, attended_days: float, actual_days: float, has_attendance_data: bool, time_on_duty: float, absent_days: float, late_minutes: int, normal_overtime_minutes: int, night_overtime_minutes: int, holiday_days: float, dayoff_days: float}
      */
     private function attendanceFromPeriodSummaries(Collection $summaries, string $periodStart, string $periodEnd): array
     {
+        $workDays = max(1.0, (float) $summaries->max('work_days') ?: $this->businessDays($periodStart, $periodEnd));
+        $hasAttendanceData = $summaries->isNotEmpty();
+        $attendedDays = (float) $summaries->sum('actual_days');
+
         return [
-            'work_days' => max(1.0, (float) $summaries->max('work_days') ?: $this->businessDays($periodStart, $periodEnd)),
+            'base_days' => $workDays,
+            'work_days' => $workDays,
+            'attended_days' => $attendedDays,
+            'actual_days' => $attendedDays,
+            'has_attendance_data' => $hasAttendanceData,
             'time_on_duty' => round((float) $summaries->sum('work_time_hours'), 2),
-            'absent_days' => (float) $summaries->sum('absent_days'),
+            'absent_days' => $hasAttendanceData ? (float) $summaries->sum('absent_days') : 0.0,
             'late_minutes' => (int) $summaries->sum('late_minutes') + (int) $summaries->sum('early_minutes'),
             'normal_overtime_minutes' => (int) $summaries->sum('overtime_minutes'),
             'night_overtime_minutes' => 0,
@@ -360,8 +422,10 @@ class CalculatePayrollRun
     {
         foreach ([
             ['earning', 'basic_salary', 'Basic salary', $employee->basic_salary],
+            ['earning', 'bonus', 'Bonus', $employee->bonus],
+            ['earning', 'transport_allowance', 'Transport allowance', $employee->transport_allowance],
             ['earning', 'employer_pension', 'Employer pension contribution', $employee->employer_pension_contribution],
-            ['earning', 'overtime', 'Overtime', $employee->overtime_amount],
+            ['earning', 'overtime_amount', 'Overtime', $employee->overtime_amount],
             ['deduction', 'income_tax', 'Income tax', $employee->income_tax],
             ['deduction', 'penalty', 'Penalty', $employee->penalty_amount],
             ['deduction', 'pension', 'Pension contribution', $employee->pension_contribution],
@@ -377,6 +441,32 @@ class CalculatePayrollRun
                 'code' => $code,
                 'description' => $description,
                 'amount' => $amount,
+            ]);
+        }
+
+        foreach ($employee->calculation_snapshot['manual_earnings'] ?? [] as $item) {
+            if ((float) ($item['amount'] ?? 0) === 0.0) {
+                continue;
+            }
+
+            $employee->lineItems()->create([
+                'type' => 'earning',
+                'code' => $item['code'] ?? 'other_earning',
+                'description' => $item['description'] ?? 'Other earning',
+                'amount' => (float) ($item['amount'] ?? 0),
+            ]);
+        }
+
+        foreach ($employee->calculation_snapshot['manual_deductions'] ?? [] as $item) {
+            if ((float) ($item['amount'] ?? 0) === 0.0) {
+                continue;
+            }
+
+            $employee->lineItems()->create([
+                'type' => 'deduction',
+                'code' => $item['code'] ?? 'other_deduction',
+                'description' => $item['description'] ?? 'Other deduction',
+                'amount' => (float) ($item['amount'] ?? 0),
             ]);
         }
     }

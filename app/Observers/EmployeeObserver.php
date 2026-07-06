@@ -20,7 +20,7 @@ class EmployeeObserver
      */
     public function updated(Employee $employee): void
     {
-        if ($employee->wasChanged(['basic_salary', 'overtime_multiplier'])) {
+        if ($employee->wasChanged('basic_salary')) {
             $this->recordSalaryHistory($employee, 'Rate update');
         }
 
@@ -34,7 +34,6 @@ class EmployeeObserver
     {
         $employee->salaryHistories()->create([
             'basic_salary' => $employee->basic_salary ?? 0,
-            'overtime_multiplier' => $employee->overtime_multiplier ?? 1,
             'effective_date' => now(),
             'change_reason' => $reason,
         ]);

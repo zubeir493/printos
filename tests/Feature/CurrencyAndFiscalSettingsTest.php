@@ -53,6 +53,7 @@ test('ethiopian payroll month options start with hamle', function () {
     $options = FiscalCalendar::payrollMonthOptions(CarbonImmutable::parse('2026-08-01'));
 
     expect(array_key_first($options))->toBe('2026-07-08')
-        ->and(reset($options))->toBe('Hamle 2026')
-        ->and(FiscalCalendar::payrollMonthLabel('2026-07-08'))->toBe('Hamle 2026');
+        ->and(reset($options))->toBe('Hamle 2018')
+        ->and(FiscalCalendar::payrollMonthLabel('2026-07-08'))->toBe('Hamle 2018')
+        ->and(FiscalCalendar::payrollMonthLabel('2026-06-08'))->toBe('Ginbot 2018');
 });

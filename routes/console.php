@@ -19,3 +19,5 @@ Schedule::command('job-orders:notify-late')->dailyAt('06:05')->withoutOverlappin
 
 // Nightly reconciliation safety net — keeps invoice balances in sync
 Schedule::command('invoices:fix-balances')->dailyAt('03:00')->withoutOverlapping();
+
+Schedule::command('payroll:generate-monthly-drafts')->monthlyOn(25, '06:15')->withoutOverlapping()->onOneServer();

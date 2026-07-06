@@ -21,6 +21,7 @@
         "laravel/tinker": "~2.11.1",
         "laraveldaily/filawidgets": "^0.1.2",
         "league/flysystem-aws-s3-v3": "~3.32.0",
+        "malzariey/filament-daterangepicker-filter": "^5.0",
         "openspout/openspout": "~4.32.0",
         "spatie/laravel-activitylog": "~4.12.3",
         "spatie/laravel-model-states": "~2.12.1",

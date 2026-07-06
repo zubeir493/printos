@@ -27,6 +27,7 @@ use App\Filament\Resources\Invoices\InvoiceResource;
 use App\Filament\Resources\JobOrders\JobOrderResource;
 use App\Filament\Resources\JobOrderTasks\JobOrderTaskResource;
 use App\Filament\Resources\JournalEntries\JournalEntryResource;
+use App\Filament\Resources\OvertimeRules\OvertimeRuleResource;
 use App\Filament\Resources\Partners\PartnerResource;
 use App\Filament\Resources\Payments\PaymentResource;
 use App\Filament\Resources\PayrollRuns\PayrollRunResource;
@@ -82,6 +83,7 @@ class FinancePanelProvider extends PanelProvider
                 InvoiceResource::class,
                 EmployeeLoanResource::class,
                 PayrollRunResource::class,
+                OvertimeRuleResource::class,
                 JobOrderResource::class,
                 JobOrderTaskResource::class,
                 PartnerResource::class,

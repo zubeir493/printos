@@ -16,7 +16,7 @@ class Employee extends Model
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly(['employee_id', 'attendance_device_id', 'first_name', 'last_name', 'phone', 'hire_date', 'termination_date', 'status', 'employment_type', 'department', 'position', 'tax_id', 'pension_enabled', 'basic_salary', 'transport_allowance', 'overtime_multiplier', 'payment_method'])
+            ->logOnly(['employee_id', 'attendance_device_id', 'first_name', 'last_name', 'phone', 'hire_date', 'termination_date', 'status', 'employment_type', 'department', 'position', 'tax_id', 'pension_enabled', 'basic_salary', 'transport_allowance', 'payment_method'])
             ->logOnlyDirty()
             ->useLogName('employee');
     }
@@ -38,7 +38,6 @@ class Employee extends Model
         'pension_enabled',
         'basic_salary',
         'transport_allowance',
-        'overtime_multiplier',
         'payment_method',
         'bank_name',
         'account_number',
@@ -52,7 +51,6 @@ class Employee extends Model
             'pension_enabled' => 'boolean',
             'basic_salary' => 'decimal:2',
             'transport_allowance' => 'decimal:2',
-            'overtime_multiplier' => 'decimal:4',
         ];
     }
 

@@ -28,17 +28,14 @@ class EmployeeSalaryTrendChart extends ChartWidget
 
         $labels = [];
         $basicSalary = [];
-        $overtimeMultiplier = [];
 
         if ($histories->isEmpty()) {
             $labels[] = 'Current';
             $basicSalary[] = (float) $this->record->basic_salary;
-            $overtimeMultiplier[] = (float) $this->record->overtime_multiplier;
         } else {
             foreach ($histories as $history) {
                 $labels[] = Carbon::parse($history->effective_date)->format('M d, Y');
                 $basicSalary[] = (float) $history->basic_salary;
-                $overtimeMultiplier[] = (float) $history->overtime_multiplier;
             }
         }
 
@@ -50,14 +47,6 @@ class EmployeeSalaryTrendChart extends ChartWidget
                     'borderColor' => '#6366f1',
                     'backgroundColor' => 'rgba(99, 102, 241, 0.15)',
                     'fill' => 'start',
-                    'tension' => 0.3,
-                ],
-                [
-                    'label' => 'Overtime Multiplier',
-                    'data' => $overtimeMultiplier,
-                    'borderColor' => '#0ea5e9',
-                    'backgroundColor' => 'rgba(14, 165, 233, 0.15)',
-                    'fill' => false,
                     'tension' => 0.3,
                 ],
             ],

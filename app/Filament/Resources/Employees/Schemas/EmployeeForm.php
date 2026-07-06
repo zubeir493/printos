@@ -82,10 +82,6 @@ class EmployeeForm
                                     ->numeric()
                                     ->suffix(fn (): string => Money::suffix())
                                     ->default(0),
-                                TextInput::make('overtime_multiplier')
-                                    ->label('Overtime Multiplier')
-                                    ->numeric()
-                                    ->default(1),
                                 TextInput::make('bank_name'),
                                 TextInput::make('account_number'),
                             ])->columnSpan(3)->columns(2),

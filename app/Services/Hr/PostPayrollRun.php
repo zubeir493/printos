@@ -30,6 +30,8 @@ class PostPayrollRun
 
         return DB::transaction(function () use ($payrollRun): JournalEntry {
             $payrollRun->loadMissing('employees');
+            $this->removeZeroNetEmployees($payrollRun);
+            $payrollRun->load('employees');
 
             if ($payrollRun->employees->isEmpty() || (float) $payrollRun->employees->sum('net_pay') <= 0) {
                 throw new RuntimeException('Payroll must have calculated employee net pay before posting.');
@@ -81,6 +83,24 @@ class PostPayrollRun
 
             return $journalEntry;
         });
+    }
+
+    private function removeZeroNetEmployees(PayrollRun $payrollRun): void
+    {
+        $payrollRun->employees()
+            ->where('net_pay', '<=', 0)
+            ->delete();
+
+        if (is_array($payrollRun->selected_employee_ids)) {
+            $payrollRun->forceFill([
+                'selected_employee_ids' => $payrollRun
+                    ->employees()
+                    ->pluck('employee_id')
+                    ->map(fn ($id): int => (int) $id)
+                    ->values()
+                    ->all(),
+            ])->save();
+        }
     }
 
     private function item(JournalEntry $journalEntry, string $code, string $name, string $type, float $debit, float $credit): void

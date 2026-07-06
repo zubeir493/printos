@@ -124,7 +124,6 @@ class DemoPortfolioSeeder extends Seeder
                 'employment_type' => 'permanent',
                 'pension_enabled' => true,
                 'transport_allowance' => 2500,
-                'overtime_multiplier' => 1.5,
                 'payment_method' => 'bank',
                 'bank_name' => 'Bank of Abyssinia',
                 'account_number' => '9000'.substr($employee['employee_id'], -4),

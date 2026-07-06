@@ -15,7 +15,26 @@
     position: fixed;
     right: 0;
     width: calc(100vw - 15rem);
-    z-index: 20;
+    z-index: 10;
+}
+
+.fi-main-ctn:has(.fi-modal-open),
+.fi-main-ctn:has(.payroll-detail-overlay) {
+    z-index: 100;
+}
+
+.fi-modal > .fi-modal-close-overlay,
+.fi-modal > .fi-modal-window-ctn {
+    z-index: 80;
+}
+
+.fi-modal.fi-modal-open ~ .fi-modal.fi-modal-open > .fi-modal-close-overlay,
+.fi-modal.fi-modal-open ~ .fi-modal.fi-modal-open > .fi-modal-window-ctn {
+    z-index: 90;
+}
+
+.payroll-detail-overlay {
+    z-index: 80;
 }
 
 .fi-topbar .fi-user-menu-trigger {
@@ -141,7 +160,7 @@ nav.fi-sidebar-nav::-webkit-scrollbar {
 
 .fi-sidebar-item.fi-active>.fi-sidebar-item-btn {
     background: var(--color-white);
-    transition: all .2s ease;
+    transition: background-color .2s ease;
 }
 
 /* Sidebar nested item */

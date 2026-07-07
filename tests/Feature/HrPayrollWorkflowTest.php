@@ -1192,8 +1192,10 @@ it('creates overtime rules without exposing internal setup as required workflow'
             'minutes_basis' => OvertimeRule::BASIS_TIME_WINDOW,
             'multiplier' => 1.75,
             'hourly_rate' => null,
-            'window_start_time' => '22:00:00',
-            'window_end_time' => '06:00:00',
+            'window_range' => [
+                'start' => '22:00',
+                'end' => '06:00',
+            ],
             'is_active' => true,
             'minimum_minutes' => 30,
             'rounding_increment_minutes' => 15,

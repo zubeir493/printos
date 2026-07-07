@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\OvertimeRules;
 
+use App\Filament\Forms\Components\TimeRangePicker;
 use App\Filament\Resources\OvertimeRules\Pages\ManageOvertimeRules;
 use App\Models\OvertimeRule;
 use BackedEnum;
@@ -100,11 +101,9 @@ class OvertimeRuleResource extends Resource
                     ->helperText(fn (Get $get): ?string => $get('minutes_basis') === OvertimeRule::BASIS_TIME_WINDOW ? 'Start of the payable clock window.' : null)
                     ->required(fn (Get $get): bool => in_array($get('minutes_basis'), [
                         OvertimeRule::BASIS_AFTER_CLOCK_TIME,
-                        OvertimeRule::BASIS_TIME_WINDOW,
                     ], true))
                     ->visible(fn (Get $get): bool => in_array($get('minutes_basis'), [
                         OvertimeRule::BASIS_AFTER_CLOCK_TIME,
-                        OvertimeRule::BASIS_TIME_WINDOW,
                     ], true)),
                 TimePicker::make('window_end_time')
                     ->label(fn (Get $get): string => $get('minutes_basis') === OvertimeRule::BASIS_BEFORE_CLOCK_TIME ? 'Ends before' : 'Window ends')
@@ -112,12 +111,20 @@ class OvertimeRuleResource extends Resource
                     ->helperText(fn (Get $get): ?string => $get('minutes_basis') === OvertimeRule::BASIS_TIME_WINDOW ? 'End of the payable clock window. Overnight windows like 22:00 to 06:00 are supported.' : null)
                     ->required(fn (Get $get): bool => in_array($get('minutes_basis'), [
                         OvertimeRule::BASIS_BEFORE_CLOCK_TIME,
-                        OvertimeRule::BASIS_TIME_WINDOW,
                     ], true))
                     ->visible(fn (Get $get): bool => in_array($get('minutes_basis'), [
                         OvertimeRule::BASIS_BEFORE_CLOCK_TIME,
-                        OvertimeRule::BASIS_TIME_WINDOW,
                     ], true)),
+                TimeRangePicker::make('window_range')
+                    ->label('Window')
+                    ->helperText('Use for ranges such as night overtime. Overnight windows like 22:00 to 06:00 are supported.')
+                    ->afterStateHydrated(function (TimeRangePicker $component, ?OvertimeRule $record): void {
+                        $component->state([
+                            'start' => static::formatTimeForInput($record?->window_start_time),
+                            'end' => static::formatTimeForInput($record?->window_end_time),
+                        ]);
+                    })
+                    ->visible(fn (Get $get): bool => $get('minutes_basis') === OvertimeRule::BASIS_TIME_WINDOW),
                 TextInput::make('minimum_minutes')
                     ->label('Ignore if under')
                     ->suffix('min')
@@ -196,8 +203,10 @@ class OvertimeRuleResource extends Resource
         $data['code'] = Str::slug((string) ($data['code'] ?? $data['name'] ?? ''), '_');
 
         if (($data['minutes_basis'] ?? null) === OvertimeRule::BASIS_TIME_WINDOW) {
-            $data['window_start_time'] = static::normalizeTime($data['window_start_time'] ?? null);
-            $data['window_end_time'] = static::normalizeTime($data['window_end_time'] ?? null);
+            $windowRange = is_array($data['window_range'] ?? null) ? $data['window_range'] : [];
+
+            $data['window_start_time'] = static::normalizeTime($windowRange['start'] ?? null);
+            $data['window_end_time'] = static::normalizeTime($windowRange['end'] ?? null);
         } elseif (($data['minutes_basis'] ?? null) === OvertimeRule::BASIS_AFTER_CLOCK_TIME) {
             $data['window_start_time'] = static::normalizeTime($data['window_start_time'] ?? null);
             $data['window_end_time'] = null;
@@ -209,6 +218,8 @@ class OvertimeRuleResource extends Resource
             $data['window_end_time'] = null;
         }
 
+        unset($data['window_range']);
+
         return $data;
     }
 
@@ -219,6 +230,15 @@ class OvertimeRuleResource extends Resource
         }
 
         return CarbonImmutable::parse('2000-01-01 '.(string) $time)->format('H:i:s');
+    }
+
+    private static function formatTimeForInput(mixed $time): ?string
+    {
+        if (blank($time)) {
+            return null;
+        }
+
+        return CarbonImmutable::parse('2000-01-01 '.(string) $time)->format('H:i');
     }
 
     public static function minutesBasisExplanation(string $basis): string

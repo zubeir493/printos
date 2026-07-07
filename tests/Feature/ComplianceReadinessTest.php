@@ -100,7 +100,7 @@ test('high-risk uploads declare type and size limits', function (string $path): 
         ->toContain('acceptedFileTypes')
         ->toContain('maxSize');
 })->with([
-    'attendance imports' => ['app/Filament/Resources/AttendanceImports/Pages/ListAttendanceImports.php'],
+    'attendance imports' => ['app/Filament/Resources/AttendanceSegments/Pages/ManageAttendanceSegments.php'],
     'artworks' => ['app/Filament/Resources/Artworks/Schemas/ArtworkForm.php'],
     'bids' => ['app/Filament/Resources/Bids/Schemas/BidForm.php'],
     'journal attachments' => ['app/Filament/Resources/JournalEntries/Schemas/JournalEntryForm.php'],

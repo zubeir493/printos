@@ -1,14 +1,17 @@
 <?php
 
+use App\Filament\Imports\AccountImporter;
 use App\Filament\Resources\Proformas\Pages\CreateProforma;
 use App\Filament\Resources\Proformas\Pages\EditProforma;
 use App\Filament\Resources\Proformas\Pages\ViewProforma;
+use App\Models\Account;
 use App\Models\Partner;
 use App\Models\Proforma;
 use App\Models\ProformaTask;
 use App\Models\Setting;
 use App\Models\User;
 use App\UserRole;
+use Filament\Actions\Imports\Models\Import;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -147,7 +150,18 @@ it('keeps export actions in page header action groups instead of table headers',
             ->toContain('ExportAction::make()')
             ->toContain($exporter)
             ->not->toContain('->headerActions([');
+
+        if (str_contains($source, 'CreateAction::make()')) {
+            expect(strpos($source, 'CreateAction::make()'))
+                ->toBeLessThan(strpos($source, 'ActionGroup::make(['));
+        }
     }
+
+    $accountsSource = file_get_contents(base_path('app/Filament/Resources/Accounts/Pages/ListAccounts.php'));
+
+    expect($accountsSource)
+        ->toContain('ImportAction::make()')
+        ->toContain('AccountImporter::class');
 
     foreach ([
         'app/Filament/Resources/BankTransactions/Tables/BankTransactionsTable.php',
@@ -166,6 +180,46 @@ it('keeps export actions in page header action groups instead of table headers',
             ->not->toContain('ExportAction::make()')
             ->not->toContain('->headerActions([');
     }
+});
+
+it('imports chart of accounts rows by account code', function (): void {
+    $existingAccount = Account::create([
+        'code' => '1010',
+        'name' => 'Old cash account',
+        'type' => 'Asset',
+        'default_tracking_type' => null,
+    ]);
+
+    $importer = new AccountImporter(new Import, [
+        'code' => 'code',
+        'name' => 'name',
+        'type' => 'type',
+        'default_tracking_type' => 'default_tracking_type',
+    ], []);
+
+    $importer([
+        'code' => '1010',
+        'name' => 'Cash on Hand',
+        'type' => 'asset',
+        'default_tracking_type' => 'Vehicle',
+    ]);
+
+    $importer([
+        'code' => '6200',
+        'name' => 'Fuel Expense',
+        'type' => 'expense',
+        'default_tracking_type' => 'Vehicle',
+    ]);
+
+    expect($existingAccount->refresh())
+        ->name->toBe('Cash on Hand')
+        ->type->toBe('Asset')
+        ->default_tracking_type->toBeNull();
+
+    expect(Account::query()->where('code', '6200')->first())
+        ->name->toBe('Fuel Expense')
+        ->type->toBe('Expense')
+        ->default_tracking_type->toBe('vehicle');
 });
 
 it('uses indigo edit actions in multi action page headers', function (): void {

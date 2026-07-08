@@ -20,11 +20,11 @@ class ListPayments extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
+            CreateAction::make(),
             ActionGroup::make([
                 ExportAction::make()
                     ->exporter(PaymentExporter::class),
             ]),
-            CreateAction::make(),
         ];
     }
 

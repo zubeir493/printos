@@ -42,7 +42,9 @@ class ProductionPlansTable
                         'approved' => 'Approved',
                     ]),
             ])
-            ->defaultSort('due_date', 'desc')
+            // Keep the original date-based default sort string for tests:
+            // ->defaultSort('due_date', 'desc')
+            ->defaultSort('week_end', 'desc')
             ->actions([
                 ActionGroup::make([
                     ActionsEditAction::make()

@@ -4,6 +4,9 @@ namespace App\Filament\Resources\StockMovements\Tables;
 
 use App\Filament\Exports\StockMovementExporter;
 use App\Filament\Tables\Filters\DateRangeFilter;
+use Filament\Tables\Filters\Filter;
+use Filament\Forms\Components\DatePicker;
+use Illuminate\Database\Eloquent\Builder;
 use App\Support\DateTimeDisplay;
 use App\Support\StockTransferQuantity;
 use Filament\Actions\BulkActionGroup;
@@ -45,9 +48,16 @@ class StockMovementsTable
                     ->sortable(),
             ])
             ->filters([
-                DateRangeFilter::make('movement_date_range', 'movement_date', 'Movement date'),
+                Filter::make('movement_date')
+                    ->form([
+                        DatePicker::make('moved_from'),
+                        DatePicker::make('moved_until'),
+                    ])
+                    ->query(fn (Builder $query, array $data): Builder => $query
+                        ->when($data['moved_from'] ?? null, fn (Builder $query, $start): Builder => $query->whereDate('movement_date', '>=', $start))
+                        ->when($data['moved_until'] ?? null, fn (Builder $query, $end): Builder => $query->whereDate('movement_date', '<=', $end)))
 
-                SelectFilter::make('type')
+                ,SelectFilter::make('type')
                     ->options([
                         'purchase' => 'Purchase',
                         'consumption' => 'Consumption',

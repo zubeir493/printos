@@ -18,7 +18,6 @@ use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\EditAction;
-use Filament\Actions\ExportAction;
 use Filament\Actions\ExportBulkAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
@@ -284,10 +283,6 @@ class SalesOrdersTable
                         ->visible(fn ($record) => in_array($record->status, [SalesOrder::STATUS_DRAFT], true)),
 
                 ]),
-            ])
-            ->headerActions([
-                ExportAction::make()
-                    ->exporter(SalesOrderExporter::class),
             ])
             ->bulkActions([
                 BulkActionGroup::make([

@@ -7,7 +7,6 @@ use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
-use Filament\Actions\ExportAction;
 use Filament\Actions\ExportBulkAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -42,10 +41,6 @@ class PurchaseOrderItemsTable
                         'cancelled' => 'danger',
                     })
                     ->searchable(),
-            ])
-            ->headerActions([
-                ExportAction::make()
-                    ->exporter(PurchaseOrderItemExporter::class),
             ])
             ->filters([
                 SelectFilter::make('status')

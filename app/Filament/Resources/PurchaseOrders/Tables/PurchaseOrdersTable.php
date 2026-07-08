@@ -13,7 +13,6 @@ use App\Support\Money;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
-use Filament\Actions\ExportAction;
 use Filament\Actions\ExportBulkAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
@@ -205,10 +204,6 @@ class PurchaseOrdersTable
                             }
                         }),
                 ]),
-            ])
-            ->headerActions([
-                ExportAction::make()
-                    ->exporter(PurchaseOrderExporter::class),
             ])
             ->bulkActions([
                 BulkActionGroup::make([

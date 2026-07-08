@@ -6,7 +6,6 @@ use App\Filament\Exports\BankTransactionExporter;
 use App\Filament\Tables\Filters\DateRangeFilter;
 use App\Support\Money;
 use Filament\Actions\BulkActionGroup;
-use Filament\Actions\ExportAction;
 use Filament\Actions\ExportBulkAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -62,10 +61,6 @@ class BankTransactionsTable
                         'payment_void' => 'Payment Void',
                         'bank_transfer' => 'Transfer',
                     ]),
-            ])
-            ->headerActions([
-                ExportAction::make()
-                    ->exporter(BankTransactionExporter::class),
             ])
             ->recordActions([])
             ->defaultSort('transaction_date', 'desc')

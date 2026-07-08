@@ -8,7 +8,6 @@ use App\Filament\Tables\Filters\DateRangeFilter;
 use App\Support\Money;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
-use Filament\Actions\ExportAction;
 use Filament\Actions\ExportBulkAction;
 use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\TextColumn;
@@ -55,10 +54,6 @@ class JournalEntriesTable
                 ActionGroup::make([
                     ViewAction::make(),
                 ]),
-            ])
-            ->headerActions([
-                ExportAction::make()
-                    ->exporter(JournalEntryExporter::class),
             ])
             ->bulkActions([
                 BulkActionGroup::make([

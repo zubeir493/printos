@@ -21,7 +21,6 @@ use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
-use Filament\Actions\ExportAction;
 use Filament\Actions\ExportBulkAction;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\Hidden;
@@ -65,11 +64,6 @@ class JobOrderTasksTable
                     ->sortable()
                     ->color(fn ($state) => $state && Carbon::parse($state)->isBefore(today()) ? 'danger' : null),
 
-            ])
-            ->headerActions([
-                ExportAction::make()
-                    ->exporter(JobOrderTaskExporter::class)
-                    ->visible(fn () => in_array(Filament::getCurrentPanel()?->getId(), ['admin', 'operations', 'finance'])),
             ])
             ->filters([
                 DateRangeFilter::makeForRelation('deadline_date_range', 'jobOrder', 'submission_date', 'Deadline'),

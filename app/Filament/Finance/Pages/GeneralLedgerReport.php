@@ -9,6 +9,7 @@ use App\Support\FiscalCalendar;
 use App\Support\Money;
 use BackedEnum;
 use Carbon\Carbon;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\ExportAction;
 use Filament\Forms;
 use Filament\Forms\Components\DatePicker;
@@ -52,6 +53,16 @@ class GeneralLedgerReport extends Page implements HasForms, HasTable
         $this->accountId = null;
         $this->startDate = FiscalCalendar::currentFiscalYearStart()->toDateString();
         $this->endDate = now()->toDateString();
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            ActionGroup::make([
+                ExportAction::make()
+                    ->exporter(GeneralLedgerExporter::class),
+            ]),
+        ];
     }
 
     public function accounts(): array
@@ -117,11 +128,7 @@ class GeneralLedgerReport extends Page implements HasForms, HasTable
                     ->options($this->accountTypeOptions())
                     ->query(fn (Builder $query, array $data) => $query->where('accounts.type', $data['value'])),
             ])
-            ->defaultSort('entry_date', 'desc')
-            ->headerActions([
-                ExportAction::make()
-                    ->exporter(GeneralLedgerExporter::class),
-            ]);
+            ->defaultSort('entry_date', 'desc');
     }
 
     protected function accountTypeOptions(): array

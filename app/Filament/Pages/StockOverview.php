@@ -8,6 +8,7 @@ use App\Models\InventoryBalance;
 use App\Models\Warehouse;
 use App\Support\Money;
 use BackedEnum;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\ExportAction;
 use Filament\Forms;
 use Filament\Forms\Components\Select;
@@ -44,6 +45,16 @@ class StockOverview extends Page implements HasForms, HasTable
         return [
             StockOverviewStats::make([
                 'warehouse_id' => $this->warehouse_id,
+            ]),
+        ];
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            ActionGroup::make([
+                ExportAction::make()
+                    ->exporter(InventoryBalanceExporter::class),
             ]),
         ];
     }
@@ -142,10 +153,6 @@ class StockOverview extends Page implements HasForms, HasTable
                             )
                             ->formatStateUsing(fn ($state) => Money::format($state))
                     ),
-            ])
-            ->headerActions([
-                ExportAction::make()
-                    ->exporter(InventoryBalanceExporter::class),
             ])
             ->emptyStateHeading('Selected warehouse is empty')
             ->emptyStateDescription('This warehouse currently has no inventory.')

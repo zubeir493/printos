@@ -9,6 +9,7 @@ use App\Support\FiscalCalendar;
 use App\Support\Money;
 use BackedEnum;
 use Carbon\Carbon;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\ExportAction;
 use Filament\Forms;
 use Filament\Forms\Components\DatePicker;
@@ -52,6 +53,16 @@ class AccountStatementReport extends Page implements HasForms, HasTable
         $this->accountId = Account::orderBy('code')->value('id');
         $this->startDate = FiscalCalendar::currentFiscalYearStart()->toDateString();
         $this->endDate = now()->toDateString();
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            ActionGroup::make([
+                ExportAction::make()
+                    ->exporter(AccountStatementExporter::class),
+            ]),
+        ];
     }
 
     public function accounts()
@@ -125,11 +136,7 @@ class AccountStatementReport extends Page implements HasForms, HasTable
                     ->formatStateUsing(fn ($state) => Money::format($state))
                     ->sortable(),
             ])
-            ->defaultSort('entry_date', 'desc')
-            ->headerActions([
-                ExportAction::make()
-                    ->exporter(AccountStatementExporter::class),
-            ]);
+            ->defaultSort('entry_date', 'desc');
     }
 
     protected function statementQuery(): Builder

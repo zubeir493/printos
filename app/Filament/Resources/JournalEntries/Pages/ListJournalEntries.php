@@ -2,8 +2,11 @@
 
 namespace App\Filament\Resources\JournalEntries\Pages;
 
+use App\Filament\Exports\JournalEntryExporter;
 use App\Filament\Resources\JournalEntries\JournalEntryResource;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\CreateAction;
+use Filament\Actions\ExportAction;
 use Filament\Resources\Pages\ListRecords;
 
 class ListJournalEntries extends ListRecords
@@ -14,6 +17,10 @@ class ListJournalEntries extends ListRecords
     {
         return [
             CreateAction::make(),
+            ActionGroup::make([
+                ExportAction::make()
+                    ->exporter(JournalEntryExporter::class),
+            ]),
         ];
     }
 }

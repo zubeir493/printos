@@ -8,7 +8,6 @@ use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
-use Filament\Actions\ExportAction;
 use Filament\Actions\ExportBulkAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -63,10 +62,6 @@ class PartnersTable
                     EditAction::make()
                         ->visible(fn () => PanelAccess::canManagePartners()),
                 ]),
-            ])
-            ->headerActions([
-                ExportAction::make()
-                    ->exporter(PartnerExporter::class),
             ])
             ->bulkActions([
                 BulkActionGroup::make([

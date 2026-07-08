@@ -14,7 +14,6 @@ use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\EditAction;
-use Filament\Actions\ExportAction;
 use Filament\Actions\ExportBulkAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
@@ -79,10 +78,6 @@ class JobOrdersTable
                         && PanelAccess::canSeeMoneyValues()
                         && ($record->production_mode ?? null) !== 'make_to_stock')
                     ->sortable(),
-            ])
-            ->headerActions([
-                ExportAction::make()
-                    ->exporter(JobOrderExporter::class),
             ])
             ->filters([
                 DateRangeFilter::make('submission_date_range', 'submission_date', 'Submission date'),

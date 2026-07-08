@@ -8,6 +8,7 @@ use App\Services\Accounting\FinancialReportService;
 use App\Support\FiscalCalendar;
 use App\Support\Money;
 use BackedEnum;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\ExportAction;
 use Filament\Forms;
 use Filament\Forms\Components\DatePicker;
@@ -54,6 +55,16 @@ class TrialBalanceReport extends Page implements HasForms, HasTable
         $this->endDate = now()->toDateString();
     }
 
+    protected function getHeaderActions(): array
+    {
+        return [
+            ActionGroup::make([
+                ExportAction::make()
+                    ->exporter(FinancialAccountExporter::class),
+            ]),
+        ];
+    }
+
     public function report(): array
     {
         return app(FinancialReportService::class)->trialBalance($this->startDate, $this->endDate);
@@ -96,11 +107,7 @@ class TrialBalanceReport extends Page implements HasForms, HasTable
                     ->label('Account Type')
                     ->options($this->accountTypeOptions()),
             ])
-            ->defaultSort('code')
-            ->headerActions([
-                ExportAction::make()
-                    ->exporter(FinancialAccountExporter::class),
-            ]);
+            ->defaultSort('code');
     }
 
     protected function accountTypeOptions(): array

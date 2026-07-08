@@ -7,7 +7,6 @@ use App\Filament\Tables\Filters\DateRangeFilter;
 use App\Support\DateTimeDisplay;
 use App\Support\StockTransferQuantity;
 use Filament\Actions\BulkActionGroup;
-use Filament\Actions\ExportAction;
 use Filament\Actions\ExportBulkAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -61,10 +60,6 @@ class StockMovementsTable
                     ]),
             ])
             ->recordActions([
-            ])
-            ->headerActions([
-                ExportAction::make()
-                    ->exporter(StockMovementExporter::class),
             ])
             ->defaultSort('movement_date', 'desc')
             ->bulkActions([

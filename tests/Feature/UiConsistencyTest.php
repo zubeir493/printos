@@ -114,6 +114,60 @@ it('groups multi action headers instead of rendering separate action buttons', f
         ->toContain("->color('gray')");
 });
 
+it('keeps export actions in page header action groups instead of table headers', function (): void {
+    $pageExports = [
+        'accounts' => ['app/Filament/Resources/Accounts/Pages/ListAccounts.php', 'AccountExporter::class'],
+        'bank transactions' => ['app/Filament/Resources/BankTransactions/Pages/ListBankTransactions.php', 'BankTransactionExporter::class'],
+        'inventory items' => ['app/Filament/Resources/InventoryItems/Pages/ListInventoryItems.php', 'InventoryItemExporter::class'],
+        'job orders' => ['app/Filament/Resources/JobOrders/Pages/ListJobOrders.php', 'JobOrderExporter::class'],
+        'job order tasks' => ['app/Filament/Resources/JobOrderTasks/Pages/ListJobOrderTasks.php', 'JobOrderTaskExporter::class'],
+        'journal entries' => ['app/Filament/Resources/JournalEntries/Pages/ListJournalEntries.php', 'JournalEntryExporter::class'],
+        'partners' => ['app/Filament/Resources/Partners/Pages/ListPartners.php', 'PartnerExporter::class'],
+        'payments' => ['app/Filament/Resources/Payments/Pages/ListPayments.php', 'PaymentExporter::class'],
+        'purchase order items' => ['app/Filament/Resources/PurchaseOrderItems/Pages/ListPurchaseOrderItems.php', 'PurchaseOrderItemExporter::class'],
+        'purchase orders' => ['app/Filament/Resources/PurchaseOrders/Pages/ListPurchaseOrders.php', 'PurchaseOrderExporter::class'],
+        'sales orders' => ['app/Filament/Resources/SalesOrders/Pages/ListSalesOrders.php', 'SalesOrderExporter::class'],
+        'stock movements' => ['app/Filament/Resources/StockMovements/Pages/ListStockMovements.php', 'StockMovementExporter::class'],
+        'stock overview' => ['app/Filament/Pages/StockOverview.php', 'InventoryBalanceExporter::class'],
+        'account statement' => ['app/Filament/Finance/Pages/AccountStatementReport.php', 'AccountStatementExporter::class'],
+        'balance sheet' => ['app/Filament/Finance/Pages/BalanceSheetReport.php', 'FinancialAccountExporter::class'],
+        'general ledger' => ['app/Filament/Finance/Pages/GeneralLedgerReport.php', 'GeneralLedgerExporter::class'],
+        'income statement' => ['app/Filament/Finance/Pages/IncomeStatementReport.php', 'FinancialAccountExporter::class'],
+        'payables aging' => ['app/Filament/Finance/Pages/PayablesAgingReport.php', 'PayablesAgingExporter::class'],
+        'profit loss' => ['app/Filament/Finance/Pages/ProfitLossStatementReport.php', 'ProfitLossStatementExporter::class'],
+        'receivables aging' => ['app/Filament/Finance/Pages/ReceivablesAgingReport.php', 'ReceivablesAgingExporter::class'],
+        'trial balance' => ['app/Filament/Finance/Pages/TrialBalanceReport.php', 'FinancialAccountExporter::class'],
+    ];
+
+    foreach ($pageExports as [$path, $exporter]) {
+        $source = file_get_contents(base_path($path));
+
+        expect($source)
+            ->toContain('ActionGroup::make([')
+            ->toContain('ExportAction::make()')
+            ->toContain($exporter)
+            ->not->toContain('->headerActions([');
+    }
+
+    foreach ([
+        'app/Filament/Resources/BankTransactions/Tables/BankTransactionsTable.php',
+        'app/Filament/Resources/InventoryItems/Tables/InventoryItemsTable.php',
+        'app/Filament/Resources/JobOrders/Tables/JobOrdersTable.php',
+        'app/Filament/Resources/JobOrderTasks/Tables/JobOrderTasksTable.php',
+        'app/Filament/Resources/JournalEntries/Tables/JournalEntriesTable.php',
+        'app/Filament/Resources/Partners/Tables/PartnersTable.php',
+        'app/Filament/Resources/Payments/Tables/PaymentsTable.php',
+        'app/Filament/Resources/PurchaseOrderItems/Tables/PurchaseOrderItemsTable.php',
+        'app/Filament/Resources/PurchaseOrders/Tables/PurchaseOrdersTable.php',
+        'app/Filament/Resources/SalesOrders/Tables/SalesOrdersTable.php',
+        'app/Filament/Resources/StockMovements/Tables/StockMovementsTable.php',
+    ] as $path) {
+        expect(file_get_contents(base_path($path)))
+            ->not->toContain('ExportAction::make()')
+            ->not->toContain('->headerActions([');
+    }
+});
+
 it('uses indigo edit actions in multi action page headers', function (): void {
     foreach ([
         'app/Filament/Resources/Bids/Pages/Concerns/InteractsWithBidActions.php',

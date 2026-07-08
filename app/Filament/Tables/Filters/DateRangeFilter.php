@@ -18,6 +18,7 @@ class DateRangeFilter
             ->disableRanges()
             ->alwaysShowCalendar()
             ->autoApply()
+            ->disableClear()
             ->modifyQueryUsing(fn (Builder $query, $startDate, $endDate): Builder => $query
                 ->when($startDate, fn (Builder $query): Builder => $query->whereDate($column, '>=', $startDate))
                 ->when($endDate, fn (Builder $query): Builder => $query->whereDate($endColumn, '<=', $endDate)));
@@ -34,6 +35,7 @@ class DateRangeFilter
             ->disableRanges()
             ->alwaysShowCalendar()
             ->autoApply()
+            ->disableClear()
             ->modifyQueryUsing(fn (Builder $query, $startDate, $endDate): Builder => $query
                 ->whereHas($relation, fn (Builder $query): Builder => $query
                     ->when($startDate, fn (Builder $query): Builder => $query->whereDate($column, '>=', $startDate))

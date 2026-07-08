@@ -56,7 +56,7 @@ class ProformasTable
                     ->sortable(),
             ])
             ->filters([
-                DateRangeFilter::make('expiry_date_range', 'expiry_date', 'Expiry date'),
+                DateRangeFilter::make('issue_date_range', 'issue_date', 'Issue date'),
 
                 SelectFilter::make('status')
                     ->options([

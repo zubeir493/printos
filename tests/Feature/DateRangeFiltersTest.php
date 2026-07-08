@@ -5,6 +5,7 @@ test('date based resource tables use the shared date range filter', function (st
 })->with([
     ['app/Filament/Resources/AttendanceSegments/AttendanceSegmentResource.php', "DateRangeFilter::make('date_range', 'date', 'Date')"],
     ['app/Filament/Resources/Payments/Tables/PaymentsTable.php', "DateRangeFilter::make('payment_date_range', 'payment_date', 'Payment date')"],
+    ['app/Filament/Resources/Proformas/Tables/ProformasTable.php', "DateRangeFilter::make('issue_date_range', 'issue_date', 'Issue date')"],
     ['app/Filament/Resources/JournalEntries/Tables/JournalEntriesTable.php', "DateRangeFilter::make('entry_date_range', 'entry_date', 'Entry date')"],
     ['app/Filament/Resources/BankTransactions/Tables/BankTransactionsTable.php', "DateRangeFilter::make('transaction_date_range', 'transaction_date', 'Transaction date')"],
     ['app/Filament/Resources/BankTransfers/Tables/BankTransfersTable.php', "DateRangeFilter::make('transfer_date_range', 'transfer_date', 'Transfer date')"],

@@ -4,6 +4,7 @@ namespace App\Filament\Resources\JournalEntries\Tables;
 
 use App\Filament\Exports\JournalEntryExporter;
 use App\Filament\Support\TableBadgeFormatter;
+use App\Filament\Tables\Filters\DateRangeFilter;
 use App\Support\Money;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
@@ -42,6 +43,7 @@ class JournalEntriesTable
                     }),
             ])
             ->filters([
+                DateRangeFilter::make('entry_date_range', 'entry_date', 'Entry date'),
                 SelectFilter::make('status')
                     ->options([
                         'draft' => 'Draft',

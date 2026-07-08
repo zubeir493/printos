@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\GoodsReceipts;
 
 use App\Filament\Resources\GoodsReceipts\Pages\ListGoodsReceipts;
+use App\Filament\Tables\Filters\DateRangeFilter;
 use App\Models\GoodsReceipt;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -51,6 +52,9 @@ class GoodsReceiptResource extends Resource
                 Tables\Columns\TextColumn::make('status')
                     ->badge()
                     ->sortable(),
+            ])
+            ->filters([
+                DateRangeFilter::make('receipt_date_range', 'receipt_date', 'Receipt date'),
             ])
             ->defaultSort('receipt_date', 'desc');
     }

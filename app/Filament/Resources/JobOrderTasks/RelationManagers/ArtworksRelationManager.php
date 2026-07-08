@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\JobOrderTasks\RelationManagers;
 
+use App\Filament\Tables\Filters\DateRangeFilter;
 use App\Support\PrivateStorage;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -106,6 +107,8 @@ class ArtworksRelationManager extends RelationManager
                     ->color('gray'),
             ])
             ->filters([
+                DateRangeFilter::make('uploaded_date_range', 'created_at', 'Uploaded date'),
+
                 TernaryFilter::make('is_approved')
                     ->label('Approval Status'),
             ])

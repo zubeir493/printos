@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Artworks\Tables;
 
+use App\Filament\Tables\Filters\DateRangeFilter;
 use App\Mail\ShareArtwork;
 use App\Models\EmailLog;
 use App\Models\JobOrderTask;
@@ -54,6 +55,8 @@ class ArtworksTable
                     ->sortable(),
             ])
             ->filters([
+                DateRangeFilter::make('uploaded_date_range', 'created_at', 'Uploaded date'),
+
                 SelectFilter::make('job_order_task_id')
                     ->label('Task')
                     ->options(fn () => JobOrderTask::query()

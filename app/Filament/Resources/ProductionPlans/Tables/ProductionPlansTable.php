@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\ProductionPlans\Tables;
 
 use App\Filament\Resources\ProductionReports\ProductionReportResource;
+use App\Filament\Tables\Filters\DateRangeFilter;
 use App\Models\ProductionReport;
 use Filament\Actions\Action as ActionsAction;
 use Filament\Actions\ActionGroup;
@@ -33,6 +34,8 @@ class ProductionPlansTable
                     }),
             ])
             ->filters([
+                DateRangeFilter::make('week_range', 'week_start', 'Week', 'week_end'),
+
                 SelectFilter::make('status')
                     ->options([
                         'draft' => 'Draft',

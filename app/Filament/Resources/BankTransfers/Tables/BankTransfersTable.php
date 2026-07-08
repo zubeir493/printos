@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\BankTransfers\Tables;
 
+use App\Filament\Tables\Filters\DateRangeFilter;
 use App\Support\Money;
 use Filament\Actions\Action as ActionsAction;
 use Filament\Actions\ActionGroup;
@@ -50,6 +51,7 @@ class BankTransfersTable
                     }),
             ])
             ->filters([
+                DateRangeFilter::make('transfer_date_range', 'transfer_date', 'Transfer date'),
                 SelectFilter::make('status')
                     ->label('Transfer Status')
                     ->options([

@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\LeaveRequests;
 
 use App\Filament\Resources\LeaveRequests\Pages\ManageLeaveRequests;
+use App\Filament\Tables\Filters\DateRangeFilter;
 use App\Models\LeaveRequest;
 use BackedEnum;
 use Filament\Forms\Components\DatePicker;
@@ -48,13 +49,17 @@ class LeaveRequestResource extends Resource
 
     public static function table(Table $table): Table
     {
-        return $table->columns([
-            TextColumn::make('employee.full_name')->label('Employee')->searchable(['first_name', 'last_name']),
-            TextColumn::make('leaveType.name')->label('Type'),
-            TextColumn::make('start_date')->date(),
-            TextColumn::make('end_date')->date(),
-            TextColumn::make('status')->badge(),
-        ]);
+        return $table
+            ->columns([
+                TextColumn::make('employee.full_name')->label('Employee')->searchable(['first_name', 'last_name']),
+                TextColumn::make('leaveType.name')->label('Type'),
+                TextColumn::make('start_date')->date(),
+                TextColumn::make('end_date')->date(),
+                TextColumn::make('status')->badge(),
+            ])
+            ->filters([
+                DateRangeFilter::make('leave_date_range', 'start_date', 'Leave dates', 'end_date'),
+            ]);
     }
 
     public static function getPages(): array

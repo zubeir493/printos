@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\BankTransactions\Tables;
 
 use App\Filament\Exports\BankTransactionExporter;
+use App\Filament\Tables\Filters\DateRangeFilter;
 use App\Support\Money;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\ExportAction;
@@ -43,6 +44,7 @@ class BankTransactionsTable
                     ->sortable(),
             ])
             ->filters([
+                DateRangeFilter::make('transaction_date_range', 'transaction_date', 'Transaction date'),
                 SelectFilter::make('bank_id')
                     ->label('Bank')
                     ->relationship('bank', 'name')

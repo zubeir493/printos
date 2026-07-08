@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\CostEstimates\Tables;
 
+use App\Filament\Tables\Filters\DateRangeFilter;
 use App\Models\CostEstimate;
 use App\Models\Partner;
 use App\Services\Costing\CostEstimateService;
@@ -53,6 +54,8 @@ class CostEstimatesTable
                     ->sortable(),
             ])
             ->filters([
+                DateRangeFilter::make('created_date_range', 'created_at', 'Created date'),
+
                 SelectFilter::make('job_type')
                     ->options([
                         'books' => 'Books',

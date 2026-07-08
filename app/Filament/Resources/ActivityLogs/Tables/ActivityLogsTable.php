@@ -3,11 +3,9 @@
 namespace App\Filament\Resources\ActivityLogs\Tables;
 
 use App\Filament\Resources\ActivityLogs\ActivityLogResource;
+use App\Filament\Tables\Filters\DateRangeFilter;
 use App\Models\User;
-use Carbon\Carbon;
-use Filament\Forms\Components\DatePicker;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
@@ -88,28 +86,7 @@ class ActivityLogsTable
                     ->options(fn () => User::orderBy('name')->pluck('name', 'id'))
                     ->searchable(),
 
-                Filter::make('date_range')
-                    ->label('Date range')
-                    ->form([
-                        DatePicker::make('from')->label('From'),
-                        DatePicker::make('until')->label('Until'),
-                    ])
-                    ->query(function (Builder $query, array $data): void {
-                        $query
-                            ->when($data['from'], fn ($q) => $q->whereDate('created_at', '>=', $data['from']))
-                            ->when($data['until'], fn ($q) => $q->whereDate('created_at', '<=', $data['until']));
-                    })
-                    ->indicateUsing(function (array $data): array {
-                        $indicators = [];
-                        if ($data['from'] ?? null) {
-                            $indicators[] = 'From '.Carbon::parse($data['from'])->format('M j, Y');
-                        }
-                        if ($data['until'] ?? null) {
-                            $indicators[] = 'Until '.Carbon::parse($data['until'])->format('M j, Y');
-                        }
-
-                        return $indicators;
-                    }),
+                DateRangeFilter::make('date_range', 'created_at', 'Date range'),
             ])
             ->recordUrl(fn ($record) => ActivityLogResource::getUrl('view', ['record' => $record]))
             ->paginated([25, 50, 100])

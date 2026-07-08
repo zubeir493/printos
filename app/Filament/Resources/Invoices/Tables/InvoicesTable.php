@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Invoices\Tables;
 
+use App\Filament\Tables\Filters\DateRangeFilter;
 use App\Services\InvoiceGeneratorService;
 use App\Support\Money;
 use Filament\Actions\Action as ActionsAction;
@@ -60,6 +61,8 @@ class InvoicesTable
                     ->description(fn ($record) => $record->isOverdue() ? 'Overdue' : null),
             ])
             ->filters([
+                DateRangeFilter::make('due_date_range', 'due_date', 'Due date'),
+
                 SelectFilter::make('invoice_type')
                     ->label('Type')
                     ->options([

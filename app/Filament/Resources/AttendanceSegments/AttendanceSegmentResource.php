@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\AttendanceSegments;
 
 use App\Filament\Resources\AttendanceSegments\Pages\ManageAttendanceSegments;
+use App\Filament\Tables\Filters\DateRangeFilter;
 use App\Models\AttendanceSegment;
 use App\Services\Hr\RebuildAttendanceDailySummaries;
 use BackedEnum;
@@ -16,11 +17,9 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use UnitEnum;
 
 class AttendanceSegmentResource extends Resource
 {
@@ -93,18 +92,11 @@ class AttendanceSegmentResource extends Resource
                     ])
                     ->multiple()
                     ->selectablePlaceholder(false),
-                Filter::make('date')
-                    ->form([
-                        DatePicker::make('from'),
-                        DatePicker::make('until'),
-                    ])
-                    ->query(fn(Builder $query, array $data): Builder => $query
-                        ->when($data['from'], fn(Builder $query, $date): Builder => $query->whereDate('date', '>=', $date))
-                        ->when($data['until'], fn(Builder $query, $date): Builder => $query->whereDate('date', '<=', $date))),
+                DateRangeFilter::make('date_range', 'date', 'Date'),
             ])
             ->recordActions([
                 EditAction::make()
-                    ->after(fn($record) => app(RebuildAttendanceDailySummaries::class)->forSegments(collect([$record]))),
+                    ->after(fn ($record) => app(RebuildAttendanceDailySummaries::class)->forSegments(collect([$record]))),
             ])
             ->defaultSort('date', 'desc');
     }

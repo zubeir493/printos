@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Payments\Tables;
 
 use App\Enums\PaymentTransactionType;
 use App\Filament\Exports\PaymentExporter;
+use App\Filament\Tables\Filters\DateRangeFilter;
 use App\Support\Money;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\ExportAction;
@@ -55,6 +56,7 @@ class PaymentsTable
                     ->exporter(PaymentExporter::class),
             ])
             ->filters([
+                DateRangeFilter::make('payment_date_range', 'payment_date', 'Payment date'),
                 SelectFilter::make('direction')
                     ->options([
                         'inbound' => 'Inbound',

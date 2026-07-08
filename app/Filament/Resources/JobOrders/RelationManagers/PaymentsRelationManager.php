@@ -4,6 +4,7 @@ namespace App\Filament\Resources\JobOrders\RelationManagers;
 
 use App\Enums\PaymentTransactionType;
 use App\Filament\Support\PanelAccess;
+use App\Filament\Tables\Filters\DateRangeFilter;
 use App\Models\Bank;
 use App\Support\Money;
 use Filament\Actions\CreateAction;
@@ -83,6 +84,9 @@ class PaymentsRelationManager extends RelationManager
                 TextColumn::make('withholding_amount')
                     ->label('Withholding')
                     ->formatStateUsing(fn ($state) => Money::format($state)),
+            ])
+            ->filters([
+                DateRangeFilter::make('payment_date_range', 'payment_date', 'Payment date'),
             ])
             ->headerActions([
                 CreateAction::make()

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\MaterialIssueApprovals;
 
+use App\Filament\Tables\Filters\DateRangeFilter;
 use App\Services\MaterialIssueService;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -44,6 +45,8 @@ class MaterialIssueApprovalsTable
                     }),
             ])
             ->filters([
+                DateRangeFilter::make('request_date_range', 'created_at', 'Request date'),
+
                 SelectFilter::make('status')
                     ->options([
                         'pending' => 'Pending',

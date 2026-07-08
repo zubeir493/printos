@@ -5,6 +5,7 @@ namespace App\Filament\Resources\JobOrders\Tables;
 use App\Enums\PaymentTransactionType;
 use App\Filament\Exports\JobOrderExporter;
 use App\Filament\Support\PanelAccess;
+use App\Filament\Tables\Filters\DateRangeFilter;
 use App\Models\Bank;
 use App\Models\Payment;
 use App\Services\InvoiceGeneratorService;
@@ -84,6 +85,8 @@ class JobOrdersTable
                     ->exporter(JobOrderExporter::class),
             ])
             ->filters([
+                DateRangeFilter::make('submission_date_range', 'submission_date', 'Submission date'),
+
                 TernaryFilter::make('payment_status')
                     ->label('Payment Status')
                     ->placeholder('All')

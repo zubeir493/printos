@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\EmployeeLoans;
 
 use App\Filament\Resources\EmployeeLoans\Pages\ManageEmployeeLoans;
+use App\Filament\Tables\Filters\DateRangeFilter;
 use App\Models\Bank;
 use App\Models\EmployeeLoan;
 use App\Services\Hr\RepayEmployeeLoan;
@@ -111,6 +112,8 @@ class EmployeeLoanResource extends Resource
                     ->summarize(Sum::make()->suffix(fn (): string => Money::suffix())),
             ])
             ->filters([
+                DateRangeFilter::make('loan_date_range', 'loan_date', 'Loan date'),
+
                 SelectFilter::make('employee_id')
                     ->label('Employee')
                     ->relationship('employee', 'first_name')

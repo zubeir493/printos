@@ -6,6 +6,7 @@ use App\Filament\Resources\PayrollRuns\Pages\CreatePayrollRun;
 use App\Filament\Resources\PayrollRuns\Pages\EditPayrollRun;
 use App\Filament\Resources\PayrollRuns\Pages\ListPayrollRuns;
 use App\Filament\Resources\PayrollRuns\RelationManagers\PayrollRunEmployeesRelationManager;
+use App\Filament\Tables\Filters\DateRangeFilter;
 use App\Models\PayrollRun;
 use App\Support\FiscalCalendar;
 use App\Support\Money;
@@ -24,7 +25,6 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Malzariey\FilamentDaterangepickerFilter\Fields\DateRangePicker;
-use Malzariey\FilamentDaterangepickerFilter\Filters\DateRangeFilter;
 
 class PayrollRunResource extends Resource
 {
@@ -153,16 +153,7 @@ class PayrollRunResource extends Resource
                     ->state(fn (PayrollRun $record): string => Money::format((float) $record->employees()->where('net_pay', '>', 0)->sum('net_pay'), 2)),
             ])
             ->filters([
-                DateRangeFilter::make('period')
-                    ->label('Period')
-                    ->useColumn('period_start')
-                    ->format('Y-m-d')
-                    ->disableRanges()
-                    ->alwaysShowCalendar()
-                    ->autoApply()
-                    ->modifyQueryUsing(fn ($query, $startDate, $endDate) => $query
-                        ->when($startDate, fn ($query) => $query->whereDate('period_start', '>=', $startDate))
-                        ->when($endDate, fn ($query) => $query->whereDate('period_end', '<=', $endDate))),
+                DateRangeFilter::make('period', 'period_start', 'Period', 'period_end'),
             ])
             ->defaultSort('created_at', 'desc');
     }

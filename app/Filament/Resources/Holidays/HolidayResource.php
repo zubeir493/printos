@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Holidays;
 
 use App\Filament\Resources\Holidays\Pages\ManageHolidays;
+use App\Filament\Tables\Filters\DateRangeFilter;
 use App\Models\Holiday;
 use BackedEnum;
 use Filament\Forms\Components\DatePicker;
@@ -15,7 +16,6 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
-use UnitEnum;
 
 class HolidayResource extends Resource
 {
@@ -47,13 +47,17 @@ class HolidayResource extends Resource
 
     public static function table(Table $table): Table
     {
-        return $table->columns([
-            TextColumn::make('name')->searchable(),
-            TextColumn::make('date')->date()->sortable(),
-            TextColumn::make('type')->badge(),
-            IconColumn::make('is_paid')->boolean(),
-            IconColumn::make('counts_as_holiday_overtime')->boolean(),
-        ]);
+        return $table
+            ->columns([
+                TextColumn::make('name')->searchable(),
+                TextColumn::make('date')->date()->sortable(),
+                TextColumn::make('type')->badge(),
+                IconColumn::make('is_paid')->boolean(),
+                IconColumn::make('counts_as_holiday_overtime')->boolean(),
+            ])
+            ->filters([
+                DateRangeFilter::make('date_range', 'date', 'Date'),
+            ]);
     }
 
     public static function getPages(): array

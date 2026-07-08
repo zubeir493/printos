@@ -5,6 +5,7 @@ namespace App\Filament\Resources\SalesOrders\Tables;
 use App\Enums\PaymentTransactionType;
 use App\Filament\Exports\SalesOrderExporter;
 use App\Filament\Support\PanelAccess;
+use App\Filament\Tables\Filters\DateRangeFilter;
 use App\Models\Bank;
 use App\Models\Payment;
 use App\Models\SalesOrder;
@@ -62,6 +63,8 @@ class SalesOrdersTable
                     ->sortable(),
             ])
             ->filters([
+                DateRangeFilter::make('order_date_range', 'order_date', 'Order date'),
+
                 SelectFilter::make('status')
                     ->options([
                         'draft' => 'Draft',

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\ProductionReports\Tables;
 
+use App\Filament\Tables\Filters\DateRangeFilter;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\EditAction;
@@ -32,6 +33,8 @@ class ProductionReportsTable
                     }),
             ])
             ->filters([
+                DateRangeFilter::make('created_date_range', 'created_at', 'Created date'),
+
                 SelectFilter::make('status')
                     ->options([
                         'draft' => 'Draft',

@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\PurchaseOrders\RelationManagers;
 
 use App\Filament\Support\PanelAccess;
+use App\Filament\Tables\Filters\DateRangeFilter;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
@@ -51,7 +52,7 @@ class GoodsReceiptsRelationManager extends RelationManager
                     }),
             ])
             ->filters([
-                //
+                DateRangeFilter::make('receipt_date_range', 'receipt_date', 'Receipt date'),
             ])
             ->defaultSort('receipt_date', 'desc')
             ->headerActions([

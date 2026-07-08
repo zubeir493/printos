@@ -3,17 +3,15 @@
 namespace App\Filament\Resources\StockMovements\Tables;
 
 use App\Filament\Exports\StockMovementExporter;
+use App\Filament\Tables\Filters\DateRangeFilter;
 use App\Support\DateTimeDisplay;
 use App\Support\StockTransferQuantity;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\ExportAction;
 use Filament\Actions\ExportBulkAction;
-use Filament\Forms\Components\DatePicker;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
 
 class StockMovementsTable
 {
@@ -48,6 +46,8 @@ class StockMovementsTable
                     ->sortable(),
             ])
             ->filters([
+                DateRangeFilter::make('movement_date_range', 'movement_date', 'Movement date'),
+
                 SelectFilter::make('type')
                     ->options([
                         'purchase' => 'Purchase',
@@ -59,23 +59,6 @@ class StockMovementsTable
                         'material_return' => 'Material Return',
                         'production_output' => 'Production Output',
                     ]),
-                Filter::make('movement_date')
-                    ->label('Movement date')
-                    ->schema([
-                        DatePicker::make('moved_from')
-                            ->label('Moved from'),
-                        DatePicker::make('moved_until')
-                            ->label('Moved until'),
-                    ])
-                    ->query(fn (Builder $query, array $data): Builder => $query
-                        ->when(
-                            $data['moved_from'],
-                            fn (Builder $query, $date): Builder => $query->whereDate('movement_date', '>=', $date),
-                        )
-                        ->when(
-                            $data['moved_until'],
-                            fn (Builder $query, $date): Builder => $query->whereDate('movement_date', '<=', $date),
-                        )),
             ])
             ->recordActions([
             ])

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Bonds\Tables;
 
+use App\Filament\Tables\Filters\DateRangeFilter;
 use App\Models\Bank;
 use App\Models\Bond;
 use App\Support\Money;
@@ -56,6 +57,8 @@ class BondsTable
                     ->sortable(),
             ])
             ->filters([
+                DateRangeFilter::make('issue_date_range', 'issue_date', 'Issue date'),
+
                 SelectFilter::make('type')
                     ->options(Bond::typeOptions()),
                 SelectFilter::make('status')

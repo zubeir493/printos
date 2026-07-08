@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Bids\RelationManagers;
 
+use App\Filament\Tables\Filters\DateRangeFilter;
 use App\Models\Bank;
 use App\Models\BidBond;
 use App\Support\Money;
@@ -84,6 +85,9 @@ class BidBondsRelationManager extends RelationManager
                 TextColumn::make('issue_date')->date(),
                 TextColumn::make('recovery_date')->date(),
                 TextColumn::make('expiry_date')->date(),
+            ])
+            ->filters([
+                DateRangeFilter::make('expiry_date_range', 'expiry_date', 'Expiry date'),
             ])
             ->headerActions([
                 CreateAction::make()

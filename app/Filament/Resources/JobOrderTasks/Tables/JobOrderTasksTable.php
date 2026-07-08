@@ -5,6 +5,7 @@ namespace App\Filament\Resources\JobOrderTasks\Tables;
 use App\Filament\Exports\JobOrderTaskExporter;
 use App\Filament\Resources\JobOrderTasks\Actions\JobOrderTaskWorkflowActions;
 use App\Filament\Support\PanelAccess;
+use App\Filament\Tables\Filters\DateRangeFilter;
 use App\Models\InventoryBalance;
 use App\Models\InventoryItem;
 use App\Models\JobOrderTask;
@@ -71,6 +72,8 @@ class JobOrderTasksTable
                     ->visible(fn () => in_array(Filament::getCurrentPanel()?->getId(), ['admin', 'operations', 'finance'])),
             ])
             ->filters([
+                DateRangeFilter::makeForRelation('deadline_date_range', 'jobOrder', 'submission_date', 'Deadline'),
+
                 SelectFilter::make('status')
                     ->options([
                         'pending' => 'Pending',

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Employees\RelationManagers;
 
+use App\Filament\Tables\Filters\DateRangeFilter;
 use App\Services\Hr\RebuildAttendanceDailySummaries;
 use Filament\Actions\CreateAction;
 use Filament\Actions\EditAction;
@@ -13,9 +14,7 @@ use Filament\Forms\Components\TimePicker;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
 
 class AttendanceSegmentsRelationManager extends RelationManager
 {
@@ -68,14 +67,7 @@ class AttendanceSegmentsRelationManager extends RelationManager
                 TextColumn::make('correction_reason')->label('Reason')->limit(32),
             ])
             ->filters([
-                Filter::make('date')
-                    ->form([
-                        DatePicker::make('from'),
-                        DatePicker::make('until'),
-                    ])
-                    ->query(fn (Builder $query, array $data): Builder => $query
-                        ->when($data['from'], fn (Builder $query, $date): Builder => $query->whereDate('date', '>=', $date))
-                        ->when($data['until'], fn (Builder $query, $date): Builder => $query->whereDate('date', '<=', $date))),
+                DateRangeFilter::make('date_range', 'date', 'Date'),
             ])
             ->headerActions([
                 CreateAction::make()

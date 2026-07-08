@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Proformas\Tables;
 
 use App\Filament\Resources\Proformas\ProformaResource;
 use App\Filament\Support\PanelAccess;
+use App\Filament\Tables\Filters\DateRangeFilter;
 use App\Models\Proforma;
 use App\Services\Proformas\ProformaPdfService;
 use App\Services\Proformas\ProformaWorkflowService;
@@ -55,6 +56,8 @@ class ProformasTable
                     ->sortable(),
             ])
             ->filters([
+                DateRangeFilter::make('expiry_date_range', 'expiry_date', 'Expiry date'),
+
                 SelectFilter::make('status')
                     ->options([
                         'draft' => 'Draft',

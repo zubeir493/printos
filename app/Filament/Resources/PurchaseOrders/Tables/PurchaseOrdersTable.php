@@ -5,6 +5,7 @@ namespace App\Filament\Resources\PurchaseOrders\Tables;
 use App\Enums\PaymentTransactionType;
 use App\Filament\Exports\PurchaseOrderExporter;
 use App\Filament\Support\PanelAccess;
+use App\Filament\Tables\Filters\DateRangeFilter;
 use App\Models\Bank;
 use App\Models\Partner;
 use App\Models\Payment;
@@ -91,6 +92,8 @@ class PurchaseOrdersTable
                     ->sortable(),
             ])
             ->filters([
+                DateRangeFilter::make('order_date_range', 'order_date', 'Order date'),
+
                 SelectFilter::make('status')
                     ->label('Status')
                     ->options([

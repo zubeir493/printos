@@ -3,11 +3,13 @@
 namespace App\Filament\Resources\PurchaseOrders\Pages;
 
 use App\Filament\Exports\PurchaseOrderExporter;
+use App\Filament\Imports\PurchaseOrderImporter;
 use App\Filament\Resources\PurchaseOrders\PurchaseOrderResource;
 use App\Filament\Support\PanelAccess;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\ExportAction;
+use Filament\Actions\ImportAction;
 use Filament\Resources\Pages\ListRecords;
 
 class ListPurchaseOrders extends ListRecords
@@ -20,6 +22,8 @@ class ListPurchaseOrders extends ListRecords
             CreateAction::make()
                 ->visible(fn () => PanelAccess::canManagePurchaseOrders()),
             ActionGroup::make([
+                ImportAction::make()
+                    ->importer(PurchaseOrderImporter::class),
                 ExportAction::make()
                     ->exporter(PurchaseOrderExporter::class),
             ]),

@@ -4,11 +4,13 @@ namespace App\Filament\Resources\Payments\Pages;
 
 use App\Enums\PaymentTransactionType;
 use App\Filament\Exports\PaymentExporter;
+use App\Filament\Imports\PaymentImporter;
 use App\Filament\Resources\Payments\PaymentResource;
 use App\Filament\Widgets\PaymentsStatsWidget;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\ExportAction;
+use Filament\Actions\ImportAction;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Schemas\Components\Tabs\Tab;
 use Illuminate\Database\Eloquent\Builder;
@@ -22,6 +24,8 @@ class ListPayments extends ListRecords
         return [
             CreateAction::make(),
             ActionGroup::make([
+                ImportAction::make()
+                    ->importer(PaymentImporter::class),
                 ExportAction::make()
                     ->exporter(PaymentExporter::class),
             ]),
@@ -40,12 +44,12 @@ class ListPayments extends ListRecords
         return [
             'all' => Tab::make('All'),
             'income' => Tab::make('Income')
-                ->modifyQueryUsing(fn(Builder $query): Builder => $query->whereIn('transaction_type', [
+                ->modifyQueryUsing(fn (Builder $query): Builder => $query->whereIn('transaction_type', [
                     PaymentTransactionType::CUSTOMER_RECEIPT->value,
                     PaymentTransactionType::CASH_SALE_RECEIPT->value,
                 ])),
             'expenses' => Tab::make('Expenses')
-                ->modifyQueryUsing(fn(Builder $query): Builder => $query->whereIn('transaction_type', [
+                ->modifyQueryUsing(fn (Builder $query): Builder => $query->whereIn('transaction_type', [
                     PaymentTransactionType::DIRECT_EXPENSE->value,
                     PaymentTransactionType::PETTY_CASH_EXPENSE->value,
                 ])),

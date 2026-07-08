@@ -261,7 +261,6 @@ nav.fi-sidebar-nav::-webkit-scrollbar {
     box-shadow: inset 0px -2px 2px 0.5px #000000, inset 0px 0px 2px 1.5px rgba(255, 255, 255, 0.5);
     border-radius: .5rem;
     flex: none;
-    order: 2;
     flex-grow: 0;
 }
 

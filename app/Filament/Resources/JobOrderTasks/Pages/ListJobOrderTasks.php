@@ -3,9 +3,11 @@
 namespace App\Filament\Resources\JobOrderTasks\Pages;
 
 use App\Filament\Exports\JobOrderTaskExporter;
+use App\Filament\Imports\JobOrderTaskImporter;
 use App\Filament\Resources\JobOrderTasks\JobOrderTaskResource;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\ExportAction;
+use Filament\Actions\ImportAction;
 use Filament\Facades\Filament;
 use Filament\Resources\Pages\ListRecords;
 
@@ -17,6 +19,9 @@ class ListJobOrderTasks extends ListRecords
     {
         return [
             ActionGroup::make([
+                ImportAction::make()
+                    ->importer(JobOrderTaskImporter::class)
+                    ->visible(fn () => in_array(Filament::getCurrentPanel()?->getId(), ['admin', 'operations', 'finance'])),
                 ExportAction::make()
                     ->exporter(JobOrderTaskExporter::class)
                     ->visible(fn () => in_array(Filament::getCurrentPanel()?->getId(), ['admin', 'operations', 'finance'])),

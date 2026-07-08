@@ -1,14 +1,18 @@
 <?php
 
 use App\Filament\Imports\AccountImporter;
+use App\Filament\Imports\AttendanceSegmentImporter;
 use App\Filament\Resources\Proformas\Pages\CreateProforma;
 use App\Filament\Resources\Proformas\Pages\EditProforma;
 use App\Filament\Resources\Proformas\Pages\ViewProforma;
 use App\Models\Account;
+use App\Models\AttendanceSegment;
+use App\Models\Employee;
 use App\Models\Partner;
 use App\Models\Proforma;
 use App\Models\ProformaTask;
 use App\Models\Setting;
+use App\Models\Shift;
 use App\Models\User;
 use App\UserRole;
 use Filament\Actions\Imports\Models\Import;
@@ -119,30 +123,30 @@ it('groups multi action headers instead of rendering separate action buttons', f
 
 it('keeps export actions in page header action groups instead of table headers', function (): void {
     $pageExports = [
-        'accounts' => ['app/Filament/Resources/Accounts/Pages/ListAccounts.php', 'AccountExporter::class'],
-        'bank transactions' => ['app/Filament/Resources/BankTransactions/Pages/ListBankTransactions.php', 'BankTransactionExporter::class'],
-        'inventory items' => ['app/Filament/Resources/InventoryItems/Pages/ListInventoryItems.php', 'InventoryItemExporter::class'],
-        'job orders' => ['app/Filament/Resources/JobOrders/Pages/ListJobOrders.php', 'JobOrderExporter::class'],
-        'job order tasks' => ['app/Filament/Resources/JobOrderTasks/Pages/ListJobOrderTasks.php', 'JobOrderTaskExporter::class'],
-        'journal entries' => ['app/Filament/Resources/JournalEntries/Pages/ListJournalEntries.php', 'JournalEntryExporter::class'],
-        'partners' => ['app/Filament/Resources/Partners/Pages/ListPartners.php', 'PartnerExporter::class'],
-        'payments' => ['app/Filament/Resources/Payments/Pages/ListPayments.php', 'PaymentExporter::class'],
-        'purchase order items' => ['app/Filament/Resources/PurchaseOrderItems/Pages/ListPurchaseOrderItems.php', 'PurchaseOrderItemExporter::class'],
-        'purchase orders' => ['app/Filament/Resources/PurchaseOrders/Pages/ListPurchaseOrders.php', 'PurchaseOrderExporter::class'],
-        'sales orders' => ['app/Filament/Resources/SalesOrders/Pages/ListSalesOrders.php', 'SalesOrderExporter::class'],
-        'stock movements' => ['app/Filament/Resources/StockMovements/Pages/ListStockMovements.php', 'StockMovementExporter::class'],
-        'stock overview' => ['app/Filament/Pages/StockOverview.php', 'InventoryBalanceExporter::class'],
-        'account statement' => ['app/Filament/Finance/Pages/AccountStatementReport.php', 'AccountStatementExporter::class'],
-        'balance sheet' => ['app/Filament/Finance/Pages/BalanceSheetReport.php', 'FinancialAccountExporter::class'],
-        'general ledger' => ['app/Filament/Finance/Pages/GeneralLedgerReport.php', 'GeneralLedgerExporter::class'],
-        'income statement' => ['app/Filament/Finance/Pages/IncomeStatementReport.php', 'FinancialAccountExporter::class'],
-        'payables aging' => ['app/Filament/Finance/Pages/PayablesAgingReport.php', 'PayablesAgingExporter::class'],
-        'profit loss' => ['app/Filament/Finance/Pages/ProfitLossStatementReport.php', 'ProfitLossStatementExporter::class'],
-        'receivables aging' => ['app/Filament/Finance/Pages/ReceivablesAgingReport.php', 'ReceivablesAgingExporter::class'],
-        'trial balance' => ['app/Filament/Finance/Pages/TrialBalanceReport.php', 'FinancialAccountExporter::class'],
+        'accounts' => ['app/Filament/Resources/Accounts/Pages/ListAccounts.php', 'AccountExporter::class', 'AccountImporter::class'],
+        'bank transactions' => ['app/Filament/Resources/BankTransactions/Pages/ListBankTransactions.php', 'BankTransactionExporter::class', 'BankTransactionImporter::class'],
+        'inventory items' => ['app/Filament/Resources/InventoryItems/Pages/ListInventoryItems.php', 'InventoryItemExporter::class', 'InventoryItemImporter::class'],
+        'job orders' => ['app/Filament/Resources/JobOrders/Pages/ListJobOrders.php', 'JobOrderExporter::class', 'JobOrderImporter::class'],
+        'job order tasks' => ['app/Filament/Resources/JobOrderTasks/Pages/ListJobOrderTasks.php', 'JobOrderTaskExporter::class', 'JobOrderTaskImporter::class'],
+        'journal entries' => ['app/Filament/Resources/JournalEntries/Pages/ListJournalEntries.php', 'JournalEntryExporter::class', 'JournalEntryImporter::class'],
+        'partners' => ['app/Filament/Resources/Partners/Pages/ListPartners.php', 'PartnerExporter::class', 'PartnerImporter::class'],
+        'payments' => ['app/Filament/Resources/Payments/Pages/ListPayments.php', 'PaymentExporter::class', 'PaymentImporter::class'],
+        'purchase order items' => ['app/Filament/Resources/PurchaseOrderItems/Pages/ListPurchaseOrderItems.php', 'PurchaseOrderItemExporter::class', 'PurchaseOrderItemImporter::class'],
+        'purchase orders' => ['app/Filament/Resources/PurchaseOrders/Pages/ListPurchaseOrders.php', 'PurchaseOrderExporter::class', 'PurchaseOrderImporter::class'],
+        'sales orders' => ['app/Filament/Resources/SalesOrders/Pages/ListSalesOrders.php', 'SalesOrderExporter::class', 'SalesOrderImporter::class'],
+        'stock movements' => ['app/Filament/Resources/StockMovements/Pages/ListStockMovements.php', 'StockMovementExporter::class', 'StockMovementImporter::class'],
+        'stock overview' => ['app/Filament/Pages/StockOverview.php', 'InventoryBalanceExporter::class', null],
+        'account statement' => ['app/Filament/Finance/Pages/AccountStatementReport.php', 'AccountStatementExporter::class', null],
+        'balance sheet' => ['app/Filament/Finance/Pages/BalanceSheetReport.php', 'FinancialAccountExporter::class', null],
+        'general ledger' => ['app/Filament/Finance/Pages/GeneralLedgerReport.php', 'GeneralLedgerExporter::class', null],
+        'income statement' => ['app/Filament/Finance/Pages/IncomeStatementReport.php', 'FinancialAccountExporter::class', null],
+        'payables aging' => ['app/Filament/Finance/Pages/PayablesAgingReport.php', 'PayablesAgingExporter::class', null],
+        'profit loss' => ['app/Filament/Finance/Pages/ProfitLossStatementReport.php', 'ProfitLossStatementExporter::class', null],
+        'receivables aging' => ['app/Filament/Finance/Pages/ReceivablesAgingReport.php', 'ReceivablesAgingExporter::class', null],
+        'trial balance' => ['app/Filament/Finance/Pages/TrialBalanceReport.php', 'FinancialAccountExporter::class', null],
     ];
 
-    foreach ($pageExports as [$path, $exporter]) {
+    foreach ($pageExports as [$path, $exporter, $importer]) {
         $source = file_get_contents(base_path($path));
 
         expect($source)
@@ -155,13 +159,13 @@ it('keeps export actions in page header action groups instead of table headers',
             expect(strpos($source, 'CreateAction::make()'))
                 ->toBeLessThan(strpos($source, 'ActionGroup::make(['));
         }
+
+        if ($importer) {
+            expect($source)
+                ->toContain('ImportAction::make()')
+                ->toContain($importer);
+        }
     }
-
-    $accountsSource = file_get_contents(base_path('app/Filament/Resources/Accounts/Pages/ListAccounts.php'));
-
-    expect($accountsSource)
-        ->toContain('ImportAction::make()')
-        ->toContain('AccountImporter::class');
 
     foreach ([
         'app/Filament/Resources/BankTransactions/Tables/BankTransactionsTable.php',
@@ -180,6 +184,29 @@ it('keeps export actions in page header action groups instead of table headers',
             ->not->toContain('ExportAction::make()')
             ->not->toContain('->headerActions([');
     }
+});
+
+it('keeps attendance import in the page action group after create', function (): void {
+    $source = file_get_contents(base_path('app/Filament/Resources/AttendanceSegments/Pages/ManageAttendanceSegments.php'));
+
+    expect($source)
+        ->toContain('CreateAction::make()')
+        ->toContain('ActionGroup::make([')
+        ->toContain('ImportAction::make()')
+        ->toContain('AttendanceSegmentImporter::class')
+        ->not->toContain("Action::make('importAttendanceCsv')");
+
+    expect(strpos($source, 'CreateAction::make()'))
+        ->toBeLessThan(strpos($source, 'ActionGroup::make(['));
+});
+
+it('does not reorder primary header actions in css', function (): void {
+    $source = file_get_contents(base_path('resources/css/filament/admin/theme.css'));
+
+    preg_match('/\.fi-ac-btn-action\.fi-color-primary\s*\{(?<body>.*?)\n\}/s', $source, $matches);
+
+    expect($matches)->not->toBeEmpty();
+    expect($matches['body'])->not->toContain('order:');
 });
 
 it('imports chart of accounts rows by account code', function (): void {
@@ -220,6 +247,56 @@ it('imports chart of accounts rows by account code', function (): void {
         ->name->toBe('Fuel Expense')
         ->type->toBe('Expense')
         ->default_tracking_type->toBe('vehicle');
+});
+
+it('imports attendance segments by fp number using the standard importer', function (): void {
+    $employee = Employee::factory()->create([
+        'attendance_device_id' => '12',
+    ]);
+
+    $importer = new AttendanceSegmentImporter(new Import, [
+        'date' => 'date',
+        'fp_no' => 'fp_no',
+        'schedule_name' => 'schedule_name',
+        'scheduled_start' => 'scheduled_start',
+        'scheduled_end' => 'scheduled_end',
+        'clock_in' => 'clock_in',
+        'clock_out' => 'clock_out',
+        'late_minutes' => 'late_minutes',
+        'early_minutes' => 'early_minutes',
+        'worked_minutes' => 'worked_minutes',
+        'overtime_minutes' => 'overtime_minutes',
+        'day_fraction' => 'day_fraction',
+        'status' => 'status',
+        'exception' => 'exception',
+        'correction_reason' => 'correction_reason',
+    ], []);
+
+    $importer([
+        'date' => '01-31-26',
+        'fp_no' => '12',
+        'schedule_name' => 'Day',
+        'scheduled_start' => '8:00 AM',
+        'scheduled_end' => '5:00 PM',
+        'clock_in' => '8:10 AM',
+        'clock_out' => '5:00 PM',
+        'late_minutes' => '10',
+        'early_minutes' => '0',
+        'worked_minutes' => '8:50',
+        'overtime_minutes' => '0:30',
+        'day_fraction' => '1',
+        'status' => 'Late',
+        'exception' => '',
+        'correction_reason' => '',
+    ]);
+
+    expect(AttendanceSegment::query()->first())
+        ->employee_id->toBe($employee->id)
+        ->fp_no->toBe('12')
+        ->worked_minutes->toBe(530)
+        ->overtime_minutes->toBe(30);
+
+    expect(Shift::query()->where('name', 'Day')->exists())->toBeTrue();
 });
 
 it('uses indigo edit actions in multi action page headers', function (): void {

@@ -23,13 +23,13 @@ class StockMovementsTable
             ->columns([
                 TextColumn::make('inventoryItem.name')
                     ->label('Item / Warehouse')
-                    ->description(fn ($record) => $record->warehouse?->name)
+                    ->description(fn($record) => $record->warehouse?->name)
                     ->weight('bold')
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('type')
                     ->badge()
-                    ->color(fn (string $state): string => match ($state) {
+                    ->color(fn(string $state): string => match ($state) {
                         'purchase', 'transfer_in', 'material_return', 'production_output' => 'success',
                         'transfer_out', 'consumption' => 'danger',
                         'dispatch' => 'warning',
@@ -38,13 +38,13 @@ class StockMovementsTable
                     })
                     ->searchable(),
                 TextColumn::make('quantity')
-                    ->formatStateUsing(fn ($state, $record): string => StockTransferQuantity::formattedQuantity($record->inventoryItem, $state))
+                    ->formatStateUsing(fn($state, $record): string => StockTransferQuantity::formattedQuantity($record->inventoryItem, $state))
                     ->sortable()
-                    ->color(fn ($state) => $state > 0 ? 'success' : 'danger')
+                    ->color(fn($state) => $state > 0 ? 'success' : 'danger')
                     ->weight('bold'),
                 TextColumn::make('movement_date')
                     ->label('Moved At')
-                    ->formatStateUsing(fn ($state) => DateTimeDisplay::dateOrDateTime($state))
+                    ->formatStateUsing(fn($state) => DateTimeDisplay::dateOrDateTime($state))
                     ->sortable(),
             ])
             ->filters([
@@ -53,11 +53,10 @@ class StockMovementsTable
                         DatePicker::make('moved_from'),
                         DatePicker::make('moved_until'),
                     ])
-                    ->query(fn (Builder $query, array $data): Builder => $query
-                        ->when($data['moved_from'] ?? null, fn (Builder $query, $start): Builder => $query->whereDate('movement_date', '>=', $start))
-                        ->when($data['moved_until'] ?? null, fn (Builder $query, $end): Builder => $query->whereDate('movement_date', '<=', $end)))
-
-                ,SelectFilter::make('type')
+                    ->query(fn(Builder $query, array $data): Builder => $query
+                        ->when($data['moved_from'] ?? null, fn(Builder $query, $start): Builder => $query->whereDate('movement_date', '>=', $start))
+                        ->when($data['moved_until'] ?? null, fn(Builder $query, $end): Builder => $query->whereDate('movement_date', '<=', $end))),
+                SelectFilter::make('type')
                     ->options([
                         'purchase' => 'Purchase',
                         'consumption' => 'Consumption',
@@ -69,8 +68,7 @@ class StockMovementsTable
                         'production_output' => 'Production Output',
                     ]),
             ])
-            ->recordActions([
-            ])
+            ->recordActions([])
             ->defaultSort('movement_date', 'desc')
             ->bulkActions([
                 BulkActionGroup::make([

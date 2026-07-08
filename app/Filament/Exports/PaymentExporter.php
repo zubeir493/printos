@@ -29,6 +29,14 @@ class PaymentExporter extends Exporter
                 ->label('Direction'),
             ExportColumn::make('method')
                 ->label('Method'),
+            ExportColumn::make('expenseAccount.name')
+                ->label('Expense Account'),
+            ExportColumn::make('expenseTrackingItem.name')
+                ->label('Tracking Item'),
+            ExportColumn::make('expenseTrackingEmployee.first_name')
+                ->label('Tracking Employee'),
+            ExportColumn::make('expenseTrackingBid.bid_number')
+                ->label('Tracking Bid'),
             ExportColumn::make('reference')
                 ->label('Reference'),
         ];

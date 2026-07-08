@@ -63,7 +63,13 @@ class PaymentResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()->with(['partner']);
+        return parent::getEloquentQuery()->with([
+            'expenseAccount',
+            'expenseTrackingBid',
+            'expenseTrackingEmployee',
+            'expenseTrackingItem',
+            'partner',
+        ]);
     }
 
     public static function getRelations(): array

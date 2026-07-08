@@ -42,6 +42,7 @@ class Account extends Model
         'name',
         'code',
         'type',
+        'default_tracking_type',
     ];
 
     public static function getSystemAccount(string $code, string $defaultName, string $type = 'Asset')

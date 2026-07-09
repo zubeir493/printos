@@ -24,17 +24,17 @@ class PaymentsTable
             ->columns([
                 TextColumn::make('payment_number')
                     ->label('Payment')
-                    ->description(fn ($record) => $record->partner?->name)
+                    ->description(fn($record) => $record->partner?->name)
                     ->searchable(),
                 TextColumn::make('amount')
                     ->label('Amount')
                     ->formatStateUsing(function ($state, $record) {
                         $prefix = $record->direction === 'inbound' ? '+' : '-';
 
-                        return $prefix.Money::format($state);
+                        return $prefix . Money::format($state);
                     })
-                    ->description(fn ($record) => 'via '.ucfirst($record->method))
-                    ->color(fn ($record) => $record->direction === 'inbound' ? 'success' : 'danger')
+                    ->description(fn($record) => 'via ' . ucfirst($record->method))
+                    ->color(fn($record) => $record->direction === 'inbound' ? 'success' : 'danger')
                     ->weight('bold')
                     ->sortable()
                     ->searchable(),
@@ -48,8 +48,8 @@ class PaymentsTable
                 TextColumn::make('status')
                     ->label('Status')
                     ->badge()
-                    ->getStateUsing(fn ($record) => $record->voided_at ? 'Voided' : 'Posted')
-                    ->color(fn ($record) => $record->voided_at ? 'danger' : 'success'),
+                    ->getStateUsing(fn($record) => $record->voided_at ? 'Voided' : 'Posted')
+                    ->color(fn($record) => $record->voided_at ? 'danger' : 'success'),
                 TextColumn::make('payment_date')
                     ->date()
                     ->sortable(),
@@ -72,29 +72,6 @@ class PaymentsTable
                         'cheque' => 'Cheque',
                         'cpo' => 'CPO',
                     ]),
-                SelectFilter::make('expense_account_id')
-                    ->label('Expense Account')
-                    ->relationship('expenseAccount', 'name', fn (Builder $query): Builder => $query->where('type', 'Expense'))
-                    ->searchable()
-                    ->preload(),
-                SelectFilter::make('expense_tracking_type')
-                    ->label('Tracking Type')
-                    ->options(collect(ExpenseTrackingType::options())->except(ExpenseTrackingType::NONE->value)->all()),
-                SelectFilter::make('expense_tracking_item_id')
-                    ->label('Tracking Item')
-                    ->relationship('expenseTrackingItem', 'name')
-                    ->searchable()
-                    ->preload(),
-                SelectFilter::make('expense_tracking_employee_id')
-                    ->label('Employee')
-                    ->relationship('expenseTrackingEmployee', 'first_name')
-                    ->searchable()
-                    ->preload(),
-                SelectFilter::make('expense_tracking_bid_id')
-                    ->label('Bid')
-                    ->relationship('expenseTrackingBid', 'bid_number')
-                    ->searchable()
-                    ->preload(),
                 Filter::make('posted_status')
                     ->label('Status')
                     ->schema([

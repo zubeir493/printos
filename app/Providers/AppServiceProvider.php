@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Filament\Resources\AttendanceSegments\Pages\ManageAttendanceSegments;
+use App\Filament\Resources\Payments\Pages\ListPayments;
 use App\Filament\Support\TableBadgeFormatter;
 use App\Livewire\ExceptionHandlerHook;
 use App\Models\Artwork;
@@ -96,6 +97,12 @@ class AppServiceProvider extends ServiceProvider
             TablesRenderHook::TOOLBAR_SEARCH_AFTER,
             fn (): string => view('filament.tables.attendance-employee-selector')->render(),
             ManageAttendanceSegments::class,
+        );
+
+        FilamentView::registerRenderHook(
+            TablesRenderHook::TOOLBAR_START,
+            fn (): string => view('filament.tables.payments-toolbar-tabs')->render(),
+            ListPayments::class,
         );
 
         Event::listen(WebPushNotificationSent::class, function (WebPushNotificationSent $event): void {

@@ -4,6 +4,24 @@
 @source '../../../../resources/views/filament/**/*';
 @source '../../../../vendor/laraveldaily/filawidgets/resources/views/**/*';
 
+.fi-tabs {
+    height: 36px;
+    border-radius: .5rem;
+    padding: 3px;
+    background: var(--gray-100);
+    box-shadow: none !important;
+}
+
+.fi-tabs .fi-tabs-item {
+    border-radius: .34rem;
+    font-size: .5rem;
+    padding: 0 15px;
+}
+
+.fi-tabs .fi-tabs-item.fi-active {
+    background: white;
+}
+
 .fi-layout {
     background: #1a1a1a;
 }

@@ -191,7 +191,25 @@ test('tracked direct expenses are created through payments and posted to the led
 test('payments table tabs are all income and expenses', function (): void {
     $tabs = (new ListPayments)->getTabs();
 
-    expect(array_keys($tabs))->toBe(['all', 'income', 'expenses']);
+    expect(array_keys($tabs))->toBe(['all', 'income', 'expenses'])
+        ->and(ListPayments::TABLE_TABS)->toBe([
+            'all' => 'All',
+            'income' => 'Income',
+            'expenses' => 'Expenses',
+        ]);
+});
+
+test('payments table tabs render in the table toolbar', function (): void {
+    Filament::setCurrentPanel(Filament::getPanel('finance'));
+
+    $this->actingAs(User::factory()->create([
+        'role' => UserRole::Finance,
+    ]));
+
+    Livewire::test(ListPayments::class)
+        ->assertSeeHtml('payments-toolbar-tabs')
+        ->assertDontSeeHtml('resourceTabs')
+        ->assertSeeInOrder(['All', 'Income', 'Expenses']);
 });
 
 function createPaymentFormBank(string $name, float $currentBalance): Bank

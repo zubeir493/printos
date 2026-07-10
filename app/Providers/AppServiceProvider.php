@@ -7,6 +7,7 @@ use App\Filament\Support\TableBadgeFormatter;
 use App\Livewire\ExceptionHandlerHook;
 use App\Models\Artwork;
 use App\Models\BankTransfer;
+use App\Models\Dispatch;
 use App\Models\Employee;
 use App\Models\InventoryBalance;
 use App\Models\InventoryItem;
@@ -14,6 +15,8 @@ use App\Models\JobOrderTask;
 use App\Models\MaterialRequest;
 use App\Models\Payment;
 use App\Models\PayrollRunEmployee;
+use App\Models\ProductionPlan;
+use App\Models\ProductionReport;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderItem;
 use App\Models\SalesOrder;
@@ -21,6 +24,7 @@ use App\Models\StockMovement;
 use App\Models\TextFile;
 use App\Observers\ArtworkObserver;
 use App\Observers\BankTransferObserver;
+use App\Observers\DispatchObserver;
 use App\Observers\EmployeeObserver;
 use App\Observers\InventoryBalanceObserver;
 use App\Observers\InventoryItemObserver;
@@ -28,6 +32,8 @@ use App\Observers\JobOrderTaskObserver;
 use App\Observers\MaterialRequestObserver;
 use App\Observers\PaymentObserver;
 use App\Observers\PayrollRunEmployeeObserver;
+use App\Observers\ProductionPlanObserver;
+use App\Observers\ProductionReportObserver;
 use App\Observers\PurchaseOrderItemObserver;
 use App\Observers\PurchaseOrderObserver;
 use App\Observers\SalesOrderObserver;
@@ -41,6 +47,7 @@ use Filament\Support\Facades\FilamentView;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\View\TablesRenderHook;
 use Filament\View\PanelsRenderHook;
+use Illuminate\Auth\Events\Login;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Event;
@@ -98,6 +105,10 @@ class AppServiceProvider extends ServiceProvider
             ManageAttendanceSegments::class,
         );
 
+        Event::listen(Login::class, function (Login $event): void {
+            session()->flash('show_webpush_permission_prompt', true);
+        });
+
         Event::listen(WebPushNotificationSent::class, function (WebPushNotificationSent $event): void {
             Log::info('Web push notification sent', [
                 'subscription_id' => $event->subscription->id,
@@ -141,5 +152,8 @@ class AppServiceProvider extends ServiceProvider
         Artwork::observe(ArtworkObserver::class);
         TextFile::observe(TextFileObserver::class);
         MaterialRequest::observe(MaterialRequestObserver::class);
+        ProductionPlan::observe(ProductionPlanObserver::class);
+        ProductionReport::observe(ProductionReportObserver::class);
+        Dispatch::observe(DispatchObserver::class);
     }
 }

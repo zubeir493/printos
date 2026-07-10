@@ -29,6 +29,11 @@ class JobOrderLateNotification extends Notification implements ShouldQueueAfterC
         return "Job order {$this->jobOrder->job_order_number} for {$partner} is {$daysLate} day(s) past its submission date and is still not completed.";
     }
 
+    protected function notificationUrl(object $notifiable): string
+    {
+        return $this->resourceUrl($notifiable, 'job-orders', 'view', ['record' => $this->jobOrder]);
+    }
+
     public function toDatabase(object $notifiable): array
     {
         return FilamentNotification::make()
@@ -36,6 +41,7 @@ class JobOrderLateNotification extends Notification implements ShouldQueueAfterC
             ->body($this->webPushBody())
             ->icon('heroicon-o-clock')
             ->iconColor('warning')
+            ->actions($this->databaseActions($notifiable, 'Open job order'))
             ->getDatabaseMessage();
     }
 }

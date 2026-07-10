@@ -80,6 +80,12 @@ class InventoryItemForm
                         ->suffix('%')
                         ->default(5)
                         ->hidden(fn ($get) => $get('type') !== 'raw_material'),
+                    TextInput::make('low_stock_threshold')
+                        ->label('Minimum Stock Level')
+                        ->numeric()
+                        ->minValue(0)
+                        ->suffix(fn ($get) => $get('unit') ?: null)
+                        ->helperText('Notify inventory users when stock reaches this quantity.'),
                     Toggle::make('is_sellable')
                         ->label('Is Sellable')
                         ->hidden(fn ($get) => in_array($get('type'), ['tools', 'spare_parts']))

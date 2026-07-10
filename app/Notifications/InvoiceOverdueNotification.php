@@ -29,6 +29,11 @@ class InvoiceOverdueNotification extends Notification implements ShouldQueueAfte
         return "Invoice {$this->invoice->invoice_number} for {$partner} is {$overdueDays} day(s) overdue. Balance due: ".number_format($this->invoice->balance_due, 2).' Birr.';
     }
 
+    protected function notificationUrl(object $notifiable): string
+    {
+        return $this->resourceUrl($notifiable, 'invoices', 'view', ['record' => $this->invoice]);
+    }
+
     public function toDatabase(object $notifiable): array
     {
         return FilamentNotification::make()
@@ -36,6 +41,7 @@ class InvoiceOverdueNotification extends Notification implements ShouldQueueAfte
             ->body($this->webPushBody())
             ->icon('heroicon-o-exclamation-circle')
             ->iconColor('danger')
+            ->actions($this->databaseActions($notifiable, 'Open invoice'))
             ->getDatabaseMessage();
     }
 }

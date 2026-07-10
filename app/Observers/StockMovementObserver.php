@@ -3,8 +3,13 @@
 namespace App\Observers;
 
 use App\Models\InventoryBalance;
+use App\Models\JobOrderTask;
 use App\Models\StockMovement;
+use App\Notifications\ProductionLoggedNotification;
+use App\Support\NotificationRecipients;
+use App\UserRole;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Notification;
 
 class StockMovementObserver
 {
@@ -25,6 +30,8 @@ class StockMovementObserver
             'warehouse' => $stockMovement->warehouse_id,
             'change' => $quantityChange,
         ]);
+
+        $this->notifyProductionOutput($stockMovement);
     }
 
     public function updated(StockMovement $stockMovement): void
@@ -105,6 +112,25 @@ class StockMovementObserver
                 $warehouseId,
                 number_format($resultingQty, 2)
             ));
+        }
+    }
+
+    private function notifyProductionOutput(StockMovement $stockMovement): void
+    {
+        if ($stockMovement->type !== 'production_output' || $stockMovement->reference_type !== JobOrderTask::class) {
+            return;
+        }
+
+        $task = JobOrderTask::query()->with('jobOrder')->find($stockMovement->reference_id);
+
+        if (! $task) {
+            return;
+        }
+
+        $recipients = NotificationRecipients::roles(UserRole::Operations, UserRole::Admin);
+
+        if ($recipients->isNotEmpty()) {
+            Notification::send($recipients, new ProductionLoggedNotification($task, $stockMovement));
         }
     }
 }

@@ -36,6 +36,11 @@ class MaterialIssueDecisionNotification extends Notification implements ShouldQu
             .($this->approval->decision_notes ? " Notes: {$this->approval->decision_notes}" : '');
     }
 
+    protected function notificationUrl(object $notifiable): string
+    {
+        return $this->resourceUrl($notifiable, 'job-order-tasks', 'view', ['record' => $this->approval->materialRequest->jobOrderTask]);
+    }
+
     public function toDatabase(object $notifiable): array
     {
         $isApproved = $this->approval->status === 'approved';
@@ -45,6 +50,7 @@ class MaterialIssueDecisionNotification extends Notification implements ShouldQu
             ->body($this->webPushBody())
             ->icon($isApproved ? 'heroicon-o-check-circle' : 'heroicon-o-x-circle')
             ->iconColor($isApproved ? 'success' : 'danger')
+            ->actions($this->databaseActions($notifiable, 'Open task'))
             ->getDatabaseMessage();
     }
 }

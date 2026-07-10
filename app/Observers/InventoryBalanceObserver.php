@@ -4,6 +4,7 @@ namespace App\Observers;
 
 use App\Models\InventoryBalance;
 use App\Notifications\LowStockNotification;
+use App\Support\NotificationRecipients;
 use Illuminate\Support\Facades\Notification;
 
 class InventoryBalanceObserver
@@ -47,7 +48,7 @@ class InventoryBalanceObserver
 
     protected function notifyWarehouseUsers(InventoryBalance $balance, bool $isFinished): void
     {
-        $users = $balance->warehouse->users;
+        $users = NotificationRecipients::inventoryUsers($balance->warehouse);
 
         if ($users->isNotEmpty()) {
             Notification::send($users, new LowStockNotification($balance, $isFinished));

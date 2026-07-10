@@ -7,10 +7,13 @@ use App\Models\JobOrder;
 use App\Models\MaterialIssueApproval;
 use App\Models\MaterialRequest;
 use App\Models\User;
+use App\Notifications\MaterialIssueApprovalRequestedNotification;
 use App\Notifications\MaterialIssueDecisionNotification;
+use App\Notifications\MaterialsIssuedNotification;
+use App\Support\NotificationRecipients;
 use App\UserRole;
-use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 
 class MaterialIssueService
 {
@@ -77,6 +80,7 @@ class MaterialIssueService
             );
 
             $materialRequest->increment('issued_quantity', $quantity);
+            $this->notifyMaterialsIssued($materialRequest->fresh(['inventoryItem', 'jobOrderTask.jobOrder']), $quantity);
 
             return ['status' => 'issued'];
         });
@@ -167,25 +171,21 @@ class MaterialIssueService
     {
         $approval->loadMissing(['materialRequest.inventoryItem', 'materialRequest.jobOrderTask.jobOrder', 'warehouse']);
 
-        $users = User::query()
-            ->whereIn('role', [UserRole::Admin->value, UserRole::Operations->value])
-            ->get();
+        $users = NotificationRecipients::roles(UserRole::Admin, UserRole::Operations);
 
         if ($users->isEmpty()) {
             return;
         }
 
-        Notification::make()
-            ->title('Material over-issue approval needed')
-            ->body(sprintf(
-                '%s requested %.2f of %s from %s for %s.',
-                $approval->requester?->name ?? 'A user',
-                (float) $approval->quantity,
-                $approval->materialRequest->inventoryItem->name,
-                $approval->warehouse->name,
-                $approval->materialRequest->jobOrderTask->jobOrder->job_order_number
-            ))
-            ->warning()
-            ->sendToDatabase($users, isEventDispatched: true);
+        Notification::send($users, new MaterialIssueApprovalRequestedNotification($approval));
+    }
+
+    protected function notifyMaterialsIssued(MaterialRequest $materialRequest, float $quantity): void
+    {
+        $users = NotificationRecipients::roles(UserRole::Production);
+
+        if ($users->isNotEmpty()) {
+            Notification::send($users, new MaterialsIssuedNotification($materialRequest, $quantity));
+        }
     }
 }

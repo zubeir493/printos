@@ -7,6 +7,8 @@ use NotificationChannels\WebPush\WebPushMessage;
 
 trait SendsWebPushNotifications
 {
+    use RoutesNotificationClicks;
+
     /**
      * @return array<int, string>
      */
@@ -25,7 +27,7 @@ trait SendsWebPushNotifications
     {
         return [
             'database' => 'sync',
-            WebPushChannel::class => config('queue.default'),
+            WebPushChannel::class => 'sync',
         ];
     }
 
@@ -46,10 +48,6 @@ trait SendsWebPushNotifications
 
     protected function webPushUrl(object $notifiable): string
     {
-        if (filled($notifiable->role ?? null)) {
-            return url($notifiable->role->getRedirectPath());
-        }
-
-        return url('/');
+        return $this->notificationUrl($notifiable);
     }
 }

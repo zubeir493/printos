@@ -2,36 +2,37 @@
 
 namespace App\Notifications;
 
-use App\Models\MaterialRequest;
+use App\Models\ProductionPlan;
 use App\Notifications\Concerns\SendsWebPushNotifications;
 use Filament\Notifications\Notification as FilamentNotification;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueueAfterCommit;
 use Illuminate\Notifications\Notification;
 
-class MaterialRequestCreatedNotification extends Notification implements ShouldQueueAfterCommit
+class ProductionPlanApprovedNotification extends Notification implements ShouldQueueAfterCommit
 {
     use Queueable;
     use SendsWebPushNotifications;
 
-    public function __construct(protected MaterialRequest $materialRequest) {}
+    public function __construct(protected ProductionPlan $productionPlan) {}
 
     protected function webPushTitle(): string
     {
-        return 'New Material Request';
+        return 'Production Plan Approved';
     }
 
     protected function webPushBody(): string
     {
-        $task = $this->materialRequest->jobOrderTask;
-        $jobOrder = $task->jobOrder;
-
-        return "Task '{$task->name}' on job {$jobOrder->job_order_number} requires {$this->materialRequest->requested_quantity} of {$this->materialRequest->inventoryItem->name}.";
+        return 'Production plan for '
+            .$this->productionPlan->week_start->format('M d')
+            .' - '
+            .$this->productionPlan->week_end->format('M d')
+            .' has been approved.';
     }
 
     protected function notificationUrl(object $notifiable): string
     {
-        return $this->resourceUrl($notifiable, 'material-requests', 'index');
+        return $this->resourceUrl($notifiable, 'production-plans', 'view', ['record' => $this->productionPlan]);
     }
 
     public function toDatabase(object $notifiable): array
@@ -39,9 +40,9 @@ class MaterialRequestCreatedNotification extends Notification implements ShouldQ
         return FilamentNotification::make()
             ->title($this->webPushTitle())
             ->body($this->webPushBody())
-            ->icon('heroicon-o-archive-box-arrow-down')
-            ->iconColor('primary')
-            ->actions($this->databaseActions($notifiable, 'Open requests'))
+            ->icon('heroicon-o-document-check')
+            ->iconColor('success')
+            ->actions($this->databaseActions($notifiable, 'Open plan'))
             ->getDatabaseMessage();
     }
 }

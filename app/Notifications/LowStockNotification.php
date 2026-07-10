@@ -38,6 +38,11 @@ class LowStockNotification extends Notification implements ShouldQueueAfterCommi
         return "Stock for '{$item}' in '{$warehouse}' is low (Current: {$qty} {$unit}).";
     }
 
+    protected function notificationUrl(object $notifiable): string
+    {
+        return $this->resourceUrl($notifiable, 'inventory-items', 'view', ['record' => $this->balance->inventoryItem]);
+    }
+
     public function toDatabase(object $notifiable): array
     {
         return FilamentNotification::make()
@@ -45,6 +50,7 @@ class LowStockNotification extends Notification implements ShouldQueueAfterCommi
             ->body($this->webPushBody())
             ->icon($this->isFinished ? 'heroicon-o-x-circle' : 'heroicon-o-exclamation-triangle')
             ->iconColor($this->isFinished ? 'danger' : 'warning')
+            ->actions($this->databaseActions($notifiable, 'Open item'))
             ->getDatabaseMessage();
     }
 }

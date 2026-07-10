@@ -5,15 +5,28 @@
             const webPushConfig = {
                 publicKey: @js(config('webpush.vapid.public_key')),
                 storeUrl: @js(route('webpush.subscriptions.store')),
-                destroyUrl: @js(route('webpush.subscriptions.destroy')),
                 csrfToken: @js(csrf_token()),
             };
+            const shouldShowPermissionAlert = @js(session()->has('show_webpush_permission_prompt'));
 
             const isSupported = () => 'serviceWorker' in navigator &&
                 'PushManager' in window &&
                 'Notification' in window;
 
-            const subscriptionStorageKey = 'printos.webpush.subscribed';
+            const canShowPermissionAlert = () => 'Notification' in window &&
+                Notification.permission !== 'granted';
+
+            const runAfterUiReady = (callback) => {
+                const run = () => window.setTimeout(callback, 500);
+
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', run, { once: true });
+
+                    return;
+                }
+
+                run();
+            };
 
             const getStatus = async () => {
                 const supported = isSupported();
@@ -28,14 +41,10 @@
 
                 const registration = await navigator.serviceWorker.getRegistration();
                 const subscription = await registration?.pushManager.getSubscription();
-                const storedSubscriptionState = window.localStorage.getItem(subscriptionStorageKey) === 'true';
 
                 return {
                     supported,
-                    subscribed: (subscription !== null && subscription !== undefined) || (
-                        storedSubscriptionState &&
-                        Notification.permission === 'granted'
-                    ),
+                    subscribed: subscription !== null && subscription !== undefined,
                     permission: Notification.permission,
                 };
             };
@@ -83,7 +92,44 @@
                 }
             };
 
-            const subscribe = async () => {
+            const showPermissionAlert = () => {
+                if (! canShowPermissionAlert()) {
+                    return;
+                }
+
+                const title = Notification.permission === 'denied'
+                    ? 'Browser notifications are blocked'
+                    : 'Turn on browser notifications';
+                const body = Notification.permission === 'denied'
+                    ? 'Enable notifications for this site in your browser settings to receive important alerts.'
+                    : 'Enable notifications for this browser to receive important alerts as they happen.';
+
+                if (window.FilamentNotification) {
+                    const notification = new window.FilamentNotification()
+                        .title(title)
+                        .body(body)
+                        .warning()
+                        .persistent();
+
+                    if (Notification.permission === 'default' && isSupported() && window.FilamentNotificationAction) {
+                        notification.actions([
+                            new window.FilamentNotificationAction('enableBrowserNotifications')
+                                .label('Enable')
+                                .button()
+                                .close()
+                                .dispatch('printos-webpush-enable'),
+                        ]);
+                    }
+
+                    notification.send();
+
+                    return;
+                }
+
+                window.alert(`${title}\n\n${body}`);
+            };
+
+            const requestPermission = async () => {
                 if (! isSupported()) {
                     const status = {
                         supported: false,
@@ -97,41 +143,26 @@
                 }
 
                 const permission = await Notification.requestPermission();
+                const status = {
+                    supported: true,
+                    subscribed: false,
+                    permission,
+                };
 
                 if (permission !== 'granted') {
-                    const status = {
-                        supported: true,
-                        subscribed: false,
-                        permission,
-                    };
-
                     await dispatchStatus(status);
+                    runAfterUiReady(showPermissionAlert);
 
                     return status;
                 }
 
-                const registration = await navigator.serviceWorker.register('/sw.js');
-                const existingSubscription = await registration.pushManager.getSubscription();
-                const subscription = existingSubscription ?? await registration.pushManager.subscribe({
-                    userVisibleOnly: true,
-                    applicationServerKey: urlBase64ToUint8Array(webPushConfig.publicKey),
-                });
-
-                await sendSubscription(subscription);
-                window.localStorage.setItem(subscriptionStorageKey, 'true');
-
-                const status = {
-                    supported: true,
-                    subscribed: true,
-                    permission,
+                return {
+                    ...status,
+                    subscribed: (await getStatus()).subscribed,
                 };
-
-                await dispatchStatus(status);
-
-                return status;
             };
 
-            const unsubscribe = async () => {
+            const subscribe = async ({ requestBrowserPermission = true } = {}) => {
                 if (! isSupported()) {
                     const status = {
                         supported: false,
@@ -144,44 +175,36 @@
                     return status;
                 }
 
-                const registration = await navigator.serviceWorker.ready;
-                const subscription = await registration.pushManager.getSubscription();
+                const permission = requestBrowserPermission
+                    ? (await requestPermission()).permission
+                    : Notification.permission;
 
-                if (! subscription) {
+                if (permission !== 'granted') {
                     const status = {
                         supported: true,
                         subscribed: false,
-                        permission: Notification.permission,
+                        permission,
                     };
 
                     await dispatchStatus(status);
+                    runAfterUiReady(showPermissionAlert);
 
                     return status;
                 }
 
-                const response = await fetch(webPushConfig.destroyUrl, {
-                    method: 'DELETE',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                        'X-CSRF-TOKEN': webPushConfig.csrfToken,
-                    },
-                    body: JSON.stringify({
-                        endpoint: subscription.endpoint,
-                    }),
+                const registration = await navigator.serviceWorker.register('/sw.js');
+                const existingSubscription = await registration.pushManager.getSubscription();
+                const subscription = existingSubscription ?? await registration.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: urlBase64ToUint8Array(webPushConfig.publicKey),
                 });
 
-                if (! response.ok) {
-                    throw new Error('Unable to delete push subscription.');
-                }
-
-                await subscription.unsubscribe();
-                window.localStorage.removeItem(subscriptionStorageKey);
+                await sendSubscription(subscription);
 
                 const status = {
                     supported: true,
-                    subscribed: false,
-                    permission: Notification.permission,
+                    subscribed: true,
+                    permission,
                 };
 
                 await dispatchStatus(status);
@@ -191,15 +214,27 @@
 
             window.PrintOsWebPush = {
                 isSupported,
+                requestPermission,
                 status: getStatus,
                 subscribe,
-                unsubscribe,
             };
 
+            window.addEventListener('printos-webpush-enable', async () => {
+                const status = await requestPermission();
+
+                if (status.permission === 'granted') {
+                    await subscribe({ requestBrowserPermission: false });
+                }
+            });
+
             if (isSupported() && Notification.permission === 'granted') {
-                subscribe();
+                subscribe({ requestBrowserPermission: false });
             } else {
                 dispatchStatus();
+
+                if (shouldShowPermissionAlert) {
+                    runAfterUiReady(showPermissionAlert);
+                }
             }
 
             window.dispatchEvent(new CustomEvent('printos-webpush-ready'));

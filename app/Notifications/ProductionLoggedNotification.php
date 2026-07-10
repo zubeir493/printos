@@ -2,36 +2,38 @@
 
 namespace App\Notifications;
 
-use App\Models\MaterialRequest;
+use App\Models\JobOrderTask;
+use App\Models\StockMovement;
 use App\Notifications\Concerns\SendsWebPushNotifications;
 use Filament\Notifications\Notification as FilamentNotification;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueueAfterCommit;
 use Illuminate\Notifications\Notification;
 
-class MaterialRequestCreatedNotification extends Notification implements ShouldQueueAfterCommit
+class ProductionLoggedNotification extends Notification implements ShouldQueueAfterCommit
 {
     use Queueable;
     use SendsWebPushNotifications;
 
-    public function __construct(protected MaterialRequest $materialRequest) {}
+    public function __construct(
+        protected JobOrderTask $task,
+        protected StockMovement $stockMovement,
+    ) {}
 
     protected function webPushTitle(): string
     {
-        return 'New Material Request';
+        return 'Production Logged';
     }
 
     protected function webPushBody(): string
     {
-        $task = $this->materialRequest->jobOrderTask;
-        $jobOrder = $task->jobOrder;
-
-        return "Task '{$task->name}' on job {$jobOrder->job_order_number} requires {$this->materialRequest->requested_quantity} of {$this->materialRequest->inventoryItem->name}.";
+        return number_format((float) $this->stockMovement->quantity, 2)
+            ." units were produced for task '{$this->task->name}' on job {$this->task->jobOrder->job_order_number}.";
     }
 
     protected function notificationUrl(object $notifiable): string
     {
-        return $this->resourceUrl($notifiable, 'material-requests', 'index');
+        return $this->resourceUrl($notifiable, 'job-order-tasks', 'view', ['record' => $this->task]);
     }
 
     public function toDatabase(object $notifiable): array
@@ -40,8 +42,8 @@ class MaterialRequestCreatedNotification extends Notification implements ShouldQ
             ->title($this->webPushTitle())
             ->body($this->webPushBody())
             ->icon('heroicon-o-archive-box-arrow-down')
-            ->iconColor('primary')
-            ->actions($this->databaseActions($notifiable, 'Open requests'))
+            ->iconColor('success')
+            ->actions($this->databaseActions($notifiable, 'Open task'))
             ->getDatabaseMessage();
     }
 }

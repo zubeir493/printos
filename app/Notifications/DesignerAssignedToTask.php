@@ -32,6 +32,11 @@ class DesignerAssignedToTask extends Notification implements ShouldQueueAfterCom
         return $body;
     }
 
+    protected function notificationUrl(object $notifiable): string
+    {
+        return $this->resourceUrl($notifiable, 'job-order-tasks', 'view', ['record' => $this->task]);
+    }
+
     public function toDatabase(object $notifiable): array
     {
         return FilamentNotification::make()
@@ -39,6 +44,7 @@ class DesignerAssignedToTask extends Notification implements ShouldQueueAfterCom
             ->body($this->webPushBody())
             ->icon('heroicon-o-paint-brush')
             ->iconColor('primary')
+            ->actions($this->databaseActions($notifiable, 'Open task'))
             ->getDatabaseMessage();
     }
 }

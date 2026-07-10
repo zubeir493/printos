@@ -5,7 +5,13 @@ namespace App\Observers;
 use App\Models\JobOrder;
 use App\Models\JobOrderTask;
 use App\Notifications\DesignerAssignedToTask;
+use App\Notifications\JobOrderCompletedNotification;
+use App\Notifications\ProductionTaskCompletedNotification;
+use App\Notifications\TaskSentToProductionNotification;
 use App\Notifications\TypistAssignedToTask;
+use App\Support\NotificationRecipients;
+use App\UserRole;
+use Illuminate\Support\Facades\Notification;
 
 class JobOrderTaskObserver
 {
@@ -23,6 +29,10 @@ class JobOrderTaskObserver
 
         if ($task->wasChanged('typist_id')) {
             $this->notifyTypist($task);
+        }
+
+        if ($task->wasChanged('status')) {
+            $this->notifyStatusChange($task);
         }
     }
 
@@ -65,8 +75,39 @@ class JobOrderTaskObserver
     private function syncJobOrderStatus(?JobOrder $jobOrder): void
     {
         if ($jobOrder) {
+            $originalStatus = (string) $jobOrder->status;
+
             $jobOrder->recalculateTotals();
             $jobOrder->refresh()->syncCompletionStatus();
+
+            $jobOrder->refresh();
+
+            if ($originalStatus !== 'completed' && (string) $jobOrder->status === 'completed') {
+                $recipients = NotificationRecipients::roles(UserRole::Sales, UserRole::Finance, UserRole::Operations);
+
+                if ($recipients->isNotEmpty()) {
+                    Notification::send($recipients, new JobOrderCompletedNotification($jobOrder));
+                }
+            }
+        }
+    }
+
+    private function notifyStatusChange(JobOrderTask $task): void
+    {
+        if ($task->status === 'production') {
+            $recipients = NotificationRecipients::roles(UserRole::Production);
+
+            if ($recipients->isNotEmpty()) {
+                Notification::send($recipients, new TaskSentToProductionNotification($task));
+            }
+        }
+
+        if ($task->status === 'completed') {
+            $recipients = NotificationRecipients::roles(UserRole::Operations, UserRole::Sales);
+
+            if ($recipients->isNotEmpty()) {
+                Notification::send($recipients, new ProductionTaskCompletedNotification($task));
+            }
         }
     }
 }

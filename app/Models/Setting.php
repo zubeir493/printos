@@ -18,6 +18,7 @@ class Setting extends Model
         'company_email',
         'company_website',
         'company_tax_id',
+        'timezone',
         'company_logo',
         'vat_rate',
         'vat_enabled',
@@ -54,6 +55,7 @@ class Setting extends Model
             'currency_code' => 'string',
             'currency_symbol' => 'string',
             'fiscal_calendar' => 'string',
+            'timezone' => 'string',
         ];
     }
 
@@ -83,6 +85,7 @@ class Setting extends Model
             'company_email' => 'billing@yourcompany.com',
             'company_website' => 'https://www.yourcompany.com',
             'company_tax_id' => 'TAX-123456789',
+            'timezone' => config('app.timezone', 'Africa/Addis_Ababa'),
             'vat_rate' => 15.00,
             'vat_enabled' => true,
             'workers_union_enabled' => true,

@@ -86,4 +86,9 @@ class AccountResource extends Resource
 
         return parent::getGlobalSearchEloquentQuery();
     }
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()->with('accountingMappings.integration');
+    }
 }

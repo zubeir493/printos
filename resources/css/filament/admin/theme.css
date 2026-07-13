@@ -22,6 +22,88 @@
     background: white;
 }
 
+.settings-tabs > .fi-tabs {
+    align-items: flex-end;
+    background: transparent;
+    border-bottom: 1px solid var(--gray-200);
+    border-radius: 0;
+    gap: 1.25rem;
+    height: auto;
+    margin-inline: 0;
+    padding: 0;
+    width: 100%;
+    overflow-y: clip;
+}
+
+.settings-tabs > .fi-tabs .fi-tabs-item {
+    background: transparent !important;
+    border-radius: 0;
+    color: var(--gray-600);
+    font-size: .8rem;
+    font-weight: 600;
+    min-height: 2.5rem;
+    padding: 0 0 .6rem;
+    position: relative;
+}
+
+.settings-tabs > .fi-tabs .fi-tabs-item.fi-active {
+    background: transparent !important;
+    color: var(--gray-950);
+}
+
+.settings-tabs > .fi-tabs .fi-tabs-item::after {
+    background: transparent;
+    border-radius: 999px;
+    bottom: -1px;
+    content: "";
+    height: 2px;
+    inset-inline: 0;
+    position: absolute;
+}
+
+.settings-tabs > .fi-tabs .fi-tabs-item.fi-active::after {
+    background: var(--primary-600);
+}
+
+.settings-tabs > .fi-sc-tabs-tab.fi-active {
+    margin-top: 1rem;
+}
+
+.fi-sc-tabs:has(.fi-resource-relation-manager) > .fi-tabs {
+    display: none;
+}
+
+.fi-resource-relation-manager .fi-ta-header-heading {
+    display: none;
+}
+
+.fi-resource-relation-manager .fi-ta-header-ctn:has(.relation-manager-toolbar-tabs):not(:has(.fi-ta-header-description)) {
+    padding-block-start: 0;
+}
+
+.fi-resource-relation-manager .fi-ta-header-ctn:has(.relation-manager-toolbar-tabs):not(:has(.fi-ta-header-description)) > .fi-ta-header {
+    display: none;
+}
+
+.fi-resource-relation-manager .fi-ta-header > div:has(> .fi-ta-header-heading):not(:has(> .fi-ta-header-description)) {
+    display: none;
+}
+
+.fi-resource-relation-manager .fi-ta-header-toolbar:has(.relation-manager-toolbar-tabs) {
+    align-items: center;
+    gap: .75rem;
+}
+
+.relation-manager-toolbar-tabs {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.relation-manager-toolbar-tabs .fi-tabs {
+    margin-inline: 0;
+    width: max-content;
+}
+
 .fi-layout {
     background: #1a1a1a;
 }
@@ -263,6 +345,12 @@ nav.fi-sidebar-nav::-webkit-scrollbar {
     height: 28px;
 }
 
+.integration-footer > div{
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
 /* Buttons */
 
 .fi-ac-btn-action.fi-color-primary {
@@ -275,13 +363,19 @@ nav.fi-sidebar-nav::-webkit-scrollbar {
     font-size: .8rem;
     font-weight: 600;
     text-transform: capitalize;
-    background: linear-gradient(180deg, #3E3D3E 0%, #403E40 79.91%, #5E5D5E 100%);
-    box-shadow: inset 0px -2px 2px 0.5px #000000, inset 0px 0px 2px 1.5px rgba(255, 255, 255, 0.5);
+    background: var(--primary-600);
+    color: var(--color-white);
+    box-shadow: 0 1px 4px 0 oklab(100% 0 5.96046e-8 / .4) inset, 0 0 0 1px var(--primary-600), 0 0 0 1px oklab(100% 0 5.96046e-8 / .3) inset, 0 3px 4px 0 oklab(0 none none / .3);
     border-radius: .5rem;
     flex: none;
     flex-grow: 0;
+    transition: box-shadow .2s ease, background-color .2s ease;
 }
 
+.fi-ac-btn-action.fi-color-primary:hover{
+    background: var(--primary-500);
+    box-shadow: 0 1px 8px 0 oklab(100% 0 5.96046e-8 / .4) inset, 0 0 0 1px var(--primary-600), 0 0 0 1px oklab(100% 0 5.96046e-8 / .3) inset, 0 3px 4px 0 oklab(0 none none / .3);
+}
 .fi-ac-btn-action.fi-color-primary>.fi-loading-indicator {
     height: 18px;
     order: 2;
@@ -334,6 +428,46 @@ h1.fi-simple-header-heading {
     padding-inline-start: 0 !important;
 }
 
+.job-order-cost-file-upload .filepond--root {
+    min-height: 2.25rem;
+    margin-bottom: 0;
+}
+
+.job-order-cost-file-upload .filepond--drop-label {
+    min-height: 2.25rem !important;
+    height: 2.25rem;
+}
+
+.job-order-cost-file-upload .filepond--list-scroller {
+    margin-block: 0;
+}
+
+.job-order-cost-file-upload .filepond--item {
+    height: 2.25rem !important;
+    margin-block: 0;
+}
+
+.job-order-cost-file-upload .filepond--file {
+    min-height: 2.25rem;
+    padding: 0 .6rem;
+    display: flex;
+    align-items: center;
+}
+
+
+.job-order-cost-file-upload .filepond--file-info-main {
+    font-size: .78rem;
+    line-height: 1.2;
+}
+
+.job-order-cost-file-upload .filepond--file-info-sub {
+    display: none;
+}
+
+.job-order-cost-file-upload .filepond--file-action-button {
+    height: 1.35rem;
+    width: 1.35rem;
+}
 
 .payrollTable {
     max-width: 100%;

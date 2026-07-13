@@ -134,3 +134,40 @@ test('settings page stores a single logo path and reloads it after saving', func
     expect($logo)->toBe('logos/company.png')
         ->and(Storage::disk('public')->exists($logo))->toBeTrue();
 });
+
+test('settings page is organized into persistent tabs', function (): void {
+    $source = file_get_contents(app_path('Filament/Pages/Settings.php'));
+
+    expect($source)
+        ->toContain("Tabs::make('Settings sections')")
+        ->toContain('->contained(false)')
+        ->toContain('->persistTab()')
+        ->toContain("->persistTabInQueryString('settings-tab')")
+        ->toContain("->keyBindings(['command+s', 'ctrl+s'])")
+        ->toContain("Tab::make('Company')")
+        ->toContain("Tab::make('Finance')")
+        ->toContain("Tab::make('Payroll')")
+        ->toContain("Tab::make('Communication')")
+        ->toContain("Tab::make('Integrations')")
+        ->toContain("Section::make('Company profile')")
+        ->toContain("Section::make('Finance defaults')")
+        ->toContain("Section::make('Accounting Integrations')")
+        ->toContain('HasUnsavedDataChangesAlert')
+        ->toContain('$this->rememberData();')
+        ->not->toContain("Section::make('Tax & VAT Settings')")
+        ->not->toContain("Section::make('Invoice Settings')")
+        ->not->toContain("Section::make('Currency & Fiscal Year')");
+});
+
+test('settings tabs use the scoped underline style', function (): void {
+    $source = file_get_contents(resource_path('css/filament/admin/theme.css'));
+
+    expect($source)
+        ->toContain('.settings-tabs > .fi-tabs')
+        ->toContain('border-bottom: 1px solid var(--gray-200);')
+        ->toContain('margin-inline: 0;')
+        ->toContain('.settings-tabs > .fi-tabs .fi-tabs-item.fi-active::after')
+        ->toContain('background: var(--primary-600);')
+        ->toContain('.settings-tabs > .fi-sc-tabs-tab.fi-active')
+        ->toContain('margin-top: 1rem;');
+});

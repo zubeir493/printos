@@ -371,3 +371,19 @@ it('keeps order workflow copy and colors consistent', function (): void {
         ->toContain("->color('success')")
         ->toContain("Warehouse::query()->orderBy('name')->pluck('name', 'id')->all()");
 });
+
+it('keeps the job order cost calculation upload compact', function (): void {
+    $formSource = file_get_contents(base_path('app/Filament/Resources/JobOrders/Schemas/JobOrderForm.php'));
+    $themeSource = file_get_contents(base_path('resources/css/filament/admin/theme.css'));
+
+    expect($formSource)
+        ->toContain("FileUpload::make('cost_calc_file')")
+        ->toContain("->panelLayout('compact')")
+        ->toContain("->placeholder('Upload cost file')")
+        ->toContain("->extraAttributes(['class' => 'job-order-cost-file-upload'])")
+        ->and($themeSource)
+        ->toContain('.job-order-cost-file-upload .filepond--drop-label')
+        ->toContain('height: 2.25rem')
+        ->toContain('.job-order-cost-file-upload .filepond--file-info-sub')
+        ->toContain('display: none');
+});

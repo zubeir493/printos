@@ -16,6 +16,7 @@ use App\Filament\Finance\Widgets\FinancePanelStats;
 use App\Filament\Finance\Widgets\InvoiceCollectionRateWidget;
 use App\Filament\Finance\Widgets\ReceivablesRiskWidget;
 use App\Filament\Pages\Auth\EditProfile;
+use App\Filament\Resources\AccountingExports\AccountingExportResource;
 use App\Filament\Resources\Accounts\AccountResource;
 use App\Filament\Resources\Banks\BankResource;
 use App\Filament\Resources\BankTransactions\BankTransactionResource;
@@ -75,6 +76,7 @@ class FinancePanelProvider extends PanelProvider
                 'primary' => Color::Indigo,
             ])
             ->resources([
+                AccountingExportResource::class,
                 AccountResource::class,
                 BankResource::class,
                 BankTransactionResource::class,

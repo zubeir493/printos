@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Filament\Resources\AttendanceSegments\Pages\ManageAttendanceSegments;
 use App\Filament\Resources\Payments\Pages\ListPayments;
+use App\Filament\Support\RelationManagerToolbarTabs;
 use App\Filament\Support\TableBadgeFormatter;
 use App\Livewire\ExceptionHandlerHook;
 use App\Models\Artwork;
@@ -84,11 +85,11 @@ class AppServiceProvider extends ServiceProvider
             Model::shouldBeStrict();
         }
 
-        CreateAction::configureUsing(fn(CreateAction $action) => $action->createAnother(false));
-        FileUpload::configureUsing(fn(FileUpload $component) => $component->preventFilePathTampering());
+        CreateAction::configureUsing(fn (CreateAction $action) => $action->createAnother(false));
+        FileUpload::configureUsing(fn (FileUpload $component) => $component->preventFilePathTampering());
         TextColumn::configureUsing(
-            fn(TextColumn $column) => $column->formatStateUsing(
-                fn(TextColumn $column, mixed $state): mixed => $column->isBadge()
+            fn (TextColumn $column) => $column->formatStateUsing(
+                fn (TextColumn $column, mixed $state): mixed => $column->isBadge()
                     ? TableBadgeFormatter::format($state)
                     : $state
             )
@@ -97,20 +98,32 @@ class AppServiceProvider extends ServiceProvider
 
         FilamentView::registerRenderHook(
             PanelsRenderHook::SCRIPTS_AFTER,
-            fn(): string => Blade::render('@include(\'filament.webpush\')'),
+            fn (): string => Blade::render('@include(\'filament.webpush\')'),
         );
 
         FilamentView::registerRenderHook(
             TablesRenderHook::TOOLBAR_SEARCH_AFTER,
-            fn(): string => view('filament.tables.attendance-employee-selector')->render(),
+            fn (): string => view('filament.tables.attendance-employee-selector')->render(),
             ManageAttendanceSegments::class,
         );
 
         FilamentView::registerRenderHook(
             TablesRenderHook::TOOLBAR_START,
-            fn(): string => view('filament.tables.payments-toolbar-tabs')->render(),
+            fn (): string => view('filament.tables.payments-toolbar-tabs')->render(),
             ListPayments::class,
         );
+
+        foreach (RelationManagerToolbarTabs::renderHookScopes() as $relationManager) {
+            FilamentView::registerRenderHook(
+                TablesRenderHook::TOOLBAR_START,
+                fn (array $scopes): string => view('filament.tables.relation-manager-toolbar-tabs', [
+                    'activeManager' => $activeManager = $scopes[0] ?? null,
+                    'tabs' => RelationManagerToolbarTabs::tabsForManager($activeManager),
+                ])->render(),
+                $relationManager,
+            );
+        }
+
         Event::listen(Login::class, function (Login $event): void {
             session()->flash('show_webpush_permission_prompt', true);
         });

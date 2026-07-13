@@ -85,6 +85,7 @@ class JobOrderForm
                                     ->default(fn () => now()->addDays(30))
                                     ->required(),
                                 FileUpload::make('cost_calc_file')
+                                    ->imagePreviewHeight(36)
                                     ->label('Cost Calculation File')
                                     ->disk(config('filesystems.private_disk', 's3'))
                                     ->visibility('private')
@@ -102,6 +103,12 @@ class JobOrderForm
                                     ])
                                     ->maxSize(51200)
                                     ->previewable(false)
+                                    ->panelLayout('compact')
+                                    ->uploadButtonPosition('left')
+                                    ->uploadProgressIndicatorPosition('left')
+                                    ->removeUploadedFileButtonPosition('right')
+                                    ->placeholder('Upload cost file')
+                                    ->extraAttributes(['class' => 'job-order-cost-file-upload'])
                                     ->hidden(fn () => ! PanelAccess::canSeeMoneyValues())
                                     ->required(),
                             ])

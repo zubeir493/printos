@@ -9,7 +9,6 @@ use Filament\Actions\ActionGroup;
 use Filament\Actions\EditAction;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
-use Filament\Support\Colors\Color;
 
 class ViewCostEstimate extends ViewRecord
 {
@@ -21,11 +20,11 @@ class ViewCostEstimate extends ViewRecord
             ActionGroup::make([
                 EditAction::make()
                     ->visible(fn (): bool => $this->record->isEditable())
-                    ->color(Color::Indigo),
+                    ->color('gray'),
                 Action::make('finalize')
                     ->label('Finalize')
                     ->icon('heroicon-o-check-circle')
-                    ->color('success')
+                    ->color('gray')
                     ->requiresConfirmation()
                     ->visible(fn (): bool => $this->record->status === 'draft')
                     ->action(function (): void {
@@ -35,7 +34,7 @@ class ViewCostEstimate extends ViewRecord
                 Action::make('create_proforma')
                     ->label('Create Proforma')
                     ->icon('heroicon-o-document-text')
-                    ->color(Color::Indigo)
+                    ->color('gray')
                     ->visible(fn (): bool => in_array($this->record->status, ['finalized'], true))
                     ->action(function (): void {
                         $proforma = app(CostEstimateService::class)->createProforma($this->record);

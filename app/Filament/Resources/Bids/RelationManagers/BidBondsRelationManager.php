@@ -101,7 +101,7 @@ class BidBondsRelationManager extends RelationManager
                     Action::make('issue')
                         ->label('Issue Bond')
                         ->icon('heroicon-o-arrow-up-tray')
-                        ->color('warning')
+                        ->color('gray')
                         ->visible(fn (BidBond $record): bool => blank($record->issue_payment_id))
                         ->schema($this->paymentSchema())
                         ->action(fn (BidBond $record, array $data) => $this->handleBondAction(
@@ -116,7 +116,7 @@ class BidBondsRelationManager extends RelationManager
                     Action::make('recover')
                         ->label('Recover Bond')
                         ->icon('heroicon-o-arrow-down-tray')
-                        ->color('success')
+                        ->color('gray')
                         ->visible(fn (BidBond $record): bool => filled($record->issue_payment_id) && blank($record->recovery_payment_id) && $record->status !== BidBond::STATUS_FORFEITED)
                         ->schema($this->paymentSchema())
                         ->action(fn (BidBond $record, array $data) => $this->handleBondAction(
@@ -131,7 +131,7 @@ class BidBondsRelationManager extends RelationManager
                     Action::make('forfeit')
                         ->label('Mark Forfeited')
                         ->icon('heroicon-o-x-circle')
-                        ->color('danger')
+                        ->color('gray')
                         ->requiresConfirmation()
                         ->visible(fn (BidBond $record): bool => filled($record->issue_payment_id) && blank($record->recovery_payment_id) && $record->status !== BidBond::STATUS_FORFEITED)
                         ->action(fn (BidBond $record) => $this->handleBondAction(

@@ -17,7 +17,7 @@ class ListInvoices extends ListRecords
                 ->label('Create Invoice')
                 ->url(fn () => static::getResource()::getUrl('create'))
                 ->icon('heroicon-o-plus')
-                ->color('primary'),
+                ->color('gray'),
         ];
     }
 }

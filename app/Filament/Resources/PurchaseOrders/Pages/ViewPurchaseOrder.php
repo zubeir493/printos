@@ -2,11 +2,15 @@
 
 namespace App\Filament\Resources\PurchaseOrders\Pages;
 
+use App\Enums\PaymentTransactionType;
 use App\Filament\Resources\PurchaseOrders\PurchaseOrderResource;
 use App\Filament\Support\PanelAccess;
+use App\Models\Bank;
 use App\Models\GoodsReceipt;
+use App\Models\Payment;
 use App\Models\PurchaseOrderItem;
 use App\Models\Warehouse;
+use App\Support\Money;
 use Filament\Actions;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -20,7 +24,6 @@ use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Schemas\Components\Grid;
-use Filament\Support\Colors\Color;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\Facades\DB;
 
@@ -40,7 +43,7 @@ class ViewPurchaseOrder extends ViewRecord
                 Action::make('approve')
                     ->label('Approve')
                     ->icon('heroicon-o-check-circle')
-                    ->color('success')
+                    ->color('gray')
                     ->visible(fn ($record) => $record->status === 'draft' && PanelAccess::canManagePurchaseOrders())
                     ->requiresConfirmation()
                     ->modalHeading('Approve this Purchase Order?')
@@ -53,7 +56,7 @@ class ViewPurchaseOrder extends ViewRecord
                 Action::make('receive')
                     ->label('Receive Items')
                     ->icon('heroicon-o-archive-box-arrow-down')
-                    ->color('success')
+                    ->color('gray')
                     ->visible(fn ($record) => $record->status === 'approved' && PanelAccess::canAccessWarehouseSection())
                     ->modalHeading('Receive Items')
                     ->modalDescription(fn ($record) => "Record stock received against {$record->po_number}. Items will be added to inventory immediately.")
@@ -155,7 +158,7 @@ class ViewPurchaseOrder extends ViewRecord
                 Action::make('mark_received')
                     ->label('Mark as Received')
                     ->icon('heroicon-o-check-circle')
-                    ->color('success')
+                    ->color('gray')
                     ->visible(fn ($record) => $record->status === 'approved' &&
                         PanelAccess::canManagePurchaseOrders() &&
                         $record->goodsReceipts()->exists()
@@ -171,7 +174,7 @@ class ViewPurchaseOrder extends ViewRecord
                 Action::make('cancel')
                     ->label('Cancel')
                     ->icon('heroicon-o-x-circle')
-                    ->color('danger')
+                    ->color('gray')
                     ->visible(fn ($record) => in_array($record->status, ['draft', 'approved']) && PanelAccess::canManagePurchaseOrders())
                     ->requiresConfirmation()
                     ->modalHeading('Cancel Purchase Order')
@@ -183,7 +186,89 @@ class ViewPurchaseOrder extends ViewRecord
 
                 Actions\EditAction::make()
                     ->visible(fn ($record) => $record->status === 'draft' && PanelAccess::canManagePurchaseOrders())
-                    ->color(Color::Indigo),
+                    ->color('gray'),
+                Action::make('pay')
+                    ->label('Pay')
+                    ->icon('heroicon-o-banknotes')
+                    ->color('gray')
+                    ->visible(fn ($record) => $record->balance > 0
+                        && PanelAccess::canAccessFinanceSection()
+                        && in_array($record->status, ['approved', 'received']))
+                    ->schema([
+                        Grid::make(2)->schema([
+                            Select::make('method')
+                                ->label('Payment method')
+                                ->options([
+                                    'cash' => 'Cash',
+                                    'bank' => 'Bank Transfer',
+                                    'cheque' => 'Cheque',
+                                ])
+                                ->default('bank')
+                                ->required()
+                                ->live(),
+                            Select::make('bank_id')
+                                ->label('Bank Account')
+                                ->options(fn (): array => Bank::query()->orderBy('name')->pluck('name', 'id')->all())
+                                ->searchable()
+                                ->preload()
+                                ->visible(fn (callable $get): bool => $get('method') === 'bank')
+                                ->required(fn (callable $get): bool => $get('method') === 'bank'),
+                            TextInput::make('amount')
+                                ->label('Payment Amount')
+                                ->required()
+                                ->numeric()
+                                ->suffix(fn (): string => Money::suffix())
+                                ->default(fn ($record) => $record->balance)
+                                ->maxValue(fn ($record): float => $record->balance)
+                                ->helperText(fn ($record) => 'Balance: '.Money::format($record->balance)),
+                            DatePicker::make('payment_date')
+                                ->label('Payment Date')
+                                ->default(now())
+                                ->required(),
+                            TextInput::make('reference')
+                                ->label('Memo / Reference')
+                                ->placeholder('Receipt number, cheque number, or short note')
+                                ->maxLength(255),
+                        ]),
+                    ])
+                    ->action(function ($record, array $data): void {
+                        try {
+                            DB::transaction(function () use ($record, $data): void {
+                                $lockedRecord = $record->newQuery()
+                                    ->lockForUpdate()
+                                    ->findOrFail($record->getKey());
+                                $amount = (float) $data['amount'];
+
+                                if ($amount > $lockedRecord->balance) {
+                                    throw new \Exception('Cannot pay more than the remaining balance of '.Money::format($lockedRecord->balance).'.');
+                                }
+
+                                Payment::create([
+                                    'partner_id' => $lockedRecord->partner_id,
+                                    'payment_date' => $data['payment_date'],
+                                    'transaction_type' => PaymentTransactionType::SUPPLIER_PAYMENT->value,
+                                    'amount' => $amount,
+                                    'method' => $data['method'],
+                                    'bank_id' => $data['bank_id'] ?? null,
+                                    'reference' => $data['reference'] ?? 'Payment for '.$lockedRecord->po_number,
+                                    'payable_type' => get_class($lockedRecord),
+                                    'payable_id' => $lockedRecord->id,
+                                ]);
+                            });
+
+                            Notification::make()
+                                ->title('Payment Recorded')
+                                ->body(Money::format($data['amount']).' paid against '.$record->po_number.'.')
+                                ->success()
+                                ->send();
+                        } catch (\Exception $e) {
+                            Notification::make()
+                                ->title('Payment Failed')
+                                ->body($e->getMessage())
+                                ->danger()
+                                ->send();
+                        }
+                    }),
             ]),
         ];
     }

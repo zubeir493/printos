@@ -97,14 +97,32 @@ class JobOrderTasksTable
             ->actions([
                 ActionGroup::make([
                     EditAction::make()
+                        ->color('gray')
                         ->visible(fn () => PanelAccess::canManageJobOrderTasks()),
+                    Action::make('cancel_task')
+                        ->label('Cancel Task')
+                        ->icon('heroicon-o-x-mark')
+                        ->color('gray')
+                        ->visible(fn ($record) => ! in_array($record->status, ['cancelled', 'completed'])
+                            && PanelAccess::canManageJobOrderTasks())
+                        ->requiresConfirmation()
+                        ->modalDescription('Are you sure you want to cancel this task? This action cannot be undone.')
+                        ->action(function ($record): void {
+                            $record->cancel();
+
+                            Notification::make()
+                                ->title('Task Cancelled')
+                                ->body('The task has been cancelled successfully.')
+                                ->danger()
+                                ->send();
+                        }),
                     JobOrderTaskWorkflowActions::assignDesigner(),
                     JobOrderTaskWorkflowActions::assignTypist(),
                     JobOrderTaskWorkflowActions::sendToProduction(),
                     Action::make('request_materials')
                         ->label('Request Materials')
                         ->icon('heroicon-o-document-plus')
-                        ->color('info')
+                        ->color('gray')
                         ->visible(fn ($record) => ! in_array($record->status, ['completed', 'cancelled'])
                             && in_array(Filament::getCurrentPanel()?->getId(), ['production', 'admin', 'operations']))
                         ->form(fn ($record) => [
@@ -158,7 +176,7 @@ class JobOrderTasksTable
                     Action::make('issue_materials')
                         ->label('Issue Materials')
                         ->icon('heroicon-o-archive-box-arrow-down')
-                        ->color('warning')
+                        ->color('gray')
                         ->visible(fn ($record) => ! in_array($record->status, ['completed', 'cancelled'])
                             && $record->materialRequests()
                                 ->whereColumn('issued_quantity', '<', 'requested_quantity')
@@ -256,7 +274,7 @@ class JobOrderTasksTable
                     Action::make('log_production')
                         ->label('Log Production')
                         ->icon('heroicon-o-archive-box-arrow-down')
-                        ->color('success')
+                        ->color('gray')
                         ->visible(fn ($record) => ! in_array($record->status, ['completed', 'cancelled'])
                             && $record->materialRequests()->where('issued_quantity', '>', 0)->exists()
                             && Filament::getCurrentPanel()?->getId() === 'production')

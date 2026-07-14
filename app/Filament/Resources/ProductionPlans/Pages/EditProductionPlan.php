@@ -20,7 +20,7 @@ class EditProductionPlan extends EditRecord
                 Action::make('approve')
                     ->label('Approve Plan')
                     ->icon('heroicon-o-check-circle')
-                    ->color('success')
+                    ->color('gray')
                     ->requiresConfirmation()
                     ->visible(fn ($record) => $record->status === 'draft')
                     ->action(function ($record) {

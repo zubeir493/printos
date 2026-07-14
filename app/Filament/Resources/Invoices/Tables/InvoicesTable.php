@@ -96,10 +96,33 @@ class InvoicesTable
             ->defaultSort('due_date', 'desc')
             ->actions([
                 ActionGroup::make([
+                    ActionsAction::make('mark_sent')
+                        ->label('Mark Sent')
+                        ->icon('heroicon-o-paper-airplane')
+                        ->color('gray')
+                        ->visible(fn ($record): bool => in_array($record->status, ['draft', 'unpaid'], true))
+                        ->action(function ($record): void {
+                            $record->update(['status' => 'sent']);
+
+                            Notification::make()->title('Invoice marked as sent')->success()->send();
+                        }),
+
+                    ActionsAction::make('cancel_invoice')
+                        ->label('Cancel Invoice')
+                        ->icon('heroicon-o-x-circle')
+                        ->color('gray')
+                        ->requiresConfirmation()
+                        ->visible(fn ($record): bool => in_array($record->status, ['draft', 'sent', 'unpaid', 'partial', 'overdue'], true))
+                        ->action(function ($record): void {
+                            $record->update(['status' => 'cancelled']);
+
+                            Notification::make()->title('Invoice cancelled')->success()->send();
+                        }),
 
                     ActionsAction::make('download')
                         ->label('Download')
                         ->icon('heroicon-o-arrow-down-tray')
+                        ->color('gray')
                         ->url(function ($record) {
                             $invoiceService = app(InvoiceGeneratorService::class);
 
@@ -110,7 +133,7 @@ class InvoicesTable
                     ActionsAction::make('email')
                         ->label('Email Invoice')
                         ->icon('heroicon-o-envelope')
-                        ->color('primary')
+                        ->color('gray')
                         ->form([
                             TextInput::make('email')
                                 ->label('Email Address')

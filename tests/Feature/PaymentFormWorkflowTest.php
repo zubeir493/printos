@@ -4,6 +4,8 @@ use App\Enums\ExpenseTrackingType;
 use App\Enums\PaymentTransactionType;
 use App\Filament\Resources\Payments\Pages\CreatePayment;
 use App\Filament\Resources\Payments\Pages\ListPayments;
+use App\Filament\Resources\Payments\Pages\ViewPayment;
+use App\Filament\Resources\Payments\PaymentResource;
 use App\Models\Account;
 use App\Models\Bank;
 use App\Models\ExpenseTrackingItem;
@@ -19,29 +21,16 @@ use Livewire\Livewire;
 
 uses(RefreshDatabase::class);
 
-test('payment form previews the next payment number', function (): void {
+test('payment form presents payment numbers as generated on save', function (): void {
     Filament::setCurrentPanel(Filament::getPanel('finance'));
 
     $this->actingAs(User::factory()->create([
         'role' => UserRole::Finance,
     ]));
 
-    $customer = Partner::factory()->create([
-        'is_customer' => true,
-    ]);
-
-    Payment::create([
-        'partner_id' => $customer->id,
-        'payment_date' => now(),
-        'amount' => 100,
-        'transaction_type' => PaymentTransactionType::CUSTOMER_RECEIPT->value,
-        'method' => 'cash',
-    ]);
-
     Livewire::test(CreatePayment::class)
-        ->assertFormSet([
-            'payment_number' => 'PAY-000002',
-        ]);
+        ->assertSee('Auto-generated on save')
+        ->assertFormFieldDoesNotExist('payment_number');
 });
 
 test('payment form shows insufficient bank balance as a form error', function (): void {
@@ -58,7 +47,6 @@ test('payment form shows insufficient bank balance as a form error', function ()
 
     Livewire::test(CreatePayment::class)
         ->fillForm([
-            'payment_direction' => PaymentTransactionType::DIRECTION_OUTBOUND,
             'transaction_type' => PaymentTransactionType::SUPPLIER_PAYMENT->value,
             'partner_id' => $supplier->id,
             'amount' => 250,
@@ -75,7 +63,7 @@ test('payment form shows insufficient bank balance as a form error', function ()
         ->and((float) $bank->fresh()->current_balance)->toBe(100.0);
 });
 
-test('payment form filters transaction types by direction and keeps the transaction type searchable', function (): void {
+test('payment form keeps transaction type searchable and drives dependent fields', function (): void {
     Filament::setCurrentPanel(Filament::getPanel('finance'));
 
     $this->actingAs(User::factory()->create([
@@ -84,27 +72,21 @@ test('payment form filters transaction types by direction and keeps the transact
 
     Livewire::test(CreatePayment::class)
         ->assertFormSet([
-            'payment_direction' => PaymentTransactionType::DIRECTION_INBOUND,
             'transaction_type' => PaymentTransactionType::CUSTOMER_RECEIPT->value,
         ])
+        ->assertFormFieldDoesNotExist('payment_direction')
         ->assertFormFieldExists('transaction_type', function (Select $field): bool {
             expect($field->isSearchable())->toBeTrue()
                 ->and($field->getOptions())->toHaveKey(PaymentTransactionType::CUSTOMER_RECEIPT->value)
-                ->and($field->getOptions())->not->toHaveKey(PaymentTransactionType::DIRECT_EXPENSE->value);
+                ->and($field->getOptions())->toHaveKey(PaymentTransactionType::DIRECT_EXPENSE->value);
 
             return true;
         })
         ->assertFormFieldIsHidden('expense_account_id')
-        ->set('data.payment_direction', PaymentTransactionType::DIRECTION_OUTBOUND)
+        ->set('data.transaction_type', PaymentTransactionType::DIRECT_EXPENSE->value)
         ->assertFormSet([
             'transaction_type' => PaymentTransactionType::DIRECT_EXPENSE->value,
         ])
-        ->assertFormFieldExists('transaction_type', function (Select $field): bool {
-            expect($field->getOptions())->toHaveKey(PaymentTransactionType::DIRECT_EXPENSE->value)
-                ->and($field->getOptions())->not->toHaveKey(PaymentTransactionType::CUSTOMER_RECEIPT->value);
-
-            return true;
-        })
         ->assertFormFieldIsVisible('expense_account_id');
 });
 
@@ -123,7 +105,7 @@ test('expense account default tracking reveals the relevant structured tracking 
     ]);
 
     Livewire::test(CreatePayment::class)
-        ->set('data.payment_direction', PaymentTransactionType::DIRECTION_OUTBOUND)
+        ->set('data.transaction_type', PaymentTransactionType::DIRECT_EXPENSE->value)
         ->set('data.expense_account_id', $expenseAccount->id)
         ->assertFormSet([
             'expense_tracking_type' => ExpenseTrackingType::VEHICLE->value,
@@ -155,7 +137,6 @@ test('tracked direct expenses are created through payments and posted to the led
 
     Livewire::test(CreatePayment::class)
         ->fillForm([
-            'payment_direction' => PaymentTransactionType::DIRECTION_OUTBOUND,
             'transaction_type' => PaymentTransactionType::DIRECT_EXPENSE->value,
             'amount' => 650,
             'payment_date' => '2026-07-08',
@@ -210,6 +191,45 @@ test('payments table tabs render in the table toolbar', function (): void {
         ->assertSeeHtml('payments-toolbar-tabs')
         ->assertDontSeeHtml('resourceTabs')
         ->assertSeeInOrder(['All', 'Income', 'Expenses']);
+});
+
+test('payments are view and void only after posting', function (): void {
+    $payment = Payment::factory()->create();
+
+    expect(PaymentResource::getPages())
+        ->not->toHaveKey('edit')
+        ->and(PaymentResource::canEdit($payment))->toBeFalse()
+        ->and(PaymentResource::canDelete($payment))->toBeFalse();
+});
+
+test('payment table and view page expose the same void action', function (): void {
+    Filament::setCurrentPanel(Filament::getPanel('finance'));
+
+    $this->actingAs(User::factory()->create([
+        'role' => UserRole::Finance,
+    ]));
+
+    $payment = Payment::withoutEvents(fn (): Payment => Payment::factory()->create([
+        'voided_at' => null,
+    ]));
+
+    JournalEntry::create([
+        'date' => now(),
+        'reference' => $payment->payment_number,
+        'source_type' => Payment::class,
+        'source_id' => $payment->id,
+        'narration' => 'Payment posted',
+        'total_debit' => 100,
+        'total_credit' => 100,
+        'status' => 'posted',
+        'posted_at' => now(),
+    ]);
+
+    Livewire::test(ListPayments::class)
+        ->assertTableActionVisible('void', $payment);
+
+    Livewire::test(ViewPayment::class, ['record' => $payment->id])
+        ->assertActionVisible('void');
 });
 
 function createPaymentFormBank(string $name, float $currentBalance): Bank

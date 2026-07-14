@@ -26,7 +26,6 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
-use Filament\Support\Colors\Color;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\HtmlString;
 use Illuminate\Support\Number;
@@ -94,7 +93,7 @@ class SalesOrderForm
                                     Action::make('import_items')
                                         ->label('Import from CSV / Excel')
                                         ->icon('heroicon-o-arrow-up-tray')
-                                        ->color(Color::Indigo)
+                                        ->color('gray')
                                         ->visible(fn () => ! request()->routeIs('*.view'))
                                         ->modalHeading('Import Sale Items')
                                         ->modalDescription(new HtmlString(

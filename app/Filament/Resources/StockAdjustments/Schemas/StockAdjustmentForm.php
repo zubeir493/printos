@@ -35,32 +35,33 @@ class StockAdjustmentForm
                                     $lastNumber = (int) $matches[1];
                                 }
 
-                                return 'ADJ-'.str_pad($lastNumber + 1, 4, '0', STR_PAD_LEFT);
+                                return 'ADJ-' . str_pad($lastNumber + 1, 4, '0', STR_PAD_LEFT);
                             })
                             ->readOnly()
                             ->dehydrated(false),
                         Select::make('warehouse_id')
                             ->relationship('warehouse', 'name')
-                            ->default(fn () => Warehouse::where('is_default', true)->value('id'))
+                            ->default(fn() => Warehouse::where('is_default', true)->value('id'))
                             ->required()
                             ->reactive()
-                            ->afterStateUpdated(fn ($set) => $set('items', []))
-                            ->disabled(fn ($record) => $record?->status === 'posted'),
+                            ->afterStateUpdated(fn($set) => $set('items', []))
+                            ->disabled(fn($record) => $record?->status === 'posted'),
                         DatePicker::make('adjustment_date')
                             ->default(now())
                             ->required()
-                            ->disabled(fn ($record) => $record?->status === 'posted'),
+                            ->disabled(fn($record) => $record?->status === 'posted'),
                         TextInput::make('reason')
-                            ->disabled(fn ($record) => $record?->status === 'posted'),
+                            ->disabled(fn($record) => $record?->status === 'posted')
+                            ->required(),
                         Hidden::make('status')
                             ->default('draft'),
                     ])->columnSpanFull()->columns(4),
 
                 Repeater::make('items')
                     ->relationship()
-                    ->mutateRelationshipDataBeforeFillUsing(fn (array $data): array => self::convertRepeaterDataToDisplayUnits($data))
-                    ->mutateRelationshipDataBeforeCreateUsing(fn (array $data): array => self::convertRepeaterDataToBaseUnits($data))
-                    ->mutateRelationshipDataBeforeSaveUsing(fn (array $data): array => self::convertRepeaterDataToBaseUnits($data))
+                    ->mutateRelationshipDataBeforeFillUsing(fn(array $data): array => self::convertRepeaterDataToDisplayUnits($data))
+                    ->mutateRelationshipDataBeforeCreateUsing(fn(array $data): array => self::convertRepeaterDataToBaseUnits($data))
+                    ->mutateRelationshipDataBeforeSaveUsing(fn(array $data): array => self::convertRepeaterDataToBaseUnits($data))
                     ->table([
                         TableColumn::make('Inventory Item')->width('300px')->alignLeft(),
                         TableColumn::make('Adjustment')->alignLeft(),
@@ -91,36 +92,36 @@ class StockAdjustmentForm
                                     $set('difference', $adj);
                                 }
                             })
-                            ->disabled(fn ($get) => $get('../../status') === 'posted'),
+                            ->disabled(fn($get) => $get('../../status') === 'posted'),
                         TextInput::make('adjustment_quantity')
                             ->numeric()
                             ->required()
                             ->reactive()
-                            ->suffix(fn (Get $get): string => self::unitPrefixForItemId($get('inventory_item_id')))
+                            ->suffix(fn(Get $get): string => self::unitPrefixForItemId($get('inventory_item_id')))
                             ->afterStateUpdated(function ($state, Set $set, Get $get): void {
                                 $system = (float) $get('system_quantity');
                                 $adj = (float) $state;
                                 $set('new_quantity', $system + $adj);
                                 $set('difference', $adj);
                             })
-                            ->helperText(fn (Get $get) => (float) $get('system_quantity') + (float) $get('adjustment_quantity') < 0
+                            ->helperText(fn(Get $get) => (float) $get('system_quantity') + (float) $get('adjustment_quantity') < 0
                                 ? 'This adjustment will create negative stock. Please lower the negative quantity or correct the system quantity.'
                                 : null)
-                            ->disabled(fn ($get) => $get('../../status') === 'posted'),
+                            ->disabled(fn($get) => $get('../../status') === 'posted'),
                         TextInput::make('system_quantity')
                             ->numeric()
-                            ->suffix(fn (Get $get): string => self::unitPrefixForItemId($get('inventory_item_id')))
+                            ->suffix(fn(Get $get): string => self::unitPrefixForItemId($get('inventory_item_id')))
                             ->disabled()
                             ->dehydrated()
                             ->required(),
                         TextInput::make('new_quantity')
                             ->numeric()
-                            ->suffix(fn (Get $get): string => self::unitPrefixForItemId($get('inventory_item_id')))
+                            ->suffix(fn(Get $get): string => self::unitPrefixForItemId($get('inventory_item_id')))
                             ->disabled()
                             ->dehydrated()
                             ->required()
                             ->default(0)
-                            ->helperText(fn (Get $get) => (float) $get('new_quantity') < 0
+                            ->helperText(fn(Get $get) => (float) $get('new_quantity') < 0
                                 ? 'Resulting stock would be negative. This adjustment cannot be posted.'
                                 : null),
                         Hidden::make('difference')
@@ -129,7 +130,7 @@ class StockAdjustmentForm
                     ])
                     ->defaultItems(1)
                     ->minItems(1)
-                    ->disabled(fn ($record) => $record?->status === 'posted')
+                    ->disabled(fn($record) => $record?->status === 'posted')
                     ->columnSpanFull(),
             ]);
     }

@@ -43,7 +43,7 @@ class EditJobOrder extends EditRecord
                 Action::make('issue_materials')
                     ->label('Issue Materials')
                     ->icon('heroicon-o-archive-box-arrow-down')
-                    ->color('warning')
+                    ->color('gray')
                     ->visible(
                         fn ($record) => PanelAccess::canAccessWarehouseSection() &&
                         ! in_array($record->status, ['completed', 'cancelled']) &&
@@ -141,7 +141,7 @@ class EditJobOrder extends EditRecord
                 Action::make('return_materials')
                     ->label('Return Materials')
                     ->icon('heroicon-o-arrow-path')
-                    ->color('warning')
+                    ->color('gray')
                     ->visible(
                         fn ($record) => PanelAccess::canAccessWarehouseSection() &&
                         $record->status !== 'completed' &&

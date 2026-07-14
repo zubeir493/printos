@@ -123,7 +123,7 @@ class ArtworksRelationManager extends RelationManager
                     Action::make('approve')
                         ->label('Approve')
                         ->icon('heroicon-m-check-badge')
-                        ->color('success')
+                        ->color('gray')
                         ->hidden(fn ($record) => $record->is_approved)
                         ->action(fn ($record) => $record->update(['is_approved' => true])),
                     DeleteAction::make(),

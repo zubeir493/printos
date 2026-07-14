@@ -20,7 +20,7 @@ class EditProductionReport extends EditRecord
                 Action::make('submit')
                     ->label('Submit Report')
                     ->icon('heroicon-o-check-circle')
-                    ->color('success')
+                    ->color('gray')
                     ->requiresConfirmation()
                     ->visible(fn ($record) => $record->status === 'draft')
                     ->action(function ($record) {

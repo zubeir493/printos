@@ -28,7 +28,6 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Filament\Schemas\Components\Callout;
 use Filament\Schemas\Components\Utilities\Get;
-use Filament\Support\Colors\Color;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\HtmlString;
@@ -95,7 +94,7 @@ class EditPayrollRun extends EditRecord
             Action::make('setupPayroll')
                 ->label('Settings')
                 ->icon('heroicon-m-cog')
-                ->color(Color::Indigo)
+                ->color('gray')
                 ->slideOver()
                 ->modalWidth('md')
                 ->fillForm(fn (): array => [
@@ -157,7 +156,7 @@ class EditPayrollRun extends EditRecord
                 }),
             Action::make('approve')
                 ->label('Approve')
-                ->color('success')
+                ->color('gray')
                 ->visible(fn (): bool => $this->record->status === 'draft')
                 ->modalDescription(fn (): string => $this->approveModalDescription())
                 ->requiresConfirmation()
@@ -171,7 +170,7 @@ class EditPayrollRun extends EditRecord
                 }),
             Action::make('generatePayments')
                 ->label('Send payments')
-                ->color('success')
+                ->color('gray')
                 ->visible(fn (): bool => $this->record->status === 'approved')
                 ->schema([
                     Select::make('bank_id')
@@ -196,11 +195,12 @@ class EditPayrollRun extends EditRecord
                 Action::make('reviewOvertime')
                     ->label('Review overtime')
                     ->icon('heroicon-m-clock')
-                    ->color(fn (): string => $this->pendingOvertimeApprovalCount() > 0 ? 'warning' : 'gray')
+                    ->color('gray')
                     ->visible(fn (): bool => $this->record->overtimeEntries()->exists())
                     ->action(fn (): bool => $this->reviewingOvertime = true),
                 Action::make('addEmployee')
                     ->label('Add employee')
+                    ->color('gray')
                     ->modalSubmitActionLabel('Add employee')
                     ->modalWidth('md')
                     ->visible(fn (): bool => $this->record->status === 'draft')
@@ -218,7 +218,7 @@ class EditPayrollRun extends EditRecord
                     }),
                 Action::make('downloadBankAdvice')
                     ->label('Bank advice')
-                    ->color('info')
+                    ->color('gray')
                     ->visible(fn (): bool => $this->record->employees()->where('net_pay', '>', 0)->exists())
                     ->schema([
                         Select::make('bank_id')

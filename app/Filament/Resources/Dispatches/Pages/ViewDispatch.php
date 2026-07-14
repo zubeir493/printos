@@ -8,7 +8,6 @@ use Filament\Actions\ActionGroup;
 use Filament\Actions\EditAction;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
-use Filament\Support\Colors\Color;
 
 class ViewDispatch extends ViewRecord
 {
@@ -21,7 +20,7 @@ class ViewDispatch extends ViewRecord
                 Action::make('complete_dispatch')
                     ->label('Mark as Delivered')
                     ->icon('heroicon-o-check-circle')
-                    ->color('success')
+                    ->color('gray')
                     ->visible(fn ($record) => $record->status === 'pending')
                     ->requiresConfirmation()
                     ->modalHeading('Confirm Delivery')
@@ -34,7 +33,7 @@ class ViewDispatch extends ViewRecord
                 Action::make('cancel_dispatch')
                     ->label('Cancel Dispatch')
                     ->icon('heroicon-o-x-circle')
-                    ->color('danger')
+                    ->color('gray')
                     ->visible(fn ($record) => $record->status === 'pending')
                     ->requiresConfirmation()
                     ->modalHeading('Cancel Dispatch')
@@ -45,7 +44,7 @@ class ViewDispatch extends ViewRecord
                     }),
 
                 EditAction::make()
-                    ->color(Color::Indigo),
+                    ->color('gray'),
             ]),
         ];
     }

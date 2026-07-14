@@ -12,7 +12,6 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
-use Filament\Support\Colors\Color;
 
 class ViewProforma extends ViewRecord
 {
@@ -25,7 +24,7 @@ class ViewProforma extends ViewRecord
                 Action::make('approve')
                     ->label('Approve')
                     ->icon('heroicon-o-check-circle')
-                    ->color('success')
+                    ->color('gray')
                     ->requiresConfirmation()
                     ->visible(fn (): bool => in_array($this->record->status, ['draft', 'sent'], true))
                     ->action(function (): void {
@@ -40,7 +39,7 @@ class ViewProforma extends ViewRecord
                 Action::make('create_job_order')
                     ->label('Create Job Order')
                     ->icon('heroicon-o-briefcase')
-                    ->color(Color::Indigo)
+                    ->color('gray')
                     ->visible(fn (): bool => $this->record->canCreateJobOrder())
                     ->action(function (): void {
                         $jobOrder = app(ProformaWorkflowService::class)->createJobOrder($this->record);
@@ -53,7 +52,7 @@ class ViewProforma extends ViewRecord
                     }),
                 EditAction::make()
                     ->visible(fn (): bool => $this->record->status === 'draft')
-                    ->color(Color::Indigo),
+                    ->color('gray'),
                 Action::make('download')
                     ->label('Download')
                     ->icon('heroicon-o-arrow-down-tray')

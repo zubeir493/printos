@@ -42,6 +42,7 @@ use App\Observers\SalesOrderObserver;
 use App\Observers\StockMovementObserver;
 use App\Observers\TextFileObserver;
 use App\Policies\PaymentPolicy;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\View\ActionsIconAlias;
 use Filament\Forms\Components\FileUpload;
@@ -88,6 +89,7 @@ class AppServiceProvider extends ServiceProvider
             Model::shouldBeStrict();
         }
 
+        ActionGroup::configureUsing(fn (ActionGroup $group) => $group->color('gray'));
         CreateAction::configureUsing(fn (CreateAction $action) => $action->createAnother(false));
         FilamentIcon::register([
             ActionsIconAlias::IMPORT_ACTION_GROUPED => Heroicon::ArrowDownTray,

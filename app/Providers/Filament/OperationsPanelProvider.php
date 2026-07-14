@@ -21,6 +21,7 @@ use App\Filament\Resources\ProductionPlans\ProductionPlanResource;
 use App\Filament\Resources\ProductionReports\ProductionReportResource;
 use App\Filament\Resources\PurchaseOrderItems\PurchaseOrderItemResource;
 use App\Filament\Resources\PurchaseOrders\PurchaseOrderResource;
+use App\Filament\Resources\Warehouses\WarehouseResource;
 use Filament\Enums\ThemeMode;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -66,6 +67,7 @@ class OperationsPanelProvider extends PanelProvider
                 GoodsReceiptResource::class,
                 PartnerResource::class,
                 JobOrderResource::class,
+                WarehouseResource::class,
                 JobOrderTaskResource::class,
                 MaterialRequestResource::class,
                 MaterialIssueApprovalResource::class,

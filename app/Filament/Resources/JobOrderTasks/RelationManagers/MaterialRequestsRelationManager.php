@@ -96,7 +96,7 @@ class MaterialRequestsRelationManager extends RelationManager
                     Action::make('issue')
                         ->label('Issue')
                         ->icon('heroicon-o-archive-box-arrow-down')
-                        ->color('success')
+                        ->color('gray')
                         ->visible(fn ($record) => $record->requested_quantity > $record->issued_quantity && ! $record->pendingIssueApprovals()->exists())
                         ->form([
                             Select::make('warehouse_id')

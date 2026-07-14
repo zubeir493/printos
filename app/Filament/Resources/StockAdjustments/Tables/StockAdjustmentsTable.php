@@ -52,7 +52,7 @@ class StockAdjustmentsTable
                 ActionGroup::make([
                     ActionsAction::make('post')
                         ->label('Post')
-                        ->color('success')
+                        ->color('gray')
                         ->icon('heroicon-o-check-circle')
                         ->requiresConfirmation()
                         ->visible(fn ($record) => $record->status === 'draft')

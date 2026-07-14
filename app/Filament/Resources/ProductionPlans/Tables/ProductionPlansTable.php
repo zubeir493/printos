@@ -27,7 +27,7 @@ class ProductionPlansTable
                     ->sortable(),
                 TextColumn::make('status')
                     ->badge()
-                    ->color(fn(string $state): string => match ($state) {
+                    ->color(fn (string $state): string => match ($state) {
                         'draft' => 'gray',
                         'approved' => 'success',
                         default => 'gray',
@@ -48,12 +48,12 @@ class ProductionPlansTable
             ->actions([
                 ActionGroup::make([
                     ActionsEditAction::make()
-                        ->visible(fn($record) => $record->status === 'draft'),
+                        ->visible(fn ($record) => $record->status === 'draft'),
                     ActionsAction::make('report_week')
                         ->label('Report Week')
                         ->icon('heroicon-o-clipboard-document-check')
-                        ->color('success')
-                        ->visible(fn($record) => $record->status === 'approved' && ! ProductionReport::where('production_plan_id', $record->id)->exists())
+                        ->color('gray')
+                        ->visible(fn ($record) => $record->status === 'approved' && ! ProductionReport::where('production_plan_id', $record->id)->exists())
                         ->action(function ($record) {
                             $report = ProductionReport::create([
                                 'production_plan_id' => $record->id,
@@ -85,7 +85,7 @@ class ProductionPlansTable
             ->recordActions([
                 ActionGroup::make([
                     ActionsEditAction::make()
-                        ->visible(fn($record) => $record->status === 'draft'),
+                        ->visible(fn ($record) => $record->status === 'draft'),
                 ]),
             ])
             ->bulkActions([]);

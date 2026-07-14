@@ -57,7 +57,7 @@ class MaterialIssueApprovalsTable
             ->recordActions([
                 ActionGroup::make([
                     Action::make('approve')
-                        ->color('success')
+                        ->color('gray')
                         ->icon('heroicon-o-check-circle')
                         ->visible(fn ($record) => $record->status === 'pending')
                         ->requiresConfirmation()
@@ -84,7 +84,7 @@ class MaterialIssueApprovalsTable
                             }
                         }),
                     Action::make('reject')
-                        ->color('danger')
+                        ->color('gray')
                         ->icon('heroicon-o-x-circle')
                         ->visible(fn ($record) => $record->status === 'pending')
                         ->requiresConfirmation()

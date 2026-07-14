@@ -131,32 +131,4 @@ enum PaymentTransactionType: string
     {
         return self::options();
     }
-
-    /**
-     * @return array<string, string>
-     */
-    public static function directionOptions(): array
-    {
-        return [
-            self::DIRECTION_INBOUND => 'Incoming',
-            self::DIRECTION_OUTBOUND => 'Outgoing',
-        ];
-    }
-
-    /**
-     * @return array<string, string>
-     */
-    public static function optionsForDirection(?string $direction): array
-    {
-        return collect(self::paymentFormOptions())
-            ->filter(fn (string $label, string $value): bool => self::tryFrom($value)?->direction() === $direction)
-            ->all();
-    }
-
-    public static function defaultForDirection(?string $direction): self
-    {
-        return $direction === self::DIRECTION_OUTBOUND
-            ? self::DIRECT_EXPENSE
-            : self::CUSTOMER_RECEIPT;
-    }
 }

@@ -84,10 +84,74 @@ class SalesOrdersTable
             ->defaultSort('order_date', 'desc')
             ->recordActions([
                 ActionGroup::make([
+                    Action::make('complete')
+                        ->label('Complete Sale')
+                        ->icon('heroicon-o-check-circle')
+                        ->color('gray')
+                        ->visible(fn ($record) => $record->status === SalesOrder::STATUS_DRAFT
+                            && $record->isCashSale()
+                            && PanelAccess::canManageSalesOrders())
+                        ->requiresConfirmation()
+                        ->modalHeading('Complete this Sales Order?')
+                        ->modalDescription('This will mark the sale as completed and deduct inventory.')
+                        ->action(function ($record): void {
+                            try {
+                                $record->update(['status' => SalesOrder::STATUS_COMPLETED]);
+                            } catch (\Exception $e) {
+                                Notification::make()
+                                    ->title('Cannot complete this order')
+                                    ->body($e->getMessage())
+                                    ->danger()
+                                    ->persistent()
+                                    ->send();
+
+                                return;
+                            }
+
+                            Notification::make()
+                                ->title('Sales Order Completed')
+                                ->body($record->order_number.' has been completed.')
+                                ->success()
+                                ->send();
+                        }),
+                    Action::make('submit_items')
+                        ->label('Submit Items')
+                        ->icon('heroicon-o-paper-airplane')
+                        ->color('gray')
+                        ->visible(fn ($record) => $record->status === SalesOrder::STATUS_DRAFT
+                            && $record->payment_mode === 'credit'
+                            && PanelAccess::canManageSalesOrders())
+                        ->requiresConfirmation()
+                        ->modalHeading('Submit items for this credit sale?')
+                        ->modalDescription('This will post the sale and deduct inventory. The order will only be completed after full payment is received.')
+                        ->action(function ($record): void {
+                            try {
+                                $record->update([
+                                    'status' => $record->isPaidInFull()
+                                        ? SalesOrder::STATUS_COMPLETED
+                                        : SalesOrder::STATUS_SUBMITTED,
+                                ]);
+                            } catch (\Exception $e) {
+                                Notification::make()
+                                    ->title('Cannot submit this order')
+                                    ->body($e->getMessage())
+                                    ->danger()
+                                    ->persistent()
+                                    ->send();
+
+                                return;
+                            }
+
+                            Notification::make()
+                                ->title('Sales Order Submitted')
+                                ->body($record->order_number.' items have been submitted.')
+                                ->success()
+                                ->send();
+                        }),
                     Action::make('pay')
                         ->label('Receive Payment')
                         ->icon('heroicon-o-banknotes')
-                        ->color('success')
+                        ->color('gray')
                         ->visible(
                             fn ($record) => $record->payment_mode === 'credit' &&
                                 $record->status !== SalesOrder::STATUS_VOID &&
@@ -176,7 +240,7 @@ class SalesOrdersTable
                     Action::make('invoice')
                         ->label('Invoice')
                         ->icon('heroicon-o-document-text')
-                        ->color('primary')
+                        ->color('gray')
                         ->hidden(fn ($record) => $record->invoices()->exists() || ! PanelAccess::canSeeMoneyValues() || $record->balance <= 0)
                         ->action(function ($record) {
                             try {
@@ -207,7 +271,7 @@ class SalesOrdersTable
                     Action::make('void')
                         ->label('Void')
                         ->icon('heroicon-o-x-circle')
-                        ->color('danger')
+                        ->color('gray')
                         ->visible(fn ($record) => in_array($record->status, [SalesOrder::STATUS_SUBMITTED, SalesOrder::STATUS_COMPLETED], true))
                         ->requiresConfirmation()
                         ->modalHeading('Void Sales Order')

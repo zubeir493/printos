@@ -21,7 +21,7 @@ class EditCostEstimate extends EditRecord
                 Action::make('finalize')
                     ->label('Finalize')
                     ->icon('heroicon-o-check-circle')
-                    ->color('success')
+                    ->color('gray')
                     ->requiresConfirmation()
                     ->visible(fn (): bool => $this->record->status === 'draft')
                     ->action(function (): void {

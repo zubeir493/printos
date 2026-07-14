@@ -19,7 +19,6 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Grid;
-use Filament\Support\Colors\Color;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use RuntimeException;
@@ -35,7 +34,7 @@ trait InteractsWithBidActions
 
         if ($includeEdit) {
             array_unshift($draftActions, EditAction::make()
-                ->color(Color::Indigo)
+                ->color('gray')
                 ->visible(fn (): bool => BidResource::canEdit($this->record)));
         }
 
@@ -63,7 +62,7 @@ trait InteractsWithBidActions
         return Action::make('submit')
             ->label('Submit Bid')
             ->icon('heroicon-o-paper-airplane')
-            ->color('primary')
+            ->color('gray')
             ->visible(fn (): bool => $this->record->status === Bid::STATUS_DRAFT && PanelAccess::canManageJobOrders())
             ->requiresConfirmation()
             ->action(function (): void {
@@ -79,7 +78,7 @@ trait InteractsWithBidActions
         return Action::make('award')
             ->label('Mark Awarded')
             ->icon('heroicon-o-trophy')
-            ->color(Color::Indigo)
+            ->color('gray')
             ->visible(fn (): bool => $this->record->status === Bid::STATUS_SUBMITTED && PanelAccess::canManageJobOrders())
             ->requiresConfirmation()
             ->action(function (): void {
@@ -95,7 +94,7 @@ trait InteractsWithBidActions
         return Action::make('mark_lost')
             ->label('Mark Lost')
             ->icon('heroicon-o-x-circle')
-            ->color('danger')
+            ->color('gray')
             ->visible(fn (): bool => $this->record->status === Bid::STATUS_SUBMITTED && PanelAccess::canManageJobOrders())
             ->requiresConfirmation()
             ->action(function (): void {
@@ -111,7 +110,7 @@ trait InteractsWithBidActions
         return Action::make('send_bond')
             ->label('Send Bid Bond')
             ->icon('heroicon-o-arrow-up-tray')
-            ->color('warning')
+            ->color('gray')
             ->visible(fn (): bool => $this->record->status === Bid::STATUS_DRAFT
                 && (float) ($this->record->bid_bond_amount ?? 0) > 0
                 && blank($this->record->currentBidBond()?->issue_payment_id)
@@ -138,7 +137,7 @@ trait InteractsWithBidActions
         return Action::make('return_bond')
             ->label('Return Bid Bond')
             ->icon('heroicon-o-arrow-down-tray')
-            ->color('success')
+            ->color('gray')
             ->visible(fn (): bool => filled($this->record->currentBidBond()?->issue_payment_id)
                 && blank($this->record->currentBidBond()?->recovery_payment_id)
                 && PanelAccess::canManageBidBonds())
@@ -162,7 +161,7 @@ trait InteractsWithBidActions
         return Action::make('send_performance_bond')
             ->label('Send Performance Bond')
             ->icon('heroicon-o-shield-check')
-            ->color('warning')
+            ->color('gray')
             ->visible(fn (): bool => $this->record->status === Bid::STATUS_AWARDED
                 && blank($this->record->activePerformanceBond())
                 && PanelAccess::canManageBidBonds())
@@ -190,7 +189,7 @@ trait InteractsWithBidActions
         return Action::make('return_performance_bond')
             ->label('Recover Performance Bond')
             ->icon('heroicon-o-arrow-down-tray')
-            ->color('success')
+            ->color('gray')
             ->visible(fn (): bool => in_array($this->record->status, [Bid::STATUS_AWARDED, Bid::STATUS_BOND_SENT], true)
                 && filled($this->record->activePerformanceBond())
                 && PanelAccess::canManageBidBonds())

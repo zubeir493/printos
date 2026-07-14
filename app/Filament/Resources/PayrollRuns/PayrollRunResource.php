@@ -7,15 +7,25 @@ use App\Filament\Resources\PayrollRuns\Pages\EditPayrollRun;
 use App\Filament\Resources\PayrollRuns\Pages\ListPayrollRuns;
 use App\Filament\Resources\PayrollRuns\RelationManagers\PayrollRunEmployeesRelationManager;
 use App\Filament\Tables\Filters\DateRangeFilter;
+use App\Models\Bank;
 use App\Models\PayrollRun;
+use App\Services\Hr\ExportPayrollBankAdvice;
+use App\Services\Hr\ExportPayrollRegisterCsv;
+use App\Services\Hr\GeneratePayrollPayments;
+use App\Services\Hr\PostPayrollRun;
 use App\Support\FiscalCalendar;
 use App\Support\Money;
 use BackedEnum;
 use Carbon\CarbonImmutable;
+use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
+use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Select as ActionSelect;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
@@ -154,6 +164,77 @@ class PayrollRunResource extends Resource
             ])
             ->filters([
                 DateRangeFilter::make('period', 'period_start', 'Period', 'period_end'),
+            ])
+            ->recordActions([
+                ActionGroup::make([
+                    EditAction::make()
+                        ->color('gray'),
+                    Action::make('approve')
+                        ->label('Approve')
+                        ->color('gray')
+                        ->visible(fn (PayrollRun $record): bool => $record->status === 'draft')
+                        ->requiresConfirmation()
+                        ->action(function (PayrollRun $record): void {
+                            app(PostPayrollRun::class)->handle($record);
+
+                            Notification::make()->title('Payroll approved and journal posted')->success()->send();
+                        }),
+                    Action::make('generatePayments')
+                        ->label('Send payments')
+                        ->color('gray')
+                        ->visible(fn (PayrollRun $record): bool => $record->status === 'approved')
+                        ->schema([
+                            ActionSelect::make('bank_id')
+                                ->label('Pay From Bank')
+                                ->options(fn (): array => Bank::query()
+                                    ->where('status', 'active')
+                                    ->orderBy('bank_name')
+                                    ->orderBy('name')
+                                    ->get()
+                                    ->mapWithKeys(fn (Bank $bank): array => [
+                                        $bank->id => $bank->name.' (available: '.Money::abbreviate($bank->current_balance, 2).')',
+                                    ])
+                                    ->all())
+                                ->searchable()
+                                ->preload()
+                                ->required(),
+                        ])
+                        ->requiresConfirmation()
+                        ->action(function (PayrollRun $record, array $data): void {
+                            app(GeneratePayrollPayments::class)->handle($record, 'bank', (int) $data['bank_id']);
+
+                            Notification::make()->title('Payroll payments generated')->success()->send();
+                        }),
+                    Action::make('downloadBankAdvice')
+                        ->label('Bank advice')
+                        ->color('gray')
+                        ->visible(fn (PayrollRun $record): bool => $record->employees()->where('net_pay', '>', 0)->exists())
+                        ->schema([
+                            ActionSelect::make('bank_id')
+                                ->label('Bank format')
+                                ->options(fn (): array => Bank::query()
+                                    ->where('status', 'active')
+                                    ->orderBy('bank_name')
+                                    ->orderBy('name')
+                                    ->get()
+                                    ->mapWithKeys(fn (Bank $bank): array => [
+                                        $bank->id => $bank->name.' (available: '.Money::abbreviate($bank->current_balance, 2).')',
+                                    ])
+                                    ->all())
+                                ->searchable()
+                                ->preload()
+                                ->required(),
+                        ])
+                        ->action(fn (PayrollRun $record, array $data) => app(ExportPayrollBankAdvice::class)->download(
+                            $record,
+                            Bank::query()->findOrFail((int) $data['bank_id']),
+                        )),
+                    Action::make('exportRegister')
+                        ->label('Export CSV')
+                        ->color('gray')
+                        ->visible(fn (PayrollRun $record): bool => $record->employees()->exists())
+                        ->action(fn (PayrollRun $record) => app(ExportPayrollRegisterCsv::class)->download($record)),
+                ]),
             ])
             ->defaultSort('created_at', 'desc');
     }

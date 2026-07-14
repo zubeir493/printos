@@ -25,7 +25,8 @@ class EditJobOrderTask extends EditRecord
                 JobOrderTaskWorkflowActions::assignDesigner(),
                 JobOrderTaskWorkflowActions::assignTypist(),
                 JobOrderTaskWorkflowActions::sendToProduction(),
-                DeleteAction::make(),
+                DeleteAction::make()
+                    ->color('gray'),
             ]),
         ];
     }

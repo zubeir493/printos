@@ -8,7 +8,6 @@ use Filament\Actions\ActionGroup;
 use Filament\Actions\EditAction;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
-use Filament\Support\Colors\Color;
 
 class ViewProductionReport extends ViewRecord
 {
@@ -21,7 +20,7 @@ class ViewProductionReport extends ViewRecord
                 Action::make('submit')
                     ->label('Submit Report')
                     ->icon('heroicon-o-check-circle')
-                    ->color('success')
+                    ->color('gray')
                     ->requiresConfirmation()
                     ->visible(fn ($record) => $record->status === 'draft')
                     ->action(function ($record) {
@@ -35,7 +34,7 @@ class ViewProductionReport extends ViewRecord
                     }),
                 EditAction::make()
                     ->visible(fn ($record) => $record->status === 'draft')
-                    ->color(Color::Indigo),
+                    ->color('gray'),
             ]),
         ];
     }

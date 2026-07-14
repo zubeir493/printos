@@ -183,7 +183,7 @@ class MaterialRequestResource extends Resource
                     Action::make('issue')
                         ->label('Issue')
                         ->icon('heroicon-m-archive-box-arrow-down')
-                        ->color('warning')
+                        ->color('gray')
                         ->visible(fn ($record) => PanelAccess::canAccessWarehouseSection() && $record->issued_quantity < $record->requested_quantity && ! $record->pendingIssueApprovals()->exists())
                         ->form([
                             Select::make('warehouse_id')

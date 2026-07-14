@@ -6,8 +6,8 @@ use App\Filament\Tables\Filters\DateRangeFilter;
 use App\Support\Money;
 use Filament\Actions\Action as ActionsAction;
 use Filament\Actions\ActionGroup;
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\EditAction;
 use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -63,10 +63,12 @@ class BankTransfersTable
             ->defaultSort('transfer_date', 'desc')
             ->recordActions([
                 ActionGroup::make([
+                    EditAction::make()
+                        ->color('gray'),
                     ActionsAction::make('complete')
                         ->label('Approve')
                         ->icon('heroicon-o-check-circle')
-                        ->color('success')
+                        ->color('gray')
                         ->requiresConfirmation()
                         ->modalHeading('Complete Bank Transfer')
                         ->modalDescription('This will update the bank balances. Are you sure?')
@@ -91,7 +93,7 @@ class BankTransfersTable
                     ActionsAction::make('cancel')
                         ->label('Cancel')
                         ->icon('heroicon-o-x-circle')
-                        ->color('danger')
+                        ->color('gray')
                         ->requiresConfirmation()
                         ->modalHeading('Cancel Bank Transfer')
                         ->modalDescription('This will cancel the transfer without affecting balances. Are you sure?')
@@ -113,12 +115,11 @@ class BankTransfersTable
                                     ->send();
                             }
                         }),
+                    DeleteAction::make()
+                        ->color('gray')
+                        ->visible(fn ($record): bool => $record->status === 'pending'),
                 ]),
             ])
-            ->bulkActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make(),
-                ]),
-            ]);
+            ->bulkActions([]);
     }
 }

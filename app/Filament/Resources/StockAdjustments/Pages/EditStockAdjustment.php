@@ -21,7 +21,7 @@ class EditStockAdjustment extends EditRecord
                     ->hidden(fn ($record) => $record->status === 'posted'),
                 Action::make('post')
                     ->label('Post Adjustment')
-                    ->color('success')
+                    ->color('gray')
                     ->icon('heroicon-o-check-circle')
                     ->requiresConfirmation()
                     ->visible(fn ($record) => $record->status === 'draft')

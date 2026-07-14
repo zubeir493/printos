@@ -76,7 +76,7 @@ class ArtworksTable
                     Action::make('approve')
                         ->label('Approve')
                         ->icon('heroicon-m-check-badge')
-                        ->color('success')
+                        ->color('gray')
                         ->hidden(fn ($record) => $record->is_approved)
                         ->visible(fn () => in_array(Filament::getCurrentPanel()?->getId(), ['admin', 'operations']))
                         ->requiresConfirmation()
@@ -91,7 +91,7 @@ class ArtworksTable
                     Action::make('sendEmail')
                         ->label('Send Artwork')
                         ->icon('heroicon-m-envelope')
-                        ->color('success')
+                        ->color('gray')
                         ->form([
                             TextInput::make('recipient_email')
                                 ->label('Recipient Email')

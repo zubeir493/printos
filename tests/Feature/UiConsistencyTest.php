@@ -49,7 +49,7 @@ it('renders proforma totals as summary placeholders instead of read only inputs'
         ->not->toContain("TextInput::make('total')");
 });
 
-it('keeps proforma actions visually distinct by intent', function (): void {
+it('keeps proforma grouped actions visually neutral', function (): void {
     $customer = Partner::factory()->create(['is_customer' => true]);
     $draft = Proforma::factory()->create([
         'partner_id' => $customer->id,
@@ -64,12 +64,12 @@ it('keeps proforma actions visually distinct by intent', function (): void {
     Livewire::test(EditProforma::class, ['record' => $draft->getKey()])
         ->assertActionHasColor('download', 'gray')
         ->assertActionHasColor('email', 'gray')
-        ->assertActionHasColor('approve', 'success');
+        ->assertActionHasColor('approve', 'gray');
 
     Livewire::test(ViewProforma::class, ['record' => $draft->getKey()])
         ->assertActionHasColor('download', 'gray')
         ->assertActionHasColor('email', 'gray')
-        ->assertActionHasColor('approve', 'success');
+        ->assertActionHasColor('approve', 'gray');
 
     foreach ([
         base_path('app/Filament/Resources/Proformas/Pages/EditProforma.php'),
@@ -78,7 +78,7 @@ it('keeps proforma actions visually distinct by intent', function (): void {
     ] as $path) {
         expect(file_get_contents($path))
             ->toContain("Action::make('create_job_order')")
-            ->toContain('->color(Color::Indigo)');
+            ->toContain("->color('gray')");
     }
 
     expect($approved->canCreateJobOrder())->toBeTrue();
@@ -119,6 +119,19 @@ it('groups multi action headers instead of rendering separate action buttons', f
     expect($sources['partner statement'])
         ->toContain("Action::make('viewPartner')")
         ->toContain("->color('gray')");
+});
+
+it('keeps grouped resource actions visually gray', function (): void {
+    $providerSource = file_get_contents(base_path('app/Providers/AppServiceProvider.php'));
+    $themeSource = file_get_contents(base_path('resources/css/filament/admin/theme.css'));
+
+    expect($providerSource)
+        ->toContain('ActionGroup::configureUsing')
+        ->toContain("->color('gray')");
+
+    expect($themeSource)
+        ->toContain('.fi-dropdown-list-item[class*="fi-color-"]')
+        ->toContain('color: var(--gray-700) !important');
 });
 
 it('keeps export actions in page header action groups instead of table headers', function (): void {
@@ -299,7 +312,7 @@ it('imports attendance segments by fp number using the standard importer', funct
     expect(Shift::query()->where('name', 'Day')->exists())->toBeTrue();
 });
 
-it('uses indigo edit actions in multi action page headers', function (): void {
+it('uses gray edit actions in multi action page headers', function (): void {
     foreach ([
         'app/Filament/Resources/Bids/Pages/Concerns/InteractsWithBidActions.php',
         'app/Filament/Resources/CostEstimates/Pages/ViewCostEstimate.php',
@@ -317,7 +330,7 @@ it('uses indigo edit actions in multi action page headers', function (): void {
 
         expect($source)
             ->toContain('EditAction::make()')
-            ->toContain('->color(Color::Indigo)');
+            ->toContain("->color('gray')");
     }
 });
 
@@ -365,10 +378,10 @@ it('keeps order workflow copy and colors consistent', function (): void {
         ->toContain('Pieces per sheet')
         ->toContain('Pantone No')
         ->toContain("Action::make('issue_materials')")
-        ->toContain("->color('warning')")
+        ->toContain("->color('gray')")
         ->toContain("Action::make('return_materials')")
         ->toContain("Action::make('receive')")
-        ->toContain("->color('success')")
+        ->toContain("->color('gray')")
         ->toContain("Warehouse::query()->orderBy('name')->pluck('name', 'id')->all()");
 });
 

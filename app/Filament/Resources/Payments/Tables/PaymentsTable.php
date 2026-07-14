@@ -2,13 +2,15 @@
 
 namespace App\Filament\Resources\Payments\Tables;
 
-use App\Enums\ExpenseTrackingType;
 use App\Enums\PaymentTransactionType;
 use App\Filament\Exports\PaymentExporter;
+use App\Filament\Resources\Payments\Actions\VoidPaymentAction;
 use App\Filament\Tables\Filters\DateRangeFilter;
 use App\Support\Money;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\ExportBulkAction;
+use Filament\Actions\ViewAction;
 use Filament\Forms\Components\Select;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
@@ -24,17 +26,17 @@ class PaymentsTable
             ->columns([
                 TextColumn::make('payment_number')
                     ->label('Payment')
-                    ->description(fn($record) => $record->partner?->name)
+                    ->description(fn ($record) => $record->partner?->name)
                     ->searchable(),
                 TextColumn::make('amount')
                     ->label('Amount')
                     ->formatStateUsing(function ($state, $record) {
                         $prefix = $record->direction === 'inbound' ? '+' : '-';
 
-                        return $prefix . Money::format($state);
+                        return $prefix.Money::format($state);
                     })
-                    ->description(fn($record) => 'via ' . ucfirst($record->method))
-                    ->color(fn($record) => $record->direction === 'inbound' ? 'success' : 'danger')
+                    ->description(fn ($record) => 'via '.ucfirst($record->method))
+                    ->color(fn ($record) => $record->direction === 'inbound' ? 'success' : 'danger')
                     ->weight('bold')
                     ->sortable()
                     ->searchable(),
@@ -48,8 +50,8 @@ class PaymentsTable
                 TextColumn::make('status')
                     ->label('Status')
                     ->badge()
-                    ->getStateUsing(fn($record) => $record->voided_at ? 'Voided' : 'Posted')
-                    ->color(fn($record) => $record->voided_at ? 'danger' : 'success'),
+                    ->getStateUsing(fn ($record) => $record->voided_at ? 'Voided' : 'Posted')
+                    ->color(fn ($record) => $record->voided_at ? 'danger' : 'success'),
                 TextColumn::make('payment_date')
                     ->date()
                     ->sortable(),
@@ -90,7 +92,13 @@ class PaymentsTable
                     }),
             ])
             ->defaultSort('payment_date', 'desc')
-            ->actions([])
+            ->actions([
+                ActionGroup::make([
+                    ViewAction::make()
+                        ->color('gray'),
+                    VoidPaymentAction::make(),
+                ]),
+            ])
             ->bulkActions([
                 BulkActionGroup::make([
                     ExportBulkAction::make()

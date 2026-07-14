@@ -13,6 +13,7 @@ use App\Support\Money;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
+use Filament\Actions\EditAction;
 use Filament\Actions\ExportBulkAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
@@ -116,10 +117,48 @@ class PurchaseOrdersTable
             ->defaultSort('order_date', 'desc')
             ->recordActions([
                 ActionGroup::make([
+                    Action::make('approve')
+                        ->label('Approve')
+                        ->icon('heroicon-o-check-circle')
+                        ->color('gray')
+                        ->visible(fn ($record) => $record->status === 'draft' && PanelAccess::canManagePurchaseOrders())
+                        ->requiresConfirmation()
+                        ->modalHeading('Approve this Purchase Order?')
+                        ->modalDescription('This marks the purchase order as approved and ready for receiving.')
+                        ->action(function ($record): void {
+                            $record->update(['status' => 'approved']);
+                            Notification::make()->title('Purchase order approved')->success()->send();
+                        }),
+                    Action::make('mark_received')
+                        ->label('Mark as Received')
+                        ->icon('heroicon-o-check-circle')
+                        ->color('gray')
+                        ->visible(fn ($record) => $record->status === 'approved'
+                            && PanelAccess::canManagePurchaseOrders()
+                            && $record->goodsReceipts()->exists())
+                        ->requiresConfirmation()
+                        ->modalHeading('Mark Purchase Order as Received')
+                        ->modalDescription('Manually mark this purchase order as received? Use this if you want to close the PO even if quantities are not fully received.')
+                        ->action(function ($record): void {
+                            $record->update(['status' => 'received']);
+                            Notification::make()->title('Purchase order marked as received')->success()->send();
+                        }),
+                    Action::make('cancel')
+                        ->label('Cancel')
+                        ->icon('heroicon-o-x-circle')
+                        ->color('gray')
+                        ->visible(fn ($record) => in_array($record->status, ['draft', 'approved']) && PanelAccess::canManagePurchaseOrders())
+                        ->requiresConfirmation()
+                        ->modalHeading('Cancel Purchase Order')
+                        ->modalDescription('Cancel this purchase order? This action cannot be undone.')
+                        ->action(function ($record): void {
+                            $record->update(['status' => 'cancelled']);
+                            Notification::make()->title('Purchase order cancelled')->danger()->send();
+                        }),
                     Action::make('pay')
                         ->label('Pay')
                         ->icon('heroicon-o-banknotes')
-                        ->color('success')
+                        ->color('gray')
                         ->visible(fn ($record) => $record->balance > 0 &&
                             PanelAccess::canAccessFinanceSection() &&
                             in_array($record->status, ['approved', 'received'])
@@ -203,6 +242,9 @@ class PurchaseOrdersTable
                                     ->send();
                             }
                         }),
+                    EditAction::make()
+                        ->color('gray')
+                        ->visible(fn ($record) => $record->status === 'draft' && PanelAccess::canManagePurchaseOrders()),
                 ]),
             ])
             ->bulkActions([

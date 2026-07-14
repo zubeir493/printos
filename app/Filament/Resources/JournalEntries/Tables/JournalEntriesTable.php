@@ -6,10 +6,8 @@ use App\Filament\Exports\JournalEntryExporter;
 use App\Filament\Support\TableBadgeFormatter;
 use App\Filament\Tables\Filters\DateRangeFilter;
 use App\Support\Money;
-use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\ExportBulkAction;
-use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -50,11 +48,7 @@ class JournalEntriesTable
                         'void' => 'Void',
                     ]),
             ])
-            ->recordActions([
-                ActionGroup::make([
-                    ViewAction::make(),
-                ]),
-            ])
+            ->recordActions([])
             ->bulkActions([
                 BulkActionGroup::make([
                     ExportBulkAction::make()

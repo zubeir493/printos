@@ -5,8 +5,10 @@ namespace App\Filament\Resources\Accounts\Tables;
 use App\Models\Account;
 use App\Models\AccountingIntegration;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
@@ -38,44 +40,53 @@ class AccountsTable
                     ]),
             ])
             ->recordActions([
-                Action::make('mapAccountingAccounts')
-                    ->label('Account overrides')
-                    ->icon('heroicon-o-link')
-                    ->color('gray')
-                    ->hidden(fn (): bool => self::activeIntegrations()->isEmpty())
-                    ->fillForm(fn ($record): array => self::mappingFormState($record))
-                    ->schema(fn ($record): array => self::mappingFormSchema($record))
-                    ->modalWidth('lg')
-                    ->action(function (array $data, $record): void {
-                        foreach (self::activeIntegrations() as $integration) {
-                            $field = self::mappingField($integration);
-                            $value = trim((string) ($data[$field] ?? ''));
-
-                            if (blank($value) || $value === $record->code) {
-                                $integration->mappings()
-                                    ->where('account_id', $record->id)
-                                    ->delete();
-
-                                continue;
-                            }
-
-                            $integration->mappings()->updateOrCreate(
-                                ['account_id' => $record->id],
-                                ['external_account_id' => $value],
-                            );
-                        }
-
-                        Notification::make()
-                            ->title('Account overrides saved')
-                            ->success()
-                            ->send();
-                    }),
+                ActionGroup::make([
+                    EditAction::make()
+                        ->color('gray'),
+                    self::accountOverridesAction(),
+                ]),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make(),
                 ]),
             ]);
+    }
+
+    public static function accountOverridesAction(): Action
+    {
+        return Action::make('mapAccountingAccounts')
+            ->label('Account overrides')
+            ->icon('heroicon-o-link')
+            ->color('gray')
+            ->hidden(fn (): bool => self::activeIntegrations()->isEmpty())
+            ->fillForm(fn ($record): array => self::mappingFormState($record))
+            ->schema(fn ($record): array => self::mappingFormSchema($record))
+            ->modalWidth('lg')
+            ->action(function (array $data, $record): void {
+                foreach (self::activeIntegrations() as $integration) {
+                    $field = self::mappingField($integration);
+                    $value = trim((string) ($data[$field] ?? ''));
+
+                    if (blank($value) || $value === $record->code) {
+                        $integration->mappings()
+                            ->where('account_id', $record->id)
+                            ->delete();
+
+                        continue;
+                    }
+
+                    $integration->mappings()->updateOrCreate(
+                        ['account_id' => $record->id],
+                        ['external_account_id' => $value],
+                    );
+                }
+
+                Notification::make()
+                    ->title('Account overrides saved')
+                    ->success()
+                    ->send();
+            });
     }
 
     /** @return Collection<int, AccountingIntegration> */

@@ -351,6 +351,20 @@ nav.fi-sidebar-nav::-webkit-scrollbar {
     align-items: center;
 }
 
+/* Keep grouped resource actions visually neutral; state is communicated by labels, confirmations, and badges. */
+.fi-dropdown-list-item[class*="fi-color-"],
+.fi-dropdown-list-item[class*="fi-color-"] svg,
+.fi-dropdown-list-item[class*="fi-color-"] .fi-dropdown-list-item-label,
+.fi-dropdown-list-item[class*="fi-color-"] .fi-icon {
+    color: var(--gray-700) !important;
+}
+
+.fi-dropdown-list-item[class*="fi-color-"]:hover,
+.fi-dropdown-list-item[class*="fi-color-"]:focus-visible {
+    background: var(--gray-50) !important;
+    color: var(--gray-950) !important;
+}
+
 /* Buttons */
 
 .fi-ac-btn-action.fi-color-primary {

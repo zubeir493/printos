@@ -78,7 +78,7 @@ class CostEstimatesTable
                     Action::make('finalize')
                         ->label('Finalize')
                         ->icon('heroicon-o-check-circle')
-                        ->color('success')
+                        ->color('gray')
                         ->requiresConfirmation()
                         ->visible(fn (CostEstimate $record): bool => $record->status === 'draft')
                         ->action(function (CostEstimate $record): void {
@@ -88,7 +88,7 @@ class CostEstimatesTable
                     Action::make('create_proforma')
                         ->label('Create Proforma')
                         ->icon('heroicon-o-document-text')
-                        ->color('primary')
+                        ->color('gray')
                         ->visible(fn (CostEstimate $record): bool => in_array($record->status, ['draft', 'finalized'], true))
                         ->schema([
                             Select::make('partner_id')

@@ -20,7 +20,7 @@ class EditBankTransfer extends EditRecord
                 Action::make('complete')
                     ->label('Approve')
                     ->icon('heroicon-o-check-circle')
-                    ->color('success')
+                    ->color('gray')
                     ->requiresConfirmation()
                     ->modalHeading('Complete Bank Transfer')
                     ->modalDescription('This will update the bank balances. Are you sure?')
@@ -46,7 +46,7 @@ class EditBankTransfer extends EditRecord
                 Action::make('cancel')
                     ->label('Cancel')
                     ->icon('heroicon-o-x-circle')
-                    ->color('danger')
+                    ->color('gray')
                     ->requiresConfirmation()
                     ->modalHeading('Cancel Bank Transfer')
                     ->modalDescription('This will cancel the transfer without affecting balances. Are you sure?')
@@ -69,7 +69,9 @@ class EditBankTransfer extends EditRecord
                                 ->send();
                         }
                     }),
-                DeleteAction::make(),
+                DeleteAction::make()
+                    ->color('gray')
+                    ->visible(fn ($record): bool => $record->status === 'pending'),
             ]),
         ];
     }

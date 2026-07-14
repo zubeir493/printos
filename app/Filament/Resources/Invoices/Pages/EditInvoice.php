@@ -24,12 +24,12 @@ class EditInvoice extends EditRecord
                     ->label('Save Changes')
                     ->action('save')
                     ->icon('heroicon-o-check')
-                    ->color('success'),
+                    ->color('gray'),
 
                 Actions\Action::make('mark_sent')
                     ->label('Mark Sent')
                     ->icon('heroicon-o-paper-airplane')
-                    ->color('primary')
+                    ->color('gray')
                     ->visible(fn (): bool => in_array($this->record->status, ['draft', 'unpaid'], true))
                     ->action(function (): void {
                         $this->record->update(['status' => 'sent']);
@@ -41,7 +41,7 @@ class EditInvoice extends EditRecord
                 Actions\Action::make('cancel_invoice')
                     ->label('Cancel Invoice')
                     ->icon('heroicon-o-x-circle')
-                    ->color('danger')
+                    ->color('gray')
                     ->requiresConfirmation()
                     ->visible(fn (): bool => in_array($this->record->status, ['draft', 'sent', 'unpaid', 'partial', 'overdue'], true))
                     ->action(function (): void {

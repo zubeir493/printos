@@ -78,7 +78,7 @@ class BondsTable
                 Action::make('return_bond')
                     ->label('Return Bond')
                     ->icon('heroicon-o-arrow-down-tray')
-                    ->color('success')
+                    ->color('gray')
                     ->visible(fn (Bond $record): bool => filled($record->issue_payment_id) && blank($record->recovery_payment_id))
                     ->schema(fn (Bond $record): array => self::bondPaymentSchema($record))
                     ->action(fn (Bond $record, array $data): mixed => self::handleBondAction(

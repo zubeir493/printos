@@ -65,7 +65,7 @@ class UsersTable
                     Action::make('changePassword')
                         ->label('Change Password')
                         ->icon('heroicon-o-key')
-                        ->color('warning')
+                        ->color('gray')
                         ->form([
                             TextInput::make('password')
                                 ->password()

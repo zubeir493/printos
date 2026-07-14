@@ -2,23 +2,29 @@
 
 namespace App\Filament\Resources\JobOrders\Pages;
 
+use App\Enums\PaymentTransactionType;
 use App\Filament\Resources\JobOrders\JobOrderResource;
 use App\Filament\Resources\PurchaseOrders\Pages\EditPurchaseOrder;
 use App\Filament\Support\PanelAccess;
+use App\Models\Bank;
 use App\Models\InventoryBalance;
 use App\Models\InventoryItem;
 use App\Models\MaterialRequest;
 use App\Models\Partner;
+use App\Models\Payment;
 use App\Models\PurchaseOrder;
 use App\Models\StockMovement;
 use App\Models\Warehouse;
 use App\Services\InventoryService;
+use App\Services\InvoiceGeneratorService;
 use App\Services\MaterialIssueService;
 use App\States\JobOrder\Cancelled;
 use App\States\JobOrder\Completed;
+use App\Support\Money;
 use Filament\Actions;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
@@ -26,8 +32,9 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
-use Filament\Support\Colors\Color;
+use Filament\Schemas\Components\Grid;
 use Illuminate\Contracts\Support\Htmlable;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class ViewJobOrder extends ViewRecord
@@ -43,10 +50,153 @@ class ViewJobOrder extends ViewRecord
     {
         return [
             ActionGroup::make([
+                Action::make('print_job_order')
+                    ->label('Print Job Order')
+                    ->icon('heroicon-o-printer')
+                    ->color('gray')
+                    ->url(fn ($record): string => route('job-orders.print', $record))
+                    ->openUrlInNewTab(),
+                Action::make('invoice')
+                    ->label('Invoice')
+                    ->icon('heroicon-o-document-text')
+                    ->color('gray')
+                    ->hidden(fn ($record) => ! is_object($record)
+                        || $record->invoices()->exists()
+                        || ! PanelAccess::canSeeMoneyValues()
+                        || $record->balance <= 0
+                        || ($record->production_mode ?? null) === 'make_to_stock')
+                    ->action(function ($record): void {
+                        try {
+                            $invoiceService = app(InvoiceGeneratorService::class);
+                            $result = $invoiceService->generateFromJobOrder($record);
+
+                            Notification::make()
+                                ->title('Invoice Generated')
+                                ->body('Invoice '.$result['invoice_data']['invoice_number'].' created successfully.')
+                                ->success()
+                                ->actions([
+                                    Action::make('download')
+                                        ->label('Download')
+                                        ->color('gray')
+                                        ->url($invoiceService->getInvoicePath($result['filename']))
+                                        ->openUrlInNewTab(),
+                                ])
+                                ->send();
+                        } catch (\Exception $e) {
+                            Notification::make()
+                                ->title('Invoice Action Failed')
+                                ->body($e->getMessage())
+                                ->danger()
+                                ->send();
+                        }
+                    }),
+                Action::make('pay')
+                    ->label('Receive Payment')
+                    ->icon('heroicon-o-banknotes')
+                    ->color('gray')
+                    ->visible(fn ($record) => is_object($record)
+                        && $record->balance > 0
+                        && PanelAccess::canAccessFinanceSection()
+                        && in_array($record->status, ['active', 'completed'])
+                        && ($record->production_mode ?? null) !== 'make_to_stock'
+                    )
+                    ->schema([
+                        Grid::make(2)->schema([
+                            Select::make('method')
+                                ->label('Payment method')
+                                ->options([
+                                    'cash' => 'Cash',
+                                    'bank' => 'Bank Transfer',
+                                    'cheque' => 'Cheque',
+                                ])
+                                ->default('bank')
+                                ->required()
+                                ->live(),
+                            Select::make('bank_id')
+                                ->label('Bank Account')
+                                ->options(fn (): array => Bank::query()->orderBy('name')->pluck('name', 'id')->all())
+                                ->searchable()
+                                ->preload()
+                                ->visible(fn (callable $get): bool => $get('method') === 'bank')
+                                ->required(fn (callable $get): bool => $get('method') === 'bank'),
+                            DatePicker::make('payment_date')
+                                ->label('Payment Date')
+                                ->default(now())
+                                ->required(),
+                            TextInput::make('amount')
+                                ->label('Total Applied')
+                                ->required()
+                                ->numeric()
+                                ->suffix(fn (): string => Money::suffix())
+                                ->default(fn ($record) => $record->balance)
+                                ->helperText(fn ($record) => 'Balance: '.Money::format($record->balance)),
+                            TextInput::make('withholding_amount')
+                                ->label('Withholding')
+                                ->numeric()
+                                ->default(0)
+                                ->minValue(0)
+                                ->maxValue(fn (callable $get): float => (float) ($get('amount') ?? 0))
+                                ->suffix(fn (): string => Money::suffix()),
+                            TextInput::make('reference')
+                                ->label('Memo / Reference')
+                                ->placeholder('Receipt number, cheque number, or short note')
+                                ->maxLength(255),
+                        ]),
+                    ])
+                    ->action(function ($record, array $data): void {
+                        try {
+                            DB::transaction(function () use ($record, $data): void {
+                                $lockedRecord = $record->newQuery()
+                                    ->lockForUpdate()
+                                    ->findOrFail($record->getKey());
+                                $amount = (float) $data['amount'];
+                                $withholdingAmount = (float) ($data['withholding_amount'] ?? 0);
+
+                                if ($amount > $lockedRecord->balance) {
+                                    throw new \Exception('Cannot pay more than the remaining balance of '.Money::format($lockedRecord->balance).'.');
+                                }
+
+                                if ($withholdingAmount > $amount) {
+                                    throw new \Exception('Withholding cannot be greater than the settled payment amount.');
+                                }
+
+                                Payment::create([
+                                    'partner_id' => $lockedRecord->partner_id,
+                                    'payment_date' => $data['payment_date'],
+                                    'transaction_type' => PaymentTransactionType::CUSTOMER_RECEIPT->value,
+                                    'amount' => $amount,
+                                    'withholding_amount' => $withholdingAmount,
+                                    'method' => $data['method'],
+                                    'bank_id' => $data['bank_id'] ?? null,
+                                    'reference' => $data['reference'] ?? 'Payment for '.$lockedRecord->job_order_number,
+                                    'payable_type' => get_class($lockedRecord),
+                                    'payable_id' => $lockedRecord->id,
+                                ]);
+
+                                $lockedRecord->updateQuietly([
+                                    'advance_paid' => true,
+                                    'advance_amount' => $lockedRecord->paid_amount + $amount,
+                                ]);
+                                $lockedRecord->refresh()->syncCompletionStatus();
+                            });
+
+                            Notification::make()
+                                ->title('Payment Recorded')
+                                ->body(Money::format($data['amount'])." applied to {$record->job_order_number}.")
+                                ->success()
+                                ->send();
+                        } catch (\Exception $e) {
+                            Notification::make()
+                                ->title('Payment Failed')
+                                ->body($e->getMessage())
+                                ->danger()
+                                ->send();
+                        }
+                    }),
                 Action::make('activate')
                     ->label('Start Job Order')
                     ->icon('heroicon-o-rocket-launch')
-                    ->color(Color::Indigo)
+                    ->color('gray')
                     ->visible(fn ($record) => (string) $record->status === 'draft' && PanelAccess::canManageJobOrders())
                     ->requiresConfirmation()
                     ->modalHeading('Start this Job Order?')
@@ -80,7 +230,7 @@ class ViewJobOrder extends ViewRecord
                 Action::make('complete')
                     ->label('Mark as Completed')
                     ->icon('heroicon-o-check-circle')
-                    ->color('success')
+                    ->color('gray')
                     ->visible(fn ($record) => (string) $record->status === 'active' && PanelAccess::canManageJobOrders())
                     ->requiresConfirmation()
                     ->modalHeading('Complete Job Order')
@@ -93,7 +243,7 @@ class ViewJobOrder extends ViewRecord
                 Action::make('cancel_job_order')
                     ->label('Cancel')
                     ->icon('heroicon-o-x-circle')
-                    ->color('danger')
+                    ->color('gray')
                     ->visible(fn ($record) => (string) $record->status === 'active' && PanelAccess::canManageJobOrders())
                     ->form([
                         Textarea::make('cancel_reason')
@@ -111,7 +261,7 @@ class ViewJobOrder extends ViewRecord
                 Action::make('issue_materials')
                     ->label('Issue Materials')
                     ->icon('heroicon-o-archive-box-arrow-down')
-                    ->color('warning')
+                    ->color('gray')
                     ->visible(
                         fn ($record) => PanelAccess::canAccessWarehouseSection() &&
                             ! in_array($record->status, ['completed', 'cancelled']) &&
@@ -206,7 +356,7 @@ class ViewJobOrder extends ViewRecord
                 Action::make('return_materials')
                     ->label('Return Materials')
                     ->icon('heroicon-o-arrow-path')
-                    ->color('warning')
+                    ->color('gray')
                     ->visible(
                         fn ($record) => PanelAccess::canAccessWarehouseSection() &&
                             $record->status !== 'completed' &&
@@ -303,11 +453,11 @@ class ViewJobOrder extends ViewRecord
                     }),
                 Actions\EditAction::make()
                     ->visible(fn () => PanelAccess::canManageJobOrders())
-                    ->color('primary'),
+                    ->color('gray'),
                 Action::make('generate_po')
                     ->label('Generate PO')
                     ->icon('heroicon-o-shopping-cart')
-                    ->color(Color::Indigo)
+                    ->color('gray')
                     ->visible(
                         fn ($record) => PanelAccess::canManagePurchaseOrders() &&
                             (string) $record->status === 'active' &&

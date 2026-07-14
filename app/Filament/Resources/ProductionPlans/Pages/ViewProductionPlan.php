@@ -10,7 +10,6 @@ use Filament\Actions\ActionGroup;
 use Filament\Actions\EditAction;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
-use Filament\Support\Colors\Color;
 
 class ViewProductionPlan extends ViewRecord
 {
@@ -23,7 +22,7 @@ class ViewProductionPlan extends ViewRecord
                 Action::make('approve')
                     ->label('Approve Plan')
                     ->icon('heroicon-o-check-circle')
-                    ->color('success')
+                    ->color('gray')
                     ->requiresConfirmation()
                     ->visible(fn ($record) => $record->status === 'draft')
                     ->action(function ($record) {
@@ -38,7 +37,7 @@ class ViewProductionPlan extends ViewRecord
                 Action::make('report_week')
                     ->label('Report Week')
                     ->icon('heroicon-o-clipboard-document-check')
-                    ->color('success')
+                    ->color('gray')
                     ->visible(fn ($record) => $record->status === 'approved' && ! ProductionReport::where('production_plan_id', $record->id)->exists())
                     ->action(function ($record) {
                         $report = ProductionReport::create([
@@ -71,7 +70,7 @@ class ViewProductionPlan extends ViewRecord
                     }),
                 EditAction::make()
                     ->visible(fn ($record) => $record->status === 'draft')
-                    ->color(Color::Indigo),
+                    ->color('gray'),
             ]),
         ];
     }

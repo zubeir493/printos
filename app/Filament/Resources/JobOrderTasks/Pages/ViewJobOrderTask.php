@@ -35,8 +35,7 @@ class ViewJobOrderTask extends ViewRecord
                     ->label('Cancel Task')
                     ->icon('heroicon-o-x-mark')
                     ->color('gray')
-                    ->visible(fn ($record) => ! in_array($record->status, ['cancelled', 'completed'])
-                        && PanelAccess::canManageJobOrderTasks())
+                    ->visible(fn () => PanelAccess::canManageJobOrderTasks())
                     ->requiresConfirmation()
                     ->modalDescription('Are you sure you want to cancel this task? This action cannot be undone.')
                     ->action(function ($record) {
@@ -55,7 +54,7 @@ class ViewJobOrderTask extends ViewRecord
                     ->label('Log Production')
                     ->icon('heroicon-o-archive-box-arrow-down')
                     ->color('gray')
-                    ->visible(fn ($record) => ! in_array($record->status, ['completed', 'cancelled'])
+                    ->visible(fn ($record) => $record !== null
                         && $record->materialRequests()->where('issued_quantity', '>', 0)->exists()
                         && in_array(Filament::getCurrentPanel()?->getId(), ['production', 'operations', 'admin']))
                     ->form(function ($record) {
@@ -166,8 +165,7 @@ class ViewJobOrderTask extends ViewRecord
                     ->label('Request Materials')
                     ->icon('heroicon-o-document-plus')
                     ->color('gray')
-                    ->visible(fn ($record) => ! in_array($record->status, ['completed', 'cancelled'])
-                        && Filament::getCurrentPanel()?->getId() === 'production')
+                    ->visible(fn () => Filament::getCurrentPanel()?->getId() === 'production')
                     ->form(fn ($record) => [
                         Repeater::make('items')
                             ->addable(false)
@@ -220,7 +218,7 @@ class ViewJobOrderTask extends ViewRecord
                     ->label('Issue Materials')
                     ->icon('heroicon-o-archive-box-arrow-down')
                     ->color('gray')
-                    ->visible(fn ($record) => ! in_array($record->status, ['completed', 'cancelled'])
+                    ->visible(fn ($record) => $record !== null
                         && $record->materialRequests()
                             ->whereColumn('issued_quantity', '<', 'requested_quantity')
                             ->whereDoesntHave('pendingIssueApprovals', fn ($query) => $query->where('status', 'pending'))

@@ -43,7 +43,7 @@ class EditPurchaseOrder extends EditRecord
                     ->label('Receive Items')
                     ->icon('heroicon-o-truck')
                     ->color('gray')
-                    ->visible(fn (PurchaseOrder $record) => PanelAccess::canAccessWarehouseSection() && ! in_array($record->status, ['draft', 'cancelled']))
+                    ->visible(fn () => PanelAccess::canAccessWarehouseSection())
                     ->form([
                         Grid::make(2)->schema([
                             Select::make('warehouse_id')

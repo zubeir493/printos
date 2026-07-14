@@ -24,7 +24,6 @@ class EditBankTransfer extends EditRecord
                     ->requiresConfirmation()
                     ->modalHeading('Complete Bank Transfer')
                     ->modalDescription('This will update the bank balances. Are you sure?')
-                    ->visible(fn ($record) => $record->status === 'pending')
                     ->action(function ($record): void {
                         try {
                             $record->complete(auth()->user());
@@ -50,7 +49,6 @@ class EditBankTransfer extends EditRecord
                     ->requiresConfirmation()
                     ->modalHeading('Cancel Bank Transfer')
                     ->modalDescription('This will cancel the transfer without affecting balances. Are you sure?')
-                    ->visible(fn ($record) => $record->status === 'pending')
                     ->action(function ($record): void {
                         try {
                             $record->cancel(auth()->user());
@@ -70,8 +68,7 @@ class EditBankTransfer extends EditRecord
                         }
                     }),
                 DeleteAction::make()
-                    ->color('gray')
-                    ->visible(fn ($record): bool => $record->status === 'pending'),
+                    ->color('gray'),
             ]),
         ];
     }

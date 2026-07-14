@@ -31,8 +31,7 @@ class ViewStockAdjustment extends ViewRecord
                             ->success()
                             ->send();
                     }),
-            ])
-                ->visible(fn ($record): bool => $record->status === 'draft'),
+            ]),
         ];
     }
 }

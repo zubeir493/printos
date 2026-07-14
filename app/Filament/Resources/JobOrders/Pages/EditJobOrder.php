@@ -46,7 +46,6 @@ class EditJobOrder extends EditRecord
                     ->color('gray')
                     ->visible(
                         fn ($record) => PanelAccess::canAccessWarehouseSection() &&
-                        ! in_array($record->status, ['completed', 'cancelled']) &&
                             $record->materialRequests()
                                 ->whereColumn('issued_quantity', '<', 'requested_quantity')
                                 ->whereDoesntHave('pendingIssueApprovals', fn ($query) => $query->where('status', 'pending'))
@@ -144,7 +143,6 @@ class EditJobOrder extends EditRecord
                     ->color('gray')
                     ->visible(
                         fn ($record) => PanelAccess::canAccessWarehouseSection() &&
-                        $record->status !== 'completed' &&
                             $record->materialRequests()
                                 ->where('issued_quantity', '>', 0)
                                 ->whereHas('jobOrderTask', fn ($q) => $q->where('status', '!=', 'completed'))

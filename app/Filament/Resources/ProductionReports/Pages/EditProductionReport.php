@@ -22,7 +22,6 @@ class EditProductionReport extends EditRecord
                     ->icon('heroicon-o-check-circle')
                     ->color('gray')
                     ->requiresConfirmation()
-                    ->visible(fn ($record) => $record->status === 'draft')
                     ->action(function ($record) {
                         $record->update(['status' => 'submitted']);
                         $this->record->refresh();
@@ -33,8 +32,7 @@ class EditProductionReport extends EditRecord
                             ->success()
                             ->send();
                     }),
-                DeleteAction::make()
-                    ->visible(fn ($record) => $record->status === 'draft'),
+                DeleteAction::make(),
             ]),
         ];
     }

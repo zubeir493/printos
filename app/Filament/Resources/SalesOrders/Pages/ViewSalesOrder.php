@@ -38,14 +38,12 @@ class ViewSalesOrder extends ViewRecord
         return [
             ActionGroup::make([
                 EditAction::make()
-                    ->visible(fn ($record) => $record->status === SalesOrder::STATUS_DRAFT)
                     ->color('gray'),
                 Action::make('complete')
                     ->label('Complete Sale')
                     ->icon('heroicon-o-check-circle')
                     ->color('gray')
-                    ->visible(fn ($record) => $record->status === SalesOrder::STATUS_DRAFT &&
-                        $record->isCashSale() &&
+                    ->visible(fn ($record) => $record->isCashSale() &&
                         PanelAccess::canManageSalesOrders()
                     )
                     ->requiresConfirmation()
@@ -75,8 +73,7 @@ class ViewSalesOrder extends ViewRecord
                     ->label('Submit Items')
                     ->icon('heroicon-o-paper-airplane')
                     ->color('gray')
-                    ->visible(fn ($record) => $record->status === SalesOrder::STATUS_DRAFT &&
-                        $record->payment_mode === 'credit' &&
+                    ->visible(fn ($record) => $record->payment_mode === 'credit' &&
                         PanelAccess::canManageSalesOrders()
                     )
                     ->requiresConfirmation()
@@ -111,7 +108,6 @@ class ViewSalesOrder extends ViewRecord
                     ->icon('heroicon-o-banknotes')
                     ->color('gray')
                     ->visible(fn ($record) => $record->payment_mode === 'credit' &&
-                        $record->status !== SalesOrder::STATUS_VOID &&
                         $record->balance > 0 &&
                         PanelAccess::canAccessFinanceSection()
                     )
@@ -223,7 +219,7 @@ class ViewSalesOrder extends ViewRecord
                     ->label('Void')
                     ->icon('heroicon-o-x-circle')
                     ->color('gray')
-                    ->visible(fn ($record) => in_array($record->status, [SalesOrder::STATUS_SUBMITTED, SalesOrder::STATUS_COMPLETED], true))
+                    ->visible(fn (): bool => true)
                     ->requiresConfirmation()
                     ->modalHeading('Void Sales Order')
                     ->modalDescription('Are you sure you want to void this sales order? This action cannot be undone.')

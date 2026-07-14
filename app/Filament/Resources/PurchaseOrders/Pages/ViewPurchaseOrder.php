@@ -44,7 +44,7 @@ class ViewPurchaseOrder extends ViewRecord
                     ->label('Approve')
                     ->icon('heroicon-o-check-circle')
                     ->color('gray')
-                    ->visible(fn ($record) => $record->status === 'draft' && PanelAccess::canManagePurchaseOrders())
+                    ->visible(fn () => PanelAccess::canManagePurchaseOrders())
                     ->requiresConfirmation()
                     ->modalHeading('Approve this Purchase Order?')
                     ->modalDescription('This marks the purchase order as approved and ready for receiving.')
@@ -57,7 +57,7 @@ class ViewPurchaseOrder extends ViewRecord
                     ->label('Receive Items')
                     ->icon('heroicon-o-archive-box-arrow-down')
                     ->color('gray')
-                    ->visible(fn ($record) => $record->status === 'approved' && PanelAccess::canAccessWarehouseSection())
+                    ->visible(fn () => PanelAccess::canAccessWarehouseSection())
                     ->modalHeading('Receive Items')
                     ->modalDescription(fn ($record) => "Record stock received against {$record->po_number}. Items will be added to inventory immediately.")
                     ->schema([
@@ -159,7 +159,7 @@ class ViewPurchaseOrder extends ViewRecord
                     ->label('Mark as Received')
                     ->icon('heroicon-o-check-circle')
                     ->color('gray')
-                    ->visible(fn ($record) => $record->status === 'approved' &&
+                    ->visible(fn ($record) => $record !== null &&
                         PanelAccess::canManagePurchaseOrders() &&
                         $record->goodsReceipts()->exists()
                     )
@@ -175,7 +175,7 @@ class ViewPurchaseOrder extends ViewRecord
                     ->label('Cancel')
                     ->icon('heroicon-o-x-circle')
                     ->color('gray')
-                    ->visible(fn ($record) => in_array($record->status, ['draft', 'approved']) && PanelAccess::canManagePurchaseOrders())
+                    ->visible(fn () => PanelAccess::canManagePurchaseOrders())
                     ->requiresConfirmation()
                     ->modalHeading('Cancel Purchase Order')
                     ->modalDescription('Cancel this purchase order? This action cannot be undone.')
@@ -185,15 +185,14 @@ class ViewPurchaseOrder extends ViewRecord
                     }),
 
                 Actions\EditAction::make()
-                    ->visible(fn ($record) => $record->status === 'draft' && PanelAccess::canManagePurchaseOrders())
+                    ->visible(fn () => PanelAccess::canManagePurchaseOrders())
                     ->color('gray'),
                 Action::make('pay')
                     ->label('Pay')
                     ->icon('heroicon-o-banknotes')
                     ->color('gray')
                     ->visible(fn ($record) => $record->balance > 0
-                        && PanelAccess::canAccessFinanceSection()
-                        && in_array($record->status, ['approved', 'received']))
+                        && PanelAccess::canAccessFinanceSection())
                     ->schema([
                         Grid::make(2)->schema([
                             Select::make('method')

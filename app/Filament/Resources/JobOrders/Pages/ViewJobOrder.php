@@ -97,7 +97,6 @@ class ViewJobOrder extends ViewRecord
                     ->visible(fn ($record) => is_object($record)
                         && $record->balance > 0
                         && PanelAccess::canAccessFinanceSection()
-                        && in_array($record->status, ['active', 'completed'])
                         && ($record->production_mode ?? null) !== 'make_to_stock'
                     )
                     ->schema([
@@ -197,7 +196,7 @@ class ViewJobOrder extends ViewRecord
                     ->label('Start Job Order')
                     ->icon('heroicon-o-rocket-launch')
                     ->color('gray')
-                    ->visible(fn ($record) => (string) $record->status === 'draft' && PanelAccess::canManageJobOrders())
+                    ->visible(fn () => PanelAccess::canManageJobOrders())
                     ->requiresConfirmation()
                     ->modalHeading('Start this Job Order?')
                     ->modalDescription('This marks the job order as active and signals that work has begun. Make sure all tasks and materials are set up.')
@@ -231,7 +230,7 @@ class ViewJobOrder extends ViewRecord
                     ->label('Mark as Completed')
                     ->icon('heroicon-o-check-circle')
                     ->color('gray')
-                    ->visible(fn ($record) => (string) $record->status === 'active' && PanelAccess::canManageJobOrders())
+                    ->visible(fn () => PanelAccess::canManageJobOrders())
                     ->requiresConfirmation()
                     ->modalHeading('Complete Job Order')
                     ->modalDescription('Mark this job order as completed? Make sure all tasks and dispatches are done.')
@@ -244,7 +243,7 @@ class ViewJobOrder extends ViewRecord
                     ->label('Cancel')
                     ->icon('heroicon-o-x-circle')
                     ->color('gray')
-                    ->visible(fn ($record) => (string) $record->status === 'active' && PanelAccess::canManageJobOrders())
+                    ->visible(fn () => PanelAccess::canManageJobOrders())
                     ->form([
                         Textarea::make('cancel_reason')
                             ->label('Reason for cancellation')
@@ -264,7 +263,6 @@ class ViewJobOrder extends ViewRecord
                     ->color('gray')
                     ->visible(
                         fn ($record) => PanelAccess::canAccessWarehouseSection() &&
-                            ! in_array($record->status, ['completed', 'cancelled']) &&
                             $record->materialRequests()
                                 ->whereColumn('issued_quantity', '<', 'requested_quantity')
                                 ->whereDoesntHave('pendingIssueApprovals', fn ($query) => $query->where('status', 'pending'))
@@ -359,7 +357,6 @@ class ViewJobOrder extends ViewRecord
                     ->color('gray')
                     ->visible(
                         fn ($record) => PanelAccess::canAccessWarehouseSection() &&
-                            $record->status !== 'completed' &&
                             $record->materialRequests()
                                 ->where('issued_quantity', '>', 0)
                                 ->whereHas('jobOrderTask', fn ($q) => $q->where('status', '!=', 'completed'))
@@ -460,7 +457,6 @@ class ViewJobOrder extends ViewRecord
                     ->color('gray')
                     ->visible(
                         fn ($record) => PanelAccess::canManagePurchaseOrders() &&
-                            (string) $record->status === 'active' &&
                             collect($record->materials_summary)->where('remaining', '>', 0)->isNotEmpty()
                     )
                     ->form([

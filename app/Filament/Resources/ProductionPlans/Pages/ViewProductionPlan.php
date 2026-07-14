@@ -24,7 +24,6 @@ class ViewProductionPlan extends ViewRecord
                     ->icon('heroicon-o-check-circle')
                     ->color('gray')
                     ->requiresConfirmation()
-                    ->visible(fn ($record) => $record->status === 'draft')
                     ->action(function ($record) {
                         $record->update(['status' => 'approved']);
                         $this->record->refresh();
@@ -38,7 +37,7 @@ class ViewProductionPlan extends ViewRecord
                     ->label('Report Week')
                     ->icon('heroicon-o-clipboard-document-check')
                     ->color('gray')
-                    ->visible(fn ($record) => $record->status === 'approved' && ! ProductionReport::where('production_plan_id', $record->id)->exists())
+                    ->visible(fn ($record) => $record !== null && ! ProductionReport::where('production_plan_id', $record->id)->exists())
                     ->action(function ($record) {
                         $report = ProductionReport::create([
                             'production_plan_id' => $record->id,
@@ -69,7 +68,6 @@ class ViewProductionPlan extends ViewRecord
                         $this->redirect(ProductionReportResource::getUrl('edit', ['record' => $report]));
                     }),
                 EditAction::make()
-                    ->visible(fn ($record) => $record->status === 'draft')
                     ->color('gray'),
             ]),
         ];

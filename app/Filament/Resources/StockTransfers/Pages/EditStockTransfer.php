@@ -17,14 +17,12 @@ class EditStockTransfer extends EditRecord
     {
         return [
             ActionGroup::make([
-                DeleteAction::make()
-                    ->hidden(fn ($record) => $record->status === 'completed'),
+                DeleteAction::make(),
                 Action::make('complete')
                     ->label('Complete Transfer')
                     ->color('gray')
                     ->icon('heroicon-o-check-circle')
                     ->requiresConfirmation()
-                    ->visible(fn ($record) => $record->status === 'draft')
                     ->action(function ($record) {
                         $record->post();
                         $this->record->refresh();

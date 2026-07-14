@@ -205,9 +205,9 @@ test('emailing an invoice from the table marks open invoices as sent', function 
 
     $this->mock(InvoiceGeneratorService::class, function ($mock): void {
         $mock->shouldReceive('getInvoicePath')
-            ->andReturn('https://printos.test/invoices/table-invoice.pdf');
+            ->andReturn('https://packledge.test/invoices/table-invoice.pdf');
         $mock->shouldReceive('getInvoiceDownloadUrl')
-            ->andReturn('https://printos.test/invoices/table-invoice.pdf');
+            ->andReturn('https://packledge.test/invoices/table-invoice.pdf');
         $mock->shouldReceive('sendInvoiceEmail')
             ->once()
             ->andReturnTrue();

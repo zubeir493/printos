@@ -7,7 +7,10 @@ use App\Models\InventoryBalance;
 use App\Models\InventoryItem;
 use App\Models\StockAdjustment;
 use App\Models\StockAdjustmentItem;
+use App\Models\User;
 use App\Models\Warehouse;
+use App\UserRole;
+use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -70,6 +73,30 @@ class StockAdjustmentWorkflowTest extends TestCase
         ]);
 
         $this->assertFalse(StockAdjustmentResource::canEdit($adjustment->fresh()));
+    }
+
+    public function test_stock_adjustment_view_page_renders_after_creation()
+    {
+        Filament::setCurrentPanel(Filament::getPanel('admin'));
+
+        $this->actingAs(User::factory()->create([
+            'role' => UserRole::Admin,
+        ]));
+
+        $warehouse = Warehouse::create([
+            'name' => 'View Storage',
+            'code' => 'VIEW',
+        ]);
+
+        $adjustment = StockAdjustment::create([
+            'warehouse_id' => $warehouse->id,
+            'adjustment_date' => now(),
+            'status' => 'draft',
+            'reason' => 'Cycle count variance',
+        ]);
+
+        $this->get(StockAdjustmentResource::getUrl('view', ['record' => $adjustment]))
+            ->assertSuccessful();
     }
 
     public function test_stock_adjustment_cannot_post_when_resulting_stock_is_negative()

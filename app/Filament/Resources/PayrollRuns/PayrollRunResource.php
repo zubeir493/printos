@@ -5,18 +5,28 @@ namespace App\Filament\Resources\PayrollRuns;
 use App\Filament\Resources\PayrollRuns\Pages\CreatePayrollRun;
 use App\Filament\Resources\PayrollRuns\Pages\EditPayrollRun;
 use App\Filament\Resources\PayrollRuns\Pages\ListPayrollRuns;
-use App\Models\Employee;
+use App\Filament\Resources\PayrollRuns\RelationManagers\PayrollRunEmployeesRelationManager;
+use App\Filament\Tables\Filters\DateRangeFilter;
+use App\Models\Bank;
 use App\Models\PayrollRun;
-use App\Services\Hr\RecalculatePayrollRegisterRow;
+use App\Services\Hr\ExportPayrollBankAdvice;
+use App\Services\Hr\ExportPayrollRegisterCsv;
+use App\Services\Hr\GeneratePayrollPayments;
+use App\Services\Hr\PostPayrollRun;
+use App\Support\FiscalCalendar;
+use App\Support\Money;
 use BackedEnum;
+use Carbon\CarbonImmutable;
+use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
+use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
-use Filament\Forms\Components\Repeater;
-use Filament\Forms\Components\Repeater\TableColumn;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Select as ActionSelect;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
-use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
@@ -24,8 +34,7 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Model;
-use UnitEnum;
+use Malzariey\FilamentDaterangepickerFilter\Fields\DateRangePicker;
 
 class PayrollRunResource extends Resource
 {
@@ -44,76 +53,88 @@ class PayrollRunResource extends Resource
                 ->columns(4)
                 ->columnSpanFull()
                 ->schema([
-                    TextInput::make('name')->required(),
+                    Hidden::make('name')
+                        ->default('Payroll')
+                        ->required(),
+                    Hidden::make('period_start'),
+                    Hidden::make('period_end'),
+                    Select::make('period_type')
+                        ->label('Frequency')
+                        ->options([
+                            'monthly' => 'Monthly',
+                            'custom' => 'Custom date range',
+                        ])
+                        ->default('monthly')
+                        ->required()
+                        ->live(),
+                    Select::make('payroll_month')
+                        ->label('Payroll month')
+                        ->options(fn (): array => FiscalCalendar::payrollMonthOptions())
+                        ->default(fn (): string => FiscalCalendar::currentPayrollMonthStart()->toDateString())
+                        ->searchable()
+                        ->required(fn (Get $get): bool => $get('period_type') === 'monthly')
+                        ->visible(fn (Get $get): bool => $get('period_type') === 'monthly')
+                        ->live()
+                        ->afterStateUpdated(function (?string $state, Set $set): void {
+                            if (! $state) {
+                                return;
+                            }
+
+                            $period = FiscalCalendar::payrollPeriodForMonth($state);
+
+                            $set('period_start', $period['start']->toDateString());
+                            $set('period_end', $period['end']->toDateString());
+                            $set('pay_date', $period['pay_date']->toDateString());
+                        }),
                     DatePicker::make('pay_date')->default(now()),
-                    DatePicker::make('period_start')->required()->default(now()->subDays(30)),
-                    DatePicker::make('period_end')->required()->default(now()),
+                    DateRangePicker::make('period_range')
+                        ->label('Period')
+                        ->required()
+                        ->format('Y-m-d')
+                        ->disableRanges()
+                        ->alwaysShowCalendar()
+                        ->autoApply()
+                        ->startDate(fn (Get $get) => $get('period_start') ? CarbonImmutable::parse($get('period_start')) : now()->startOfMonth())
+                        ->endDate(fn (Get $get) => $get('period_end') ? CarbonImmutable::parse($get('period_end')) : now()->endOfMonth())
+                        ->visible(fn (Get $get): bool => $get('period_type') === 'custom'),
                 ]),
-            Group::make()
+            Section::make('Payroll Summary')
+                ->columns(5)
                 ->columnSpanFull()
-                ->visible(fn(?PayrollRun $record, string $operation): bool => $operation !== 'create' && filled($record?->id))
+                ->visible(fn (?PayrollRun $record): bool => filled($record?->id))
                 ->schema([
-                    Repeater::make('employees')
-                        ->extraAttributes(['class' => 'payrollTable'])
-                        ->relationship()
-                        ->label('')
-                        ->hiddenLabel()
-                        ->addable(false)
-                        ->deletable(false)
-                        ->reorderable(false)
-                        ->disabled(fn(?PayrollRun $record): bool => $record?->status !== 'draft')
-                        ->compact()
-                        ->table([
-                            TableColumn::make('Employee'),
-                            TableColumn::make('Basic'),
-                            TableColumn::make('Duty'),
-                            TableColumn::make('Rate'),
-                            TableColumn::make('Bonus'),
-                            TableColumn::make('Transport'),
-                            TableColumn::make('Employer Pension'),
-                            TableColumn::make('OT Hrs'),
-                            TableColumn::make('OT Amt'),
-                            TableColumn::make('Gross'),
-                            TableColumn::make('Taxable'),
-                            TableColumn::make('Tax'),
-                            TableColumn::make('Penalty Hrs'),
-                            TableColumn::make('Penalty'),
-                            TableColumn::make('Pension'),
-                            TableColumn::make('Loan'),
-                            TableColumn::make('Union'),
-                            TableColumn::make('Deductions'),
-                            TableColumn::make('Net')->width('9rem'),
-                        ])
-                        ->schema([
-                            Hidden::make('calculation_snapshot'),
-                            Select::make('employee_id')
-                                ->relationship('employee', 'first_name')
-                                ->getOptionLabelFromRecordUsing(fn(Employee $record): string => $record->full_name)
-                                ->searchable()
-                                ->preload()
-                                ->disabled()
-                                ->extraAttributes(['class' => 'payroll-register-employee-field'])
-                                ->dehydrated(),
-                            static::moneyInput('basic_salary')->disabled(),
-                            static::numberInput('time_on_duty', 2)->disabled(),
-                            static::moneyInput('pay_per_hour')->disabled(),
-                            static::editableMoneyInput('bonus'),
-                            static::editableMoneyInput('transport_allowance'),
-                            static::moneyInput('employer_pension_contribution')->disabled(),
-                            static::editableNumberInput('overtime_hours', 2),
-                            static::moneyInput('overtime_amount')->disabled(),
-                            static::moneyInput('gross_earning')->disabled(),
-                            static::moneyInput('taxable_amount')->disabled(),
-                            static::moneyInput('income_tax')->disabled(),
-                            static::editableNumberInput('penalty_hours', 2),
-                            static::moneyInput('penalty_amount')->disabled(),
-                            static::moneyInput('pension_contribution')->disabled(),
-                            static::editableMoneyInput('loan'),
-                            static::moneyInput('workers_union')->disabled(),
-                            static::moneyInput('total_deduction')->disabled(),
-                            static::moneyInput('net_pay')->disabled()->suffix('Birr'),
-                        ])
-                        ->mutateRelationshipDataBeforeSaveUsing(fn(array $data, Model $record): array => app(RecalculatePayrollRegisterRow::class)->forData($data, $record->payrollRun()->first())),
+                    Placeholder::make('summary_period')
+                        ->label('Period')
+                        ->content(fn (?PayrollRun $record): string => $record
+                            ? FiscalCalendar::payrollPeriodLabel($record->period_type, $record->payroll_month, $record->period_start, $record->period_end)
+                            : '-'),
+                    Placeholder::make('summary_base_days')
+                        ->label('Base days')
+                        ->content(fn (?PayrollRun $record): string => (string) static::baseDays($record)),
+                    Placeholder::make('summary_employee_count')
+                        ->label('Employees')
+                        ->content(fn (?PayrollRun $record): string => number_format((int) $record?->employees()->where('net_pay', '>', 0)->count())),
+                    Placeholder::make('summary_payroll_cost')
+                        ->label('Payroll cost')
+                        ->content(fn (?PayrollRun $record): string => Money::format((float) $record?->employees()->where('net_pay', '>', 0)->sum('gross_earning'), 2)),
+                    Placeholder::make('summary_net_pay')
+                        ->label('Employees net pay')
+                        ->content(fn (?PayrollRun $record): string => Money::format((float) $record?->employees()->where('net_pay', '>', 0)->sum('net_pay'), 2)),
+                    Placeholder::make('summary_pay_day')
+                        ->label('Pay day')
+                        ->content(fn (?PayrollRun $record): string => $record?->pay_date?->format('M j, Y') ?? '-'),
+                    Placeholder::make('summary_tax')
+                        ->label('Taxes')
+                        ->content(fn (?PayrollRun $record): string => Money::format((float) $record?->employees()->where('net_pay', '>', 0)->sum('income_tax'), 2)),
+                    Placeholder::make('summary_deductions')
+                        ->label('Deductions')
+                        ->content(fn (?PayrollRun $record): string => Money::format((float) $record?->employees()->where('net_pay', '>', 0)->sum('total_deduction'), 2)),
+                    Placeholder::make('summary_bonuses')
+                        ->label('Bonuses')
+                        ->content(fn (?PayrollRun $record): string => Money::format((float) $record?->employees()->where('net_pay', '>', 0)->sum('bonus'), 2)),
+                    Placeholder::make('summary_benefits')
+                        ->label('Benefits')
+                        ->content(fn (?PayrollRun $record): string => Money::format((float) $record?->employees()->where('net_pay', '>', 0)->sum('transport_allowance'), 2)),
                 ]),
         ]);
     }
@@ -123,17 +144,97 @@ class PayrollRunResource extends Resource
         return $table
             ->columns([
                 TextColumn::make('name')->searchable(),
-                TextColumn::make('period_start')->date(),
-                TextColumn::make('period_end')->date(),
+                TextColumn::make('period_type')->label('Frequency')->badge(),
+                TextColumn::make('period_display')
+                    ->label('Period')
+                    ->state(fn (PayrollRun $record): string => FiscalCalendar::payrollPeriodLabel($record->period_type, $record->payroll_month, $record->period_start, $record->period_end)),
                 TextColumn::make('status')
                     ->badge()
-                    ->color(fn(string $state): string => match ($state) {
+                    ->color(fn (string $state): string => match ($state) {
                         'approved' => 'warning',
                         'paid' => 'success',
                         default => 'gray',
                     }),
-                TextColumn::make('employees_count')->counts('employees')->label('Employees'),
-                TextColumn::make('employees_sum_net_pay')->sum('employees', 'net_pay')->money('ETB')->label('Net Pay'),
+                TextColumn::make('payable_employees_count')
+                    ->label('Employees')
+                    ->state(fn (PayrollRun $record): string => number_format((int) $record->employees()->where('net_pay', '>', 0)->count())),
+                TextColumn::make('payable_employees_net_pay')
+                    ->label('Net Pay')
+                    ->state(fn (PayrollRun $record): string => Money::format((float) $record->employees()->where('net_pay', '>', 0)->sum('net_pay'), 2)),
+            ])
+            ->filters([
+                DateRangeFilter::make('period', 'period_start', 'Period', 'period_end'),
+            ])
+            ->recordActions([
+                ActionGroup::make([
+                    EditAction::make()
+                        ->color('gray'),
+                    Action::make('approve')
+                        ->label('Approve')
+                        ->color('gray')
+                        ->visible(fn (PayrollRun $record): bool => $record->status === 'draft')
+                        ->requiresConfirmation()
+                        ->action(function (PayrollRun $record): void {
+                            app(PostPayrollRun::class)->handle($record);
+
+                            Notification::make()->title('Payroll approved and journal posted')->success()->send();
+                        }),
+                    Action::make('generatePayments')
+                        ->label('Send payments')
+                        ->color('gray')
+                        ->visible(fn (PayrollRun $record): bool => $record->status === 'approved')
+                        ->schema([
+                            ActionSelect::make('bank_id')
+                                ->label('Pay From Bank')
+                                ->options(fn (): array => Bank::query()
+                                    ->where('status', 'active')
+                                    ->orderBy('bank_name')
+                                    ->orderBy('name')
+                                    ->get()
+                                    ->mapWithKeys(fn (Bank $bank): array => [
+                                        $bank->id => $bank->name.' (available: '.Money::abbreviate($bank->current_balance, 2).')',
+                                    ])
+                                    ->all())
+                                ->searchable()
+                                ->preload()
+                                ->required(),
+                        ])
+                        ->requiresConfirmation()
+                        ->action(function (PayrollRun $record, array $data): void {
+                            app(GeneratePayrollPayments::class)->handle($record, 'bank', (int) $data['bank_id']);
+
+                            Notification::make()->title('Payroll payments generated')->success()->send();
+                        }),
+                    Action::make('downloadBankAdvice')
+                        ->label('Bank advice')
+                        ->color('gray')
+                        ->visible(fn (PayrollRun $record): bool => $record->employees()->where('net_pay', '>', 0)->exists())
+                        ->schema([
+                            ActionSelect::make('bank_id')
+                                ->label('Bank format')
+                                ->options(fn (): array => Bank::query()
+                                    ->where('status', 'active')
+                                    ->orderBy('bank_name')
+                                    ->orderBy('name')
+                                    ->get()
+                                    ->mapWithKeys(fn (Bank $bank): array => [
+                                        $bank->id => $bank->name.' (available: '.Money::abbreviate($bank->current_balance, 2).')',
+                                    ])
+                                    ->all())
+                                ->searchable()
+                                ->preload()
+                                ->required(),
+                        ])
+                        ->action(fn (PayrollRun $record, array $data) => app(ExportPayrollBankAdvice::class)->download(
+                            $record,
+                            Bank::query()->findOrFail((int) $data['bank_id']),
+                        )),
+                    Action::make('exportRegister')
+                        ->label('Export CSV')
+                        ->color('gray')
+                        ->visible(fn (PayrollRun $record): bool => $record->employees()->exists())
+                        ->action(fn (PayrollRun $record) => app(ExportPayrollRegisterCsv::class)->download($record)),
+                ]),
             ])
             ->defaultSort('created_at', 'desc');
     }
@@ -149,86 +250,46 @@ class PayrollRunResource extends Resource
 
     public static function getRelations(): array
     {
-        return [];
+        return [
+            PayrollRunEmployeesRelationManager::class,
+        ];
     }
 
-    private static function moneyInput(string $name): TextInput
+    private static function baseDays(?PayrollRun $record): int
     {
-        return static::numberInput($name, 2);
-    }
-
-    private static function editableMoneyInput(string $name): TextInput
-    {
-        return static::editableNumberInput($name, 2);
-    }
-
-    private static function editableNumberInput(string $name, int $decimalPlaces): TextInput
-    {
-        return static::numberInput($name, $decimalPlaces);
-    }
-
-    private static function numberInput(string $name, int $decimalPlaces): TextInput
-    {
-        return TextInput::make($name)
-            ->numeric()
-            ->step($decimalPlaces === 2 ? '0.01' : '0.0001')
-            ->extraInputAttributes(['class' => 'payroll-register-number-input'])
-            ->dehydrated()
-            ->live(onBlur: true)
-            ->afterStateUpdated(fn(Get $get, Set $set): null => static::recalculatePayrollRow($get, $set));
-    }
-
-    private static function recalculatePayrollRow(Get $get, Set $set): null
-    {
-        $data = [];
-
-        foreach (
-            [
-                'basic_salary',
-                'time_on_duty',
-                'pay_per_hour',
-                'bonus',
-                'transport_allowance',
-                'employer_pension_contribution',
-                'overtime_hours',
-                'overtime_amount',
-                'gross_earning',
-                'taxable_amount',
-                'income_tax',
-                'penalty_hours',
-                'penalty_amount',
-                'pension_contribution',
-                'loan',
-                'workers_union',
-                'total_deduction',
-                'net_pay',
-                'calculation_snapshot',
-            ] as $field
-        ) {
-            $data[$field] = $get($field);
+        if (! $record?->period_start || ! $record->period_end) {
+            return 0;
         }
 
-        $calculated = app(RecalculatePayrollRegisterRow::class)->forData($data);
+        $date = $record->period_start->toImmutable();
+        $end = $record->period_end->toImmutable();
+        $days = 0;
 
-        foreach (
-            [
-                'pay_per_hour',
-                'employer_pension_contribution',
-                'overtime_amount',
-                'gross_earning',
-                'taxable_amount',
-                'income_tax',
-                'penalty_amount',
-                'pension_contribution',
-                'workers_union',
-                'total_deduction',
-                'net_pay',
-                'calculation_snapshot',
-            ] as $field
-        ) {
-            $set($field, $calculated[$field]);
+        while ($date->lte($end)) {
+            if (! $date->isSunday()) {
+                $days++;
+            }
+
+            $date = $date->addDay();
         }
 
-        return null;
+        return $days;
+    }
+
+    /**
+     * @return array{start: string|null, end: string|null}
+     */
+    public static function parsePeriodRange(?string $periodRange): array
+    {
+        if (! $periodRange || ! str_contains($periodRange, ' - ')) {
+            return ['start' => null, 'end' => null];
+        }
+
+        [$start, $end] = explode(' - ', $periodRange, 2);
+
+        return [
+            'start' => CarbonImmutable::parse(trim($start))->toDateString(),
+            'end' => CarbonImmutable::parse(trim($end))->toDateString(),
+        ];
     }
 }

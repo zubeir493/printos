@@ -2,6 +2,7 @@
 
 use App\Models\User;
 use App\UserRole;
+use Illuminate\Auth\Events\Login;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -61,7 +62,7 @@ test('guests cannot store web push subscriptions', function () {
     ])->assertUnauthorized();
 });
 
-test('profile page renders browser notification settings', function () {
+test('profile page no longer renders browser notification toggle', function () {
     config()->set('webpush.vapid.public_key', 'test-public-key');
 
     $user = User::factory()->create([
@@ -71,8 +72,52 @@ test('profile page renders browser notification settings', function () {
     $this->actingAs($user)
         ->get(route('filament.admin.auth.profile'))
         ->assertSuccessful()
-        ->assertSee('Enable push notifications?')
+        ->assertDontSee('Enable push notifications?')
+        ->assertDontSee('fi-toggle', false)
+        ->assertDontSee("status.permission === 'denied'", false)
         ->assertSee('form.email', false)
         ->assertDontSee('form.name', false)
         ->assertDontSee('fi-simple-layout-header', false);
+});
+
+test('panel pages prompt users to enable browser notifications when permission is missing', function () {
+    config()->set('webpush.vapid.public_key', 'test-public-key');
+
+    $user = User::factory()->create([
+        'role' => UserRole::Admin,
+    ]);
+
+    $this->actingAs($user)
+        ->withSession(['show_webpush_permission_prompt' => true])
+        ->get(route('filament.admin.auth.profile'))
+        ->assertSuccessful()
+        ->assertSee('const shouldShowPermissionAlert = true;', false)
+        ->assertSee('Turn on browser notifications')
+        ->assertSee('canShowPermissionAlert')
+        ->assertSee('runAfterUiReady(showPermissionAlert)')
+        ->assertSee('DOMContentLoaded')
+        ->assertSee('packledge-webpush-enable')
+        ->assertSee('subscribe({ requestBrowserPermission: false })', false)
+        ->assertDontSee('sessionStorage', false)
+        ->assertDontSee('permission-alert-shown', false)
+        ->assertDontSee('unsubscribe', false);
+});
+
+test('panel pages do not prompt for browser notifications outside login', function () {
+    config()->set('webpush.vapid.public_key', 'test-public-key');
+
+    $user = User::factory()->create([
+        'role' => UserRole::Admin,
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('filament.admin.auth.profile'))
+        ->assertSuccessful()
+        ->assertSee('const shouldShowPermissionAlert = false;', false);
+});
+
+test('login flashes browser notification prompt for the next request', function () {
+    event(new Login('web', User::factory()->create(), false));
+
+    expect(session('show_webpush_permission_prompt'))->toBeTrue();
 });

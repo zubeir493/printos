@@ -6,6 +6,7 @@ use App\Filament\Support\Calculations;
 use App\Filament\Support\PanelAccess;
 use App\Models\InventoryItem;
 use App\Models\Setting;
+use App\Support\Money;
 use App\Support\PrivateStorage;
 use Filament\Actions\Action;
 use Filament\Forms\Components\BaseFileUpload;
@@ -84,6 +85,7 @@ class JobOrderForm
                                     ->default(fn () => now()->addDays(30))
                                     ->required(),
                                 FileUpload::make('cost_calc_file')
+                                    ->imagePreviewHeight(36)
                                     ->label('Cost Calculation File')
                                     ->disk(config('filesystems.private_disk', 's3'))
                                     ->visibility('private')
@@ -92,6 +94,7 @@ class JobOrderForm
                                     ->getDownloadableFileUrlUsing(fn (string $file): ?string => PrivateStorage::downloadUrl($file))
                                     ->directory('job-order-cost-calculations')
                                     ->preserveFilenames()
+                                    ->downloadable()
                                     ->acceptedFileTypes([
                                         'text/csv',
                                         'text/plain',
@@ -100,6 +103,13 @@ class JobOrderForm
                                     ])
                                     ->maxSize(51200)
                                     ->previewable(false)
+                                    ->panelLayout('compact')
+                                    ->uploadButtonPosition('left')
+                                    ->uploadProgressIndicatorPosition('left')
+                                    ->removeUploadedFileButtonPosition('right')
+                                    ->placeholder('Upload cost file')
+                                    ->extraAttributes(['class' => 'job-order-cost-file-upload'])
+                                    ->hidden(fn () => ! PanelAccess::canSeeMoneyValues())
                                     ->required(),
                             ])
                             ->columns(3),
@@ -121,7 +131,7 @@ class JobOrderForm
                                 TextInput::make('task_cost')
                                     ->label('Cost')
                                     ->numeric()
-                                    ->suffix('Birr')
+                                    ->suffix(fn (): string => Money::suffix())
                                     ->required()
                                     ->minValue(0)
                                     ->live()
@@ -427,26 +437,21 @@ class JobOrderForm
                             Hidden::make('total')
                                 ->default(0)
                                 ->dehydrated(),
-
                             Placeholder::make('summary_subtotal')
                                 ->label('Subtotal')
                                 ->content(fn (UtilitiesGet $get): HtmlString => self::summaryValue($get('subtotal')))
-                                ->hidden(fn () => ! PanelAccess::canSeeMoneyValues())
                                 ->extraAttributes(['class' => 'cost-summary-metric']),
-
                             Placeholder::make('summary_tax_amount')
                                 ->label('Tax (VAT)')
                                 ->content(fn (UtilitiesGet $get): HtmlString => self::summaryValue($get('tax_amount')))
-                                ->hidden(fn () => ! PanelAccess::canSeeMoneyValues())
                                 ->extraAttributes(['class' => 'cost-summary-metric']),
-
                             Placeholder::make('summary_total')
                                 ->label('Total')
                                 ->content(fn (UtilitiesGet $get): HtmlString => self::summaryValue($get('total'), isPrimary: true))
-                                ->hidden(fn () => ! PanelAccess::canSeeMoneyValues())
                                 ->extraAttributes(['class' => 'cost-summary-metric cost-summary-total']),
                         ])
-                        ->extraAttributes(['class' => 'lg:sticky lg:top-6 orderSummary']),
+                        ->extraAttributes(['class' => 'lg:sticky lg:top-6 orderSummary'])
+                        ->hidden(fn () => ! PanelAccess::canSeeMoneyValues()),
 
                     Textarea::make('remarks'),
                 ]),
@@ -456,9 +461,10 @@ class JobOrderForm
     private static function summaryValue(mixed $amount, bool $isPrimary = false): HtmlString
     {
         return new HtmlString(sprintf(
-            '<span class="cost-summary-value%s">%s Birr</span>',
+            '<span class="cost-summary-value%s">%s %s</span>',
             $isPrimary ? ' cost-summary-value-primary' : '',
             e(Number::format((float) ($amount ?? 0), precision: 2)),
+            e(Money::suffix()),
         ));
     }
 }

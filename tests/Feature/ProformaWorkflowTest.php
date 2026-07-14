@@ -133,6 +133,10 @@ it('returns a temporary local download route for a proforma pdf', function (): v
     ob_end_clean();
 
     expect(Storage::disk('local')->allFiles('proformas-temp'))->toBeEmpty();
+
+    $this->actingAs(User::factory()->create([
+        'role' => UserRole::Sales,
+    ]))->get($downloadUrl)->assertRedirect();
 });
 
 it('creates proformas from a full page with a previewed number', function (): void {

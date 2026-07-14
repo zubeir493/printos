@@ -4,6 +4,7 @@ namespace App\Filament\Resources\PurchaseOrders\RelationManagers;
 
 use App\Enums\PaymentTransactionType;
 use App\Filament\Support\PanelAccess;
+use App\Filament\Tables\Filters\DateRangeFilter;
 use App\Models\Bank;
 use App\Support\Money;
 use Filament\Actions\CreateAction;
@@ -31,7 +32,7 @@ class PaymentsRelationManager extends RelationManager
             TextInput::make('amount')
                 ->numeric()
                 ->required()
-                ->suffix('Birr')
+                ->suffix(fn (): string => Money::suffix())
                 ->maxValue(fn (?Model $record): float => $this->remainingBalance($record)),
             Select::make('method')
                 ->label('Payment method')
@@ -71,6 +72,9 @@ class PaymentsRelationManager extends RelationManager
                 TextColumn::make('amount')
                     ->formatStateUsing(fn ($state) => Money::format($state))
                     ->weight('bold'),
+            ])
+            ->filters([
+                DateRangeFilter::make('payment_date_range', 'payment_date', 'Payment date'),
             ])
             ->headerActions([
                 CreateAction::make()

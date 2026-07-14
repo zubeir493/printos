@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\MaterialIssueApprovals;
 
+use App\Filament\Tables\Filters\DateRangeFilter;
 use App\Services\MaterialIssueService;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -44,6 +45,8 @@ class MaterialIssueApprovalsTable
                     }),
             ])
             ->filters([
+                DateRangeFilter::make('request_date_range', 'created_at', 'Request date'),
+
                 SelectFilter::make('status')
                     ->options([
                         'pending' => 'Pending',
@@ -54,7 +57,7 @@ class MaterialIssueApprovalsTable
             ->recordActions([
                 ActionGroup::make([
                     Action::make('approve')
-                        ->color('success')
+                        ->color('gray')
                         ->icon('heroicon-o-check-circle')
                         ->visible(fn ($record) => $record->status === 'pending')
                         ->requiresConfirmation()
@@ -81,7 +84,7 @@ class MaterialIssueApprovalsTable
                             }
                         }),
                     Action::make('reject')
-                        ->color('danger')
+                        ->color('gray')
                         ->icon('heroicon-o-x-circle')
                         ->visible(fn ($record) => $record->status === 'pending')
                         ->requiresConfirmation()

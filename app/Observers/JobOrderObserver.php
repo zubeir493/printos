@@ -3,8 +3,12 @@
 namespace App\Observers;
 
 use App\Models\JobOrder;
+use App\Notifications\JobOrderCompletedNotification;
 use App\Services\Accounting\CreateSalesJournalEntry;
+use App\Support\NotificationRecipients;
 use App\Support\SequentialNumber;
+use App\UserRole;
+use Illuminate\Support\Facades\Notification;
 
 class JobOrderObserver
 {
@@ -50,5 +54,11 @@ class JobOrderObserver
         }
 
         app(CreateSalesJournalEntry::class)->handle($jobOrder);
+
+        $recipients = NotificationRecipients::roles(UserRole::Sales, UserRole::Finance, UserRole::Operations);
+
+        if ($recipients->isNotEmpty()) {
+            Notification::send($recipients, new JobOrderCompletedNotification($jobOrder));
+        }
     }
 }

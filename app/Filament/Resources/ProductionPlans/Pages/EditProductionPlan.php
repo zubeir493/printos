@@ -20,9 +20,8 @@ class EditProductionPlan extends EditRecord
                 Action::make('approve')
                     ->label('Approve Plan')
                     ->icon('heroicon-o-check-circle')
-                    ->color('success')
+                    ->color('gray')
                     ->requiresConfirmation()
-                    ->visible(fn ($record) => $record->status === 'draft')
                     ->action(function ($record) {
                         $record->update(['status' => 'approved']);
                         $this->record->refresh();
@@ -33,8 +32,7 @@ class EditProductionPlan extends EditRecord
                             ->success()
                             ->send();
                     }),
-                DeleteAction::make()
-                    ->visible(fn ($record) => $record->status === 'draft'),
+                DeleteAction::make(),
             ]),
         ];
     }

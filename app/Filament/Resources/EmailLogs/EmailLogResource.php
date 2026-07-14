@@ -3,9 +3,9 @@
 namespace App\Filament\Resources\EmailLogs;
 
 use App\Filament\Resources\EmailLogs\Pages\ManageEmailLogs;
+use App\Filament\Tables\Filters\DateRangeFilter;
 use App\Models\EmailLog;
 use BackedEnum;
-use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -14,10 +14,8 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
 
 class EmailLogResource extends Resource
 {
@@ -103,22 +101,7 @@ class EmailLogResource extends Resource
                     ->relationship('sender', 'name')
                     ->searchable()
                     ->preload(),
-                Filter::make('sent_at')
-                    ->form([
-                        DatePicker::make('sent_from'),
-                        DatePicker::make('sent_until'),
-                    ])
-                    ->query(function (Builder $query, array $data): Builder {
-                        return $query
-                            ->when(
-                                $data['sent_from'],
-                                fn (Builder $query, $date): Builder => $query->whereDate('sent_at', '>=', $date),
-                            )
-                            ->when(
-                                $data['sent_until'],
-                                fn (Builder $query, $date): Builder => $query->whereDate('sent_at', '<=', $date),
-                            );
-                    }),
+                DateRangeFilter::make('sent_date_range', 'sent_at', 'Sent date'),
             ])
             ->recordActions([])
             ->toolbarActions([]);

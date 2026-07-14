@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Employees\Schemas;
 
 use App\Models\Employee;
+use App\Support\Money;
 use App\Support\PrivateStorage;
 use Filament\Forms\Components\BaseFileUpload;
 use Filament\Forms\Components\DatePicker;
@@ -74,17 +75,13 @@ class EmployeeForm
                                 TextInput::make('basic_salary')
                                     ->label('Monthly Rate')
                                     ->numeric()
-                                    ->suffix('Birr')
+                                    ->suffix(fn (): string => Money::suffix())
                                     ->default(0),
                                 TextInput::make('transport_allowance')
                                     ->label('Transportation Allowance')
                                     ->numeric()
-                                    ->suffix('Birr')
+                                    ->suffix(fn (): string => Money::suffix())
                                     ->default(0),
-                                TextInput::make('overtime_multiplier')
-                                    ->label('Overtime Multiplier')
-                                    ->numeric()
-                                    ->default(1),
                                 TextInput::make('bank_name'),
                                 TextInput::make('account_number'),
                             ])->columnSpan(3)->columns(2),

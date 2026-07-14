@@ -22,7 +22,6 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
-use Filament\Support\Colors\Color;
 
 class ViewJobOrderTask extends ViewRecord
 {
@@ -35,9 +34,8 @@ class ViewJobOrderTask extends ViewRecord
                 Action::make('cancel_task')
                     ->label('Cancel Task')
                     ->icon('heroicon-o-x-mark')
-                    ->color('danger')
-                    ->visible(fn ($record) => ! in_array($record->status, ['cancelled', 'completed'])
-                        && PanelAccess::canManageJobOrderTasks())
+                    ->color('gray')
+                    ->visible(fn () => PanelAccess::canManageJobOrderTasks())
                     ->requiresConfirmation()
                     ->modalDescription('Are you sure you want to cancel this task? This action cannot be undone.')
                     ->action(function ($record) {
@@ -55,8 +53,8 @@ class ViewJobOrderTask extends ViewRecord
                 Action::make('log_production')
                     ->label('Log Production')
                     ->icon('heroicon-o-archive-box-arrow-down')
-                    ->color('success')
-                    ->visible(fn ($record) => ! in_array($record->status, ['completed', 'cancelled'])
+                    ->color('gray')
+                    ->visible(fn ($record) => $record !== null
                         && $record->materialRequests()->where('issued_quantity', '>', 0)->exists()
                         && in_array(Filament::getCurrentPanel()?->getId(), ['production', 'operations', 'admin']))
                     ->form(function ($record) {
@@ -166,9 +164,8 @@ class ViewJobOrderTask extends ViewRecord
                 Action::make('request_materials')
                     ->label('Request Materials')
                     ->icon('heroicon-o-document-plus')
-                    ->color('info')
-                    ->visible(fn ($record) => ! in_array($record->status, ['completed', 'cancelled'])
-                        && Filament::getCurrentPanel()?->getId() === 'production')
+                    ->color('gray')
+                    ->visible(fn () => Filament::getCurrentPanel()?->getId() === 'production')
                     ->form(fn ($record) => [
                         Repeater::make('items')
                             ->addable(false)
@@ -220,8 +217,8 @@ class ViewJobOrderTask extends ViewRecord
                 Action::make('issue_materials')
                     ->label('Issue Materials')
                     ->icon('heroicon-o-archive-box-arrow-down')
-                    ->color('warning')
-                    ->visible(fn ($record) => ! in_array($record->status, ['completed', 'cancelled'])
+                    ->color('gray')
+                    ->visible(fn ($record) => $record !== null
                         && $record->materialRequests()
                             ->whereColumn('issued_quantity', '<', 'requested_quantity')
                             ->whereDoesntHave('pendingIssueApprovals', fn ($query) => $query->where('status', 'pending'))
@@ -320,7 +317,7 @@ class ViewJobOrderTask extends ViewRecord
                     }),
                 EditAction::make()
                     ->visible(fn () => PanelAccess::canManageJobOrderTasks())
-                    ->color(Color::Indigo),
+                    ->color('gray'),
             ]),
         ];
     }

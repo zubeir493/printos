@@ -4,6 +4,10 @@ namespace App\Enums;
 
 enum PaymentTransactionType: string
 {
+    public const DIRECTION_INBOUND = 'inbound';
+
+    public const DIRECTION_OUTBOUND = 'outbound';
+
     case CUSTOMER_RECEIPT = 'customer_receipt';
     case SUPPLIER_PAYMENT = 'supplier_payment';
     case DIRECT_EXPENSE = 'direct_expense';
@@ -81,9 +85,25 @@ enum PaymentTransactionType: string
     public function direction(): string
     {
         return match ($this) {
-            self::CUSTOMER_RECEIPT, self::CASH_SALE_RECEIPT, self::EMPLOYEE_LOAN_REPAYMENT, self::BID_BOND_RECOVERY, self::PERFORMANCE_BOND_RECOVERY => 'inbound',
-            default => 'outbound',
+            self::CUSTOMER_RECEIPT, self::CASH_SALE_RECEIPT, self::EMPLOYEE_LOAN_REPAYMENT, self::BID_BOND_RECOVERY, self::PERFORMANCE_BOND_RECOVERY => self::DIRECTION_INBOUND,
+            default => self::DIRECTION_OUTBOUND,
         };
+    }
+
+    public function isExpense(): bool
+    {
+        return in_array($this, [
+            self::DIRECT_EXPENSE,
+            self::PETTY_CASH_EXPENSE,
+        ], true);
+    }
+
+    public function usesPettyCashAccount(): bool
+    {
+        return in_array($this, [
+            self::PETTY_CASH_FUNDING,
+            self::PETTY_CASH_EXPENSE,
+        ], true);
     }
 
     /**
@@ -102,5 +122,13 @@ enum PaymentTransactionType: string
         }
 
         return $options;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function paymentFormOptions(): array
+    {
+        return self::options();
     }
 }

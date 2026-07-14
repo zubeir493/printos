@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\Invoice;
+use App\Support\Money;
 use Illuminate\Console\Command;
 
 class OverdueInvoiceReport extends Command
@@ -39,7 +40,7 @@ class OverdueInvoiceReport extends Command
 
         $totalOverdue = $overdueInvoices->sum('balance_due');
         $this->info("Total Overdue Invoices: {$overdueInvoices->count()}");
-        $this->info("Total Overdue Amount: {$totalOverdue} Birr");
+        $this->info('Total Overdue Amount: '.Money::format($totalOverdue, 2));
         $this->newLine();
 
         // Group by partner
@@ -51,11 +52,11 @@ class OverdueInvoiceReport extends Command
 
             $this->info("Partner: {$partner->name}");
             $this->info("  Invoices: {$invoices->count()}");
-            $this->info("  Total Due: {$partnerTotal} Birr");
+            $this->info('  Total Due: '.Money::format($partnerTotal, 2));
 
             foreach ($invoices as $invoice) {
                 $daysOverdue = $invoice->due_date->diffInDays(now());
-                $this->line("    - {$invoice->invoice_number} ({$daysOverdue} days overdue) - {$invoice->balance_due} Birr");
+                $this->line("    - {$invoice->invoice_number} ({$daysOverdue} days overdue) - ".Money::format($invoice->balance_due, 2));
             }
             $this->newLine();
         }
@@ -84,7 +85,7 @@ class OverdueInvoiceReport extends Command
                 return $days >= $range[0] && $days <= $range[1];
             })->sum('balance_due');
 
-            $this->info("{$label}: {$count} invoices, {$amount} Birr");
+            $this->info("{$label}: {$count} invoices, ".Money::format($amount, 2));
         }
 
         return Command::SUCCESS;

@@ -7,7 +7,6 @@ use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\EditAction;
 use Filament\Resources\Pages\ViewRecord;
-use Filament\Support\Colors\Color;
 use Filament\Support\Icons\Heroicon;
 
 class ViewPartner extends ViewRecord
@@ -19,7 +18,7 @@ class ViewPartner extends ViewRecord
         return [
             ActionGroup::make([
                 EditAction::make()
-                    ->color(Color::Indigo),
+                    ->color('gray'),
                 Action::make('statement')
                     ->label('Statement')
                     ->icon(Heroicon::OutlinedDocumentText)

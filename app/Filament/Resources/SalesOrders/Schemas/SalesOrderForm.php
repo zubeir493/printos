@@ -8,6 +8,7 @@ use App\Models\Partner;
 use App\Models\Setting;
 use App\Models\Warehouse;
 use App\Services\SalesOrderItemImportService;
+use App\Support\Money;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
@@ -25,7 +26,6 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
-use Filament\Support\Colors\Color;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\HtmlString;
 use Illuminate\Support\Number;
@@ -93,7 +93,7 @@ class SalesOrderForm
                                     Action::make('import_items')
                                         ->label('Import from CSV / Excel')
                                         ->icon('heroicon-o-arrow-up-tray')
-                                        ->color(Color::Indigo)
+                                        ->color('gray')
                                         ->visible(fn () => ! request()->routeIs('*.view'))
                                         ->modalHeading('Import Sale Items')
                                         ->modalDescription(new HtmlString(
@@ -222,7 +222,7 @@ class SalesOrderForm
                                     ->required()
                                     ->default(0)
                                     ->minValue(0)
-                                    ->suffix('Birr')
+                                    ->suffix(fn (): string => Money::suffix())
                                     ->live(onBlur: true)
                                     ->afterStateUpdated(function (Set $set, Get $get, $state) {
                                         $set('total', round((float) ($state ?? 0) * (float) ($get('quantity') ?? 0), 2));
@@ -239,7 +239,7 @@ class SalesOrderForm
                                     ->numeric()
                                     ->readOnly()
                                     ->dehydrated()
-                                    ->suffix('Birr')
+                                    ->suffix(fn (): string => Money::suffix())
                                     ->afterStateHydrated(function (Set $set, Get $get) {
                                         $set('total', round((float) ($get('quantity') ?? 0) * (float) ($get('unit_price') ?? 0), 2));
                                         Calculations::updateSubtotal($get, $set, '../../salesOrderItems', '../../subtotal');
@@ -365,9 +365,10 @@ class SalesOrderForm
     private static function summaryValue(mixed $amount, bool $isPrimary = false): HtmlString
     {
         return new HtmlString(sprintf(
-            '<span class="cost-summary-value%s">%s Birr</span>',
+            '<span class="cost-summary-value%s">%s %s</span>',
             $isPrimary ? ' cost-summary-value-primary' : '',
             e(Number::format((float) ($amount ?? 0), precision: 2)),
+            e(Money::suffix()),
         ));
     }
 }

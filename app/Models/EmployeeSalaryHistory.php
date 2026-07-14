@@ -13,7 +13,6 @@ class EmployeeSalaryHistory extends Model
     protected $fillable = [
         'employee_id',
         'basic_salary',
-        'overtime_multiplier',
         'effective_date',
         'change_reason',
     ];
@@ -23,7 +22,6 @@ class EmployeeSalaryHistory extends Model
         return [
             'effective_date' => 'date',
             'basic_salary' => 'decimal:2',
-            'overtime_multiplier' => 'decimal:4',
         ];
     }
 

@@ -13,7 +13,7 @@ class PaymentFactory extends Factory
     public function definition(): array
     {
         return [
-            'payment_number' => fake()->word(),
+            'payment_number' => 'PAY-'.fake()->unique()->numerify('######'),
             'partner_id' => Partner::factory(),
             'payment_date' => fake()->date(),
             'amount' => fake()->randomFloat(2, 0, 9999999999999.99),

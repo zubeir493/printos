@@ -33,6 +33,11 @@ class TypistAssignedToTask extends Notification implements ShouldQueueAfterCommi
         return $body;
     }
 
+    protected function notificationUrl(object $notifiable): string
+    {
+        return $this->resourceUrl($notifiable, 'job-order-tasks', 'view', ['record' => $this->task]);
+    }
+
     public function toDatabase(object $notifiable): array
     {
         return FilamentNotification::make()
@@ -40,6 +45,7 @@ class TypistAssignedToTask extends Notification implements ShouldQueueAfterCommi
             ->body($this->webPushBody())
             ->icon('heroicon-o-document-text')
             ->iconColor(Color::Indigo)
+            ->actions($this->databaseActions($notifiable, 'Open task'))
             ->getDatabaseMessage();
     }
 }

@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('settings', function (Blueprint $table) {
             $table->id();
             // Company Information
-            $table->string('company_name')->default('PrintOS');
+            $table->string('company_name')->default('Packledge');
             $table->text('company_address')->nullable();
             $table->string('company_phone')->nullable();
             $table->string('company_email')->nullable();

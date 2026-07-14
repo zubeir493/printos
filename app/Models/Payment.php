@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\ExpenseTrackingType;
 use App\Support\SequentialNumber;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -48,6 +49,10 @@ class Payment extends Model
         'account_id',
         'expense_account_id',
         'petty_cash_account_id',
+        'expense_tracking_type',
+        'expense_tracking_item_id',
+        'expense_tracking_employee_id',
+        'expense_tracking_bid_id',
         'voided_at',
         'voided_by',
         'void_reason',
@@ -71,6 +76,9 @@ class Payment extends Model
             'payable_id' => 'integer',
             'expense_account_id' => 'integer',
             'petty_cash_account_id' => 'integer',
+            'expense_tracking_item_id' => 'integer',
+            'expense_tracking_employee_id' => 'integer',
+            'expense_tracking_bid_id' => 'integer',
             'voided_at' => 'datetime',
             'voided_by' => 'integer',
         ];
@@ -89,6 +97,31 @@ class Payment extends Model
     public function bank(): BelongsTo
     {
         return $this->belongsTo(Bank::class);
+    }
+
+    public function expenseAccount(): BelongsTo
+    {
+        return $this->belongsTo(Account::class, 'expense_account_id');
+    }
+
+    public function pettyCashAccount(): BelongsTo
+    {
+        return $this->belongsTo(Account::class, 'petty_cash_account_id');
+    }
+
+    public function expenseTrackingItem(): BelongsTo
+    {
+        return $this->belongsTo(ExpenseTrackingItem::class);
+    }
+
+    public function expenseTrackingEmployee(): BelongsTo
+    {
+        return $this->belongsTo(Employee::class, 'expense_tracking_employee_id');
+    }
+
+    public function expenseTrackingBid(): BelongsTo
+    {
+        return $this->belongsTo(Bid::class, 'expense_tracking_bid_id');
     }
 
     public function journalEntries(): MorphMany
@@ -171,6 +204,24 @@ class Payment extends Model
         if ($payable instanceof Invoice) {
             $this->syncInvoiceBalance($payable->refresh());
         }
+    }
+
+    public function expenseTrackingLabel(): ?string
+    {
+        $trackingType = ExpenseTrackingType::tryFrom((string) $this->expense_tracking_type);
+
+        if (! $trackingType || $trackingType === ExpenseTrackingType::NONE) {
+            return null;
+        }
+
+        $value = match (true) {
+            $trackingType->usesTrackingItem() => $this->expenseTrackingItem?->display_name,
+            $trackingType->usesEmployee() => $this->expenseTrackingEmployee?->full_name,
+            $trackingType->usesBid() => $this->expenseTrackingBid?->bid_number,
+            default => null,
+        };
+
+        return $value ? "{$trackingType->label()}: {$value}" : $trackingType->label();
     }
 
     private function syncInvoicesForDocument(SalesOrder|JobOrder|PurchaseOrder $document): void

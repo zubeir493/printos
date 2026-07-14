@@ -3,12 +3,15 @@
 namespace App\Filament\Resources\EmployeeLoans;
 
 use App\Filament\Resources\EmployeeLoans\Pages\ManageEmployeeLoans;
+use App\Filament\Tables\Filters\DateRangeFilter;
 use App\Models\Bank;
 use App\Models\EmployeeLoan;
 use App\Services\Hr\RepayEmployeeLoan;
+use App\Support\FiscalCalendar;
 use App\Support\Money;
 use BackedEnum;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -22,7 +25,6 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use UnitEnum;
 
 class EmployeeLoanResource extends Resource
 {
@@ -47,13 +49,15 @@ class EmployeeLoanResource extends Resource
                 ->label('Loan Date')
                 ->default(now())
                 ->required(),
-            DatePicker::make('return_date')
+            Select::make('return_date')
                 ->label('Deduct In Payroll Month')
-                ->default(now())
+                ->options(fn (): array => FiscalCalendar::payrollMonthOptions())
+                ->default(fn (): string => FiscalCalendar::currentFiscalYearStart()->toDateString())
+                ->native(false)
                 ->required(),
             TextInput::make('amount')
                 ->numeric()
-                ->suffix('Birr')
+                ->suffix(fn (): string => Money::suffix())
                 ->required(),
             TextInput::make('installment_count')
                 ->label('Installments')
@@ -78,7 +82,7 @@ class EmployeeLoanResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn(Builder $query) => $query->with(['employee', 'installments']))
+            ->modifyQueryUsing(fn (Builder $query) => $query->with(['employee', 'installments']))
             ->searchable(true)
             ->columns([
                 TextColumn::make('employee.full_name')
@@ -88,11 +92,11 @@ class EmployeeLoanResource extends Resource
                     ->sortable(),
                 TextColumn::make('return_date')
                     ->label('Payroll Month')
-                    ->date()
+                    ->formatStateUsing(fn ($state): ?string => FiscalCalendar::payrollMonthLabel($state))
                     ->sortable(),
                 TextColumn::make('status')
                     ->badge()
-                    ->color(fn(string $state): string => match ($state) {
+                    ->color(fn (string $state): string => match ($state) {
                         'active' => 'info',
                         'partially_paid' => 'warning',
                         'deducted' => 'success',
@@ -101,14 +105,16 @@ class EmployeeLoanResource extends Resource
                     }),
                 TextColumn::make('remaining_balance')
                     ->label('Remaining')
-                    ->state(fn(EmployeeLoan $record): string => Money::format($record->remainingBalance())),
+                    ->state(fn (EmployeeLoan $record): string => Money::format($record->remainingBalance())),
                 TextColumn::make('reason')
                     ->limit(40),
                 TextColumn::make('amount')
-                    ->suffix('Birr')
-                    ->summarize(Sum::make()->suffix('Birr')),
+                    ->suffix(fn (): string => Money::suffix())
+                    ->summarize(Sum::make()->suffix(fn (): string => Money::suffix())),
             ])
             ->filters([
+                DateRangeFilter::make('loan_date_range', 'loan_date', 'Loan date'),
+
                 SelectFilter::make('employee_id')
                     ->label('Employee')
                     ->relationship('employee', 'first_name')
@@ -123,50 +129,53 @@ class EmployeeLoanResource extends Resource
                     ]),
             ])
             ->recordActions([
-                Action::make('repay')
-                    ->label('Repay')
-                    ->icon(Heroicon::OutlinedBanknotes)
-                    ->visible(fn(EmployeeLoan $record): bool => in_array($record->status, ['active', 'partially_paid'], true) && $record->remainingBalance() > 0)
-                    ->schema([
-                        Grid::make(2)
-                            ->schema([
-                                Select::make('method')
-                                    ->label('Payment Method')
-                                    ->options([
-                                        'cash' => 'Cash',
-                                        'bank' => 'Bank',
-                                        'cheque' => 'Cheque',
-                                    ])
-                                    ->default('cash')
-                                    ->live()
-                                    ->required(),
-                                TextInput::make('amount')
-                                    ->label('Repayment Amount')
-                                    ->numeric()
-                                    ->suffix('Birr')
-                                    ->required()
-                                    ->default(fn(EmployeeLoan $record): float => $record->remainingBalance())
-                                    ->minValue(0.01)
-                                    ->maxValue(fn(EmployeeLoan $record): float => $record->remainingBalance())
-                                    ->helperText('Leave the default to repay the full outstanding balance.'),
-                            ]),
-                        Select::make('bank_id')
-                            ->label('Bank Account')
-                            ->options(fn(): array => Bank::query()
-                                ->where('status', 'active')
-                                ->orderBy('name')
-                                ->pluck('name', 'id')
-                                ->all())
-                            ->searchable()
-                            ->visible(fn($get): bool => $get('method') === 'bank')
-                            ->required(fn($get): bool => $get('method') === 'bank'),
-                    ])
-                    ->action(fn(EmployeeLoan $record, array $data) => app(RepayEmployeeLoan::class)->handle(
-                        $record,
-                        $data['method'],
-                        $data['bank_id'] ?? null,
-                        (float) ($data['amount'] ?? 0),
-                    )),
+                ActionGroup::make([
+                    Action::make('repay')
+                        ->label('Repay')
+                        ->icon(Heroicon::OutlinedBanknotes)
+                        ->color('gray')
+                        ->visible(fn (EmployeeLoan $record): bool => in_array($record->status, ['active', 'partially_paid'], true) && $record->remainingBalance() > 0)
+                        ->schema([
+                            Grid::make(2)
+                                ->schema([
+                                    Select::make('method')
+                                        ->label('Payment Method')
+                                        ->options([
+                                            'cash' => 'Cash',
+                                            'bank' => 'Bank',
+                                            'cheque' => 'Cheque',
+                                        ])
+                                        ->default('cash')
+                                        ->live()
+                                        ->required(),
+                                    TextInput::make('amount')
+                                        ->label('Repayment Amount')
+                                        ->numeric()
+                                        ->suffix(fn (): string => Money::suffix())
+                                        ->required()
+                                        ->default(fn (EmployeeLoan $record): float => $record->remainingBalance())
+                                        ->minValue(0.01)
+                                        ->maxValue(fn (EmployeeLoan $record): float => $record->remainingBalance())
+                                        ->helperText('Leave the default to repay the full outstanding balance.'),
+                                ]),
+                            Select::make('bank_id')
+                                ->label('Bank Account')
+                                ->options(fn (): array => Bank::query()
+                                    ->where('status', 'active')
+                                    ->orderBy('name')
+                                    ->pluck('name', 'id')
+                                    ->all())
+                                ->searchable()
+                                ->visible(fn ($get): bool => $get('method') === 'bank')
+                                ->required(fn ($get): bool => $get('method') === 'bank'),
+                        ])
+                        ->action(fn (EmployeeLoan $record, array $data) => app(RepayEmployeeLoan::class)->handle(
+                            $record,
+                            $data['method'],
+                            $data['bank_id'] ?? null,
+                            (float) ($data['amount'] ?? 0),
+                        )),
+                ]),
             ])
             ->defaultSort('return_date', 'desc');
     }

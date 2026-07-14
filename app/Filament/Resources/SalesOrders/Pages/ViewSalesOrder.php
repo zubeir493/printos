@@ -8,6 +8,9 @@ use App\Filament\Support\PanelAccess;
 use App\Models\Bank;
 use App\Models\Payment;
 use App\Models\SalesOrder;
+use App\Models\StockMovement;
+use App\Services\Accounting\VoidPaymentJournalEntry;
+use App\Services\InvoiceGeneratorService;
 use App\Support\Money;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -18,7 +21,6 @@ use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Schemas\Components\Grid;
-use Filament\Support\Colors\Color;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\Facades\DB;
 
@@ -36,14 +38,12 @@ class ViewSalesOrder extends ViewRecord
         return [
             ActionGroup::make([
                 EditAction::make()
-                    ->visible(fn ($record) => $record->status === SalesOrder::STATUS_DRAFT)
-                    ->color(Color::Indigo),
+                    ->color('gray'),
                 Action::make('complete')
                     ->label('Complete Sale')
                     ->icon('heroicon-o-check-circle')
-                    ->color('success')
-                    ->visible(fn ($record) => $record->status === SalesOrder::STATUS_DRAFT &&
-                        $record->isCashSale() &&
+                    ->color('gray')
+                    ->visible(fn ($record) => $record->isCashSale() &&
                         PanelAccess::canManageSalesOrders()
                     )
                     ->requiresConfirmation()
@@ -72,9 +72,8 @@ class ViewSalesOrder extends ViewRecord
                 Action::make('submit_items')
                     ->label('Submit Items')
                     ->icon('heroicon-o-paper-airplane')
-                    ->color('primary')
-                    ->visible(fn ($record) => $record->status === SalesOrder::STATUS_DRAFT &&
-                        $record->payment_mode === 'credit' &&
+                    ->color('gray')
+                    ->visible(fn ($record) => $record->payment_mode === 'credit' &&
                         PanelAccess::canManageSalesOrders()
                     )
                     ->requiresConfirmation()
@@ -107,9 +106,8 @@ class ViewSalesOrder extends ViewRecord
                 Action::make('pay')
                     ->label('Receive Payment')
                     ->icon('heroicon-o-banknotes')
-                    ->color('success')
+                    ->color('gray')
                     ->visible(fn ($record) => $record->payment_mode === 'credit' &&
-                        $record->status !== SalesOrder::STATUS_VOID &&
                         $record->balance > 0 &&
                         PanelAccess::canAccessFinanceSection()
                     )
@@ -136,7 +134,7 @@ class ViewSalesOrder extends ViewRecord
                                 ->label('Payment Amount')
                                 ->required()
                                 ->numeric()
-                                ->suffix('Birr')
+                                ->suffix(fn (): string => Money::suffix())
                                 ->default(fn ($record) => $record->balance)
                                 ->maxValue(fn ($record): float => $record->balance)
                                 ->helperText(fn ($record) => 'Balance: '.Money::format($record->balance)),
@@ -183,6 +181,107 @@ class ViewSalesOrder extends ViewRecord
                         } catch (\Exception $e) {
                             Notification::make()
                                 ->title('Payment Failed')
+                                ->body($e->getMessage())
+                                ->danger()
+                                ->send();
+                        }
+                    }),
+                Action::make('invoice')
+                    ->label('Invoice')
+                    ->icon('heroicon-o-document-text')
+                    ->color('gray')
+                    ->hidden(fn ($record) => $record->invoices()->exists() || ! PanelAccess::canSeeMoneyValues() || $record->balance <= 0)
+                    ->action(function ($record): void {
+                        try {
+                            $invoiceService = app(InvoiceGeneratorService::class);
+                            $result = $invoiceService->generateFromSalesOrder($record);
+
+                            Notification::make()
+                                ->title('Invoice Generated')
+                                ->body('Invoice '.$result['invoice_data']['invoice_number'].' created successfully.')
+                                ->success()
+                                ->actions([
+                                    Action::make('download')
+                                        ->label('Download')
+                                        ->url($invoiceService->getInvoicePath($result['filename']))
+                                        ->openUrlInNewTab(),
+                                ])
+                                ->send();
+                        } catch (\Exception $e) {
+                            Notification::make()
+                                ->title('Invoice Action Failed')
+                                ->body($e->getMessage())
+                                ->danger()
+                                ->send();
+                        }
+                    }),
+                Action::make('void')
+                    ->label('Void')
+                    ->icon('heroicon-o-x-circle')
+                    ->color('gray')
+                    ->visible(fn (): bool => true)
+                    ->requiresConfirmation()
+                    ->modalHeading('Void Sales Order')
+                    ->modalDescription('Are you sure you want to void this sales order? This action cannot be undone.')
+                    ->modalSubmitActionLabel('Void Order')
+                    ->action(function ($record): void {
+                        try {
+                            DB::transaction(function () use ($record): void {
+                                $record->load(['payments', 'salesOrderItems.inventoryItem']);
+
+                                foreach ($record->payments as $payment) {
+                                    if ($payment->voided_at) {
+                                        continue;
+                                    }
+
+                                    try {
+                                        app(VoidPaymentJournalEntry::class)->handle($payment, 'Sales order voided');
+                                    } catch (\Exception $e) {
+                                        if (! str_contains($e->getMessage(), 'No posted journal entry was found')) {
+                                            throw $e;
+                                        }
+
+                                        $payment->update([
+                                            'voided_at' => now(),
+                                            'voided_by' => auth()->id(),
+                                            'void_reason' => 'Sales order voided',
+                                        ]);
+                                    }
+                                }
+
+                                foreach ($record->salesOrderItems as $item) {
+                                    $exists = StockMovement::where('reference_type', get_class($record))
+                                        ->where('reference_id', $record->id)
+                                        ->where('inventory_item_id', $item->inventory_item_id)
+                                        ->where('type', 'sale')
+                                        ->exists();
+
+                                    if (! $exists) {
+                                        continue;
+                                    }
+
+                                    StockMovement::create([
+                                        'inventory_item_id' => $item->inventory_item_id,
+                                        'warehouse_id' => $record->warehouse_id,
+                                        'type' => 'sale_return',
+                                        'reference_type' => get_class($record),
+                                        'reference_id' => $record->id,
+                                        'quantity' => abs($item->baseQuantityForStockMovement()),
+                                        'movement_date' => now(),
+                                    ]);
+                                }
+
+                                $record->update(['status' => SalesOrder::STATUS_VOID]);
+                            });
+
+                            Notification::make()
+                                ->title('Sales Order Voided')
+                                ->body($record->order_number.' has been voided. All payments, journal entries, and inventory movements have been reversed.')
+                                ->success()
+                                ->send();
+                        } catch (\Exception $e) {
+                            Notification::make()
+                                ->title('Void Failed')
                                 ->body($e->getMessage())
                                 ->danger()
                                 ->send();

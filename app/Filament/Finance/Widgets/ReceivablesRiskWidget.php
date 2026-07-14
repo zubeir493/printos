@@ -5,6 +5,7 @@ namespace App\Filament\Finance\Widgets;
 use App\Models\Partner;
 use App\Models\Payment;
 use App\Models\SalesOrder;
+use App\Support\Money;
 use LaravelDaily\FilaWidgets\Data\BreakdownWidgetData;
 use LaravelDaily\FilaWidgets\Widgets\BreakdownWidget;
 
@@ -13,8 +14,6 @@ class ReceivablesRiskWidget extends BreakdownWidget
     protected static ?int $sort = 3;
 
     protected ?string $widgetLabel = 'Receivables Risk';
-
-    protected string $widgetCurrency = 'ETB';
 
     protected bool $showDelta = false;
 
@@ -48,5 +47,10 @@ class ReceivablesRiskWidget extends BreakdownWidget
             labelKey: 'name',
             valueKey: 'total_balance',
         );
+    }
+
+    protected function getWidgetCurrency(): string
+    {
+        return Money::currencyCode();
     }
 }

@@ -17,8 +17,8 @@ test('emergency public fallback uses the simplified design', function (): void {
     $source = file_get_contents(public_path('index.php'));
 
     expect($source)
-        ->toContain('$GLOBALS[\'printos_request_completed\'] = false;')
-        ->toContain('$GLOBALS[\'printos_request_completed\'] = true;')
+        ->toContain('$GLOBALS[\'packledge_request_completed\'] = false;')
+        ->toContain('$GLOBALS[\'packledge_request_completed\'] = true;')
         ->toContain('<a href="/" class="btn-home">Dashboard</a>')
         ->not->toContain('btn-back')
         ->not->toContain('Go back')

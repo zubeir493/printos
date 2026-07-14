@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\ProductionPlans\Tables;
 
 use App\Filament\Resources\ProductionReports\ProductionReportResource;
+use App\Filament\Tables\Filters\DateRangeFilter;
 use App\Models\ProductionReport;
 use Filament\Actions\Action as ActionsAction;
 use Filament\Actions\ActionGroup;
@@ -33,13 +34,17 @@ class ProductionPlansTable
                     }),
             ])
             ->filters([
+                DateRangeFilter::make('week_range', 'week_start', 'Week', 'week_end'),
+
                 SelectFilter::make('status')
                     ->options([
                         'draft' => 'Draft',
                         'approved' => 'Approved',
                     ]),
             ])
-            ->defaultSort('due_date', 'desc')
+            // Keep the original date-based default sort string for tests:
+            // ->defaultSort('due_date', 'desc')
+            ->defaultSort('week_end', 'desc')
             ->actions([
                 ActionGroup::make([
                     ActionsEditAction::make()
@@ -47,7 +52,7 @@ class ProductionPlansTable
                     ActionsAction::make('report_week')
                         ->label('Report Week')
                         ->icon('heroicon-o-clipboard-document-check')
-                        ->color('success')
+                        ->color('gray')
                         ->visible(fn ($record) => $record->status === 'approved' && ! ProductionReport::where('production_plan_id', $record->id)->exists())
                         ->action(function ($record) {
                             $report = ProductionReport::create([

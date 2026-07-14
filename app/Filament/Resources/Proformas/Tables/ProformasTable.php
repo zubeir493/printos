@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Proformas\Tables;
 
 use App\Filament\Resources\Proformas\ProformaResource;
 use App\Filament\Support\PanelAccess;
+use App\Filament\Tables\Filters\DateRangeFilter;
 use App\Models\Proforma;
 use App\Services\Proformas\ProformaPdfService;
 use App\Services\Proformas\ProformaWorkflowService;
@@ -16,7 +17,6 @@ use Filament\Actions\EditAction;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
-use Filament\Support\Colors\Color;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -55,6 +55,8 @@ class ProformasTable
                     ->sortable(),
             ])
             ->filters([
+                DateRangeFilter::make('issue_date_range', 'issue_date', 'Issue date'),
+
                 SelectFilter::make('status')
                     ->options([
                         'draft' => 'Draft',
@@ -85,7 +87,7 @@ class ProformasTable
                     Action::make('email')
                         ->label('Email')
                         ->icon('heroicon-o-envelope')
-                        ->color('info')
+                        ->color('gray')
                         ->schema([
                             TextInput::make('email')
                                 ->email()
@@ -109,7 +111,7 @@ class ProformasTable
                     Action::make('approve')
                         ->label('Approve')
                         ->icon('heroicon-o-check-circle')
-                        ->color('success')
+                        ->color('gray')
                         ->requiresConfirmation()
                         ->visible(fn (Proforma $record): bool => in_array($record->status, ['draft', 'sent'], true))
                         ->action(function (Proforma $record): void {
@@ -124,7 +126,7 @@ class ProformasTable
                     Action::make('create_job_order')
                         ->label('Create Job Order')
                         ->icon('heroicon-o-briefcase')
-                        ->color(Color::Indigo)
+                        ->color('gray')
                         ->visible(fn (Proforma $record): bool => $record->canCreateJobOrder())
                         ->action(function (Proforma $record): void {
                             $jobOrder = app(ProformaWorkflowService::class)->createJobOrder($record);

@@ -8,7 +8,6 @@ use Filament\Actions\ActionGroup;
 use Filament\Actions\EditAction;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
-use Filament\Support\Colors\Color;
 
 class ViewStockAdjustment extends ViewRecord
 {
@@ -19,10 +18,10 @@ class ViewStockAdjustment extends ViewRecord
         return [
             ActionGroup::make([
                 EditAction::make()
-                    ->color(Color::Indigo),
+                    ->color('gray'),
                 Action::make('post')
                     ->label('Post Adjustment')
-                    ->color('success')
+                    ->color('gray')
                     ->icon('heroicon-o-check-circle')
                     ->requiresConfirmation()
                     ->action(function ($record) {
@@ -32,8 +31,7 @@ class ViewStockAdjustment extends ViewRecord
                             ->success()
                             ->send();
                     }),
-            ])
-                ->visible(fn ($record): bool => $record->status === 'draft'),
+            ]),
         ];
     }
 }

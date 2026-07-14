@@ -26,6 +26,11 @@ class ArtworkApprovedNotification extends Notification implements ShouldQueueAft
         return "Your artwork for task '{$this->artwork->jobOrderTask->name}' on job {$this->artwork->jobOrder->job_order_number} has been approved.";
     }
 
+    protected function notificationUrl(object $notifiable): string
+    {
+        return $this->resourceUrl($notifiable, 'job-order-tasks', 'view', ['record' => $this->artwork->jobOrderTask]);
+    }
+
     public function toDatabase(object $notifiable): array
     {
         return FilamentNotification::make()
@@ -33,6 +38,7 @@ class ArtworkApprovedNotification extends Notification implements ShouldQueueAft
             ->body($this->webPushBody())
             ->icon('heroicon-o-check-badge')
             ->iconColor('success')
+            ->actions($this->databaseActions($notifiable, 'Open task'))
             ->getDatabaseMessage();
     }
 }

@@ -112,13 +112,13 @@ class JobOrderArtworksRelationManager extends RelationManager
                     Action::make('approve')
                         ->label('Approve')
                         ->icon('heroicon-m-check-badge')
-                        ->color('success')
+                        ->color('gray')
                         ->hidden(fn ($record) => $record->is_approved)
                         ->action(fn ($record) => $record->update(['is_approved' => true])),
                     Action::make('sendEmail')
                         ->label('Email Link')
                         ->icon('heroicon-m-envelope')
-                        ->color('info')
+                        ->color('gray')
                         ->form([
                             TextInput::make('recipient_email')
                                 ->label('Recipient Email')

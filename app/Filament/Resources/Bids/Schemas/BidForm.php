@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Bids\Schemas;
 
 use App\Models\Bid;
+use App\Support\Money;
 use App\Support\PrivateStorage;
 use Filament\Forms\Components\BaseFileUpload;
 use Filament\Forms\Components\DatePicker;
@@ -48,7 +49,7 @@ class BidForm
                                     ->numeric()
                                     ->default(0)
                                     ->live(onBlur: true)
-                                    ->suffix('Birr')
+                                    ->suffix(fn (): string => Money::suffix())
                                     ->required(),
                                 DatePicker::make('deadline_date')
                                     ->label('Closing Date'),
@@ -57,7 +58,7 @@ class BidForm
                                     ->numeric()
                                     ->minValue(0)
                                     ->maxValue(fn (callable $get): float => (float) ($get('estimated_value') ?? 0))
-                                    ->suffix('Birr'),
+                                    ->suffix(fn (): string => Money::suffix()),
                                 Hidden::make('status')
                                     ->default(Bid::STATUS_DRAFT),
                             ]),

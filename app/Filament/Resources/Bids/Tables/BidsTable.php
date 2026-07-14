@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Bids\Tables;
 
 use App\Filament\Resources\Bids\BidResource;
 use App\Filament\Support\PanelAccess;
+use App\Filament\Tables\Filters\DateRangeFilter;
 use App\Models\Bank;
 use App\Models\Bid;
 use App\Models\Bond;
@@ -57,14 +58,13 @@ class BidsTable
                 TextColumn::make('estimated_value')
                     ->formatStateUsing(fn ($state): string => Money::format($state))
                     ->sortable(),
-                TextColumn::make('bid_bond_amount')
-                    ->label('Bond')
-                    ->formatStateUsing(fn ($state): string => Money::format($state ?? 0)),
                 TextColumn::make('deadline_date')
                     ->date()
                     ->sortable(),
             ])
             ->filters([
+                DateRangeFilter::make('deadline_date_range', 'deadline_date', 'Deadline date'),
+
                 SelectFilter::make('status')
                     ->options(Bid::statusOptions()),
                 SelectFilter::make('partner_id')
@@ -79,7 +79,7 @@ class BidsTable
                     Action::make('send_bond')
                         ->label('Send Bid Bond')
                         ->icon('heroicon-o-arrow-up-tray')
-                        ->color('warning')
+                        ->color('gray')
                         ->visible(fn (Bid $record): bool => $record->status === Bid::STATUS_DRAFT
                             && (float) ($record->bid_bond_amount ?? 0) > 0
                             && blank($record->currentBidBond()?->issue_payment_id)
@@ -102,7 +102,7 @@ class BidsTable
                     Action::make('submit')
                         ->label('Submit Bid')
                         ->icon('heroicon-o-paper-airplane')
-                        ->color('primary')
+                        ->color('gray')
                         ->visible(fn (Bid $record): bool => $record->status === Bid::STATUS_DRAFT && PanelAccess::canManageJobOrders())
                         ->requiresConfirmation()
                         ->action(function (Bid $record): void {
@@ -113,7 +113,7 @@ class BidsTable
                     Action::make('return_bond')
                         ->label('Return Bid Bond')
                         ->icon('heroicon-o-arrow-down-tray')
-                        ->color('success')
+                        ->color('gray')
                         ->visible(fn (Bid $record): bool => filled($record->currentBidBond()?->issue_payment_id)
                             && blank($record->currentBidBond()?->recovery_payment_id)
                             && PanelAccess::canManageBidBonds())
@@ -133,7 +133,7 @@ class BidsTable
                     Action::make('award')
                         ->label('Mark Awarded')
                         ->icon('heroicon-o-trophy')
-                        ->color('success')
+                        ->color('gray')
                         ->visible(fn (Bid $record): bool => $record->status === Bid::STATUS_SUBMITTED && PanelAccess::canManageJobOrders())
                         ->requiresConfirmation()
                         ->action(function (Bid $record): void {
@@ -144,7 +144,7 @@ class BidsTable
                     Action::make('mark_lost')
                         ->label('Mark Lost')
                         ->icon('heroicon-o-x-circle')
-                        ->color('danger')
+                        ->color('gray')
                         ->visible(fn (Bid $record): bool => $record->status === Bid::STATUS_SUBMITTED && PanelAccess::canManageJobOrders())
                         ->requiresConfirmation()
                         ->action(function (Bid $record): void {
@@ -155,7 +155,7 @@ class BidsTable
                     Action::make('send_performance_bond')
                         ->label('Send Performance Bond')
                         ->icon('heroicon-o-shield-check')
-                        ->color('warning')
+                        ->color('gray')
                         ->visible(fn (Bid $record): bool => $record->status === Bid::STATUS_AWARDED
                             && blank($record->activePerformanceBond())
                             && PanelAccess::canManageBidBonds())
@@ -179,7 +179,7 @@ class BidsTable
                     Action::make('return_performance_bond')
                         ->label('Recover Performance Bond')
                         ->icon('heroicon-o-arrow-down-tray')
-                        ->color('success')
+                        ->color('gray')
                         ->visible(fn (Bid $record): bool => in_array($record->status, [Bid::STATUS_AWARDED, Bid::STATUS_BOND_SENT], true)
                             && filled($record->activePerformanceBond())
                             && PanelAccess::canManageBidBonds())
@@ -219,7 +219,7 @@ class BidsTable
                     ->label('Performance Bond Amount')
                     ->numeric()
                     ->required()
-                    ->suffix('Birr'),
+                    ->suffix(fn (): string => Money::suffix()),
                 ...self::bondPaymentFields(includeReference: false),
                 Textarea::make('notes')
                     ->maxLength(65535)

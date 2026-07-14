@@ -10,6 +10,7 @@ use App\Models\Payment;
 use App\Models\PurchaseOrder;
 use App\Models\SalesOrder;
 use App\Models\Setting;
+use App\Support\Money;
 use App\Support\PrivateStorage;
 use App\Support\SequentialNumber;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -67,8 +68,8 @@ class InvoiceGeneratorService
             'balance_due' => $order->balance,
             'status' => $this->getInvoiceStatus($order),
             'terms' => $settings->invoice_terms,
-            'currency_code' => $settings->currency_code ?? 'Birr',
-            'currency_symbol' => $settings->currency_symbol ?? 'Birr',
+            'currency_code' => Money::currencyCode(),
+            'currency_symbol' => Money::suffix(),
             'options' => array_merge([
                 'show_tax_breakdown' => true,
                 'show_payment_status' => true,
@@ -202,8 +203,8 @@ class InvoiceGeneratorService
             'balance_due' => $order->balance,
             'status' => $this->getInvoiceStatus($order),
             'terms' => $settings->invoice_terms,
-            'currency_code' => $settings->currency_code ?? 'Birr',
-            'currency_symbol' => $settings->currency_symbol ?? 'Birr',
+            'currency_code' => Money::currencyCode(),
+            'currency_symbol' => Money::suffix(),
             'options' => array_merge([
                 'show_tax_breakdown' => true,
                 'show_payment_status' => true,
@@ -319,8 +320,8 @@ class InvoiceGeneratorService
             'status' => $this->getInvoiceStatus($order),
             'notes' => $order->remarks ?? null,
             'terms' => $settings->invoice_terms,
-            'currency_code' => $settings->currency_code ?? 'Birr',
-            'currency_symbol' => $settings->currency_symbol ?? 'Birr',
+            'currency_code' => Money::currencyCode(),
+            'currency_symbol' => Money::suffix(),
             'options' => array_merge([
                 'show_service_details' => true,
                 'show_tax_breakdown' => true,
@@ -404,8 +405,8 @@ class InvoiceGeneratorService
             'tax_amount' => $taxCalculations['total_tax'],
             'total_amount' => $totalSubtotal + $taxCalculations['total_tax'],
             'terms' => $settings->invoice_terms,
-            'currency_code' => $settings->currency_code ?? 'Birr',
-            'currency_symbol' => $settings->currency_symbol ?? 'Birr',
+            'currency_code' => Money::currencyCode(),
+            'currency_symbol' => Money::suffix(),
             'options' => array_merge([
                 'show_order_breakdown' => true,
                 'show_tax_breakdown' => true,
@@ -674,8 +675,8 @@ class InvoiceGeneratorService
             'balance_due' => (float) $invoice->balance_due,
             'status' => $invoice->status,
             'terms' => Setting::getSettings()->invoice_terms,
-            'currency_code' => Setting::getSettings()->currency_code ?? 'Birr',
-            'currency_symbol' => Setting::getSettings()->currency_symbol ?? 'Birr',
+            'currency_code' => Money::currencyCode(),
+            'currency_symbol' => Money::suffix(),
             'options' => array_merge([
                 'show_tax_breakdown' => true,
                 'show_payment_status' => true,

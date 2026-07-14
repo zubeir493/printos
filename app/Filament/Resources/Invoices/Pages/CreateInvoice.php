@@ -87,7 +87,7 @@ class CreateInvoice extends CreateRecord
                     'total_amount' => $this->record->total_amount,
                     'balance_due' => $this->record->balance_due,
                     'company_info' => config('invoice.company', [
-                        'name' => config('app.name', 'PrintOS'),
+                        'name' => config('app.name', 'Packledge'),
                     ]),
                 ],
             ], $recipient);

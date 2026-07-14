@@ -17,7 +17,7 @@ test('company logo uses a local file path for invoice rendering and a public url
     Storage::disk('public')->put('logos/company.png', 'logo image contents');
 
     $settings = Setting::create([
-        'company_name' => 'PrintOS',
+        'company_name' => 'Packledge',
         'company_logo' => 'logos/company.png',
     ]);
 
@@ -45,7 +45,7 @@ test('invoice templates use embedded logo data when available', function (): voi
             ],
             'items' => [],
             'company_info' => [
-                'name' => 'PrintOS',
+                'name' => 'Packledge',
                 'address' => null,
                 'phone' => null,
                 'email' => null,
@@ -74,7 +74,7 @@ test('proforma pdf template uses embedded logo data when available', function ()
             'proforma_number' => 'PRO-2026-000001',
             'issue_date' => '2026-05-16',
             'company_info' => [
-                'name' => 'PrintOS',
+                'name' => 'Packledge',
                 'phone' => null,
                 'email' => null,
                 'tax_id' => null,
@@ -133,4 +133,39 @@ test('settings page stores a single logo path and reloads it after saving', func
 
     expect($logo)->toBe('logos/company.png')
         ->and(Storage::disk('public')->exists($logo))->toBeTrue();
+});
+
+test('settings page is organized into persistent tabs', function (): void {
+    $source = file_get_contents(app_path('Filament/Pages/Settings.php'));
+
+    expect($source)
+        ->toContain("Tabs::make('Settings sections')")
+        ->toContain('->contained(false)')
+        ->toContain('->persistTab()')
+        ->toContain("->persistTabInQueryString('settings-tab')")
+        ->toContain("->keyBindings(['command+s', 'ctrl+s'])")
+        ->toContain("Tab::make('Company')")
+        ->toContain("Tab::make('Finance')")
+        ->toContain("Tab::make('Payroll')")
+        ->toContain("Tab::make('Communication')")
+        ->toContain("Tab::make('Integrations')")
+        ->toContain('Section::make()')
+        ->toContain('HasUnsavedDataChangesAlert')
+        ->toContain('$this->rememberData();')
+        ->not->toContain("Section::make('Tax & VAT Settings')")
+        ->not->toContain("Section::make('Invoice Settings')")
+        ->not->toContain("Section::make('Currency & Fiscal Year')");
+});
+
+test('settings tabs use the scoped underline style', function (): void {
+    $source = file_get_contents(resource_path('css/filament/admin/theme.css'));
+
+    expect($source)
+        ->toContain('.settings-tabs > .fi-tabs')
+        ->toContain('border-bottom: 1px solid var(--gray-200);')
+        ->toContain('margin-inline: 0;')
+        ->toContain('.settings-tabs > .fi-tabs .fi-tabs-item.fi-active::after')
+        ->toContain('background: var(--primary-600);')
+        ->toContain('.settings-tabs > .fi-sc-tabs-tab.fi-active')
+        ->toContain('margin-top: 2rem;');
 });

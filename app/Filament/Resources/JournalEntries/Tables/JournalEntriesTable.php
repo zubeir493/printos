@@ -4,12 +4,10 @@ namespace App\Filament\Resources\JournalEntries\Tables;
 
 use App\Filament\Exports\JournalEntryExporter;
 use App\Filament\Support\TableBadgeFormatter;
+use App\Filament\Tables\Filters\DateRangeFilter;
 use App\Support\Money;
-use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
-use Filament\Actions\ExportAction;
 use Filament\Actions\ExportBulkAction;
-use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -42,6 +40,7 @@ class JournalEntriesTable
                     }),
             ])
             ->filters([
+                DateRangeFilter::make('entry_date_range', 'entry_date', 'Entry date'),
                 SelectFilter::make('status')
                     ->options([
                         'draft' => 'Draft',
@@ -49,15 +48,7 @@ class JournalEntriesTable
                         'void' => 'Void',
                     ]),
             ])
-            ->recordActions([
-                ActionGroup::make([
-                    ViewAction::make(),
-                ]),
-            ])
-            ->headerActions([
-                ExportAction::make()
-                    ->exporter(JournalEntryExporter::class),
-            ])
+            ->recordActions([])
             ->bulkActions([
                 BulkActionGroup::make([
                     ExportBulkAction::make()

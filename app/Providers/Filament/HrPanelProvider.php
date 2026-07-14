@@ -8,7 +8,6 @@ use App\Filament\Hr\Widgets\HrPanelStats;
 use App\Filament\Hr\Widgets\LeaveApprovalRateWidget;
 use App\Filament\Hr\Widgets\WorkforceMixWidget;
 use App\Filament\Pages\Auth\EditProfile;
-use App\Filament\Resources\AttendanceImports\AttendanceImportResource;
 use App\Filament\Resources\AttendanceSegments\AttendanceSegmentResource;
 use App\Filament\Resources\Employees\EmployeeResource;
 use App\Filament\Resources\Holidays\HolidayResource;
@@ -40,7 +39,7 @@ class HrPanelProvider extends PanelProvider
             ->path('hr')
             ->authGuard('web')
             ->viteTheme('resources/css/filament/admin/theme.css')
-            ->font('Albert Sans')
+            ->font('Plus Jakarta Sans')
             ->darkMode(false)
             ->defaultThemeMode(ThemeMode::Light)
             ->spa()
@@ -53,7 +52,6 @@ class HrPanelProvider extends PanelProvider
                 'primary' => Color::Indigo,
             ])
             ->resources([
-                AttendanceImportResource::class,
                 AttendanceSegmentResource::class,
                 EmployeeResource::class,
                 HolidayResource::class,

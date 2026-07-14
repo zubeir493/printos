@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Invoices\Tables;
 
+use App\Filament\Tables\Filters\DateRangeFilter;
 use App\Services\InvoiceGeneratorService;
 use App\Support\Money;
 use Filament\Actions\Action as ActionsAction;
@@ -60,6 +61,8 @@ class InvoicesTable
                     ->description(fn ($record) => $record->isOverdue() ? 'Overdue' : null),
             ])
             ->filters([
+                DateRangeFilter::make('due_date_range', 'due_date', 'Due date'),
+
                 SelectFilter::make('invoice_type')
                     ->label('Type')
                     ->options([
@@ -93,10 +96,33 @@ class InvoicesTable
             ->defaultSort('due_date', 'desc')
             ->actions([
                 ActionGroup::make([
+                    ActionsAction::make('mark_sent')
+                        ->label('Mark Sent')
+                        ->icon('heroicon-o-paper-airplane')
+                        ->color('gray')
+                        ->visible(fn ($record): bool => in_array($record->status, ['draft', 'unpaid'], true))
+                        ->action(function ($record): void {
+                            $record->update(['status' => 'sent']);
+
+                            Notification::make()->title('Invoice marked as sent')->success()->send();
+                        }),
+
+                    ActionsAction::make('cancel_invoice')
+                        ->label('Cancel Invoice')
+                        ->icon('heroicon-o-x-circle')
+                        ->color('gray')
+                        ->requiresConfirmation()
+                        ->visible(fn ($record): bool => in_array($record->status, ['draft', 'sent', 'unpaid', 'partial', 'overdue'], true))
+                        ->action(function ($record): void {
+                            $record->update(['status' => 'cancelled']);
+
+                            Notification::make()->title('Invoice cancelled')->success()->send();
+                        }),
 
                     ActionsAction::make('download')
                         ->label('Download')
                         ->icon('heroicon-o-arrow-down-tray')
+                        ->color('gray')
                         ->url(function ($record) {
                             $invoiceService = app(InvoiceGeneratorService::class);
 
@@ -107,7 +133,7 @@ class InvoicesTable
                     ActionsAction::make('email')
                         ->label('Email Invoice')
                         ->icon('heroicon-o-envelope')
-                        ->color('primary')
+                        ->color('gray')
                         ->form([
                             TextInput::make('email')
                                 ->label('Email Address')
@@ -137,7 +163,7 @@ class InvoicesTable
                                             'balance_due' => $record->balance_due,
                                             'message' => $data['message'] ?? null,
                                             'company_info' => config('invoice.company', [
-                                                'name' => config('app.name', 'PrintOS'),
+                                                'name' => config('app.name', 'Packledge'),
                                             ]),
                                         ],
                                     ],

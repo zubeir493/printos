@@ -25,7 +25,6 @@ class AttendanceDemoSeeder extends Seeder
                     'pension_enabled' => true,
                     'basic_salary' => 28000,
                     'transport_allowance' => 2500,
-                    'overtime_multiplier' => 1.5,
                     'payment_method' => 'bank',
                     'bank_name' => 'Bank of Abyssinia',
                     'account_number' => '9000'.$employee['attendance_device_id'],

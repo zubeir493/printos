@@ -4,19 +4,22 @@ namespace App\Filament\Resources\JobOrders\Tables;
 
 use App\Enums\PaymentTransactionType;
 use App\Filament\Exports\JobOrderExporter;
+use App\Filament\Resources\JobOrders\JobOrderResource;
 use App\Filament\Support\PanelAccess;
+use App\Filament\Tables\Filters\DateRangeFilter;
 use App\Models\Bank;
 use App\Models\Payment;
 use App\Services\InvoiceGeneratorService;
+use App\States\JobOrder\Cancelled;
+use App\States\JobOrder\Completed;
 use App\Support\Money;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
-use Filament\Actions\EditAction;
-use Filament\Actions\ExportAction;
 use Filament\Actions\ExportBulkAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Grid;
@@ -27,6 +30,7 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class JobOrdersTable
 {
@@ -79,11 +83,9 @@ class JobOrdersTable
                         && ($record->production_mode ?? null) !== 'make_to_stock')
                     ->sortable(),
             ])
-            ->headerActions([
-                ExportAction::make()
-                    ->exporter(JobOrderExporter::class),
-            ])
             ->filters([
+                DateRangeFilter::make('submission_date_range', 'submission_date', 'Submission date'),
+
                 TernaryFilter::make('payment_status')
                     ->label('Payment Status')
                     ->placeholder('All')
@@ -108,24 +110,123 @@ class JobOrdersTable
                     ->toggle(),
             ])
             ->defaultSort('submission_date', 'desc')
-            ->actions([
-                ActionGroup::make([
-                    EditAction::make()
-                        ->visible(fn () => PanelAccess::canManageJobOrders()),
-                ]),
-            ])
             ->recordActions([
                 ActionGroup::make([
+                    Action::make('edit')
+                        ->label('Edit')
+                        ->icon('heroicon-o-pencil-square')
+                        ->color('gray')
+                        ->url(fn ($record): string => JobOrderResource::getUrl('edit', ['record' => $record]))
+                        ->visible(fn () => PanelAccess::canManageJobOrders()),
                     Action::make('print_job_order')
                         ->label('Print Job Order')
                         ->icon('heroicon-o-printer')
                         ->color('gray')
                         ->url(fn ($record): string => route('job-orders.print', $record))
                         ->openUrlInNewTab(),
+                    Action::make('activate')
+                        ->label('Start Job Order')
+                        ->icon('heroicon-o-rocket-launch')
+                        ->color('gray')
+                        ->visible(fn ($record) => (string) $record->status === 'draft' && PanelAccess::canManageJobOrders())
+                        ->requiresConfirmation()
+                        ->modalHeading('Start this Job Order?')
+                        ->modalDescription('This marks the job order as active and signals that work has begun. Make sure all tasks and materials are set up.')
+                        ->action(function ($record): void {
+                            try {
+                                $record->update(['status' => 'active']);
+
+                                Notification::make()
+                                    ->title('Job order is now active')
+                                    ->success()
+                                    ->send();
+                            } catch (ValidationException $exception) {
+                                Notification::make()
+                                    ->title('Job order cannot be started')
+                                    ->body(collect($exception->errors())->flatten()->implode(' '))
+                                    ->danger()
+                                    ->persistent()
+                                    ->send();
+                            } catch (\Throwable $exception) {
+                                Notification::make()
+                                    ->title('Job order could not be started')
+                                    ->body($exception->getMessage())
+                                    ->danger()
+                                    ->persistent()
+                                    ->send();
+                            }
+                        }),
+                    Action::make('complete')
+                        ->label('Mark as Completed')
+                        ->icon('heroicon-o-check-circle')
+                        ->color('gray')
+                        ->visible(fn ($record) => (string) $record->status === 'active' && PanelAccess::canManageJobOrders())
+                        ->requiresConfirmation()
+                        ->modalHeading('Complete Job Order')
+                        ->modalDescription('Mark this job order as completed? Make sure all tasks and dispatches are done.')
+                        ->action(function ($record): void {
+                            $record->status->transitionTo(Completed::class);
+                            Notification::make()->title('Job order marked as completed')->success()->send();
+                        }),
+                    Action::make('cancel_job_order')
+                        ->label('Cancel')
+                        ->icon('heroicon-o-x-circle')
+                        ->color('gray')
+                        ->visible(fn ($record) => (string) $record->status === 'active' && PanelAccess::canManageJobOrders())
+                        ->form([
+                            Textarea::make('cancel_reason')
+                                ->label('Reason for cancellation')
+                                ->placeholder('Why is this job order being cancelled?')
+                                ->required()
+                                ->rows(3),
+                        ])
+                        ->modalHeading('Cancel Job Order')
+                        ->action(function ($record, array $data): void {
+                            $record->update(['remarks' => trim(($record->remarks ? $record->remarks."\n\n" : '').'Cancelled: '.$data['cancel_reason'])]);
+                            $record->status->transitionTo(Cancelled::class);
+                            Notification::make()->title('Job order cancelled')->danger()->send();
+                        }),
+                    Action::make('issue_materials')
+                        ->label('Issue Materials')
+                        ->icon('heroicon-o-archive-box-arrow-down')
+                        ->color('gray')
+                        ->url(fn ($record): string => JobOrderResource::getUrl('view', ['record' => $record]))
+                        ->visible(
+                            fn ($record) => PanelAccess::canAccessWarehouseSection() &&
+                                ! in_array($record->status, ['completed', 'cancelled']) &&
+                                $record->materialRequests()
+                                    ->whereColumn('issued_quantity', '<', 'requested_quantity')
+                                    ->whereDoesntHave('pendingIssueApprovals', fn ($query) => $query->where('status', 'pending'))
+                                    ->whereHas('jobOrderTask', fn ($q) => $q->whereNotIn('status', ['completed', 'cancelled']))
+                                    ->exists()
+                        ),
+                    Action::make('return_materials')
+                        ->label('Return Materials')
+                        ->icon('heroicon-o-arrow-path')
+                        ->color('gray')
+                        ->url(fn ($record): string => JobOrderResource::getUrl('view', ['record' => $record]))
+                        ->visible(
+                            fn ($record) => PanelAccess::canAccessWarehouseSection() &&
+                                $record->status !== 'completed' &&
+                                $record->materialRequests()
+                                    ->where('issued_quantity', '>', 0)
+                                    ->whereHas('jobOrderTask', fn ($q) => $q->where('status', '!=', 'completed'))
+                                    ->exists()
+                        ),
+                    Action::make('generate_po')
+                        ->label('Generate PO')
+                        ->icon('heroicon-o-shopping-cart')
+                        ->color('gray')
+                        ->url(fn ($record): string => JobOrderResource::getUrl('view', ['record' => $record]))
+                        ->visible(
+                            fn ($record) => PanelAccess::canManagePurchaseOrders() &&
+                                (string) $record->status === 'active' &&
+                                collect($record->materials_summary)->where('remaining', '>', 0)->isNotEmpty()
+                        ),
                     Action::make('invoice')
                         ->label('Invoice')
                         ->icon('heroicon-o-document-text')
-                        ->color('primary')
+                        ->color('gray')
                         ->hidden(fn ($record) => ! is_object($record)
                             || $record->invoices()->exists()
                             || ! PanelAccess::canSeeMoneyValues()
@@ -160,7 +261,7 @@ class JobOrdersTable
                     Action::make('pay')
                         ->label('Receive Payment')
                         ->icon('heroicon-o-banknotes')
-                        ->color('success')
+                        ->color('gray')
                         ->visible(fn ($record) => is_object($record)
                             && $record->balance > 0
                             && PanelAccess::canAccessFinanceSection()
@@ -194,7 +295,7 @@ class JobOrdersTable
                                     ->label('Total Applied')
                                     ->required()
                                     ->numeric()
-                                    ->suffix('Birr')
+                                    ->suffix(fn (): string => Money::suffix())
                                     ->default(fn ($record) => $record->balance)
                                     ->helperText(fn ($record) => 'Balance: '.Money::format($record->balance)),
                                 TextInput::make('withholding_amount')
@@ -203,7 +304,7 @@ class JobOrdersTable
                                     ->default(0)
                                     ->minValue(0)
                                     ->maxValue(fn (callable $get): float => (float) ($get('amount') ?? 0))
-                                    ->suffix('Birr'),
+                                    ->suffix(fn (): string => Money::suffix()),
                                 TextInput::make('reference')
                                     ->label('Memo / Reference')
                                     ->placeholder('Receipt number, cheque number, or short note')

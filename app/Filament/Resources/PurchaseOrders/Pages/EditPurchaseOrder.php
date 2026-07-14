@@ -42,8 +42,8 @@ class EditPurchaseOrder extends EditRecord
                 Action::make('receive_items')
                     ->label('Receive Items')
                     ->icon('heroicon-o-truck')
-                    ->color('success')
-                    ->visible(fn (PurchaseOrder $record) => PanelAccess::canAccessWarehouseSection() && ! in_array($record->status, ['draft', 'cancelled']))
+                    ->color('gray')
+                    ->visible(fn () => PanelAccess::canAccessWarehouseSection())
                     ->form([
                         Grid::make(2)->schema([
                             Select::make('warehouse_id')
@@ -143,7 +143,8 @@ class EditPurchaseOrder extends EditRecord
 
                         Notification::make()->title('Items received successfully')->success()->send();
                     }),
-                DeleteAction::make(),
+                DeleteAction::make()
+                    ->color('gray'),
             ]),
         ];
     }

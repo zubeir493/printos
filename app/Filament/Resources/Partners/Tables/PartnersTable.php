@@ -3,13 +3,15 @@
 namespace App\Filament\Resources\Partners\Tables;
 
 use App\Filament\Exports\PartnerExporter;
+use App\Filament\Resources\Partners\PartnerResource;
 use App\Filament\Support\PanelAccess;
+use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
-use Filament\Actions\ExportAction;
 use Filament\Actions\ExportBulkAction;
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -61,12 +63,14 @@ class PartnersTable
             ->recordActions([
                 ActionGroup::make([
                     EditAction::make()
+                        ->color('gray')
                         ->visible(fn () => PanelAccess::canManagePartners()),
+                    Action::make('statement')
+                        ->label('Statement')
+                        ->icon(Heroicon::OutlinedDocumentText)
+                        ->color('gray')
+                        ->url(fn ($record): string => PartnerResource::getUrl('statement', ['record' => $record])),
                 ]),
-            ])
-            ->headerActions([
-                ExportAction::make()
-                    ->exporter(PartnerExporter::class),
             ])
             ->bulkActions([
                 BulkActionGroup::make([

@@ -3,6 +3,7 @@
 namespace App\Filament\Exports;
 
 use App\Models\PurchaseOrder;
+use App\Support\Money;
 use Filament\Actions\Exports\ExportColumn;
 use Filament\Actions\Exports\Exporter;
 use Filament\Actions\Exports\Models\Export;
@@ -24,15 +25,15 @@ class PurchaseOrderExporter extends Exporter
             ExportColumn::make('order_date')
                 ->label('Order Date'),
             ExportColumn::make('subtotal')
-                ->label('Subtotal (Birr)'),
+                ->label('Subtotal ('.Money::suffix().')'),
             ExportColumn::make('tax_amount')
-                ->label('Tax Amount (Birr)'),
+                ->label('Tax Amount ('.Money::suffix().')'),
             ExportColumn::make('total')
-                ->label('Total (Birr)'),
+                ->label('Total ('.Money::suffix().')'),
             ExportColumn::make('paid_amount')
-                ->label('Paid Amount (Birr)'),
+                ->label('Paid Amount ('.Money::suffix().')'),
             ExportColumn::make('balance')
-                ->label('Balance (Birr)'),
+                ->label('Balance ('.Money::suffix().')'),
             ExportColumn::make('status')
                 ->label('Status'),
         ];

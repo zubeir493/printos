@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\StockAdjustments\Tables;
 
+use App\Filament\Tables\Filters\DateRangeFilter;
 use App\Models\Warehouse;
 use Filament\Actions\Action as ActionsAction;
 use Filament\Actions\ActionGroup;
@@ -35,6 +36,8 @@ class StockAdjustmentsTable
                     ->sortable(),
             ])
             ->filters([
+                DateRangeFilter::make('adjustment_date_range', 'adjustment_date', 'Adjustment date'),
+
                 SelectFilter::make('status')
                     ->options([
                         'draft' => 'Draft',
@@ -49,7 +52,7 @@ class StockAdjustmentsTable
                 ActionGroup::make([
                     ActionsAction::make('post')
                         ->label('Post')
-                        ->color('success')
+                        ->color('gray')
                         ->icon('heroicon-o-check-circle')
                         ->requiresConfirmation()
                         ->visible(fn ($record) => $record->status === 'draft')

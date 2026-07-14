@@ -17,14 +17,12 @@ class EditStockAdjustment extends EditRecord
     {
         return [
             ActionGroup::make([
-                DeleteAction::make()
-                    ->hidden(fn ($record) => $record->status === 'posted'),
+                DeleteAction::make(),
                 Action::make('post')
                     ->label('Post Adjustment')
-                    ->color('success')
+                    ->color('gray')
                     ->icon('heroicon-o-check-circle')
                     ->requiresConfirmation()
-                    ->visible(fn ($record) => $record->status === 'draft')
                     ->action(function ($record) {
                         $record->post();
                         $this->refreshFormData(['status', 'posted_at']);

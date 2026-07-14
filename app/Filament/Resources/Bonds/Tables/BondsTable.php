@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Bonds\Tables;
 
+use App\Filament\Tables\Filters\DateRangeFilter;
 use App\Models\Bank;
 use App\Models\Bond;
 use App\Support\Money;
@@ -56,6 +57,8 @@ class BondsTable
                     ->sortable(),
             ])
             ->filters([
+                DateRangeFilter::make('issue_date_range', 'issue_date', 'Issue date'),
+
                 SelectFilter::make('type')
                     ->options(Bond::typeOptions()),
                 SelectFilter::make('status')
@@ -75,7 +78,7 @@ class BondsTable
                 Action::make('return_bond')
                     ->label('Return Bond')
                     ->icon('heroicon-o-arrow-down-tray')
-                    ->color('success')
+                    ->color('gray')
                     ->visible(fn (Bond $record): bool => filled($record->issue_payment_id) && blank($record->recovery_payment_id))
                     ->schema(fn (Bond $record): array => self::bondPaymentSchema($record))
                     ->action(fn (Bond $record, array $data): mixed => self::handleBondAction(

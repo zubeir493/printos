@@ -6,6 +6,7 @@ use App\Models\InventoryBalance;
 use App\Models\InventoryItem;
 use App\Models\StockMovement;
 use App\Models\Warehouse;
+use App\Support\Money;
 use App\Support\StockTransferQuantity;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
@@ -85,10 +86,10 @@ class StockMovementForm
                     }),
                 TextInput::make('unit_cost')
                     ->numeric()
-                    ->suffix(' Birr'),
+                    ->suffix(fn (): string => Money::suffix()),
                 TextInput::make('total_cost')
                     ->numeric()
-                    ->suffix(' Birr'),
+                    ->suffix(fn (): string => Money::suffix()),
                 DateTimePicker::make('movement_date')
                     ->seconds(false)
                     ->default(now())

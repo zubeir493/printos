@@ -31,6 +31,16 @@ class PaymentResource extends Resource
         return PanelAccess::canAccessFinanceSection();
     }
 
+    public static function canEdit(Model $record): bool
+    {
+        return false;
+    }
+
+    public static function canDelete(Model $record): bool
+    {
+        return false;
+    }
+
     public static function getGloballySearchableAttributes(): array
     {
         return ['payment_number', 'partner.name', 'reference'];
@@ -63,7 +73,13 @@ class PaymentResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()->with(['partner']);
+        return parent::getEloquentQuery()->with([
+            'expenseAccount',
+            'expenseTrackingBid',
+            'expenseTrackingEmployee',
+            'expenseTrackingItem',
+            'partner',
+        ]);
     }
 
     public static function getRelations(): array

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\CostEstimates\Tables;
 
+use App\Filament\Tables\Filters\DateRangeFilter;
 use App\Models\CostEstimate;
 use App\Models\Partner;
 use App\Services\Costing\CostEstimateService;
@@ -46,13 +47,15 @@ class CostEstimatesTable
                     })
                     ->formatStateUsing(fn (string $state): string => str($state)->headline()->value()),
                 TextColumn::make('unit_price')
-                    ->formatStateUsing(fn ($state): string => number_format((float) $state, 4).' Birr')
+                    ->formatStateUsing(fn ($state): string => Money::format($state, 4))
                     ->sortable(),
                 TextColumn::make('total')
                     ->formatStateUsing(fn ($state): string => Money::format($state))
                     ->sortable(),
             ])
             ->filters([
+                DateRangeFilter::make('created_date_range', 'created_at', 'Created date'),
+
                 SelectFilter::make('job_type')
                     ->options([
                         'books' => 'Books',
@@ -75,7 +78,7 @@ class CostEstimatesTable
                     Action::make('finalize')
                         ->label('Finalize')
                         ->icon('heroicon-o-check-circle')
-                        ->color('success')
+                        ->color('gray')
                         ->requiresConfirmation()
                         ->visible(fn (CostEstimate $record): bool => $record->status === 'draft')
                         ->action(function (CostEstimate $record): void {
@@ -85,7 +88,7 @@ class CostEstimatesTable
                     Action::make('create_proforma')
                         ->label('Create Proforma')
                         ->icon('heroicon-o-document-text')
-                        ->color('primary')
+                        ->color('gray')
                         ->visible(fn (CostEstimate $record): bool => in_array($record->status, ['draft', 'finalized'], true))
                         ->schema([
                             Select::make('partner_id')

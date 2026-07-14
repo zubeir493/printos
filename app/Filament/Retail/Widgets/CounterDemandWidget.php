@@ -16,8 +16,6 @@ class CounterDemandWidget extends SparklineTableWidget
 
     protected ?string $widgetLabel = 'Counter Demand';
 
-    protected string $widgetCurrency = 'ETB';
-
     protected function getData(): SparklineTableWidgetData
     {
         $periods = $this->comparisonPeriods();

@@ -62,4 +62,9 @@ class PayrollRunEmployee extends Model
     {
         return $this->hasMany(PayrollLineItem::class);
     }
+
+    public function overtimeEntries(): HasMany
+    {
+        return $this->hasMany(PayrollOvertimeEntry::class);
+    }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\PurchaseOrderItems\Schemas;
 
+use App\Support\Money;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -25,7 +26,7 @@ class PurchaseOrderItemForm
                 TextInput::make('unit_price')
                     ->required()
                     ->numeric()
-                    ->suffix('Birr'),
+                    ->suffix(fn (): string => Money::suffix()),
                 TextInput::make('total')
                     ->required()
                     ->numeric(),

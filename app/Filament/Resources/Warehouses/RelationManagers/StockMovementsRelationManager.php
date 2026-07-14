@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Warehouses\RelationManagers;
 
+use App\Filament\Tables\Filters\DateRangeFilter;
 use App\Support\DateTimeDisplay;
 use App\Support\StockTransferQuantity;
 use Filament\Resources\RelationManagers\RelationManager;
@@ -51,6 +52,8 @@ class StockMovementsRelationManager extends RelationManager
                     ->weight('bold'),
             ])
             ->filters([
+                DateRangeFilter::make('movement_date_range', 'movement_date', 'Movement date'),
+
                 SelectFilter::make('type')
                     ->options([
                         'purchase' => 'Purchase',

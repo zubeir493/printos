@@ -257,7 +257,7 @@ class AccountingWorkflowTest extends TestCase
             'name' => 'Withholding Bank',
             'code' => 'WHB',
             'account_number' => '1234567890',
-            'account_holder_name' => 'PrintOS',
+            'account_holder_name' => 'Packledge',
             'bank_name' => 'Withholding Bank',
             'branch' => 'Main',
             'current_balance' => 0,

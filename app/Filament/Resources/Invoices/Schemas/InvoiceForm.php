@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Invoices\Schemas;
 
 use App\Models\Partner;
 use App\Models\Setting;
+use App\Support\Money;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -64,7 +65,7 @@ class InvoiceForm
                                     ->default(false),
                                 TextInput::make('subtotal')
                                     ->label('Subtotal')
-                                    ->suffix('Birr')
+                                    ->suffix(fn (): string => Money::suffix())
                                     ->numeric()
                                     ->step(0.01)
                                     ->required()
@@ -81,7 +82,7 @@ class InvoiceForm
 
                                 TextInput::make('tax_amount')
                                     ->label(fn () => 'Tax ('.(Setting::getSettings()->vat_rate ?? 0).'%)')
-                                    ->suffix('Birr')
+                                    ->suffix(fn (): string => Money::suffix())
                                     ->numeric()
                                     ->step(0.01)
                                     ->required()
@@ -90,7 +91,7 @@ class InvoiceForm
 
                                 TextInput::make('total_amount')
                                     ->label('Total')
-                                    ->suffix('Birr')
+                                    ->suffix(fn (): string => Money::suffix())
                                     ->numeric()
                                     ->step(0.01)
                                     ->required()

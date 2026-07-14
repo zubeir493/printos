@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Dispatches\Tables;
 
+use App\Filament\Tables\Filters\DateRangeFilter;
 use App\Models\JobOrder;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -41,6 +42,8 @@ class DispatchesTable
                     ->searchable(),
             ])
             ->filters([
+                DateRangeFilter::make('delivery_date_range', 'delivery_date', 'Delivery date'),
+
                 SelectFilter::make('job_order_id')
                     ->label('Job Order')
                     ->options(JobOrder::pluck('job_order_number', 'id')->toArray()),
@@ -57,7 +60,7 @@ class DispatchesTable
                     Action::make('complete_dispatch')
                         ->label('Mark as Delivered')
                         ->icon('heroicon-o-check-circle')
-                        ->color('success')
+                        ->color('gray')
                         ->visible(fn ($record) => $record->status === 'pending')
                         ->requiresConfirmation()
                         ->modalHeading('Confirm Delivery')
@@ -73,7 +76,7 @@ class DispatchesTable
                     Action::make('cancel_dispatch')
                         ->label('Cancel Dispatch')
                         ->icon('heroicon-o-x-circle')
-                        ->color('danger')
+                        ->color('gray')
                         ->visible(fn ($record) => $record->status === 'pending')
                         ->requiresConfirmation()
                         ->modalHeading('Cancel Dispatch')

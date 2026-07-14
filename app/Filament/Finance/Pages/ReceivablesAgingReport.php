@@ -8,6 +8,7 @@ use App\Models\SalesOrder;
 use App\Support\Money;
 use BackedEnum;
 use Carbon\Carbon;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\ExportAction;
 use Filament\Forms;
 use Filament\Forms\Components\DatePicker;
@@ -43,6 +44,16 @@ class ReceivablesAgingReport extends Page implements HasForms, HasTable
     public function mount(): void
     {
         $this->asOfDate = now()->toDateString();
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            ActionGroup::make([
+                ExportAction::make()
+                    ->exporter(ReceivablesAgingExporter::class),
+            ]),
+        ];
     }
 
     public function report(): array
@@ -94,11 +105,7 @@ class ReceivablesAgingReport extends Page implements HasForms, HasTable
                     ->label('Customer')
                     ->relationship('partner', 'name'),
             ])
-            ->defaultSort('order_date', 'desc')
-            ->headerActions([
-                ExportAction::make()
-                    ->exporter(ReceivablesAgingExporter::class),
-            ]);
+            ->defaultSort('order_date', 'desc');
     }
 
     protected function agingQuery(): Builder

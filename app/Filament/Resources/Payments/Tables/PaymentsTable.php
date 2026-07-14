@@ -4,13 +4,19 @@ namespace App\Filament\Resources\Payments\Tables;
 
 use App\Enums\PaymentTransactionType;
 use App\Filament\Exports\PaymentExporter;
+use App\Filament\Resources\Payments\Actions\VoidPaymentAction;
+use App\Filament\Tables\Filters\DateRangeFilter;
 use App\Support\Money;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
-use Filament\Actions\ExportAction;
 use Filament\Actions\ExportBulkAction;
+use Filament\Actions\ViewAction;
+use Filament\Forms\Components\Select;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class PaymentsTable
 {
@@ -50,11 +56,12 @@ class PaymentsTable
                     ->date()
                     ->sortable(),
             ])
-            ->headerActions([
-                ExportAction::make()
-                    ->exporter(PaymentExporter::class),
-            ])
             ->filters([
+                DateRangeFilter::make('payment_date_range', 'payment_date', 'Payment date'),
+                SelectFilter::make('transaction_type')
+                    ->label('Transaction Type')
+                    ->options(PaymentTransactionType::paymentFormOptions())
+                    ->searchable(),
                 SelectFilter::make('direction')
                     ->options([
                         'inbound' => 'Inbound',
@@ -67,9 +74,30 @@ class PaymentsTable
                         'cheque' => 'Cheque',
                         'cpo' => 'CPO',
                     ]),
+                Filter::make('posted_status')
+                    ->label('Status')
+                    ->schema([
+                        Select::make('value')
+                            ->options([
+                                'posted' => 'Posted',
+                                'voided' => 'Voided',
+                            ]),
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        return match ($data['value'] ?? null) {
+                            'posted' => $query->whereNull('voided_at'),
+                            'voided' => $query->whereNotNull('voided_at'),
+                            default => $query,
+                        };
+                    }),
             ])
             ->defaultSort('payment_date', 'desc')
             ->actions([
+                ActionGroup::make([
+                    ViewAction::make()
+                        ->color('gray'),
+                    VoidPaymentAction::make(),
+                ]),
             ])
             ->bulkActions([
                 BulkActionGroup::make([

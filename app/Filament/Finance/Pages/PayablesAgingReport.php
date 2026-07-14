@@ -8,6 +8,7 @@ use App\Models\PurchaseOrder;
 use App\Support\Money;
 use BackedEnum;
 use Carbon\Carbon;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\ExportAction;
 use Filament\Forms;
 use Filament\Forms\Components\DatePicker;
@@ -43,6 +44,16 @@ class PayablesAgingReport extends Page implements HasForms, HasTable
     public function mount(): void
     {
         $this->asOfDate = now()->toDateString();
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            ActionGroup::make([
+                ExportAction::make()
+                    ->exporter(PayablesAgingExporter::class),
+            ]),
+        ];
     }
 
     public function report(): array
@@ -94,11 +105,7 @@ class PayablesAgingReport extends Page implements HasForms, HasTable
                     ->label('Vendor')
                     ->relationship('partner', 'name'),
             ])
-            ->defaultSort('order_date', 'desc')
-            ->headerActions([
-                ExportAction::make()
-                    ->exporter(PayablesAgingExporter::class),
-            ]);
+            ->defaultSort('order_date', 'desc');
     }
 
     protected function agingQuery(): Builder

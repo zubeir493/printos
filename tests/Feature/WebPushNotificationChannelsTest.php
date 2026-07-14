@@ -3,9 +3,11 @@
 use App\Models\JobOrderTask;
 use App\Models\User;
 use App\Notifications\DesignerAssignedToTask;
+use App\Notifications\TaskSentToProductionNotification;
 use App\UserRole;
 use Illuminate\Contracts\Queue\ShouldQueueAfterCommit;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Notification;
 use NotificationChannels\WebPush\WebPushChannel;
 
 uses(RefreshDatabase::class);
@@ -19,7 +21,12 @@ test('database notifications also include the web push channel', function () {
         ->toBeInstanceOf(ShouldQueueAfterCommit::class)
         ->and($notification->via($designer))
         ->toContain('database')
-        ->toContain(WebPushChannel::class);
+        ->toContain(WebPushChannel::class)
+        ->and($notification->viaConnections())
+        ->toMatchArray([
+            'database' => 'sync',
+            WebPushChannel::class => 'sync',
+        ]);
 });
 
 test('web push notification payload contains a title body and target url', function () {
@@ -38,7 +45,33 @@ test('web push notification payload contains a title body and target url', funct
             'title' => 'Design Task Assigned',
             'body' => "You have been assigned to task 'Plate layout' for job {$task->jobOrder->job_order_number}.\n",
             'data' => [
-                'url' => url('/design'),
+                'url' => route('filament.design.resources.job-order-tasks.view', ['record' => $task]),
             ],
         ]);
+});
+
+test('production users are notified when a task is sent to production', function () {
+    Notification::fake();
+
+    $productionUser = User::factory()->create([
+        'role' => UserRole::Production,
+    ]);
+    $operationsUser = User::factory()->create([
+        'role' => UserRole::Operations,
+    ]);
+    $task = JobOrderTask::factory()->create([
+        'status' => 'design',
+        'name' => 'Cover print',
+    ]);
+
+    $task->update(['status' => 'production']);
+
+    Notification::assertSentTo(
+        $productionUser,
+        TaskSentToProductionNotification::class,
+        fn (TaskSentToProductionNotification $notification): bool => $notification
+            ->toWebPush($productionUser, new stdClass)
+            ->toArray()['data']['url'] === route('filament.production.resources.job-order-tasks.view', ['record' => $task])
+    );
+    Notification::assertNotSentTo($operationsUser, TaskSentToProductionNotification::class);
 });

@@ -5,6 +5,7 @@ namespace App\Filament\Resources\JournalEntries\Schemas;
 use App\Models\Account;
 use App\Models\JobOrder;
 use App\Models\Partner;
+use App\Support\Money;
 use App\Support\PrivateStorage;
 use Filament\Forms\Components\BaseFileUpload;
 use Filament\Forms\Components\DatePicker;
@@ -50,8 +51,8 @@ class JournalEntryForm
                                 ->searchable()
                                 ->preload()
                                 ->required(),
-                            TextInput::make('debit')->numeric()->default(0)->suffix('Birr')->live(),
-                            TextInput::make('credit')->numeric()->default(0)->suffix('Birr')->live(),
+                            TextInput::make('debit')->numeric()->default(0)->suffix(fn (): string => Money::suffix())->live(),
+                            TextInput::make('credit')->numeric()->default(0)->suffix(fn (): string => Money::suffix())->live(),
                             Select::make('party')
                                 ->label('Party')
                                 ->options([
@@ -132,8 +133,8 @@ class JournalEntryForm
                         Textarea::make('narration')->columnSpanFull(),
                     ])->columnSpan(3),
                     Group::make()->schema([
-                        TextInput::make('total_debit')->numeric()->default(0)->suffix('Birr')->disabled()->dehydrated()->same('total_credit'),
-                        TextInput::make('total_credit')->numeric()->default(0)->suffix('Birr')->disabled()->dehydrated(),
+                        TextInput::make('total_debit')->numeric()->default(0)->suffix(fn (): string => Money::suffix())->disabled()->dehydrated()->same('total_credit'),
+                        TextInput::make('total_credit')->numeric()->default(0)->suffix(fn (): string => Money::suffix())->disabled()->dehydrated(),
                     ])->columnSpan(2),
                 ])->columnSpanFull()->columns(5),
             ])->columns(3)->alignCenter();

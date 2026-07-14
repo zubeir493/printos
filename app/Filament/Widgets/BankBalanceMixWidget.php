@@ -3,6 +3,7 @@
 namespace App\Filament\Widgets;
 
 use App\Models\Bank;
+use App\Support\Money;
 use LaravelDaily\FilaWidgets\Data\BreakdownWidgetData;
 use LaravelDaily\FilaWidgets\Widgets\BreakdownWidget;
 
@@ -11,8 +12,6 @@ class BankBalanceMixWidget extends BreakdownWidget
     protected static ?int $sort = 3;
 
     protected ?string $widgetLabel = 'Bank Balance Mix';
-
-    protected string $widgetCurrency = 'ETB';
 
     protected bool $showDelta = false;
 
@@ -30,5 +29,10 @@ class BankBalanceMixWidget extends BreakdownWidget
             labelKey: 'name',
             valueKey: 'current_balance',
         );
+    }
+
+    protected function getWidgetCurrency(): string
+    {
+        return Money::currencyCode();
     }
 }

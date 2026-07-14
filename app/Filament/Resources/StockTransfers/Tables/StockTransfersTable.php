@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\StockTransfers\Tables;
 
+use App\Filament\Tables\Filters\DateRangeFilter;
 use App\Support\DateTimeDisplay;
 use App\Support\StockTransferQuantity;
 use Filament\Actions\ActionGroup;
@@ -45,7 +46,7 @@ class StockTransfersTable
                     ->searchable(),
             ])
             ->filters([
-                //
+                DateRangeFilter::make('transfer_date_range', 'transfer_date', 'Transfer date'),
             ])
             ->defaultSort('transfer_date', 'desc')
             ->recordActions([

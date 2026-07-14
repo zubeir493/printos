@@ -2,9 +2,14 @@
 
 namespace App\Filament\Resources\Partners\Pages;
 
+use App\Filament\Exports\PartnerExporter;
+use App\Filament\Imports\PartnerImporter;
 use App\Filament\Resources\Partners\PartnerResource;
 use App\Filament\Support\PanelAccess;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\CreateAction;
+use Filament\Actions\ExportAction;
+use Filament\Actions\ImportAction;
 use Filament\Resources\Pages\ListRecords;
 
 class ListPartners extends ListRecords
@@ -16,6 +21,12 @@ class ListPartners extends ListRecords
         return [
             CreateAction::make()
                 ->visible(fn () => PanelAccess::canManagePartners()),
+            ActionGroup::make([
+                ImportAction::make()
+                    ->importer(PartnerImporter::class),
+                ExportAction::make()
+                    ->exporter(PartnerExporter::class),
+            ]),
         ];
     }
 }

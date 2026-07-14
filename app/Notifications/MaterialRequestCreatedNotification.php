@@ -29,6 +29,11 @@ class MaterialRequestCreatedNotification extends Notification implements ShouldQ
         return "Task '{$task->name}' on job {$jobOrder->job_order_number} requires {$this->materialRequest->requested_quantity} of {$this->materialRequest->inventoryItem->name}.";
     }
 
+    protected function notificationUrl(object $notifiable): string
+    {
+        return $this->resourceUrl($notifiable, 'material-requests', 'index');
+    }
+
     public function toDatabase(object $notifiable): array
     {
         return FilamentNotification::make()
@@ -36,6 +41,7 @@ class MaterialRequestCreatedNotification extends Notification implements ShouldQ
             ->body($this->webPushBody())
             ->icon('heroicon-o-archive-box-arrow-down')
             ->iconColor('primary')
+            ->actions($this->databaseActions($notifiable, 'Open requests'))
             ->getDatabaseMessage();
     }
 }

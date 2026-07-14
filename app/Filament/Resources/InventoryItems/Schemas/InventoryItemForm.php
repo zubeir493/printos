@@ -4,6 +4,7 @@ namespace App\Filament\Resources\InventoryItems\Schemas;
 
 use App\Filament\Support\PanelAccess;
 use App\Models\InventoryItem;
+use App\Support\Money;
 use App\Support\PrivateStorage;
 use Filament\Forms\Components\BaseFileUpload;
 use Filament\Forms\Components\FileUpload;
@@ -61,7 +62,7 @@ class InventoryItemForm
                         ->numeric()
                         ->hidden(fn ($get) => in_array($get('type'), ['tools', 'spare_parts']) || ! PanelAccess::canSeeMoneyValues())
                         ->required(fn ($get) => ! in_array($get('type'), ['tools', 'spare_parts']) && PanelAccess::canSeeMoneyValues())
-                        ->suffix('Birr')
+                        ->suffix(fn (): string => Money::suffix())
                         ->dehydratedWhenHidden(),
                     TextInput::make('gsm')
                         ->label('GSM')
@@ -80,6 +81,12 @@ class InventoryItemForm
                         ->suffix('%')
                         ->default(5)
                         ->hidden(fn ($get) => $get('type') !== 'raw_material'),
+                    TextInput::make('low_stock_threshold')
+                        ->label('Minimum Stock Level')
+                        ->numeric()
+                        ->minValue(0)
+                        ->suffix(fn ($get) => $get('unit') ?: null)
+                        ->helperText('Notify inventory users when stock reaches this quantity.'),
                     Toggle::make('is_sellable')
                         ->label('Is Sellable')
                         ->hidden(fn ($get) => in_array($get('type'), ['tools', 'spare_parts']))

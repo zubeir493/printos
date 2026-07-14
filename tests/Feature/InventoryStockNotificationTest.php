@@ -6,6 +6,7 @@ use App\Models\StockMovement;
 use App\Models\User;
 use App\Models\Warehouse;
 use App\Notifications\LowStockNotification;
+use App\UserRole;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 
@@ -104,4 +105,35 @@ test('notifications are only sent to users associated with the warehouse', funct
 
     Notification::assertSentTo($user1, LowStockNotification::class);
     Notification::assertNotSentTo($user2, LowStockNotification::class);
+});
+
+test('warehouse role users are notified when stock reaches minimum level', function () {
+    Notification::fake();
+
+    $warehouse = Warehouse::factory()->create();
+    $warehouseUser = User::factory()->create([
+        'role' => UserRole::Warehouse,
+    ]);
+
+    $item = InventoryItem::factory()->create(['low_stock_threshold' => 10]);
+
+    InventoryBalance::factory()->create([
+        'inventory_item_id' => $item->id,
+        'warehouse_id' => $warehouse->id,
+        'quantity_on_hand' => 20,
+    ]);
+
+    StockMovement::factory()->create([
+        'inventory_item_id' => $item->id,
+        'warehouse_id' => $warehouse->id,
+        'quantity' => -10,
+    ]);
+
+    Notification::assertSentTo(
+        $warehouseUser,
+        LowStockNotification::class,
+        fn (LowStockNotification $notification): bool => $notification
+            ->toWebPush($warehouseUser, new stdClass)
+            ->toArray()['data']['url'] === route('filament.warehouse.resources.inventory-items.view', ['record' => $item])
+    );
 });

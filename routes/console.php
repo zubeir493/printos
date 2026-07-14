@@ -9,7 +9,7 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 // Schedule daily database backup at 2 AM
-Schedule::command('backup:database')->dailyAt('02:00');
+Schedule::command('backup:database')->dailyAt('02:00')->withoutOverlapping()->onOneServer();
 
 // Mark overdue invoices every morning
 Schedule::command('invoices:update-overdue')->dailyAt('06:00')->withoutOverlapping();
@@ -19,3 +19,7 @@ Schedule::command('job-orders:notify-late')->dailyAt('06:05')->withoutOverlappin
 
 // Nightly reconciliation safety net — keeps invoice balances in sync
 Schedule::command('invoices:fix-balances')->dailyAt('03:00')->withoutOverlapping();
+
+Schedule::command('payroll:generate-monthly-drafts')->monthlyOn(25, '06:15')->withoutOverlapping()->onOneServer();
+
+Schedule::command('accounting:generate-exports')->everyMinute()->withoutOverlapping()->onOneServer();

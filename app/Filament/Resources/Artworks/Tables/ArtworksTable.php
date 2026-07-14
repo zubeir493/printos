@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Artworks\Tables;
 
+use App\Filament\Tables\Filters\DateRangeFilter;
 use App\Mail\ShareArtwork;
 use App\Models\EmailLog;
 use App\Models\JobOrderTask;
@@ -54,6 +55,8 @@ class ArtworksTable
                     ->sortable(),
             ])
             ->filters([
+                DateRangeFilter::make('uploaded_date_range', 'created_at', 'Uploaded date'),
+
                 SelectFilter::make('job_order_task_id')
                     ->label('Task')
                     ->options(fn () => JobOrderTask::query()
@@ -73,7 +76,7 @@ class ArtworksTable
                     Action::make('approve')
                         ->label('Approve')
                         ->icon('heroicon-m-check-badge')
-                        ->color('success')
+                        ->color('gray')
                         ->hidden(fn ($record) => $record->is_approved)
                         ->visible(fn () => in_array(Filament::getCurrentPanel()?->getId(), ['admin', 'operations']))
                         ->requiresConfirmation()
@@ -88,7 +91,7 @@ class ArtworksTable
                     Action::make('sendEmail')
                         ->label('Send Artwork')
                         ->icon('heroicon-m-envelope')
-                        ->color('success')
+                        ->color('gray')
                         ->form([
                             TextInput::make('recipient_email')
                                 ->label('Recipient Email')

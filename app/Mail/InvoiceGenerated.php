@@ -36,7 +36,7 @@ class InvoiceGenerated extends Mailable
             $this->invoiceData['receipt_data']['receipt_number'] ??
             'Document';
 
-        $subject = $this->options['subject_prefix'] . " #{$invoiceNumber} from " . config('app.name');
+        $subject = $this->options['subject_prefix']." #{$invoiceNumber} from ".config('app.name');
 
         return new Envelope(
             subject: $subject,
@@ -46,7 +46,7 @@ class InvoiceGenerated extends Mailable
     public function content(): Content
     {
         $companyInfo = array_merge([
-            'name' => config('app.name', 'PrintOS'),
+            'name' => config('app.name', 'Packledge'),
             'address' => '',
             'phone' => '',
             'email' => '',
@@ -61,7 +61,7 @@ class InvoiceGenerated extends Mailable
                 'companyInfo' => $companyInfo,
                 'options' => $this->options,
                 'download_url' => isset($this->invoiceData['filename'])
-                    ? PrivateStorage::downloadUrl($this->invoiceData['path'] ?? 'invoices/' . $this->invoiceData['filename'], now()->addDays(7))
+                    ? PrivateStorage::downloadUrl($this->invoiceData['path'] ?? 'invoices/'.$this->invoiceData['filename'], now()->addDays(7))
                     : null,
             ]
         );
@@ -73,7 +73,7 @@ class InvoiceGenerated extends Mailable
 
         if (isset($this->invoiceData['pdf']) && method_exists($this->invoiceData['pdf'], 'output')) {
             return [
-                Attachment::fromData(fn() => $this->invoiceData['pdf']->output(), $filename)
+                Attachment::fromData(fn () => $this->invoiceData['pdf']->output(), $filename)
                     ->withMime('application/pdf'),
             ];
         }
@@ -89,7 +89,7 @@ class InvoiceGenerated extends Mailable
                 try {
                     return Storage::disk(PrivateStorage::diskName())->get($path);
                 } catch (Throwable $e) {
-                    throw new RuntimeException('Invoice PDF could not be read from private storage: ' . $e->getMessage(), 0, $e);
+                    throw new RuntimeException('Invoice PDF could not be read from private storage: '.$e->getMessage(), 0, $e);
                 }
             }, $filename)->withMime('application/pdf'),
         ];

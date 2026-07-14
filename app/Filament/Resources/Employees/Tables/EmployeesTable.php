@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Employees\Tables;
 
+use App\Filament\Tables\Filters\DateRangeFilter;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Tables\Columns\TextColumn;
@@ -38,6 +39,8 @@ class EmployeesTable
                     ->sortable(),
             ])
             ->filters([
+                DateRangeFilter::make('hire_date_range', 'hire_date', 'Hire date'),
+
                 SelectFilter::make('status')
                     ->options([
                         'active' => 'Active',

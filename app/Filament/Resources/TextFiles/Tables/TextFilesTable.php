@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\TextFiles\Tables;
 
+use App\Filament\Tables\Filters\DateRangeFilter;
 use App\Models\JobOrderTask;
 use App\Support\PrivateStorage;
 use Filament\Actions\Action;
@@ -38,6 +39,8 @@ class TextFilesTable
             ])
             ->defaultSort('created_at', 'desc')
             ->filters([
+                DateRangeFilter::make('uploaded_date_range', 'created_at', 'Uploaded date'),
+
                 SelectFilter::make('job_order_task_id')
                     ->label('Task')
                     ->options(fn () => JobOrderTask::query()

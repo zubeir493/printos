@@ -5,8 +5,10 @@ namespace App\Filament\Finance\Pages;
 use App\Filament\Exports\ProfitLossStatementExporter;
 use App\Models\Account;
 use App\Services\Accounting\FinancialReportService;
+use App\Support\FiscalCalendar;
 use App\Support\Money;
 use BackedEnum;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\ExportAction;
 use Filament\Forms;
 use Filament\Forms\Components\DatePicker;
@@ -44,8 +46,18 @@ class ProfitLossStatementReport extends Page implements HasForms, HasTable
 
     public function mount(): void
     {
-        $this->startDate = now()->startOfYear()->toDateString();
+        $this->startDate = FiscalCalendar::currentFiscalYearStart()->toDateString();
         $this->endDate = now()->toDateString();
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            ActionGroup::make([
+                ExportAction::make()
+                    ->exporter(ProfitLossStatementExporter::class),
+            ]),
+        ];
     }
 
     public function report(): array
@@ -90,11 +102,7 @@ class ProfitLossStatementReport extends Page implements HasForms, HasTable
                     ->label('Account Type')
                     ->options($this->accountTypeOptions()),
             ])
-            ->defaultSort('code')
-            ->headerActions([
-                ExportAction::make()
-                    ->exporter(ProfitLossStatementExporter::class),
-            ]);
+            ->defaultSort('code');
     }
 
     protected function accountTypeOptions(): array

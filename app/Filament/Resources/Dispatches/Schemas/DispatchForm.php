@@ -53,12 +53,12 @@ class DispatchForm
                         Select::make('warehouse_id')
                             ->label('Dispatch From Warehouse')
                             ->options(Warehouse::pluck('name', 'id'))
-                            ->default(fn () => Warehouse::where('is_default', true)->value('id'))
+                            ->default(fn() => Warehouse::where('is_default', true)->value('id'))
                             ->required()
                             ->searchable()
                             ->preload()
                             ->live()
-                            ->afterStateUpdated(fn ($state, callable $set) => $set('warehouse_id', $state)),
+                            ->afterStateUpdated(fn($state, callable $set) => $set('warehouse_id', $state)),
                         Textarea::make('remarks')
                             ->columnSpanFull(),
                     ])->columnSpan(3),
@@ -87,8 +87,9 @@ class DispatchForm
                                     ->label($task->name)
                                     ->numeric()
                                     ->default($dispatchedQty)
-                                    ->formatStateUsing(fn ($state) => $state ?? $dispatchedQty)
+                                    ->formatStateUsing(fn($state) => $state ?? $dispatchedQty)
                                     ->minValue(0)
+                                    ->required()
                                     ->reactive()
                                     ->helperText(function (callable $get) use ($task) {
                                         $warehouseId = $get('warehouse_id');
@@ -103,7 +104,7 @@ class DispatchForm
 
                                         // For client jobs, look for WIP items with new SKU format
                                         if ($productionMode === 'make_to_order') {
-                                            $itemSku = 'TASK-'.$task->id;
+                                            $itemSku = 'TASK-' . $task->id;
                                             $inventoryItem = InventoryItem::where('sku', $itemSku)->first();
 
                                             if ($inventoryItem) {

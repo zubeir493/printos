@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Partners\RelationManagers;
 
 use App\Filament\Resources\JobOrders\JobOrderResource;
+use App\Filament\Tables\Filters\DateRangeFilter;
 use App\Support\Money;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\AssociateAction;
@@ -47,7 +48,7 @@ class JobOrdersRelationManager extends RelationManager
                 TextInput::make('total')
                     ->required()
                     ->numeric()
-                    ->prefix('$'),
+                    ->prefix(fn (): string => Money::suffix()),
                 TextInput::make('status')
                     ->required(),
                 TextInput::make('advance_amount')
@@ -85,7 +86,7 @@ class JobOrdersRelationManager extends RelationManager
                     }),
             ])
             ->filters([
-                //
+                DateRangeFilter::make('submission_date_range', 'submission_date', 'Submission date'),
             ])
             ->defaultSort('submission_date', 'desc')
             ->headerActions([

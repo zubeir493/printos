@@ -3,6 +3,7 @@
 namespace App\Filament\Exports;
 
 use App\Models\InventoryItem;
+use App\Support\Money;
 use Filament\Actions\Exports\ExportColumn;
 use Filament\Actions\Exports\Exporter;
 use Filament\Actions\Exports\Models\Export;
@@ -26,7 +27,7 @@ class InventoryItemExporter extends Exporter
             ExportColumn::make('unit')
                 ->label('Base Unit'),
             ExportColumn::make('price')
-                ->label('Price / Value (Birr)'),
+                ->label('Price / Value ('.Money::suffix().')'),
         ];
     }
 

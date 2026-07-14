@@ -16,6 +16,7 @@ use App\Filament\Finance\Widgets\FinancePanelStats;
 use App\Filament\Finance\Widgets\InvoiceCollectionRateWidget;
 use App\Filament\Finance\Widgets\ReceivablesRiskWidget;
 use App\Filament\Pages\Auth\EditProfile;
+use App\Filament\Resources\AccountingExports\AccountingExportResource;
 use App\Filament\Resources\Accounts\AccountResource;
 use App\Filament\Resources\Banks\BankResource;
 use App\Filament\Resources\BankTransactions\BankTransactionResource;
@@ -23,10 +24,12 @@ use App\Filament\Resources\BankTransfers\BankTransferResource;
 use App\Filament\Resources\Bids\BidResource;
 use App\Filament\Resources\Bonds\BondResource;
 use App\Filament\Resources\EmployeeLoans\EmployeeLoanResource;
+use App\Filament\Resources\ExpenseTrackingItems\ExpenseTrackingItemResource;
 use App\Filament\Resources\Invoices\InvoiceResource;
 use App\Filament\Resources\JobOrders\JobOrderResource;
 use App\Filament\Resources\JobOrderTasks\JobOrderTaskResource;
 use App\Filament\Resources\JournalEntries\JournalEntryResource;
+use App\Filament\Resources\OvertimeRules\OvertimeRuleResource;
 use App\Filament\Resources\Partners\PartnerResource;
 use App\Filament\Resources\Payments\PaymentResource;
 use App\Filament\Resources\PayrollRuns\PayrollRunResource;
@@ -60,7 +63,7 @@ class FinancePanelProvider extends PanelProvider
             ->path('finance')
             ->authGuard('web')
             ->viteTheme('resources/css/filament/admin/theme.css')
-            ->font('Albert Sans')
+            ->font('Plus Jakarta Sans')
             ->darkMode(false)
             ->defaultThemeMode(ThemeMode::Light)
             ->spa()
@@ -73,15 +76,18 @@ class FinancePanelProvider extends PanelProvider
                 'primary' => Color::Indigo,
             ])
             ->resources([
+                AccountingExportResource::class,
                 AccountResource::class,
                 BankResource::class,
                 BankTransactionResource::class,
                 BankTransferResource::class,
                 BondResource::class,
                 BidResource::class,
+                ExpenseTrackingItemResource::class,
                 InvoiceResource::class,
                 EmployeeLoanResource::class,
                 PayrollRunResource::class,
+                OvertimeRuleResource::class,
                 JobOrderResource::class,
                 JobOrderTaskResource::class,
                 PartnerResource::class,

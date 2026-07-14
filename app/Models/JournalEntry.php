@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
@@ -62,5 +63,12 @@ class JournalEntry extends Model
     public function journalItems(): HasMany
     {
         return $this->hasMany(JournalItem::class);
+    }
+
+    public function accountingExports(): BelongsToMany
+    {
+        return $this->belongsToMany(AccountingExport::class)
+            ->withPivot('accounting_integration_id')
+            ->withTimestamps();
     }
 }

@@ -4,7 +4,7 @@ self.addEventListener('push', (event) => {
     }
 
     const payload = event.data.json();
-    const title = payload.title || 'PrintOS';
+    const title = payload.title || 'Packledge';
 
     delete payload.title;
 

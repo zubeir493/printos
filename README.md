@@ -1,15 +1,15 @@
-# PrintOS | The Total Print Management Ecosystem
+# Packledge | The Total Print Management Ecosystem
 
 **Stop juggling spreadsheets and start scaling your production.** 
 
-PrintOS is a high-performance ERP designed specifically for the printing industry. From the moment a customer places an order to the second the final package leaves the loading dock, PrintOS synchronizes your entire team, automates your inventory, and protects your profit margins.
+Packledge is a high-performance ERP designed specifically for the printing industry. From the moment a customer places an order to the second the final package leaves the loading dock, Packledge synchronizes your entire team, automates your inventory, and protects your profit margins.
 
 ---
 
 ## 💎 The Competitive Advantage
 
 ### **Total Production Visibility**
-Eliminate the "where is this job?" chaos. PrintOS provides a real-time pulse of your shop floor, tracking every order through design, pre-press, and production.
+Eliminate the "where is this job?" chaos. Packledge provides a real-time pulse of your shop floor, tracking every order through design, pre-press, and production.
 
 ### **Automated Material Intelligence**
 Stop losing money on waste. Our smart inventory engine handles complex unit conversions (like reams-to-sheets) and alerts you to shortages before they stall your presses. 
@@ -20,7 +20,7 @@ Close the loop between operations and accounting. Generate professional invoices
 ---
 
 ## 🏢 A Tailored Experience for Every Role
-PrintOS replaces cluttered interfaces with **Role-Specific Command Centers**. Your team sees only what they need to succeed:
+Packledge replaces cluttered interfaces with **Role-Specific Command Centers**. Your team sees only what they need to succeed:
 
 *   **Sales & Retail:** Swift order entry and CRM tools to keep customers coming back.
 *   **Design & Pre-Press:** Robust artwork management and approval workflows to ensure "Right First Time" printing.
@@ -42,7 +42,7 @@ While your team enjoys a simple, intuitive interface, the engine under the hood 
 ## 🛠 Deployment & Implementation
 
 ### **Developer Quickstart**
-PrintOS is designed for modern DevOps workflows. Launch a local instance in minutes:
+Packledge is designed for modern DevOps workflows. Launch a local instance in minutes:
 
 ```bash
 composer install && npm install && npm run build

@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\JobOrderTasks\Schemas;
 
 use App\Models\InventoryItem;
+use App\Support\Money;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
@@ -32,7 +33,7 @@ class JobOrderTaskForm
                     ->required()
                     ->label('Cost')
                     ->numeric()
-                    ->suffix('Birr'),
+                    ->suffix(fn (): string => Money::suffix()),
                 Textarea::make('instructions')
                     ->label('Design Brief / Instructions')
                     ->placeholder('Describe what needs to be designed, any specific requirements, references, or deadlines...')

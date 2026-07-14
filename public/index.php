@@ -5,7 +5,7 @@ use Illuminate\Http\Request;
 
 define('LARAVEL_START', microtime(true));
 
-$GLOBALS['printos_request_completed'] = false;
+$GLOBALS['packledge_request_completed'] = false;
 
 // Catch PHP fatal errors (max execution time, memory exhaustion, etc.) that
 // kill the process before Laravel can render a response. The shutdown function
@@ -13,7 +13,7 @@ $GLOBALS['printos_request_completed'] = false;
 register_shutdown_function(function (): void {
     $error = error_get_last();
 
-    if ($GLOBALS['printos_request_completed'] ?? false) {
+    if ($GLOBALS['packledge_request_completed'] ?? false) {
         return;
     }
 
@@ -52,7 +52,7 @@ register_shutdown_function(function (): void {
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Something Went Wrong - PrintOS</title>
+        <title>Something Went Wrong - Packledge</title>
         <style>
             *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
             body {
@@ -114,4 +114,4 @@ $app = require_once __DIR__.'/../bootstrap/app.php';
 
 $app->handleRequest(Request::capture());
 
-$GLOBALS['printos_request_completed'] = true;
+$GLOBALS['packledge_request_completed'] = true;

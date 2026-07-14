@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 
@@ -42,6 +43,7 @@ class Account extends Model
         'name',
         'code',
         'type',
+        'default_tracking_type',
     ];
 
     public static function getSystemAccount(string $code, string $defaultName, string $type = 'Asset')
@@ -70,5 +72,17 @@ class Account extends Model
     public function journalItems(): HasMany
     {
         return $this->hasMany(JournalItem::class);
+    }
+
+    public function accountingMappings(): HasMany
+    {
+        return $this->hasMany(AccountingAccountMapping::class);
+    }
+
+    public function peachtreeMapping(): HasOne
+    {
+        return $this->hasOne(AccountingAccountMapping::class)
+            ->whereHas('integration', fn ($query) => $query
+                ->where('provider', AccountingIntegration::PROVIDER_PEACHTREE_DESKTOP));
     }
 }

@@ -2,13 +2,19 @@
 
 namespace App\Filament\Resources\AttendanceSegments\Pages;
 
+use App\Filament\Exports\AttendanceSegmentExporter;
+use App\Filament\Imports\AttendanceSegmentImporter;
 use App\Filament\Resources\AttendanceSegments\AttendanceSegmentResource;
 use App\Models\Employee;
 use App\Services\Hr\RebuildAttendanceDailySummaries;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\CreateAction;
+use Filament\Actions\ExportAction;
+use Filament\Actions\ImportAction;
 use Filament\Resources\Pages\ManageRecords;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\Relation;
+use Illuminate\Validation\Rules\File;
 use Livewire\Attributes\Url;
 
 class ManageAttendanceSegments extends ManageRecords
@@ -43,6 +49,16 @@ class ManageAttendanceSegments extends ManageRecords
         return [
             CreateAction::make()
                 ->after(fn ($record) => app(RebuildAttendanceDailySummaries::class)->forSegments(collect([$record]))),
+            ImportAction::make('importAttendanceCsv')
+                ->label('Import attendance CSV')
+                ->importer(AttendanceSegmentImporter::class)
+                ->fileRules([
+                    File::types(['csv', 'txt'])->max(10240),
+                ]),
+            ActionGroup::make([
+                ExportAction::make()
+                    ->exporter(AttendanceSegmentExporter::class),
+            ]),
         ];
     }
 }

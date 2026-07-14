@@ -18,8 +18,6 @@ class ExecutivePulseWidget extends SparklineTableWidget
 
     protected ?string $widgetLabel = 'Executive Pulse';
 
-    protected string $widgetCurrency = 'ETB';
-
     protected function getData(): SparklineTableWidgetData
     {
         $periods = $this->comparisonPeriods();

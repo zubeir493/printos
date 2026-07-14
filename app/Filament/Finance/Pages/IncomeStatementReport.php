@@ -5,8 +5,10 @@ namespace App\Filament\Finance\Pages;
 use App\Filament\Exports\FinancialAccountExporter;
 use App\Models\Account;
 use App\Services\Accounting\FinancialReportService;
+use App\Support\FiscalCalendar;
 use App\Support\Money;
 use BackedEnum;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\ExportAction;
 use Filament\Forms;
 use Filament\Forms\Components\DatePicker;
@@ -44,8 +46,18 @@ class IncomeStatementReport extends Page implements HasForms, HasTable
 
     public function mount(): void
     {
-        $this->startDate = now()->startOfYear()->toDateString();
+        $this->startDate = FiscalCalendar::currentFiscalYearStart()->toDateString();
         $this->endDate = now()->toDateString();
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            ActionGroup::make([
+                ExportAction::make()
+                    ->exporter(FinancialAccountExporter::class),
+            ]),
+        ];
     }
 
     public function report(): array
@@ -90,11 +102,7 @@ class IncomeStatementReport extends Page implements HasForms, HasTable
                     ->label('Account Type')
                     ->options($this->accountTypeOptions()),
             ])
-            ->defaultSort('code')
-            ->headerActions([
-                ExportAction::make()
-                    ->exporter(FinancialAccountExporter::class),
-            ]);
+            ->defaultSort('code');
     }
 
     protected function accountTypeOptions(): array

@@ -26,40 +26,40 @@ beforeEach(function (): void {
     User::factory()->create(['role' => UserRole::Typist]);
 });
 
-it('shows job order task workflow actions on table view and edit pages with distinct colors', function (): void {
+it('shows job order task workflow actions on table view and edit pages with consistent colors', function (): void {
     $task = makeAssignableJobOrderTask();
 
     Livewire::test(ListJobOrderTasks::class)
         ->assertActionVisible(TestAction::make('assign_designer')->table($task))
-        ->assertActionHasColor(TestAction::make('assign_designer')->table($task), 'info')
+        ->assertActionHasColor(TestAction::make('assign_designer')->table($task), 'gray')
         ->assertActionVisible(TestAction::make('assign_typist')->table($task))
-        ->assertActionHasColor(TestAction::make('assign_typist')->table($task), 'primary');
+        ->assertActionHasColor(TestAction::make('assign_typist')->table($task), 'gray');
 
     Livewire::test(ViewJobOrderTask::class, ['record' => $task->id])
         ->assertActionVisible('assign_designer')
-        ->assertActionHasColor('assign_designer', 'info')
+        ->assertActionHasColor('assign_designer', 'gray')
         ->assertActionVisible('assign_typist')
-        ->assertActionHasColor('assign_typist', 'primary');
+        ->assertActionHasColor('assign_typist', 'gray');
 
     Livewire::test(EditJobOrderTask::class, ['record' => $task->id])
         ->assertActionVisible('assign_designer')
-        ->assertActionHasColor('assign_designer', 'info')
+        ->assertActionHasColor('assign_designer', 'gray')
         ->assertActionVisible('assign_typist')
-        ->assertActionHasColor('assign_typist', 'primary');
+        ->assertActionHasColor('assign_typist', 'gray');
 
     $task->update(['status' => 'design']);
 
     Livewire::test(ListJobOrderTasks::class)
         ->assertActionVisible(TestAction::make('send_to_production')->table($task))
-        ->assertActionHasColor(TestAction::make('send_to_production')->table($task), 'success');
+        ->assertActionHasColor(TestAction::make('send_to_production')->table($task), 'gray');
 
     Livewire::test(ViewJobOrderTask::class, ['record' => $task->id])
         ->assertActionVisible('send_to_production')
-        ->assertActionHasColor('send_to_production', 'success');
+        ->assertActionHasColor('send_to_production', 'gray');
 
     Livewire::test(EditJobOrderTask::class, ['record' => $task->id])
         ->assertActionVisible('send_to_production')
-        ->assertActionHasColor('send_to_production', 'success');
+        ->assertActionHasColor('send_to_production', 'gray');
 });
 
 function makeAssignableJobOrderTask(): JobOrderTask

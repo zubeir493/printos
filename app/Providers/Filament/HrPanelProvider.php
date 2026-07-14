@@ -39,7 +39,7 @@ class HrPanelProvider extends PanelProvider
             ->path('hr')
             ->authGuard('web')
             ->viteTheme('resources/css/filament/admin/theme.css')
-            ->font('Albert Sans')
+            ->font('Plus Jakarta Sans')
             ->darkMode(false)
             ->defaultThemeMode(ThemeMode::Light)
             ->spa()

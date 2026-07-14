@@ -1063,7 +1063,7 @@ DROP TABLE IF EXISTS `settings`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `settings` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `company_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'PrintOS',
+  `company_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Packledge',
   `company_address` text COLLATE utf8mb4_unicode_ci,
   `company_phone` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `company_email` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,

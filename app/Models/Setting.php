@@ -79,7 +79,7 @@ class Setting extends Model
     public static function createDefault(): self
     {
         return static::create([
-            'company_name' => config('app.name', 'PrintOS'),
+            'company_name' => config('app.name', 'Packledge'),
             'company_address' => '123 Business Street, City, Country',
             'company_phone' => '+1234678900',
             'company_email' => 'billing@yourcompany.com',

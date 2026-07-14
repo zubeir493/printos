@@ -33,7 +33,7 @@ class RetailPanelProvider extends PanelProvider
             ->path('retail')
             ->authGuard('web')
             ->viteTheme('resources/css/filament/admin/theme.css')
-            ->font('Albert Sans')
+            ->font('Plus Jakarta Sans')
             ->darkMode(false)
             ->defaultThemeMode(ThemeMode::Light)
             ->spa()

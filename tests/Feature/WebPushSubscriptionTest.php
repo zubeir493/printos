@@ -96,7 +96,7 @@ test('panel pages prompt users to enable browser notifications when permission i
         ->assertSee('canShowPermissionAlert')
         ->assertSee('runAfterUiReady(showPermissionAlert)')
         ->assertSee('DOMContentLoaded')
-        ->assertSee('printos-webpush-enable')
+        ->assertSee('packledge-webpush-enable')
         ->assertSee('subscribe({ requestBrowserPermission: false })', false)
         ->assertDontSee('sessionStorage', false)
         ->assertDontSee('permission-alert-shown', false)

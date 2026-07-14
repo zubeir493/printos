@@ -93,7 +93,7 @@ class JobOrderPrintPdf
             'created_at' => $jobOrder->created_at?->format('Y-m-d'),
             'submission_date' => $jobOrder->submission_date?->format('Y-m-d'),
             'due_date' => $jobOrder->due_date?->format('Y-m-d'),
-            'app_name' => config('app.name', 'PrintOS'),
+            'app_name' => config('app.name', 'Packledge'),
             'company' => [
                 'name' => $companyInfo['name'] ?? null,
                 'phone' => $companyInfo['phone'] ?? null,

@@ -18,10 +18,10 @@ test('filament page titles append the brand name once', function (string $uri, s
     $title = preg_replace('/\s+/', ' ', trim($matches[1] ?? ''));
 
     expect($title)->toBe($expectedTitle)
-        ->and(substr_count($title, 'PrintOS'))->toBe(1);
+        ->and(substr_count($title, 'Packledge'))->toBe(1);
 })->with([
-    'dashboard' => ['/', 'Dashboard - PrintOS'],
-    'cost estimates' => ['/cost-estimates', 'Cost Estimates - PrintOS'],
+    'dashboard' => ['/', 'Dashboard - Packledge'],
+    'cost estimates' => ['/cost-estimates', 'Cost Estimates - Packledge'],
 ]);
 
 test('filament panels use spa navigation for page loading feedback', function (string $provider): void {

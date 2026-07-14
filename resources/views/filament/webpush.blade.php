@@ -50,7 +50,7 @@
             };
 
             const dispatchStatus = async (status = null) => {
-                window.dispatchEvent(new CustomEvent('printos-webpush-status', {
+                window.dispatchEvent(new CustomEvent('packledge-webpush-status', {
                     detail: status ?? await getStatus(),
                 }));
             };
@@ -117,7 +117,7 @@
                                 .label('Enable')
                                 .button()
                                 .close()
-                                .dispatch('printos-webpush-enable'),
+                                .dispatch('packledge-webpush-enable'),
                         ]);
                     }
 
@@ -212,14 +212,14 @@
                 return status;
             };
 
-            window.PrintOsWebPush = {
+            window.PackledgeWebPush = {
                 isSupported,
                 requestPermission,
                 status: getStatus,
                 subscribe,
             };
 
-            window.addEventListener('printos-webpush-enable', async () => {
+            window.addEventListener('packledge-webpush-enable', async () => {
                 const status = await requestPermission();
 
                 if (status.permission === 'granted') {
@@ -237,7 +237,7 @@
                 }
             }
 
-            window.dispatchEvent(new CustomEvent('printos-webpush-ready'));
+            window.dispatchEvent(new CustomEvent('packledge-webpush-ready'));
         })();
     </script>
 @endif

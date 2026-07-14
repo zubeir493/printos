@@ -238,7 +238,7 @@ function createPaymentFormBank(string $name, float $currentBalance): Bank
         'name' => $name,
         'code' => str($name)->headline()->replace(' ', '-')->upper()->limit(20, '')->toString(),
         'account_number' => fake()->numerify('##########'),
-        'account_holder_name' => 'PrintOS',
+        'account_holder_name' => 'Packledge',
         'bank_name' => $name,
         'branch' => 'Main',
         'current_balance' => $currentBalance,

@@ -163,7 +163,7 @@ class InvoicesTable
                                             'balance_due' => $record->balance_due,
                                             'message' => $data['message'] ?? null,
                                             'company_info' => config('invoice.company', [
-                                                'name' => config('app.name', 'PrintOS'),
+                                                'name' => config('app.name', 'Packledge'),
                                             ]),
                                         ],
                                     ],

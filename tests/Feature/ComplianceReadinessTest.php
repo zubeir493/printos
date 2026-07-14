@@ -100,11 +100,17 @@ test('high-risk uploads declare type and size limits', function (string $path): 
         ->toContain('acceptedFileTypes')
         ->toContain('maxSize');
 })->with([
-    'attendance imports' => ['app/Filament/Resources/AttendanceSegments/Pages/ManageAttendanceSegments.php'],
     'artworks' => ['app/Filament/Resources/Artworks/Schemas/ArtworkForm.php'],
     'bids' => ['app/Filament/Resources/Bids/Schemas/BidForm.php'],
     'journal attachments' => ['app/Filament/Resources/JournalEntries/Schemas/JournalEntryForm.php'],
 ]);
+
+test('attendance imports declare csv file validation limits', function (): void {
+    expect(file_get_contents(base_path('app/Filament/Resources/AttendanceSegments/Pages/ManageAttendanceSegments.php')))
+        ->toContain("ImportAction::make('importAttendanceCsv')")
+        ->toContain('fileRules')
+        ->toContain("File::types(['csv', 'txt'])->max(10240)");
+});
 
 test('order payment actions lock payable rows before checking balances', function (string $path): void {
     expect(file_get_contents(base_path($path)))

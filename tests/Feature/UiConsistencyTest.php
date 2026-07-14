@@ -199,18 +199,18 @@ it('keeps export actions in page header action groups instead of table headers',
     }
 });
 
-it('keeps attendance import in the page action group after create', function (): void {
+it('keeps attendance import after create with explicit csv validation', function (): void {
     $source = file_get_contents(base_path('app/Filament/Resources/AttendanceSegments/Pages/ManageAttendanceSegments.php'));
 
     expect($source)
         ->toContain('CreateAction::make()')
         ->toContain('ActionGroup::make([')
-        ->toContain('ImportAction::make()')
+        ->toContain("ImportAction::make('importAttendanceCsv')")
         ->toContain('AttendanceSegmentImporter::class')
-        ->not->toContain("Action::make('importAttendanceCsv')");
+        ->toContain("File::types(['csv', 'txt'])->max(10240)");
 
     expect(strpos($source, 'CreateAction::make()'))
-        ->toBeLessThan(strpos($source, 'ActionGroup::make(['));
+        ->toBeLessThan(strpos($source, "ImportAction::make('importAttendanceCsv')"));
 });
 
 it('does not reorder primary header actions in css', function (): void {

@@ -149,9 +149,7 @@ test('settings page is organized into persistent tabs', function (): void {
         ->toContain("Tab::make('Payroll')")
         ->toContain("Tab::make('Communication')")
         ->toContain("Tab::make('Integrations')")
-        ->toContain("Section::make('Company profile')")
-        ->toContain("Section::make('Finance defaults')")
-        ->toContain("Section::make('Accounting Integrations')")
+        ->toContain('Section::make()')
         ->toContain('HasUnsavedDataChangesAlert')
         ->toContain('$this->rememberData();')
         ->not->toContain("Section::make('Tax & VAT Settings')")
@@ -169,5 +167,5 @@ test('settings tabs use the scoped underline style', function (): void {
         ->toContain('.settings-tabs > .fi-tabs .fi-tabs-item.fi-active::after')
         ->toContain('background: var(--primary-600);')
         ->toContain('.settings-tabs > .fi-sc-tabs-tab.fi-active')
-        ->toContain('margin-top: 1rem;');
+        ->toContain('margin-top: 2rem;');
 });

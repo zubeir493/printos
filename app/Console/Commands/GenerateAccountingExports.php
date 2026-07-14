@@ -6,6 +6,7 @@ use App\Models\AccountingExport;
 use App\Models\AccountingIntegration;
 use App\Services\Accounting\GenerateAccountingExport;
 use Illuminate\Console\Command;
+use Illuminate\Support\Carbon;
 
 class GenerateAccountingExports extends Command
 {
@@ -23,6 +24,11 @@ class GenerateAccountingExports extends Command
 
         foreach ($integrations as $integration) {
             $cutoff = now($integration->timezone);
+
+            if (! $this->option('integration') && ! $this->isDue($integration, $cutoff)) {
+                continue;
+            }
+
             $export = $generator->handle($integration, $cutoff);
 
             if ($export?->status === AccountingExport::STATUS_FAILED) {
@@ -37,5 +43,12 @@ class GenerateAccountingExports extends Command
         }
 
         return self::SUCCESS;
+    }
+
+    private function isDue(AccountingIntegration $integration, Carbon $now): bool
+    {
+        $cutoff = Carbon::parse($integration->daily_cutoff, $integration->timezone);
+
+        return $now->format('H:i') === $cutoff->format('H:i');
     }
 }

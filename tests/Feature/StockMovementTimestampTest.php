@@ -98,9 +98,8 @@ it('filters stock movements by movement date', function (): void {
     ]);
 
     Livewire::test(ListStockMovements::class)
-        ->filterTable('movement_date', [
-            'moved_from' => '2026-05-10',
-            'moved_until' => '2026-05-10',
+        ->filterTable('movement_date_range', [
+            'movement_date' => '2026-05-10 - 2026-05-10',
         ])
         ->assertSee('Included Paper')
         ->assertDontSee('Excluded Ink');

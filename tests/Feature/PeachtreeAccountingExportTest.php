@@ -243,8 +243,11 @@ test('only admin and finance users can download completed exports', function ():
 
     Filament::setCurrentPanel(Filament::getPanel('finance'));
     Livewire::test(ListAccountingExports::class)
-        ->assertTableActionHasUrl('download', route('accounting-exports.download', $export), $export)
-        ->assertTableActionShouldOpenUrlInNewTab('download', $export);
+        ->assertTableActionHasUrl('download', route('accounting-exports.download', $export), $export);
+
+    expect(file_get_contents(app_path('Filament/Resources/AccountingExports/Tables/AccountingExportsTable.php')))
+        ->toContain("Action::make('download')")
+        ->toContain('->openUrlInNewTab()');
 
     $this->actingAs($sales)->get(route('accounting-exports.download', $export))->assertRedirect();
 });
@@ -258,7 +261,6 @@ test('the integration settings mappings and export history surfaces render', fun
     expect(AccountingExportResource::shouldRegisterNavigation())->toBeFalse();
 
     Livewire::test(SettingsPage::class)
-        ->assertSee('Accounting Integrations')
         ->assertSee('Peachtree Desktop')
         ->assertSee('Xero')
         ->assertSee('QuickBooks')

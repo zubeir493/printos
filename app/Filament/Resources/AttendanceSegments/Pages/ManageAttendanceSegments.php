@@ -14,6 +14,7 @@ use Filament\Actions\ImportAction;
 use Filament\Resources\Pages\ManageRecords;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\Relation;
+use Illuminate\Validation\Rules\File;
 use Livewire\Attributes\Url;
 
 class ManageAttendanceSegments extends ManageRecords
@@ -48,9 +49,13 @@ class ManageAttendanceSegments extends ManageRecords
         return [
             CreateAction::make()
                 ->after(fn ($record) => app(RebuildAttendanceDailySummaries::class)->forSegments(collect([$record]))),
+            ImportAction::make('importAttendanceCsv')
+                ->label('Import attendance CSV')
+                ->importer(AttendanceSegmentImporter::class)
+                ->fileRules([
+                    File::types(['csv', 'txt'])->max(10240),
+                ]),
             ActionGroup::make([
-                ImportAction::make()
-                    ->importer(AttendanceSegmentImporter::class),
                 ExportAction::make()
                     ->exporter(AttendanceSegmentExporter::class),
             ]),

@@ -59,6 +59,7 @@ class AccountingExportsTable
                     Action::make('download')
                         ->label('Download Excel')
                         ->icon('heroicon-o-arrow-down-tray')
+                        ->openUrlInNewTab()
                         ->color('gray')
                         ->url(fn (AccountingExport $record): string => route('accounting-exports.download', $record))
                         ->visible(fn (AccountingExport $record): bool => $record->status === AccountingExport::STATUS_COMPLETED),

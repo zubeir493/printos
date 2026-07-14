@@ -13,6 +13,7 @@
                 'PushManager' in window &&
                 'Notification' in window;
 
+<<<<<<< Updated upstream
             const canShowPermissionAlert = () => 'Notification' in window &&
                 Notification.permission !== 'granted';
 
@@ -21,11 +22,58 @@
 
                 if (document.readyState === 'loading') {
                     document.addEventListener('DOMContentLoaded', run, { once: true });
+=======
+            const subscriptionStorageKey = 'printos.webpush.subscribed';
+            const promptNotificationId = 'printos-webpush-permission-prompt';
+            let isPromptNotificationDismissed = false;
+
+            const closePromptNotification = () => {
+                window.dispatchEvent(new CustomEvent('close-notification', {
+                    detail: {
+                        id: promptNotificationId,
+                    },
+                }));
+            };
+
+            const showPromptNotification = (status) => {
+                if (! status.supported || status.subscribed) {
+                    closePromptNotification();
+>>>>>>> Stashed changes
 
                     return;
                 }
 
+<<<<<<< Updated upstream
                 run();
+=======
+                if (isPromptNotificationDismissed || ! window.FilamentNotification) {
+                    return;
+                }
+
+                closePromptNotification();
+
+                const notification = new window.FilamentNotification()
+                    .id(promptNotificationId)
+                    .title('Enable notifications')
+                    .warning()
+                    .icon('heroicon-o-bell-alert')
+                    .persistent()
+                    .body(status.permission === 'denied'
+                        ? 'Enable notifications for this site in your browser settings to receive important alerts.'
+                        : 'Enable notifications to receive important alerts.');
+
+                if (status.permission !== 'denied') {
+                    notification.actions([
+                        new window.FilamentNotificationAction('enableNotifications')
+                            .label('Enable')
+                            .button()
+                            .color('primary')
+                            .dispatch('printos-webpush-enable-requested'),
+                    ]);
+                }
+
+                notification.send();
+>>>>>>> Stashed changes
             };
 
             const getStatus = async () => {
@@ -50,9 +98,18 @@
             };
 
             const dispatchStatus = async (status = null) => {
+<<<<<<< Updated upstream
                 window.dispatchEvent(new CustomEvent('packledge-webpush-status', {
                     detail: status ?? await getStatus(),
+=======
+                const nextStatus = status ?? await getStatus();
+
+                window.dispatchEvent(new CustomEvent('printos-webpush-status', {
+                    detail: nextStatus,
+>>>>>>> Stashed changes
                 }));
+
+                showPromptNotification(nextStatus);
             };
 
             const urlBase64ToUint8Array = (base64String) => {
@@ -212,7 +269,21 @@
                 return status;
             };
 
+<<<<<<< Updated upstream
             window.PackledgeWebPush = {
+=======
+            window.addEventListener('printos-webpush-enable-requested', () => {
+                subscribe();
+            });
+
+            window.addEventListener('notificationClosed', (event) => {
+                if (event.detail.id === promptNotificationId) {
+                    isPromptNotificationDismissed = true;
+                }
+            });
+
+            window.PrintOsWebPush = {
+>>>>>>> Stashed changes
                 isSupported,
                 requestPermission,
                 status: getStatus,

@@ -72,15 +72,24 @@ test('profile page no longer renders browser notification toggle', function () {
     $this->actingAs($user)
         ->get(route('filament.admin.auth.profile'))
         ->assertSuccessful()
+<<<<<<< Updated upstream
         ->assertDontSee('Enable push notifications?')
         ->assertDontSee('fi-toggle', false)
         ->assertDontSee("status.permission === 'denied'", false)
+=======
+        ->assertSee('Enable push notifications?')
+        ->assertSee('x-bind:disabled="busy || ! status.supported || status.permission === \'denied\'"', false)
+>>>>>>> Stashed changes
         ->assertSee('form.email', false)
         ->assertDontSee('form.name', false)
         ->assertDontSee('fi-simple-layout-header', false);
 });
 
+<<<<<<< Updated upstream
 test('panel pages prompt users to enable browser notifications when permission is missing', function () {
+=======
+test('authenticated panel pages register the web push notification prompt', function () {
+>>>>>>> Stashed changes
     config()->set('webpush.vapid.public_key', 'test-public-key');
 
     $user = User::factory()->create([
@@ -88,6 +97,7 @@ test('panel pages prompt users to enable browser notifications when permission i
     ]);
 
     $this->actingAs($user)
+<<<<<<< Updated upstream
         ->withSession(['show_webpush_permission_prompt' => true])
         ->get(route('filament.admin.auth.profile'))
         ->assertSuccessful()
@@ -120,4 +130,17 @@ test('login flashes browser notification prompt for the next request', function 
     event(new Login('web', User::factory()->create(), false));
 
     expect(session('show_webpush_permission_prompt'))->toBeTrue();
+=======
+        ->get(route('filament.admin.pages.settings'))
+        ->assertSuccessful()
+        ->assertSee('Enable notifications to receive important alerts.')
+        ->assertSee('Enable notifications for this site in your browser settings to receive important alerts.')
+        ->assertSee('Enable notifications')
+        ->assertSee('new window.FilamentNotification()', false)
+        ->assertSee('new window.FilamentNotificationAction(\'enableNotifications\')', false)
+        ->assertSee('.dispatch(\'printos-webpush-enable-requested\')', false)
+        ->assertSee('close-notification', false)
+        ->assertDontSee('fi-callout', false)
+        ->assertDontSee('rounded-lg border border-warning-200', false);
+>>>>>>> Stashed changes
 });

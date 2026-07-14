@@ -63,7 +63,7 @@ class Settings extends Page implements HasForms
             ...$settings->toArray(),
             'timezone' => $settings->timezone ?? $peachtree?->timezone,
             ...collect(AccountingIntegration::providerDefinitions())
-                ->mapWithKeys(fn (array $definition, string $provider): array => [
+                ->mapWithKeys(fn(array $definition, string $provider): array => [
                     $this->integrationToggleKey($provider) => (bool) $integrations->get($provider)?->enabled,
                 ])
                 ->all(),
@@ -110,7 +110,7 @@ class Settings extends Page implements HasForms
         $data = $this->form->getState();
         $integrationData = Arr::only($data, [
             ...array_map(
-                fn (string $provider): string => $this->integrationToggleKey($provider),
+                fn(string $provider): string => $this->integrationToggleKey($provider),
                 array_keys(AccountingIntegration::providerDefinitions()),
             ),
         ]);
@@ -120,7 +120,7 @@ class Settings extends Page implements HasForms
         $existingSettings = Setting::first();
         $existingTaxConfig = $existingSettings?->tax_configuration ?? [];
         $nonVatTaxes = array_values(
-            array_filter($existingTaxConfig, fn ($t) => strtoupper($t['name']) !== 'VAT')
+            array_filter($existingTaxConfig, fn($t) => strtoupper($t['name']) !== 'VAT')
         );
 
         $vatEnabled = (bool) ($data['vat_enabled'] ?? false);
@@ -164,7 +164,7 @@ class Settings extends Page implements HasForms
         $this->form->fill([
             ...$settings->toArray(),
             ...collect(AccountingIntegration::providerDefinitions())
-                ->mapWithKeys(fn (array $definition, string $provider): array => [
+                ->mapWithKeys(fn(array $definition, string $provider): array => [
                     $this->integrationToggleKey($provider) => AccountingIntegration::integrationFor($provider)->enabled,
                 ])
                 ->all(),
@@ -216,7 +216,7 @@ class Settings extends Page implements HasForms
         return [
             Action::make('save')
                 ->label('Save Settings')
-                ->action(fn () => $this->save())
+                ->action(fn() => $this->save())
                 ->keyBindings(['command+s', 'ctrl+s']),
         ];
     }
@@ -235,8 +235,8 @@ class Settings extends Page implements HasForms
     private function companySettingsSchema(): array
     {
         return [
-            Section::make('Company profile')
-                ->description('Identity, location, timezone, and public contact details.')
+            Group::make()
+                // ->description('Identity, location, timezone, and public contact details.')
                 ->schema([
                     Grid::make()
                         ->schema([
@@ -266,7 +266,7 @@ class Settings extends Page implements HasForms
                                         ->directory('logos')
                                         ->visibility('public')
                                         ->imagePreviewHeight('80')
-                                        ->getUploadedFileUsing(fn (BaseFileUpload $component, string $file, string|array|null $storedFileNames): ?array => $this->getCompanyLogoUploadInfo($component, $file, $storedFileNames))
+                                        ->getUploadedFileUsing(fn(BaseFileUpload $component, string $file, string|array|null $storedFileNames): ?array => $this->getCompanyLogoUploadInfo($component, $file, $storedFileNames))
                                         ->helperText('Used on invoices and receipts.'),
                                     Textarea::make('company_address')
                                         ->label('Address')
@@ -297,14 +297,13 @@ class Settings extends Page implements HasForms
     private function financeSettingsSchema(): array
     {
         return [
-            Section::make('Finance defaults')
-                ->description('Currency, fiscal calendar, tax, invoice, and receipt defaults.')
+            Group::make()
                 ->schema([
                     Grid::make(3)
                         ->schema([
                             Select::make('currency_code')
                                 ->label('Currency')
-                                ->options(collect(Money::currencies())->mapWithKeys(fn (array $currency, string $code): array => [
+                                ->options(collect(Money::currencies())->mapWithKeys(fn(array $currency, string $code): array => [
                                     $code => "{$code} ({$currency['suffix']})",
                                 ]))
                                 ->searchable()
@@ -328,7 +327,7 @@ class Settings extends Page implements HasForms
                                 ->maxValue(100)
                                 ->step(0.01)
                                 ->suffix('%')
-                                ->visible(fn (Get $get): bool => (bool) $get('vat_enabled')),
+                                ->visible(fn(Get $get): bool => (bool) $get('vat_enabled')),
                             TextInput::make('invoice_prefix')
                                 ->label('Invoice Prefix')
                                 ->placeholder('INV'),
@@ -353,8 +352,7 @@ class Settings extends Page implements HasForms
     private function payrollSettingsSchema(): array
     {
         return [
-            Section::make('Payroll defaults')
-                ->description('Default deductions and contribution rates used by payroll.')
+            Group::make()
                 ->schema([
                     Grid::make(4)
                         ->schema([
@@ -368,7 +366,7 @@ class Settings extends Page implements HasForms
                                 ->maxValue(100)
                                 ->step(0.01)
                                 ->suffix('%')
-                                ->visible(fn (Get $get): bool => (bool) $get('workers_union_enabled')),
+                                ->visible(fn(Get $get): bool => (bool) $get('workers_union_enabled')),
                             TextInput::make('employee_pension_rate')
                                 ->label('Employee Pension (%)')
                                 ->numeric()
@@ -392,8 +390,7 @@ class Settings extends Page implements HasForms
     private function communicationSettingsSchema(): array
     {
         return [
-            Section::make('Email defaults')
-                ->description('Sender details and footer text for customer-facing emails.')
+            Group::make()
                 ->schema([
                     Grid::make(2)
                         ->schema([
@@ -417,8 +414,7 @@ class Settings extends Page implements HasForms
     private function integrationSettingsTabSchema(): array
     {
         return [
-            Section::make('Accounting Integrations')
-                ->description('Enable accounting connectors and manage provider-specific settings.')
+            Group::make()
                 ->schema([
                     Grid::make(3)
                         ->schema($this->integrationCards()),
@@ -430,7 +426,7 @@ class Settings extends Page implements HasForms
     private function integrationCards(): array
     {
         return collect(AccountingIntegration::providerDefinitions())
-            ->map(fn (array $definition, string $provider): Section => $this->integrationCard($provider, $definition))
+            ->map(fn(array $definition, string $provider): Section => $this->integrationCard($provider, $definition))
             ->values()
             ->all();
     }
@@ -444,7 +440,7 @@ class Settings extends Page implements HasForms
             ->schema([
                 Placeholder::make("{$provider}_brand")
                     ->hiddenLabel()
-                    ->content(fn (): HtmlString => new HtmlString($this->integrationBrandMarkup($definition))),
+                    ->content(fn(): HtmlString => new HtmlString($this->integrationBrandMarkup($definition))),
                 Group::make()
                     ->extraAttributes(['class' => 'integration-footer'])
                     ->schema([
@@ -454,11 +450,11 @@ class Settings extends Page implements HasForms
                                 ->icon(Heroicon::OutlinedCog6Tooth)
                                 ->color('gray')
                                 ->modalHeading("{$definition['name']} settings")
-                                ->fillForm(fn (): array => $this->integrationSettingsState($provider))
-                                ->schema(fn (): array => $this->integrationSettingsSchema($provider))
+                                ->fillForm(fn(): array => $this->integrationSettingsState($provider))
+                                ->schema(fn(): array => $this->integrationSettingsSchema($provider))
                                 ->modalSubmitActionLabel($provider === AccountingIntegration::PROVIDER_PEACHTREE_DESKTOP ? 'Save integration' : 'Close')
                                 ->modalSubmitAction($provider === AccountingIntegration::PROVIDER_PEACHTREE_DESKTOP ? null : false)
-                                ->action(fn (array $data): null => $this->saveIntegrationSettings($provider, $data))
+                                ->action(fn(array $data): null => $this->saveIntegrationSettings($provider, $data))
                                 ->size('sm')
                                 ->modalWidth('lg'),
                         ]),
@@ -572,7 +568,7 @@ class Settings extends Page implements HasForms
             'name' => is_array($storedFileNames) ? ($storedFileNames[$file] ?? basename($file)) : ($storedFileNames ?? basename($file)),
             'size' => $storage->size($file),
             'type' => $storage->mimeType($file),
-            'url' => '/storage/'.ltrim($file, '/'),
+            'url' => '/storage/' . ltrim($file, '/'),
         ];
     }
 }

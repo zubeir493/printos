@@ -19,7 +19,7 @@ class AccountingExportResource extends Resource
 {
     protected static ?string $model = AccountingExport::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedServerStack;
 
     protected static ?string $navigationLabel = 'Peachtree Exports';
 

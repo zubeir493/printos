@@ -43,9 +43,12 @@ use App\Observers\StockMovementObserver;
 use App\Observers\TextFileObserver;
 use App\Policies\PaymentPolicy;
 use Filament\Actions\CreateAction;
+use Filament\Actions\View\ActionsIconAlias;
 use Filament\Forms\Components\FileUpload;
+use Filament\Support\Facades\FilamentIcon;
 use Filament\Support\Facades\FilamentTimezone;
 use Filament\Support\Facades\FilamentView;
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\View\TablesRenderHook;
 use Filament\View\PanelsRenderHook;
@@ -86,6 +89,10 @@ class AppServiceProvider extends ServiceProvider
         }
 
         CreateAction::configureUsing(fn (CreateAction $action) => $action->createAnother(false));
+        FilamentIcon::register([
+            ActionsIconAlias::IMPORT_ACTION_GROUPED => Heroicon::ArrowDownTray,
+            ActionsIconAlias::EXPORT_ACTION_GROUPED => Heroicon::ArrowUpTray,
+        ]);
         FileUpload::configureUsing(fn (FileUpload $component) => $component->preventFilePathTampering());
         TextColumn::configureUsing(
             fn (TextColumn $column) => $column->formatStateUsing(

@@ -2,12 +2,14 @@
 
 namespace App\Filament\Resources\AttendanceSegments\Pages;
 
+use App\Filament\Exports\AttendanceSegmentExporter;
 use App\Filament\Imports\AttendanceSegmentImporter;
 use App\Filament\Resources\AttendanceSegments\AttendanceSegmentResource;
 use App\Models\Employee;
 use App\Services\Hr\RebuildAttendanceDailySummaries;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\CreateAction;
+use Filament\Actions\ExportAction;
 use Filament\Actions\ImportAction;
 use Filament\Resources\Pages\ManageRecords;
 use Illuminate\Database\Eloquent\Builder;
@@ -49,6 +51,8 @@ class ManageAttendanceSegments extends ManageRecords
             ActionGroup::make([
                 ImportAction::make()
                     ->importer(AttendanceSegmentImporter::class),
+                ExportAction::make()
+                    ->exporter(AttendanceSegmentExporter::class),
             ]),
         ];
     }

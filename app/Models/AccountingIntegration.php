@@ -101,7 +101,7 @@ class AccountingIntegration extends Model
     public static function exportableProviders(): array
     {
         return collect(self::providerDefinitions())
-            ->filter(fn (array $definition): bool => $definition['exportable'])
+            ->filter(fn(array $definition): bool => $definition['exportable'])
             ->keys()
             ->values()
             ->all();

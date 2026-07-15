@@ -81,8 +81,6 @@ class Settings extends Page implements HasForms
                     ->hiddenLabel()
                     ->contained(false)
                     ->id('settings-tabs')
-                    ->persistTab()
-                    ->persistTabInQueryString('settings-tab')
                     ->extraAttributes(['class' => 'settings-tabs'])
                     ->tabs([
                         Tab::make('Company')

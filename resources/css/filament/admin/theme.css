@@ -30,9 +30,16 @@
     gap: 1.25rem;
     height: auto;
     margin-inline: 0;
+    overflow-x: auto;
     padding: 0;
+    scroll-behavior: smooth;
+    scrollbar-width: none;
     width: 100%;
     overflow-y: clip;
+}
+
+.settings-tabs > .fi-tabs::-webkit-scrollbar {
+    display: none;
 }
 
 .settings-tabs > .fi-tabs .fi-tabs-item {

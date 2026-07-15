@@ -135,14 +135,14 @@ test('settings page stores a single logo path and reloads it after saving', func
         ->and(Storage::disk('public')->exists($logo))->toBeTrue();
 });
 
-test('settings page is organized into persistent tabs', function (): void {
+test('settings page is organized into non persistent tabs', function (): void {
     $source = file_get_contents(app_path('Filament/Pages/Settings.php'));
 
     expect($source)
         ->toContain("Tabs::make('Settings sections')")
         ->toContain('->contained(false)')
-        ->toContain('->persistTab()')
-        ->toContain("->persistTabInQueryString('settings-tab')")
+        ->not->toContain('->persistTab()')
+        ->not->toContain('->persistTabInQueryString(')
         ->toContain("->keyBindings(['command+s', 'ctrl+s'])")
         ->toContain("Tab::make('Company')")
         ->toContain("Tab::make('Finance')")
@@ -159,13 +159,19 @@ test('settings page is organized into persistent tabs', function (): void {
 
 test('settings tabs use the scoped underline style', function (): void {
     $source = file_get_contents(resource_path('css/filament/admin/theme.css'));
+    $view = file_get_contents(resource_path('views/filament/pages/settings.blade.php'));
 
     expect($source)
         ->toContain('.settings-tabs > .fi-tabs')
         ->toContain('border-bottom: 1px solid var(--gray-200);')
         ->toContain('margin-inline: 0;')
+        ->toContain('overflow-x: auto;')
+        ->toContain('scrollbar-width: none;')
         ->toContain('.settings-tabs > .fi-tabs .fi-tabs-item.fi-active::after')
         ->toContain('background: var(--primary-600);')
         ->toContain('.settings-tabs > .fi-sc-tabs-tab.fi-active')
-        ->toContain('margin-top: 2rem;');
+        ->toContain('margin-top: 2rem;')
+        ->and($view)
+        ->toContain('scrollActiveSettingsTabIntoView')
+        ->toContain("scrollIntoView({ block: 'nearest', inline: 'center' })");
 });

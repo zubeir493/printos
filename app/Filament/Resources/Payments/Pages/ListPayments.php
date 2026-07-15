@@ -25,8 +25,8 @@ class ListPayments extends ListRecords
 
     public const TABLE_TABS = [
         'all' => 'All',
-        'income' => 'Income',
-        'expenses' => 'Expenses',
+        'inbound' => 'Inbound',
+        'outbound' => 'Outbound',
     ];
 
     protected function getHeaderActions(): array
@@ -63,16 +63,10 @@ class ListPayments extends ListRecords
     {
         return [
             'all' => Tab::make(self::TABLE_TABS['all']),
-            'income' => Tab::make(self::TABLE_TABS['income'])
-                ->modifyQueryUsing(fn(Builder $query): Builder => $query->whereIn('transaction_type', [
-                    PaymentTransactionType::CUSTOMER_RECEIPT->value,
-                    PaymentTransactionType::CASH_SALE_RECEIPT->value,
-                ])),
-            'expenses' => Tab::make(self::TABLE_TABS['expenses'])
-                ->modifyQueryUsing(fn(Builder $query): Builder => $query->whereIn('transaction_type', [
-                    PaymentTransactionType::DIRECT_EXPENSE->value,
-                    PaymentTransactionType::PETTY_CASH_EXPENSE->value,
-                ])),
+            'inbound' => Tab::make(self::TABLE_TABS['inbound'])
+                ->modifyQueryUsing(fn (Builder $query): Builder => $query->where('direction', PaymentTransactionType::DIRECTION_INBOUND)),
+            'outbound' => Tab::make(self::TABLE_TABS['outbound'])
+                ->modifyQueryUsing(fn (Builder $query): Builder => $query->where('direction', PaymentTransactionType::DIRECTION_OUTBOUND)),
         ];
     }
 }

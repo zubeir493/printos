@@ -60,6 +60,25 @@ enum PaymentTransactionType: string
         };
     }
 
+    public function paymentFormLabel(): string
+    {
+        return match ($this) {
+            self::CUSTOMER_RECEIPT => 'Receive from customer',
+            self::SUPPLIER_PAYMENT => 'Pay supplier / bill',
+            self::DIRECT_EXPENSE => 'Pay expense now',
+            self::PETTY_CASH_FUNDING => 'Fund petty cash',
+            self::PETTY_CASH_EXPENSE => 'Pay petty cash expense',
+            self::PAYROLL_PAYMENT => 'Pay payroll payable',
+            self::EMPLOYEE_LOAN_DISBURSEMENT => 'Give employee loan',
+            self::EMPLOYEE_LOAN_REPAYMENT => 'Receive employee loan repayment',
+            self::BID_BOND_ISSUE => 'Issue bid bond',
+            self::BID_BOND_RECOVERY => 'Recover bid bond',
+            self::PERFORMANCE_BOND_ISSUE => 'Issue performance bond',
+            self::PERFORMANCE_BOND_RECOVERY => 'Recover performance bond',
+            self::CASH_SALE_RECEIPT => 'Cash sale receipt',
+        };
+    }
+
     public function requiresPartner(): bool
     {
         return in_array($this, [
@@ -125,10 +144,31 @@ enum PaymentTransactionType: string
     }
 
     /**
-     * @return array<string, string>
+     * @return array<string, array<string, string>>
      */
     public static function paymentFormOptions(): array
     {
-        return self::options();
+        return [
+            'Common' => [
+                self::CUSTOMER_RECEIPT->value => self::CUSTOMER_RECEIPT->paymentFormLabel(),
+                self::SUPPLIER_PAYMENT->value => self::SUPPLIER_PAYMENT->paymentFormLabel(),
+                self::DIRECT_EXPENSE->value => self::DIRECT_EXPENSE->paymentFormLabel(),
+            ],
+            'Petty Cash' => [
+                self::PETTY_CASH_FUNDING->value => self::PETTY_CASH_FUNDING->paymentFormLabel(),
+                self::PETTY_CASH_EXPENSE->value => self::PETTY_CASH_EXPENSE->paymentFormLabel(),
+            ],
+            'Payroll & Employee Loans' => [
+                self::PAYROLL_PAYMENT->value => self::PAYROLL_PAYMENT->paymentFormLabel(),
+                self::EMPLOYEE_LOAN_DISBURSEMENT->value => self::EMPLOYEE_LOAN_DISBURSEMENT->paymentFormLabel(),
+                self::EMPLOYEE_LOAN_REPAYMENT->value => self::EMPLOYEE_LOAN_REPAYMENT->paymentFormLabel(),
+            ],
+            'Bonds' => [
+                self::BID_BOND_ISSUE->value => self::BID_BOND_ISSUE->paymentFormLabel(),
+                self::BID_BOND_RECOVERY->value => self::BID_BOND_RECOVERY->paymentFormLabel(),
+                self::PERFORMANCE_BOND_ISSUE->value => self::PERFORMANCE_BOND_ISSUE->paymentFormLabel(),
+                self::PERFORMANCE_BOND_RECOVERY->value => self::PERFORMANCE_BOND_RECOVERY->paymentFormLabel(),
+            ],
+        ];
     }
 }

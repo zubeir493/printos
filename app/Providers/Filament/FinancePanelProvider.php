@@ -24,6 +24,7 @@ use App\Filament\Resources\BankTransfers\BankTransferResource;
 use App\Filament\Resources\Bids\BidResource;
 use App\Filament\Resources\Bonds\BondResource;
 use App\Filament\Resources\EmployeeLoans\EmployeeLoanResource;
+use App\Filament\Resources\Expenses\ExpenseResource;
 use App\Filament\Resources\ExpenseTrackingItems\ExpenseTrackingItemResource;
 use App\Filament\Resources\Invoices\InvoiceResource;
 use App\Filament\Resources\JobOrders\JobOrderResource;
@@ -96,6 +97,7 @@ class FinancePanelProvider extends PanelProvider
                 PurchaseOrderItemResource::class,
                 SalesOrderResource::class,
                 PaymentResource::class,
+                ExpenseResource::class,
                 StockMovementResource::class,
             ])
             ->discoverPages(in: app_path('Filament/Finance/Pages'), for: 'App\Filament\Finance\Pages')

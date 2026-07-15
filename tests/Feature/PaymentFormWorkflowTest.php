@@ -16,6 +16,7 @@ use App\Models\User;
 use App\UserRole;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\Select;
+use Filament\Tables\Filters\TernaryFilter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 
@@ -77,8 +78,22 @@ test('payment form keeps transaction type searchable and drives dependent fields
         ->assertFormFieldDoesNotExist('payment_direction')
         ->assertFormFieldExists('transaction_type', function (Select $field): bool {
             expect($field->isSearchable())->toBeTrue()
-                ->and($field->getOptions())->toHaveKey(PaymentTransactionType::CUSTOMER_RECEIPT->value)
-                ->and($field->getOptions())->toHaveKey(PaymentTransactionType::DIRECT_EXPENSE->value);
+                ->and($field->getOptions())->toHaveKeys([
+                    'Common',
+                    'Petty Cash',
+                    'Payroll & Employee Loans',
+                    'Bonds',
+                ])
+                ->and($field->getOptions()['Common'])
+                ->toBe([
+                    PaymentTransactionType::CUSTOMER_RECEIPT->value => 'Receive from customer',
+                    PaymentTransactionType::SUPPLIER_PAYMENT->value => 'Pay supplier / bill',
+                    PaymentTransactionType::DIRECT_EXPENSE->value => 'Pay expense now',
+                ])
+                ->and($field->getOptions()['Petty Cash'])
+                ->toHaveKey(PaymentTransactionType::PETTY_CASH_EXPENSE->value)
+                ->and($field->getOptions())
+                ->not->toHaveKey(PaymentTransactionType::CASH_SALE_RECEIPT->value);
 
             return true;
         })
@@ -169,14 +184,14 @@ test('tracked direct expenses are created through payments and posted to the led
     ]);
 });
 
-test('payments table tabs are all income and expenses', function (): void {
+test('payments table tabs are all inbound and outbound', function (): void {
     $tabs = (new ListPayments)->getTabs();
 
-    expect(array_keys($tabs))->toBe(['all', 'income', 'expenses'])
+    expect(array_keys($tabs))->toBe(['all', 'inbound', 'outbound'])
         ->and(ListPayments::TABLE_TABS)->toBe([
             'all' => 'All',
-            'income' => 'Income',
-            'expenses' => 'Expenses',
+            'inbound' => 'Inbound',
+            'outbound' => 'Outbound',
         ]);
 });
 
@@ -190,7 +205,51 @@ test('payments table tabs render in the table toolbar', function (): void {
     Livewire::test(ListPayments::class)
         ->assertSeeHtml('payments-toolbar-tabs')
         ->assertDontSeeHtml('resourceTabs')
-        ->assertSeeInOrder(['All', 'Income', 'Expenses']);
+        ->assertSeeInOrder(['All', 'Inbound', 'Outbound']);
+});
+
+test('payments table tabs filter by payment direction', function (): void {
+    Filament::setCurrentPanel(Filament::getPanel('finance'));
+
+    $this->actingAs(User::factory()->create([
+        'role' => UserRole::Finance,
+    ]));
+
+    $inboundPayment = Payment::withoutEvents(fn (): Payment => Payment::factory()->create([
+        'direction' => PaymentTransactionType::DIRECTION_INBOUND,
+        'transaction_type' => PaymentTransactionType::EMPLOYEE_LOAN_REPAYMENT->value,
+    ]));
+    $outboundPayment = Payment::withoutEvents(fn (): Payment => Payment::factory()->create([
+        'direction' => PaymentTransactionType::DIRECTION_OUTBOUND,
+        'transaction_type' => PaymentTransactionType::DIRECT_EXPENSE->value,
+    ]));
+
+    Livewire::test(ListPayments::class)
+        ->set('activeTab', 'inbound')
+        ->assertCanSeeTableRecords([$inboundPayment])
+        ->assertCanNotSeeTableRecords([$outboundPayment])
+        ->set('activeTab', 'outbound')
+        ->assertCanSeeTableRecords([$outboundPayment])
+        ->assertCanNotSeeTableRecords([$inboundPayment]);
+});
+
+test('payments table keeps only the general payment filters', function (): void {
+    Filament::setCurrentPanel(Filament::getPanel('finance'));
+
+    $this->actingAs(User::factory()->create([
+        'role' => UserRole::Finance,
+    ]));
+
+    $component = Livewire::test(ListPayments::class)
+        ->assertTableFilterExists('payment_date_range')
+        ->assertTableFilterExists('transaction_type')
+        ->assertTableFilterExists('posted_status');
+
+    expect($component->instance()->getTable()->getFilters())
+        ->not->toHaveKey('direction')
+        ->not->toHaveKey('method')
+        ->and($component->instance()->getTable()->getFilters()['posted_status'])
+        ->toBeInstanceOf(TernaryFilter::class);
 });
 
 test('payments are view and void only after posting', function (): void {

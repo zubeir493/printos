@@ -25,10 +25,6 @@ class StockMovementResource extends Resource
 
     protected static ?string $navigationLabel = 'Movements';
 
-    protected static ?int $navigationSort = 90;
-
-    protected static ?string $navigationParentItem = 'Warehouses';
-
     public static function form(Schema $schema): Schema
     {
         return StockMovementForm::configure($schema);
@@ -52,7 +48,7 @@ class StockMovementResource extends Resource
     public static function table(Table $table): Table
     {
         return StockMovementsTable::configure($table)
-            ->recordUrl(fn ($record) => static::getUrl('view', ['record' => $record]));
+            ->recordUrl(fn($record) => static::getUrl('view', ['record' => $record]));
     }
 
     public static function getEloquentQuery(): Builder

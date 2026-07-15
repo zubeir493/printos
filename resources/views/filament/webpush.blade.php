@@ -1,5 +1,12 @@
 @auth
 @if (filled(config('webpush.vapid.public_key')))
+    <style>
+        [wire\:key^="printos-webpush-permission-prompt.notifications."] .fi-no-notification-icon {
+            height: 2rem;
+            width: 2rem;
+        }
+    </style>
+
     <script>
         (() => {
             const webPushConfig = {
@@ -13,19 +20,10 @@
                 'PushManager' in window &&
                 'Notification' in window;
 
-<<<<<<< Updated upstream
-            const canShowPermissionAlert = () => 'Notification' in window &&
-                Notification.permission !== 'granted';
-
-            const runAfterUiReady = (callback) => {
-                const run = () => window.setTimeout(callback, 500);
-
-                if (document.readyState === 'loading') {
-                    document.addEventListener('DOMContentLoaded', run, { once: true });
-=======
             const subscriptionStorageKey = 'printos.webpush.subscribed';
             const promptNotificationId = 'printos-webpush-permission-prompt';
             let isPromptNotificationDismissed = false;
+            let hasPromptNotificationBeenShown = false;
 
             const closePromptNotification = () => {
                 window.dispatchEvent(new CustomEvent('close-notification', {
@@ -38,19 +36,21 @@
             const showPromptNotification = (status) => {
                 if (! status.supported || status.subscribed) {
                     closePromptNotification();
->>>>>>> Stashed changes
 
                     return;
                 }
 
-<<<<<<< Updated upstream
-                run();
-=======
-                if (isPromptNotificationDismissed || ! window.FilamentNotification) {
+                if (
+                    ! shouldShowPermissionAlert ||
+                    hasPromptNotificationBeenShown ||
+                    isPromptNotificationDismissed ||
+                    ! window.FilamentNotification
+                ) {
                     return;
                 }
 
                 closePromptNotification();
+                hasPromptNotificationBeenShown = true;
 
                 const notification = new window.FilamentNotification()
                     .id(promptNotificationId)
@@ -65,7 +65,7 @@
                 if (status.permission !== 'denied') {
                     notification.actions([
                         new window.FilamentNotificationAction('enableNotifications')
-                            .label('Enable')
+                            .label('Enable notifications')
                             .button()
                             .color('primary')
                             .dispatch('printos-webpush-enable-requested'),
@@ -73,7 +73,6 @@
                 }
 
                 notification.send();
->>>>>>> Stashed changes
             };
 
             const getStatus = async () => {
@@ -89,24 +88,27 @@
 
                 const registration = await navigator.serviceWorker.getRegistration();
                 const subscription = await registration?.pushManager.getSubscription();
+                const storedSubscriptionState = window.localStorage.getItem(subscriptionStorageKey) === 'true';
 
                 return {
                     supported,
-                    subscribed: subscription !== null && subscription !== undefined,
+                    subscribed: (subscription !== null && subscription !== undefined) || (
+                        storedSubscriptionState &&
+                        Notification.permission === 'granted'
+                    ),
                     permission: Notification.permission,
                 };
             };
 
             const dispatchStatus = async (status = null) => {
-<<<<<<< Updated upstream
-                window.dispatchEvent(new CustomEvent('packledge-webpush-status', {
-                    detail: status ?? await getStatus(),
-=======
                 const nextStatus = status ?? await getStatus();
 
                 window.dispatchEvent(new CustomEvent('printos-webpush-status', {
                     detail: nextStatus,
->>>>>>> Stashed changes
+                }));
+
+                window.dispatchEvent(new CustomEvent('packledge-webpush-status', {
+                    detail: nextStatus,
                 }));
 
                 showPromptNotification(nextStatus);
@@ -149,44 +151,7 @@
                 }
             };
 
-            const showPermissionAlert = () => {
-                if (! canShowPermissionAlert()) {
-                    return;
-                }
-
-                const title = Notification.permission === 'denied'
-                    ? 'Browser notifications are blocked'
-                    : 'Turn on browser notifications';
-                const body = Notification.permission === 'denied'
-                    ? 'Enable notifications for this site in your browser settings to receive important alerts.'
-                    : 'Enable notifications for this browser to receive important alerts as they happen.';
-
-                if (window.FilamentNotification) {
-                    const notification = new window.FilamentNotification()
-                        .title(title)
-                        .body(body)
-                        .warning()
-                        .persistent();
-
-                    if (Notification.permission === 'default' && isSupported() && window.FilamentNotificationAction) {
-                        notification.actions([
-                            new window.FilamentNotificationAction('enableBrowserNotifications')
-                                .label('Enable')
-                                .button()
-                                .close()
-                                .dispatch('packledge-webpush-enable'),
-                        ]);
-                    }
-
-                    notification.send();
-
-                    return;
-                }
-
-                window.alert(`${title}\n\n${body}`);
-            };
-
-            const requestPermission = async () => {
+            const subscribe = async () => {
                 if (! isSupported()) {
                     const status = {
                         supported: false,
@@ -200,41 +165,6 @@
                 }
 
                 const permission = await Notification.requestPermission();
-                const status = {
-                    supported: true,
-                    subscribed: false,
-                    permission,
-                };
-
-                if (permission !== 'granted') {
-                    await dispatchStatus(status);
-                    runAfterUiReady(showPermissionAlert);
-
-                    return status;
-                }
-
-                return {
-                    ...status,
-                    subscribed: (await getStatus()).subscribed,
-                };
-            };
-
-            const subscribe = async ({ requestBrowserPermission = true } = {}) => {
-                if (! isSupported()) {
-                    const status = {
-                        supported: false,
-                        subscribed: false,
-                        permission: 'unsupported',
-                    };
-
-                    await dispatchStatus(status);
-
-                    return status;
-                }
-
-                const permission = requestBrowserPermission
-                    ? (await requestPermission()).permission
-                    : Notification.permission;
 
                 if (permission !== 'granted') {
                     const status = {
@@ -244,7 +174,6 @@
                     };
 
                     await dispatchStatus(status);
-                    runAfterUiReady(showPermissionAlert);
 
                     return status;
                 }
@@ -257,6 +186,8 @@
                 });
 
                 await sendSubscription(subscription);
+                window.localStorage.setItem(subscriptionStorageKey, 'true');
+                closePromptNotification();
 
                 const status = {
                     supported: true,
@@ -269,10 +200,22 @@
                 return status;
             };
 
-<<<<<<< Updated upstream
-            window.PackledgeWebPush = {
-=======
+            const webPush = {
+                isSupported,
+                status: getStatus,
+                subscribe,
+            };
+
+            window.PrintOsWebPush = webPush;
+            window.PackledgeWebPush = webPush;
+
             window.addEventListener('printos-webpush-enable-requested', () => {
+                isPromptNotificationDismissed = true;
+                closePromptNotification();
+                subscribe();
+            });
+
+            window.addEventListener('packledge-webpush-enable', () => {
                 subscribe();
             });
 
@@ -282,32 +225,17 @@
                 }
             });
 
-            window.PrintOsWebPush = {
->>>>>>> Stashed changes
-                isSupported,
-                requestPermission,
-                status: getStatus,
-                subscribe,
-            };
-
-            window.addEventListener('packledge-webpush-enable', async () => {
-                const status = await requestPermission();
-
-                if (status.permission === 'granted') {
-                    await subscribe({ requestBrowserPermission: false });
-                }
-            });
-
             if (isSupported() && Notification.permission === 'granted') {
-                subscribe({ requestBrowserPermission: false });
+                subscribe();
             } else {
                 dispatchStatus();
 
                 if (shouldShowPermissionAlert) {
-                    runAfterUiReady(showPermissionAlert);
+                    window.setTimeout(() => dispatchStatus(), 500);
                 }
             }
 
+            window.dispatchEvent(new CustomEvent('printos-webpush-ready'));
             window.dispatchEvent(new CustomEvent('packledge-webpush-ready'));
         })();
     </script>

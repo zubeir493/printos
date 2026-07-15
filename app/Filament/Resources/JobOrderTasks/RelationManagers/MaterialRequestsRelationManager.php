@@ -2,7 +2,8 @@
 
 namespace App\Filament\Resources\JobOrderTasks\RelationManagers;
 
-use App\Models\Warehouse;
+use App\Filament\Support\MaterialRequestActionForms;
+use App\Models\MaterialRequest;
 use App\Services\MaterialIssueService;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -70,6 +71,10 @@ class MaterialRequestsRelationManager extends RelationManager
             ->recordTitleAttribute('id')
             ->columns([
                 Tables\Columns\TextColumn::make('inventoryItem.name')->label('Material'),
+                Tables\Columns\TextColumn::make('created_at')
+                    ->label('Date')
+                    ->date()
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('required_quantity')->label('Required'),
                 Tables\Columns\TextColumn::make('requested_quantity')->label('Requested'),
                 Tables\Columns\TextColumn::make('issued_quantity')->label('Issued'),
@@ -97,20 +102,12 @@ class MaterialRequestsRelationManager extends RelationManager
                         ->label('Issue')
                         ->icon('heroicon-o-archive-box-arrow-down')
                         ->color('gray')
+                        ->modalHeading(fn (MaterialRequest $record): string => "Issue {$record->inventoryItem->name}")
+                        ->modalWidth('lg')
                         ->visible(fn ($record) => $record->requested_quantity > $record->issued_quantity && ! $record->pendingIssueApprovals()->exists())
                         ->form([
-                            Select::make('warehouse_id')
-                                ->label('Warehouse')
-                                ->options(Warehouse::pluck('name', 'id'))
-                                ->default(fn () => Warehouse::where('is_default', true)->value('id'))
-                                ->required(),
-                            TextInput::make('quantity')
-                                ->label('Quantity to Issue')
-                                ->numeric()
-                                ->required()
-                                ->default(fn ($record) => $record->requested_quantity - $record->issued_quantity)
-                                ->maxValue(fn ($record) => $record->requested_quantity - $record->issued_quantity)
-                                ->helperText('If this exceeds the required quantity, it will be queued for approval instead of issuing immediately.'),
+                            MaterialRequestActionForms::warehouseSelect(),
+                            MaterialRequestActionForms::singleIssueQuantityInput(),
                         ])
                         ->action(function ($record, array $data) {
                             try {

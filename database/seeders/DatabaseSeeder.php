@@ -23,10 +23,6 @@ class DatabaseSeeder extends Seeder
             MachineSeeder::class,
             PartnerSeeder::class,
             UserSeeder::class,
-            PayrollTaxRuleSeeder::class,
-            OvertimeRuleSeeder::class,
-            AttendanceDemoSeeder::class,
-            DemoPortfolioSeeder::class,
         ]);
     }
 }

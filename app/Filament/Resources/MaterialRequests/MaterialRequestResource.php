@@ -3,10 +3,10 @@
 namespace App\Filament\Resources\MaterialRequests;
 
 use App\Filament\Resources\MaterialRequests\Pages\ManageMaterialRequests;
+use App\Filament\Support\MaterialRequestActionForms;
 use App\Filament\Support\PanelAccess;
 use App\Models\JobOrder;
 use App\Models\MaterialRequest;
-use App\Models\Warehouse;
 use App\Services\MaterialIssueService;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -115,6 +115,10 @@ class MaterialRequestResource extends Resource
                     ->label('Material')
                     ->weight('medium')
                     ->searchable(),
+                TextColumn::make('created_at')
+                    ->label('Date')
+                    ->date()
+                    ->sortable(),
                 TextColumn::make('status')
                     ->badge()
                     ->getStateUsing(function ($record) {
@@ -144,7 +148,7 @@ class MaterialRequestResource extends Resource
                     ->searchable(),
                 TextColumn::make('requested_quantity')
                     ->label('Qty')
-                    ->formatStateUsing(fn ($state, $record) => "{$record->issued_quantity} / {$state}")
+                    ->formatStateUsing(fn ($state, $record) => "{$record->issued_quantity} / {$state} {$record->inventoryItem->unit}")
                     ->description('Issued / Requested')
                     ->alignEnd(),
             ])
@@ -184,20 +188,12 @@ class MaterialRequestResource extends Resource
                         ->label('Issue')
                         ->icon('heroicon-m-archive-box-arrow-down')
                         ->color('gray')
+                        ->modalHeading(fn (MaterialRequest $record): string => "Issue {$record->inventoryItem->name}")
+                        ->modalWidth('lg')
                         ->visible(fn ($record) => PanelAccess::canAccessWarehouseSection() && $record->issued_quantity < $record->requested_quantity && ! $record->pendingIssueApprovals()->exists())
                         ->form([
-                            Select::make('warehouse_id')
-                                ->label('Warehouse')
-                                ->options(Warehouse::pluck('name', 'id'))
-                                ->default(fn () => Warehouse::where('is_default', true)->value('id'))
-                                ->required(),
-                            TextInput::make('quantity')
-                                ->label('Quantity to Issue')
-                                ->numeric()
-                                ->required()
-                                ->default(fn ($record) => $record->requested_quantity - $record->issued_quantity)
-                                ->maxValue(fn ($record) => $record->requested_quantity - $record->issued_quantity)
-                                ->helperText('If this quantity exceeds the required amount for the task, it will wait for admin or operations approval before stock is moved.'),
+                            MaterialRequestActionForms::warehouseSelect(),
+                            MaterialRequestActionForms::singleIssueQuantityInput(),
                         ])
                         ->action(function ($record, array $data) {
                             try {

@@ -312,6 +312,19 @@ nav.fi-sidebar-nav::-webkit-scrollbar {
     width: 20px;
 }
 
+.fi-modal-trigger:has(.fi-topbar-database-notifications-btn svg) .fi-icon-btn-badge-ctn{
+    background: var(--primary-600);
+    border-radius: 50%;
+    border: none;
+}
+
+.fi-modal-trigger:has(.fi-topbar-database-notifications-btn svg) .fi-icon-btn-badge-ctn > span {
+    color: var(--color-white);
+    background: transparent;
+    border: none;
+    font-size: .5rem !important;
+}
+
 .fi-user-menu-trigger>img {
     border-radius: 5px;
     width: 28px;

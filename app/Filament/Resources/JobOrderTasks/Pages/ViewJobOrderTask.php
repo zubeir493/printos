@@ -4,8 +4,8 @@ namespace App\Filament\Resources\JobOrderTasks\Pages;
 
 use App\Filament\Resources\JobOrderTasks\Actions\JobOrderTaskWorkflowActions;
 use App\Filament\Resources\JobOrderTasks\JobOrderTaskResource;
+use App\Filament\Support\MaterialRequestActionForms;
 use App\Filament\Support\PanelAccess;
-use App\Models\InventoryBalance;
 use App\Models\InventoryItem;
 use App\Models\JobOrderTask;
 use App\Models\MaterialRequest;
@@ -16,8 +16,6 @@ use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\EditAction;
 use Filament\Facades\Filament;
-use Filament\Forms\Components\Hidden;
-use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
@@ -166,51 +164,13 @@ class ViewJobOrderTask extends ViewRecord
                     ->icon('heroicon-o-document-plus')
                     ->color('gray')
                     ->visible(fn () => Filament::getCurrentPanel()?->getId() === 'production')
-                    ->form(fn ($record) => [
-                        Repeater::make('items')
-                            ->addable(false)
-                            ->deletable(false)
-                            ->reorderable(false)
-                            ->schema([
-                                Select::make('inventory_item_id')
-                                    ->label('Material')
-                                    ->options(InventoryItem::pluck('name', 'id'))
-                                    ->disabled()
-                                    ->dehydrated()
-                                    ->required(),
-                                TextInput::make('requested_quantity')
-                                    ->label('Quantity to Request')
-                                    ->numeric()
-                                    ->required()
-                                    ->hint(fn ($get) => 'Required: '.($record->paper[$get('paper_index')]['required_quantity'] ?? 0)),
-                                Hidden::make('paper_index'),
-                            ])->columns(2)
-                            ->default(fn () => collect($record->paper ?? [])->map(fn ($item, $index) => [
-                                'inventory_item_id' => $item['inventory_item_id'],
-                                'requested_quantity' => ($item['required_quantity'] ?? 0),
-                                'paper_index' => $index,
-                            ])->toArray()),
-                        TextInput::make('reason')
-                            ->label('Reason')
-                            ->required(),
-                    ])
+                    ->modalWidth('lg')
+                    ->form(fn (JobOrderTask $record): array => MaterialRequestActionForms::requestMaterialsForm($record))
                     ->action(function (array $data, $record) {
-                        foreach ($data['items'] as $item) {
-                            if ($item['requested_quantity'] <= 0) {
-                                continue;
-                            }
-
-                            MaterialRequest::create([
-                                'job_order_task_id' => $record->id,
-                                'inventory_item_id' => $item['inventory_item_id'],
-                                'requested_quantity' => $item['requested_quantity'],
-                                'required_quantity' => $record->paper[$item['paper_index']]['required_quantity'] ?? 0,
-                                'reason' => $data['reason'],
-                            ]);
-                        }
+                        $created = MaterialRequestActionForms::createMaterialRequests($record, $data);
 
                         Notification::make()
-                            ->title('Materials Requested')
+                            ->title($created ? 'Materials Requested' : 'No materials requested')
                             ->success()
                             ->send();
                     }),
@@ -224,63 +184,10 @@ class ViewJobOrderTask extends ViewRecord
                             ->whereDoesntHave('pendingIssueApprovals', fn ($query) => $query->where('status', 'pending'))
                             ->exists()
                         && in_array(Filament::getCurrentPanel()?->getId(), ['admin', 'operations', 'warehouse']))
+                    ->modalWidth('lg')
                     ->form(fn ($record) => [
-                        Select::make('warehouse_id')
-                            ->label('Warehouse')
-                            ->options(Warehouse::pluck('name', 'id'))
-                            ->default(fn () => Warehouse::where('is_default', true)->value('id'))
-                            ->required()
-                            ->searchable()
-                            ->live(),
-                        Repeater::make('items')
-                            ->addable(false)
-                            ->deletable(false)
-                            ->reorderable(false)
-                            ->schema([
-                                Hidden::make('material_request_id'),
-                                Select::make('inventory_item_id')
-                                    ->label('Material')
-                                    ->options(InventoryItem::pluck('name', 'id'))
-                                    ->disabled()
-                                    ->dehydrated(),
-                                TextInput::make('quantity')
-                                    ->numeric()
-                                    ->required()
-                                    ->label('Quantity to Issue')
-                                    ->hint(function ($get, $record) {
-                                        $pending = $record->materialRequests->find($get('material_request_id'))?->requested_quantity - $record->materialRequests->find($get('material_request_id'))?->issued_quantity;
-                                        $warehouseId = $get('../../warehouse_id');
-                                        $itemId = $get('inventory_item_id');
-                                        $stock = $warehouseId ? InventoryBalance::where('warehouse_id', $warehouseId)->where('inventory_item_id', $itemId)->value('quantity_on_hand') ?? 0 : 0;
-
-                                        return "Pending: {$pending} | In Stock: {$stock}";
-                                    })
-                                    ->maxValue(function ($get, $record) {
-                                        $pending = $record->materialRequests->find($get('material_request_id'))?->requested_quantity - $record->materialRequests->find($get('material_request_id'))?->issued_quantity;
-                                        $warehouseId = $get('../../warehouse_id');
-                                        $itemId = $get('inventory_item_id');
-                                        $stock = $warehouseId ? InventoryBalance::where('warehouse_id', $warehouseId)->where('inventory_item_id', $itemId)->value('quantity_on_hand') ?? 0 : 0;
-
-                                        return min($pending, $stock);
-                                    })
-                                    ->helperText(function ($get, $record) {
-                                        $warehouseId = $get('../../warehouse_id');
-                                        if (! $warehouseId) {
-                                            return 'Please select a warehouse first.';
-                                        }
-
-                                        return 'If this exceeds the required quantity, it will be queued for approval instead of issuing immediately.';
-                                    }),
-                            ])->columns(2)
-                            ->default(fn () => $record->materialRequests()
-                                ->whereColumn('issued_quantity', '<', 'requested_quantity')
-                                ->whereDoesntHave('pendingIssueApprovals', fn ($query) => $query->where('status', 'pending'))
-                                ->get()
-                                ->map(fn ($mr) => [
-                                    'material_request_id' => $mr->id,
-                                    'inventory_item_id' => $mr->inventory_item_id,
-                                    'quantity' => $mr->requested_quantity - $mr->issued_quantity,
-                                ])->toArray()),
+                        MaterialRequestActionForms::warehouseSelect(),
+                        MaterialRequestActionForms::issueItemsRepeater(),
                     ])
                     ->action(function ($record, $data) {
                         try {

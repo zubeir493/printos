@@ -16,7 +16,7 @@ class VoidPaymentAction
         return Action::make('void')
             ->label('Void Payment')
             ->icon('heroicon-o-arrow-uturn-left')
-            ->color('gray')
+            ->color('danger')
             ->requiresConfirmation()
             ->modalHeading('Void Payment')
             ->modalDescription('This will post a reversing journal entry and mark the original payment as voided.')
@@ -27,7 +27,7 @@ class VoidPaymentAction
                     ->maxLength(500)
                     ->rows(4),
             ])
-            ->visible(fn (Payment $record): bool => Gate::allows('void', $record))
+            ->visible(fn(Payment $record): bool => Gate::allows('void', $record))
             ->action(function (array $data, Payment $record): void {
                 app(VoidPaymentJournalEntry::class)->handle($record, $data['reason'], auth()->user());
 

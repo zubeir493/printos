@@ -89,7 +89,8 @@ class JobOrderTaskWorkflowActions
             ->icon('heroicon-o-arrow-up-tray')
             ->color('gray')
             ->visible(fn ($record): bool => in_array(Filament::getCurrentPanel()?->getId(), ['admin', 'operations'], true)
-                && $record->status === 'design')
+                && ! in_array($record->status, ['completed', 'cancelled', 'production'], true)
+                && ! in_array($record->jobOrder->status, ['completed', 'draft'], true))
             ->requiresConfirmation()
             ->modalDescription('Move this task to production once the required files are ready?')
             ->action(function ($record): void {

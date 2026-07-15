@@ -18,7 +18,7 @@ class InventoryItemSeeder extends Seeder
                 'conversion_factor' => 500,
                 'type' => 'raw_material',
                 'is_sellable' => false,
-                'price' => 0.05,
+                'price' => 5000,
             ],
             [
                 'name' => 'A4 120gsm Glossy Paper',
@@ -28,7 +28,7 @@ class InventoryItemSeeder extends Seeder
                 'conversion_factor' => 500,
                 'type' => 'raw_material',
                 'is_sellable' => false,
-                'price' => 0.12,
+                'price' => 1200,
             ],
             [
                 'name' => 'A5 80gsm Bond Paper',
@@ -38,7 +38,7 @@ class InventoryItemSeeder extends Seeder
                 'conversion_factor' => 500,
                 'type' => 'raw_material',
                 'is_sellable' => false,
-                'price' => 0.04,
+                'price' => 5000,
             ],
             [
                 'name' => 'Sticker Sheet A4',
@@ -48,7 +48,7 @@ class InventoryItemSeeder extends Seeder
                 'conversion_factor' => 25,
                 'type' => 'raw_material',
                 'is_sellable' => false,
-                'price' => 1.20,
+                'price' => 120.00,
             ],
             [
                 'name' => 'Black Ink Cartridge',
@@ -58,7 +58,7 @@ class InventoryItemSeeder extends Seeder
                 'conversion_factor' => 1,
                 'type' => 'raw_material',
                 'is_sellable' => false,
-                'price' => 25.00,
+                'price' => 250.00,
             ],
             [
                 'name' => 'Duplex 70*100cm',
@@ -66,7 +66,7 @@ class InventoryItemSeeder extends Seeder
                 'unit' => 'piece',
                 'purchase_unit' => 'ream',
                 'conversion_factor' => 500,
-                'type' => 'finished_good',
+                'type' => 'raw_material',
                 'is_sellable' => true,
                 'price' => 3500.00,
             ],

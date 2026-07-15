@@ -5,9 +5,9 @@ namespace App\Filament\Resources\JobOrders\Pages;
 use App\Enums\PaymentTransactionType;
 use App\Filament\Resources\JobOrders\JobOrderResource;
 use App\Filament\Resources\PurchaseOrders\Pages\EditPurchaseOrder;
+use App\Filament\Support\MaterialRequestActionForms;
 use App\Filament\Support\PanelAccess;
 use App\Models\Bank;
-use App\Models\InventoryBalance;
 use App\Models\InventoryItem;
 use App\Models\MaterialRequest;
 use App\Models\Partner;
@@ -269,57 +269,12 @@ class ViewJobOrder extends ViewRecord
                                 ->whereHas('jobOrderTask', fn ($q) => $q->whereNotIn('status', ['completed', 'cancelled']))
                                 ->exists()
                     )
+                    ->modalWidth('lg')
                     ->form(fn ($record) => [
-                        Select::make('warehouse_id')
-                            ->label('Warehouse')
-                            ->options(fn (): array => Warehouse::query()->orderBy('name')->pluck('name', 'id')->all())
-                            ->default(fn () => Warehouse::where('is_default', true)->value('id'))
-                            ->required()
-                            ->searchable()
-                            ->live(),
-                        Repeater::make('items')
-                            ->addable(false)
-                            ->deletable(false)
-                            ->reorderable(false)
-                            ->schema([
-                                Hidden::make('material_request_id'),
-                                Select::make('inventory_item_id')
-                                    ->label('Material')
-                                    ->options(fn (): array => InventoryItem::query()->orderBy('name')->pluck('name', 'id')->all())
-                                    ->disabled()
-                                    ->dehydrated(),
-                                TextInput::make('quantity')
-                                    ->numeric()
-                                    ->required()
-                                    ->label('Quantity to Issue')
-                                    ->hint(function ($get, $record) {
-                                        $pending = $record->materialRequests->find($get('material_request_id'))?->requested_quantity - $record->materialRequests->find($get('material_request_id'))?->issued_quantity;
-                                        $warehouseId = $get('../../warehouse_id');
-                                        $itemId = $get('inventory_item_id');
-                                        $stock = $warehouseId ? InventoryBalance::where('warehouse_id', $warehouseId)->where('inventory_item_id', $itemId)->value('quantity_on_hand') ?? 0 : 0;
-
-                                        return "Pending: {$pending} | In Stock: {$stock}";
-                                    })
-                                    ->maxValue(function ($get, $record) {
-                                        $pending = $record->materialRequests->find($get('material_request_id'))?->requested_quantity - $record->materialRequests->find($get('material_request_id'))?->issued_quantity;
-                                        $warehouseId = $get('../../warehouse_id');
-                                        $itemId = $get('inventory_item_id');
-                                        $stock = $warehouseId ? InventoryBalance::where('warehouse_id', $warehouseId)->where('inventory_item_id', $itemId)->value('quantity_on_hand') ?? 0 : 0;
-
-                                        return min($pending, $stock);
-                                    })
-                                    ->helperText('If this exceeds the required quantity, it will be queued for approval instead of issuing immediately.'),
-                            ])->columns(2)
-                            ->default(fn () => $record->materialRequests()
-                                ->whereColumn('issued_quantity', '<', 'requested_quantity')
-                                ->whereDoesntHave('pendingIssueApprovals', fn ($query) => $query->where('status', 'pending'))
-                                ->whereHas('jobOrderTask', fn ($q) => $q->whereNotIn('status', ['completed', 'cancelled']))
-                                ->get()
-                                ->map(fn ($mr) => [
-                                    'material_request_id' => $mr->id,
-                                    'inventory_item_id' => $mr->inventory_item_id,
-                                    'quantity' => $mr->requested_quantity - $mr->issued_quantity,
-                                ])->toArray()),
+                        MaterialRequestActionForms::warehouseSelect(),
+                        MaterialRequestActionForms::issueItemsRepeater(
+                            fn ($query) => $query->whereHas('jobOrderTask', fn ($q) => $q->whereNotIn('status', ['completed', 'cancelled'])),
+                        ),
                     ])
                     ->action(function ($record, $data) {
                         try {

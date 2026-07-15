@@ -72,24 +72,14 @@ test('profile page no longer renders browser notification toggle', function () {
     $this->actingAs($user)
         ->get(route('filament.admin.auth.profile'))
         ->assertSuccessful()
-<<<<<<< Updated upstream
         ->assertDontSee('Enable push notifications?')
         ->assertDontSee('fi-toggle', false)
-        ->assertDontSee("status.permission === 'denied'", false)
-=======
-        ->assertSee('Enable push notifications?')
-        ->assertSee('x-bind:disabled="busy || ! status.supported || status.permission === \'denied\'"', false)
->>>>>>> Stashed changes
         ->assertSee('form.email', false)
         ->assertDontSee('form.name', false)
         ->assertDontSee('fi-simple-layout-header', false);
 });
 
-<<<<<<< Updated upstream
-test('panel pages prompt users to enable browser notifications when permission is missing', function () {
-=======
 test('authenticated panel pages register the web push notification prompt', function () {
->>>>>>> Stashed changes
     config()->set('webpush.vapid.public_key', 'test-public-key');
 
     $user = User::factory()->create([
@@ -97,23 +87,40 @@ test('authenticated panel pages register the web push notification prompt', func
     ]);
 
     $this->actingAs($user)
-<<<<<<< Updated upstream
         ->withSession(['show_webpush_permission_prompt' => true])
-        ->get(route('filament.admin.auth.profile'))
+        ->get(route('filament.admin.pages.settings'))
         ->assertSuccessful()
         ->assertSee('const shouldShowPermissionAlert = true;', false)
-        ->assertSee('Turn on browser notifications')
-        ->assertSee('canShowPermissionAlert')
-        ->assertSee('runAfterUiReady(showPermissionAlert)')
-        ->assertSee('DOMContentLoaded')
-        ->assertSee('packledge-webpush-enable')
-        ->assertSee('subscribe({ requestBrowserPermission: false })', false)
-        ->assertDontSee('sessionStorage', false)
+        ->assertSee('Enable notifications to receive important alerts.')
+        ->assertSee('Enable notifications for this site in your browser settings to receive important alerts.')
+        ->assertSee('Enable notifications')
+        ->assertSee('new window.FilamentNotification()', false)
+        ->assertSee('new window.FilamentNotificationAction(\'enableNotifications\')', false)
+        ->assertSee('[wire\\:key^="printos-webpush-permission-prompt.notifications."] .fi-no-notification-icon', false)
+        ->assertSee('height: 2rem;', false)
+        ->assertSee('! shouldShowPermissionAlert', false)
+        ->assertSee('hasPromptNotificationBeenShown', false)
+        ->assertSee('.dispatch(\'printos-webpush-enable-requested\')', false)
+        ->assertSeeInOrder([
+            "window.addEventListener('printos-webpush-enable-requested'",
+            'isPromptNotificationDismissed = true;',
+            'closePromptNotification();',
+            'subscribe();',
+        ], false)
+        ->assertSeeInOrder([
+            "window.localStorage.setItem(subscriptionStorageKey, 'true');",
+            'closePromptNotification();',
+            'subscribed: true,',
+        ], false)
+        ->assertSee('close-notification', false)
+        ->assertDontSee(".icon('heroicon-o-bell-alert')\n                            .dispatch('printos-webpush-enable-requested')", false)
+        ->assertDontSee('fi-callout', false)
+        ->assertDontSee('rounded-lg border border-warning-200', false)
         ->assertDontSee('permission-alert-shown', false)
         ->assertDontSee('unsubscribe', false);
 });
 
-test('panel pages do not prompt for browser notifications outside login', function () {
+test('panel pages do not force the browser notification prompt outside login', function () {
     config()->set('webpush.vapid.public_key', 'test-public-key');
 
     $user = User::factory()->create([
@@ -121,26 +128,15 @@ test('panel pages do not prompt for browser notifications outside login', functi
     ]);
 
     $this->actingAs($user)
-        ->get(route('filament.admin.auth.profile'))
+        ->get(route('filament.admin.pages.settings'))
         ->assertSuccessful()
-        ->assertSee('const shouldShowPermissionAlert = false;', false);
+        ->assertSee('const shouldShowPermissionAlert = false;', false)
+        ->assertSee('! shouldShowPermissionAlert', false)
+        ->assertSee('hasPromptNotificationBeenShown', false);
 });
 
 test('login flashes browser notification prompt for the next request', function () {
     event(new Login('web', User::factory()->create(), false));
 
     expect(session('show_webpush_permission_prompt'))->toBeTrue();
-=======
-        ->get(route('filament.admin.pages.settings'))
-        ->assertSuccessful()
-        ->assertSee('Enable notifications to receive important alerts.')
-        ->assertSee('Enable notifications for this site in your browser settings to receive important alerts.')
-        ->assertSee('Enable notifications')
-        ->assertSee('new window.FilamentNotification()', false)
-        ->assertSee('new window.FilamentNotificationAction(\'enableNotifications\')', false)
-        ->assertSee('.dispatch(\'printos-webpush-enable-requested\')', false)
-        ->assertSee('close-notification', false)
-        ->assertDontSee('fi-callout', false)
-        ->assertDontSee('rounded-lg border border-warning-200', false);
->>>>>>> Stashed changes
 });

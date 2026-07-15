@@ -46,6 +46,7 @@ class DesignPanelProvider extends PanelProvider
             ->defaultAvatarProvider(PrimaryColorAvatarProvider::class)
             ->profile(EditProfile::class)
             ->brandLogo(asset('images/logo.svg'))
+            ->favicon(asset('images/favicon.svg'))
             ->brandLogoHeight('2rem')
             ->colors([
                 'primary' => Color::Indigo,

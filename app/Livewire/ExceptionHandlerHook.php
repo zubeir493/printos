@@ -3,6 +3,8 @@
 namespace App\Livewire;
 
 use Filament\Notifications\Notification;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
 use Illuminate\Validation\ValidationException;
 use Livewire\ComponentHook;
@@ -18,13 +20,37 @@ class ExceptionHandlerHook extends ComponentHook
             return;
         }
 
-        // Let HTTP exceptions (403, 404, etc.) propagate so the global
-        // handler in bootstrap/app.php can redirect appropriately.
         if ($e instanceof HttpException) {
-            return;
+            if ($e->getStatusCode() === 403) {
+                Notification::make()
+                    ->title('Action not allowed')
+                    ->body('You do not have permission to perform this action.')
+                    ->warning()
+                    ->send();
+
+                $stopPropagation();
+
+                return;
+            }
+
+            if ($e->getStatusCode() === 404) {
+                Notification::make()
+                    ->title('Record not found')
+                    ->body('That record no longer exists or is no longer available.')
+                    ->warning()
+                    ->send();
+
+                $stopPropagation();
+
+                return;
+            }
         }
 
         $message = self::humanise($e);
+
+        if ($message === self::unexpectedErrorMessage()) {
+            report($e);
+        }
 
         Notification::make()
             ->title('Something went wrong')
@@ -45,6 +71,14 @@ class ExceptionHandlerHook extends ComponentHook
             return self::humaniseQuery($e);
         }
 
+        if ($e instanceof AuthorizationException) {
+            return 'You do not have permission to perform this action.';
+        }
+
+        if ($e instanceof ModelNotFoundException) {
+            return 'That record no longer exists or is no longer available.';
+        }
+
         if (str_contains($e->getMessage(), 'would go negative')) {
             return 'There is not enough stock in the selected warehouse for this movement. Please reduce the quantity or choose another warehouse.';
         }
@@ -63,7 +97,54 @@ class ExceptionHandlerHook extends ComponentHook
             return 'A calculation error occurred. Please check the values you entered.';
         }
 
-        // Generic fallback — never expose the raw exception message to users
+        // Preserve known domain messages while hiding technical exception details.
+        if ($message = self::userSafeDomainMessage($e)) {
+            return $message;
+        }
+
+        return self::unexpectedErrorMessage();
+    }
+
+    private static function userSafeDomainMessage(\Throwable $e): ?string
+    {
+        $message = trim($e->getMessage());
+        $safePrefixes = [
+            'Approved ',
+            'Bank balance ',
+            'Calculate ',
+            'Cannot ',
+            'Could not read ',
+            'Credit sales ',
+            'Destination bank ',
+            'Enter ',
+            'Insufficient ',
+            'Issued ',
+            'No ',
+            'Only ',
+            'Payroll ',
+            'Repayment ',
+            'Requested ',
+            'Required ',
+            'Select ',
+            'Source bank ',
+            'The selected ',
+            'This ',
+            'Transfer ',
+            'Unable to apply ',
+            'Unable to match ',
+        ];
+
+        foreach ($safePrefixes as $prefix) {
+            if (str_starts_with($message, $prefix)) {
+                return $message;
+            }
+        }
+
+        return null;
+    }
+
+    private static function unexpectedErrorMessage(): string
+    {
         return 'An unexpected error occurred. Please try again, or contact your administrator if the problem persists.';
     }
 

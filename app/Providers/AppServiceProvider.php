@@ -80,11 +80,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // In production: force HTTPS for all generated URLs and prevent lazy loading.
-        // In local: enable strict mode to surface mass-assignment and lazy-loading issues early.
+        // Keep strict model checks in local development so production reads remain resilient.
         if ($this->app->isProduction()) {
             URL::forceScheme('https');
-            Model::preventLazyLoading();
         } elseif ($this->app->environment('local')) {
             Model::shouldBeStrict();
         }

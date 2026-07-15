@@ -1,6 +1,31 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Livewire\Component;
+use Livewire\Livewire;
+
+class ExceptionRenderingTestComponent extends Component
+{
+    public function fail(): void
+    {
+        throw new RuntimeException('Cannot complete this action in its current state.');
+    }
+
+    public function missing(): void
+    {
+        abort(404);
+    }
+
+    public function render(): string
+    {
+        return '<div>Exception test</div>';
+    }
+}
+
+it('redirects logged-out panel users to login', function (): void {
+    $this->get(route('filament.admin.pages.dashboard'))
+        ->assertRedirect(route('filament.admin.auth.login'));
+});
 
 it('renders a single 500 page for filament full-page errors', function (): void {
     Route::get('/filament/test-error', fn () => throw new RuntimeException('boom'));
@@ -23,4 +48,33 @@ it('returns a json error for filament ajax or livewire requests', function (): v
         ->assertJson([
             'message' => 'An unexpected error occurred. Please try again or contact your administrator if it keeps happening.',
         ]);
+});
+
+it('recognises named filament routes without a filament url prefix', function (): void {
+    Route::get('/test-named-filament-error', fn () => throw new RuntimeException('boom'))
+        ->name('filament.admin.pages.test-error');
+
+    $this->get('/test-named-filament-error')
+        ->assertStatus(500)
+        ->assertSee('Something went wrong');
+});
+
+it('uses the managed error page for non filament server errors', function (): void {
+    Route::get('/test-managed-error', fn () => throw new RuntimeException('boom'));
+
+    $this->get('/test-managed-error')
+        ->assertStatus(500)
+        ->assertSee('Something went wrong');
+});
+
+it('turns livewire domain exceptions into actionable notifications', function (): void {
+    Livewire::test(ExceptionRenderingTestComponent::class)
+        ->call('fail')
+        ->assertNotified('Something went wrong');
+});
+
+it('turns stale livewire actions into a record not found notification', function (): void {
+    Livewire::test(ExceptionRenderingTestComponent::class)
+        ->call('missing')
+        ->assertNotified('Record not found');
 });

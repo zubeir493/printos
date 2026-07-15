@@ -3,6 +3,7 @@
 use App\Http\Middleware\ForceHttps;
 use App\Http\Middleware\RateLimitRequests;
 use Filament\Notifications\Notification;
+use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -37,7 +38,16 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->render(function (Throwable $e, Request $request) {
-            $isFilamentRequest = $request->is('filament/*') || str_starts_with($request->path(), 'filament');
+            if ($e instanceof AuthenticationException) {
+                return null;
+            }
+
+            $routeName = (string) $request->route()?->getName();
+            $isLivewireRequest = $request->is('livewire/*') || $request->hasHeader('X-Livewire');
+            $isFilamentRequest = $request->is('filament/*')
+                || str_starts_with($request->path(), 'filament')
+                || str_starts_with($routeName, 'filament.')
+                || $isLivewireRequest;
             $isJsonRequest = $request->expectsJson() || $request->ajax() || $request->hasHeader('X-Livewire') || $request->hasHeader('X-Requested-With');
 
             // PHP fatal errors surfaced as Error instances (max execution time, memory, etc.)
@@ -92,20 +102,22 @@ return Application::configure(basePath: dirname(__DIR__))
                 }
             }
 
-            // Connection / timeout errors on Filament routes
-            if ($isFilamentRequest && (
+            // Connection and timeout errors always use the managed error response.
+            if (
                 $e instanceof ConnectionException ||
                 $e instanceof RequestException ||
                 str_contains($e->getMessage() ?? '', 'timeout') ||
                 str_contains($e->getMessage() ?? '', 'connection')
-            )) {
+            ) {
                 $body = 'The request took too long to complete. Please try again.';
 
-                Notification::make()
-                    ->title('Connection problem')
-                    ->body($body)
-                    ->danger()
-                    ->send();
+                if ($isFilamentRequest) {
+                    Notification::make()
+                        ->title('Connection problem')
+                        ->body($body)
+                        ->danger()
+                        ->send();
+                }
 
                 return $isJsonRequest
                     ? response()->json(['message' => $body], 500)
@@ -122,18 +134,20 @@ return Application::configure(basePath: dirname(__DIR__))
                     ->send();
             }
 
-            // All other server errors (5xx) on Filament routes — render a single error response
-            if ($isFilamentRequest && ! ($e instanceof ValidationException) && ! ($e instanceof NotFoundHttpException)) {
+            // All other server errors use the application's managed error response.
+            if (! ($e instanceof ValidationException) && ! ($e instanceof NotFoundHttpException)) {
                 $statusCode = $e instanceof HttpException ? $e->getStatusCode() : 500;
 
                 if ($statusCode >= 500) {
                     $body = 'An unexpected error occurred. Please try again or contact your administrator if it keeps happening.';
 
-                    Notification::make()
-                        ->title('Something went wrong')
-                        ->body($body)
-                        ->danger()
-                        ->send();
+                    if ($isFilamentRequest) {
+                        Notification::make()
+                            ->title('Something went wrong')
+                            ->body($body)
+                            ->danger()
+                            ->send();
+                    }
 
                     return $isJsonRequest
                         ? response()->json(['message' => $body], 500)

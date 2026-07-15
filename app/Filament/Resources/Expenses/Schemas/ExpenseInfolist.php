@@ -3,7 +3,6 @@
 namespace App\Filament\Resources\Expenses\Schemas;
 
 use App\Enums\ExpenseTrackingType;
-use App\Enums\PaymentTransactionType;
 use App\Models\Payment;
 use App\Support\Money;
 use Filament\Infolists\Components\TextEntry;
@@ -28,13 +27,14 @@ class ExpenseInfolist
                         TextEntry::make('amount')
                             ->formatStateUsing(fn ($state): string => Money::format($state))
                             ->weight('bold'),
-                        TextEntry::make('transaction_type')
+                        TextEntry::make('expenseAccount.name')
                             ->label('Type')
                             ->badge()
-                            ->formatStateUsing(fn (string $state): string => PaymentTransactionType::tryFrom($state)?->label() ?? str($state)->headline()->toString()),
-                        TextEntry::make('method')
+                            ->placeholder('-'),
+                        TextEntry::make('payment_source')
+                            ->label('Paid From')
                             ->badge()
-                            ->formatStateUsing(fn (string $state): string => str($state)->headline()->toString()),
+                            ->state(fn (Payment $record): string => $record->paymentSourceLabel()),
                         TextEntry::make('status')
                             ->badge()
                             ->state(fn (Payment $record): string => $record->voided_at ? 'Voided' : 'Posted')
@@ -43,9 +43,6 @@ class ExpenseInfolist
                 Section::make('Classification')
                     ->columns(3)
                     ->schema([
-                        TextEntry::make('expenseAccount.name')
-                            ->label('Expense account')
-                            ->placeholder('-'),
                         TextEntry::make('partner.name')
                             ->label('Vendor / Partner')
                             ->placeholder('-'),

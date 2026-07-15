@@ -220,7 +220,7 @@ class Bond extends Model
 
     private function guardBankBackedPayment(string $method, ?int $bankId): void
     {
-        if (in_array($method, ['bank', 'bank_transfer'], true) && ! $bankId) {
+        if (in_array($method, ['bank', 'bank_transfer', 'cheque', 'check'], true) && ! $bankId) {
             throw new RuntimeException('Select a bank account for this payment method.');
         }
     }

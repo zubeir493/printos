@@ -46,7 +46,7 @@ enum PaymentTransactionType: string
         return match ($this) {
             self::CUSTOMER_RECEIPT => 'Money received from a customer. Debits cash/bank and credits AR.',
             self::SUPPLIER_PAYMENT => 'Payment to settle a supplier or bill. Debits AP and credits cash/bank.',
-            self::DIRECT_EXPENSE => 'Normal operating expense paid from cash/bank. Debits an expense account.',
+            self::DIRECT_EXPENSE => 'Normal operating expense paid from the selected source. Debits an expense account.',
             self::PETTY_CASH_FUNDING => 'Moves money into petty cash. Debits petty cash and credits cash/bank.',
             self::PETTY_CASH_EXPENSE => 'Expense paid out of petty cash. Debits expense and credits petty cash.',
             self::CASH_SALE_RECEIPT => 'Receipt record for a cash sale already posted by the sales journal.',
@@ -65,9 +65,9 @@ enum PaymentTransactionType: string
         return match ($this) {
             self::CUSTOMER_RECEIPT => 'Receive from customer',
             self::SUPPLIER_PAYMENT => 'Pay supplier / bill',
-            self::DIRECT_EXPENSE => 'Pay expense now',
+            self::DIRECT_EXPENSE => 'Pay expense',
             self::PETTY_CASH_FUNDING => 'Fund petty cash',
-            self::PETTY_CASH_EXPENSE => 'Pay petty cash expense',
+            self::PETTY_CASH_EXPENSE => 'Record petty cash expense',
             self::PAYROLL_PAYMENT => 'Pay payroll payable',
             self::EMPLOYEE_LOAN_DISBURSEMENT => 'Give employee loan',
             self::EMPLOYEE_LOAN_REPAYMENT => 'Receive employee loan repayment',
@@ -157,11 +157,6 @@ enum PaymentTransactionType: string
             'Petty Cash' => [
                 self::PETTY_CASH_FUNDING->value => self::PETTY_CASH_FUNDING->paymentFormLabel(),
                 self::PETTY_CASH_EXPENSE->value => self::PETTY_CASH_EXPENSE->paymentFormLabel(),
-            ],
-            'Payroll & Employee Loans' => [
-                self::PAYROLL_PAYMENT->value => self::PAYROLL_PAYMENT->paymentFormLabel(),
-                self::EMPLOYEE_LOAN_DISBURSEMENT->value => self::EMPLOYEE_LOAN_DISBURSEMENT->paymentFormLabel(),
-                self::EMPLOYEE_LOAN_REPAYMENT->value => self::EMPLOYEE_LOAN_REPAYMENT->paymentFormLabel(),
             ],
             'Bonds' => [
                 self::BID_BOND_ISSUE->value => self::BID_BOND_ISSUE->paymentFormLabel(),

@@ -7,6 +7,7 @@ use App\Models\BankTransfer;
 use App\Models\Partner;
 use App\Models\Payment;
 use App\Models\User;
+use App\Services\Accounting\VoidPaymentJournalEntry;
 use App\UserRole;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -108,6 +109,37 @@ test('outbound bank payments reduce bank balance', function (): void {
     ]);
 
     expect((float) $bank->fresh()->current_balance)->toBe(250.0);
+});
+
+test('outbound cheque payments use the selected bank balance lifecycle', function (): void {
+    $bank = createBank('Cheque Payment Bank', currentBalance: 500);
+    $supplier = Partner::factory()->create([
+        'is_supplier' => true,
+    ]);
+
+    expect(fn () => Payment::create([
+        'partner_id' => $supplier->id,
+        'bank_id' => $bank->id,
+        'payment_date' => now(),
+        'amount' => 750,
+        'transaction_type' => PaymentTransactionType::SUPPLIER_PAYMENT->value,
+        'method' => 'cheque',
+    ]))->toThrow(RuntimeException::class, 'Insufficient balance');
+
+    $payment = Payment::create([
+        'partner_id' => $supplier->id,
+        'bank_id' => $bank->id,
+        'payment_date' => now(),
+        'amount' => 250,
+        'transaction_type' => PaymentTransactionType::SUPPLIER_PAYMENT->value,
+        'method' => 'cheque',
+    ]);
+
+    expect((float) $bank->fresh()->current_balance)->toBe(250.0);
+
+    app(VoidPaymentJournalEntry::class)->handle($payment, 'Incorrect cheque');
+
+    expect((float) $bank->fresh()->current_balance)->toBe(500.0);
 });
 
 function createBank(string $name, float $currentBalance = 1000): Bank

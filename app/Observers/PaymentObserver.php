@@ -108,7 +108,7 @@ class PaymentObserver
 
     private function isBankPayment(Payment $payment): bool
     {
-        return $payment->bank_id && in_array($payment->method, ['bank', 'bank_transfer'], true);
+        return $payment->bank_id && in_array($payment->method, ['bank', 'bank_transfer', 'cheque', 'check'], true);
     }
 
     private function cashAmount(Payment $payment): float

@@ -81,17 +81,23 @@ test('payment form keeps transaction type searchable and drives dependent fields
                 ->and($field->getOptions())->toHaveKeys([
                     'Common',
                     'Petty Cash',
-                    'Payroll & Employee Loans',
                     'Bonds',
                 ])
                 ->and($field->getOptions()['Common'])
                 ->toBe([
                     PaymentTransactionType::CUSTOMER_RECEIPT->value => 'Receive from customer',
                     PaymentTransactionType::SUPPLIER_PAYMENT->value => 'Pay supplier / bill',
-                    PaymentTransactionType::DIRECT_EXPENSE->value => 'Pay expense now',
+                    PaymentTransactionType::DIRECT_EXPENSE->value => 'Pay expense',
                 ])
                 ->and($field->getOptions()['Petty Cash'])
-                ->toHaveKey(PaymentTransactionType::PETTY_CASH_EXPENSE->value)
+                ->toBe([
+                    PaymentTransactionType::PETTY_CASH_FUNDING->value => 'Fund petty cash',
+                    PaymentTransactionType::PETTY_CASH_EXPENSE->value => 'Record petty cash expense',
+                ])
+                ->and($field->getOptions())
+                ->not->toHaveKey('Payroll & Employee Loans')
+                ->and($field->getOptions()['Common'])
+                ->not->toHaveKey(PaymentTransactionType::PETTY_CASH_EXPENSE->value)
                 ->and($field->getOptions())
                 ->not->toHaveKey(PaymentTransactionType::CASH_SALE_RECEIPT->value);
 
@@ -102,7 +108,18 @@ test('payment form keeps transaction type searchable and drives dependent fields
         ->assertFormSet([
             'transaction_type' => PaymentTransactionType::DIRECT_EXPENSE->value,
         ])
-        ->assertFormFieldIsVisible('expense_account_id');
+        ->assertFormFieldIsVisible('expense_account_id')
+        ->assertFormFieldExists('method', function (Select $field): bool {
+            expect($field->getOptions())->not->toHaveKey('petty_cash');
+
+            return true;
+        })
+        ->set('data.transaction_type', PaymentTransactionType::PETTY_CASH_EXPENSE->value)
+        ->assertFormSet([
+            'method' => 'petty_cash',
+        ])
+        ->assertFormFieldIsHidden('method')
+        ->assertFormFieldIsHidden('bank_id');
 });
 
 test('expense account default tracking reveals the relevant structured tracking field', function (): void {
@@ -181,6 +198,59 @@ test('tracked direct expenses are created through payments and posted to the led
         'journal_entry_id' => $journalEntry->id,
         'account_id' => $expenseAccount->id,
         'debit' => 650.00,
+    ]);
+});
+
+test('petty cash expenses use the separate petty cash workflow', function (): void {
+    Filament::setCurrentPanel(Filament::getPanel('finance'));
+
+    $this->actingAs(User::factory()->create([
+        'role' => UserRole::Finance,
+    ]));
+
+    $expenseAccount = Account::create([
+        'code' => '5300-010',
+        'name' => 'Office Supplies',
+        'type' => 'Expense',
+        'default_tracking_type' => ExpenseTrackingType::NONE->value,
+    ]);
+
+    Livewire::test(CreatePayment::class)
+        ->set('data.transaction_type', PaymentTransactionType::PETTY_CASH_EXPENSE->value)
+        ->assertFormFieldIsHidden('petty_cash_account_id')
+        ->assertFormFieldIsVisible('expense_account_id')
+        ->fillForm([
+            'transaction_type' => PaymentTransactionType::PETTY_CASH_EXPENSE->value,
+            'amount' => 125,
+            'payment_date' => '2026-07-08',
+            'expense_account_id' => $expenseAccount->id,
+            'reference' => 'Stationery receipt',
+        ])
+        ->call('create')
+        ->assertHasNoFormErrors();
+
+    $payment = Payment::query()->firstOrFail();
+    $journalEntry = JournalEntry::query()
+        ->where('source_type', Payment::class)
+        ->where('source_id', $payment->id)
+        ->firstOrFail();
+    $pettyCashAccount = Account::query()->where('code', '1090')->firstOrFail();
+
+    expect($payment->transaction_type)->toBe(PaymentTransactionType::PETTY_CASH_EXPENSE->value)
+        ->and($payment->method)->toBe('petty_cash')
+        ->and($payment->paymentSourceLabel())->toBe('Petty Cash')
+        ->and($payment->petty_cash_account_id)->toBeNull();
+
+    $this->assertDatabaseHas('journal_items', [
+        'journal_entry_id' => $journalEntry->id,
+        'account_id' => $expenseAccount->id,
+        'debit' => 125.00,
+    ]);
+
+    $this->assertDatabaseHas('journal_items', [
+        'journal_entry_id' => $journalEntry->id,
+        'account_id' => $pettyCashAccount->id,
+        'credit' => 125.00,
     ]);
 });
 

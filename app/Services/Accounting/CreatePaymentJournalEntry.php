@@ -95,6 +95,10 @@ class CreatePaymentJournalEntry
             return $payment->account_id;
         }
 
+        if ($payment->method === 'petty_cash') {
+            return $this->resolvePettyCashAccountId($payment);
+        }
+
         return in_array($payment->method, ['bank', 'bank_transfer', 'cheque', 'check'], true)
             ? $bankAccount->id
             : $cashAccount->id;

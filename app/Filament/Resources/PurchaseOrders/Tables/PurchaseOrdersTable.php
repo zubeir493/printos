@@ -180,8 +180,8 @@ class PurchaseOrdersTable
                                     ->options(fn (): array => Bank::query()->orderBy('name')->pluck('name', 'id')->all())
                                     ->searchable()
                                     ->preload()
-                                    ->visible(fn (callable $get) => $get('method') === 'bank')
-                                    ->required(fn (callable $get) => $get('method') === 'bank'),
+                                    ->visible(fn (callable $get) => in_array($get('method'), ['bank', 'bank_transfer', 'cheque', 'check'], true))
+                                    ->required(fn (callable $get) => in_array($get('method'), ['bank', 'bank_transfer', 'cheque', 'check'], true)),
                                 TextInput::make('amount')
                                     ->label('Payment Amount')
                                     ->required()

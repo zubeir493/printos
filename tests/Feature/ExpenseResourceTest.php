@@ -24,13 +24,22 @@ test('expenses resource is read only and scoped to expense payments', function (
         'role' => UserRole::Finance,
     ]));
 
+    $expenseAccount = Account::create([
+        'code' => '5200-010',
+        'name' => 'Rent Expense',
+        'type' => 'Expense',
+    ]);
+
     $expense = Payment::withoutEvents(fn (): Payment => Payment::factory()->create([
         'transaction_type' => PaymentTransactionType::DIRECT_EXPENSE->value,
         'direction' => PaymentTransactionType::DIRECTION_OUTBOUND,
+        'expense_account_id' => $expenseAccount->id,
     ]));
     $pettyCashExpense = Payment::withoutEvents(fn (): Payment => Payment::factory()->create([
         'transaction_type' => PaymentTransactionType::PETTY_CASH_EXPENSE->value,
         'direction' => PaymentTransactionType::DIRECTION_OUTBOUND,
+        'method' => 'cash',
+        'expense_account_id' => $expenseAccount->id,
     ]));
     $supplierPayment = Payment::withoutEvents(fn (): Payment => Payment::factory()->create([
         'transaction_type' => PaymentTransactionType::SUPPLIER_PAYMENT->value,
@@ -43,7 +52,12 @@ test('expenses resource is read only and scoped to expense payments', function (
 
     Livewire::test(ListExpenses::class)
         ->assertCanSeeTableRecords([$expense, $pettyCashExpense])
-        ->assertCanNotSeeTableRecords([$supplierPayment]);
+        ->assertCanNotSeeTableRecords([$supplierPayment])
+        ->assertTableColumnStateSet('expenseAccount.name', 'Rent Expense', $pettyCashExpense)
+        ->assertTableColumnStateSet('payment_source', 'Petty Cash', $pettyCashExpense)
+        ->filterTable('payment_source', 'petty_cash')
+        ->assertCanSeeTableRecords([$pettyCashExpense])
+        ->assertCanNotSeeTableRecords([$expense]);
 });
 
 test('expenses table filters by tracking item and expense account', function (): void {

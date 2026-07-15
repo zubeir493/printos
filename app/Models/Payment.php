@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\ExpenseTrackingType;
+use App\Enums\PaymentTransactionType;
 use App\Support\SequentialNumber;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -222,6 +223,30 @@ class Payment extends Model
         };
 
         return $value ? "{$trackingType->label()}: {$value}" : $trackingType->label();
+    }
+
+    public function paymentSource(): string
+    {
+        if ($this->transaction_type === PaymentTransactionType::PETTY_CASH_EXPENSE->value) {
+            return 'petty_cash';
+        }
+
+        return match ($this->method) {
+            'bank_transfer' => 'bank',
+            'check' => 'cheque',
+            default => $this->method ?? 'cash',
+        };
+    }
+
+    public function paymentSourceLabel(): string
+    {
+        return match ($this->paymentSource()) {
+            'petty_cash' => 'Petty Cash',
+            'bank' => 'Bank Transfer',
+            'cheque' => 'Cheque',
+            'cpo' => 'CPO',
+            default => 'Cash',
+        };
     }
 
     private function syncInvoicesForDocument(SalesOrder|JobOrder|PurchaseOrder $document): void

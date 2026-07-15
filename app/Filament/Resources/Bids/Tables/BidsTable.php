@@ -251,9 +251,9 @@ class BidsTable
                 ->options(fn (): array => Bank::query()->pluck('name', 'id')->all())
                 ->searchable()
                 ->preload()
-                ->visible(fn (callable $get): bool => $get('method') === 'bank')
-                ->required(fn (callable $get): bool => $get('method') === 'bank')
-                ->dehydrated(fn (callable $get): bool => $get('method') === 'bank'),
+                ->visible(fn (callable $get): bool => in_array($get('method'), ['bank', 'bank_transfer', 'cheque', 'check'], true))
+                ->required(fn (callable $get): bool => in_array($get('method'), ['bank', 'bank_transfer', 'cheque', 'check'], true))
+                ->dehydrated(fn (callable $get): bool => in_array($get('method'), ['bank', 'bank_transfer', 'cheque', 'check'], true)),
             TextInput::make('cpo_bank_name')
                 ->label('CPO Bank')
                 ->maxLength(255)

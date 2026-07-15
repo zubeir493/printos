@@ -166,8 +166,8 @@ class EmployeeLoanResource extends Resource
                                     ->pluck('name', 'id')
                                     ->all())
                                 ->searchable()
-                                ->visible(fn ($get): bool => $get('method') === 'bank')
-                                ->required(fn ($get): bool => $get('method') === 'bank'),
+                                ->visible(fn ($get): bool => in_array($get('method'), ['bank', 'bank_transfer', 'cheque', 'check'], true))
+                                ->required(fn ($get): bool => in_array($get('method'), ['bank', 'bank_transfer', 'cheque', 'check'], true)),
                         ])
                         ->action(fn (EmployeeLoan $record, array $data) => app(RepayEmployeeLoan::class)->handle(
                             $record,

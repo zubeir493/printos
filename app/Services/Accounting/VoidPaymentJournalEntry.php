@@ -75,7 +75,7 @@ class VoidPaymentJournalEntry
                 $jobOrder->syncCompletionStatus();
             }
 
-            if ($payment->bank_id && in_array($payment->method, ['bank', 'bank_transfer'], true)) {
+            if ($payment->bank_id && in_array($payment->method, ['bank', 'bank_transfer', 'cheque', 'check'], true)) {
                 $cashAmount = max(0, round((float) $payment->amount - (float) $payment->withholding_amount, 2));
 
                 if ($payment->direction === 'outbound') {

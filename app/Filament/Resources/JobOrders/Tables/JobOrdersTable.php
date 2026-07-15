@@ -285,8 +285,8 @@ class JobOrdersTable
                                     ->options(fn (): array => Bank::query()->orderBy('name')->pluck('name', 'id')->all())
                                     ->searchable()
                                     ->preload()
-                                    ->visible(fn (callable $get) => $get('method') === 'bank')
-                                    ->required(fn (callable $get) => $get('method') === 'bank'),
+                                    ->visible(fn (callable $get) => in_array($get('method'), ['bank', 'bank_transfer', 'cheque', 'check'], true))
+                                    ->required(fn (callable $get) => in_array($get('method'), ['bank', 'bank_transfer', 'cheque', 'check'], true)),
                                 DatePicker::make('payment_date')
                                     ->label('Payment Date')
                                     ->default(now())

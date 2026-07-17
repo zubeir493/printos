@@ -1,11 +1,13 @@
 <?php
 
+use App\Filament\Resources\JobOrders\JobOrderResource;
 use App\Filament\Resources\JobOrders\Pages\CreateJobOrder;
 use App\Filament\Resources\Proformas\Pages\CreateProforma;
 use App\Filament\Resources\Proformas\Pages\ListProformas;
 use App\Mail\ProformaGenerated;
 use App\Models\Bank;
 use App\Models\InventoryItem;
+use App\Models\JobOrder;
 use App\Models\Partner;
 use App\Models\Proforma;
 use App\Models\ProformaTask;
@@ -56,6 +58,36 @@ it('creates one linked job order from an approved proforma', function (): void {
 
     expect(fn () => app(ProformaWorkflowService::class)->createJobOrder($proforma->refresh()))
         ->toThrow(RuntimeException::class);
+});
+
+it('redirects to the job order edit page after creating one from a proforma action', function (): void {
+    Filament::setCurrentPanel(Filament::getPanel('admin'));
+
+    $this->actingAs(User::factory()->create([
+        'role' => UserRole::Admin,
+    ]));
+
+    $customer = Partner::factory()->create(['is_customer' => true]);
+    $proforma = Proforma::factory()->create([
+        'partner_id' => $customer->id,
+        'status' => 'approved',
+        'job_type' => 'packages',
+    ]);
+
+    ProformaTask::factory()->for($proforma)->create([
+        'name' => 'Carton',
+        'quantity' => 100,
+        'unit_price' => 10,
+        'task_cost' => 1000,
+    ]);
+
+    $component = Livewire::test(ListProformas::class)
+        ->callTableAction('create_job_order', $proforma)
+        ->assertNotified('Job order created');
+
+    $jobOrder = JobOrder::query()->firstOrFail();
+
+    $component->assertRedirect(JobOrderResource::getUrl('edit', ['record' => $jobOrder]));
 });
 
 it('stores and emails a proforma pdf privately', function (): void {

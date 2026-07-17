@@ -470,6 +470,11 @@ h1.fi-simple-header-heading {
 .job-order-cost-file-upload .filepond--drop-label {
     min-height: 2.25rem !important;
     height: 2.25rem;
+    justify-content: start;
+}
+
+.job-order-cost-file-upload .filepond--drop-label>label{
+    padding-left: 0 !important;
 }
 
 .job-order-cost-file-upload .filepond--list-scroller {

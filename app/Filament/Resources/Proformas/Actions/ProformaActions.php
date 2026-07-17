@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Proformas\Actions;
 
+use App\Filament\Resources\JobOrders\JobOrderResource;
 use App\Models\Proforma;
 use App\Services\Proformas\ProformaPdfService;
 use App\Services\Proformas\ProformaWorkflowService;
@@ -90,7 +91,7 @@ class ProformaActions
             ->icon('heroicon-o-briefcase')
             ->color('gray')
             ->visible(fn (Proforma $record): bool => $record->canCreateJobOrder())
-            ->action(function (Proforma $record): void {
+            ->action(function (Proforma $record) {
                 $jobOrder = app(ProformaWorkflowService::class)->createJobOrder($record);
 
                 Notification::make()
@@ -98,6 +99,8 @@ class ProformaActions
                     ->body($jobOrder->job_order_number.' was created from '.$record->proforma_number.'.')
                     ->success()
                     ->send();
+
+                return redirect(JobOrderResource::getUrl('edit', ['record' => $jobOrder]));
             });
     }
 

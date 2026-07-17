@@ -2,13 +2,11 @@
 
 namespace App\Filament\Resources\StockAdjustments\Tables;
 
+use App\Filament\Resources\StockAdjustments\Actions\StockAdjustmentActions;
 use App\Filament\Tables\Filters\DateRangeFilter;
 use App\Models\Warehouse;
-use Filament\Actions\Action as ActionsAction;
-use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
-use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -49,21 +47,7 @@ class StockAdjustmentsTable
             ])
             ->defaultSort('adjustment_date', 'desc')
             ->recordActions([
-                ActionGroup::make([
-                    ActionsAction::make('post')
-                        ->label('Post')
-                        ->color('gray')
-                        ->icon('heroicon-o-check-circle')
-                        ->requiresConfirmation()
-                        ->visible(fn ($record) => $record->status === 'draft')
-                        ->action(function ($record) {
-                            $record->post();
-                            Notification::make()
-                                ->title('Adjustment Posted Successfully')
-                                ->success()
-                                ->send();
-                        }),
-                ]),
+                StockAdjustmentActions::make(),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

@@ -2,21 +2,14 @@
 
 namespace App\Filament\Resources\Proformas\Tables;
 
+use App\Filament\Resources\Proformas\Actions\ProformaActions;
 use App\Filament\Resources\Proformas\ProformaResource;
 use App\Filament\Support\PanelAccess;
 use App\Filament\Tables\Filters\DateRangeFilter;
 use App\Models\Proforma;
-use App\Services\Proformas\ProformaPdfService;
-use App\Services\Proformas\ProformaWorkflowService;
 use App\Support\Money;
-use Filament\Actions\Action;
-use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\EditAction;
-use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\TextInput;
-use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -77,69 +70,7 @@ class ProformasTable
             ->defaultSort('created_at', 'desc')
             ->recordUrl(fn (Proforma $record): string => ProformaResource::getUrl('view', ['record' => $record]))
             ->recordActions([
-                ActionGroup::make([
-                    Action::make('download')
-                        ->label('Download')
-                        ->icon('heroicon-o-arrow-down-tray')
-                        ->color('gray')
-                        ->url(fn (Proforma $record): ?string => app(ProformaPdfService::class)->downloadUrl($record))
-                        ->openUrlInNewTab(),
-                    Action::make('email')
-                        ->label('Email')
-                        ->icon('heroicon-o-envelope')
-                        ->color('gray')
-                        ->schema([
-                            TextInput::make('email')
-                                ->email()
-                                ->required()
-                                ->default(fn (Proforma $record): ?string => $record->email_recipient ?? $record->partner?->email),
-                            Textarea::make('message')->rows(3),
-                        ])
-                        ->action(function (array $data, Proforma $record): void {
-                            try {
-                                app(ProformaPdfService::class)->email($record, $data['email'], $data['message'] ?? null);
-
-                                Notification::make()->title('Proforma emailed')->success()->send();
-                            } catch (\Throwable $e) {
-                                Notification::make()
-                                    ->title('Email failed')
-                                    ->body($e->getMessage())
-                                    ->danger()
-                                    ->send();
-                            }
-                        }),
-                    Action::make('approve')
-                        ->label('Approve')
-                        ->icon('heroicon-o-check-circle')
-                        ->color('gray')
-                        ->requiresConfirmation()
-                        ->visible(fn (Proforma $record): bool => in_array($record->status, ['draft', 'sent'], true))
-                        ->action(function (Proforma $record): void {
-                            $record->update([
-                                'status' => 'approved',
-                                'approved_at' => now(),
-                                'approved_by' => auth()->id(),
-                            ]);
-
-                            Notification::make()->title('Proforma approved')->success()->send();
-                        }),
-                    Action::make('create_job_order')
-                        ->label('Create Job Order')
-                        ->icon('heroicon-o-briefcase')
-                        ->color('gray')
-                        ->visible(fn (Proforma $record): bool => $record->canCreateJobOrder())
-                        ->action(function (Proforma $record): void {
-                            $jobOrder = app(ProformaWorkflowService::class)->createJobOrder($record);
-
-                            Notification::make()
-                                ->title('Job order created')
-                                ->body($jobOrder->job_order_number.' was created from '.$record->proforma_number.'.')
-                                ->success()
-                                ->send();
-                        }),
-                    EditAction::make()
-                        ->visible(fn (Proforma $record): bool => $record->status === 'draft'),
-                ]),
+                ProformaActions::make(),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

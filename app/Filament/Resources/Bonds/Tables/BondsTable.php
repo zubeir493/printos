@@ -27,25 +27,25 @@ class BondsTable
             ->columns([
                 TextColumn::make('bid.bid_number')
                     ->label('Bid')
-                    ->description(fn (Bond $record): ?string => $record->issuingPartner?->name)
+                    ->description(fn(Bond $record): ?string => $record->issuingPartner?->name)
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('amount')
-                    ->formatStateUsing(fn ($state): string => Money::format($state))
+                    ->formatStateUsing(fn($state): string => Money::format($state))
                     ->sortable(),
                 TextColumn::make('type')
                     ->badge()
-                    ->formatStateUsing(fn (string $state): string => Bond::typeOptions()[$state] ?? str($state)->headline()->toString())
-                    ->color(fn (string $state): string => $state === Bond::TYPE_PERFORMANCE ? 'warning' : 'info'),
+                    ->formatStateUsing(fn(string $state): string => Bond::typeOptions()[$state] ?? str($state)->headline()->toString())
+                    ->color(fn(string $state): string => $state === Bond::TYPE_PERFORMANCE ? 'warning' : 'info'),
                 TextColumn::make('bank.name')
                     ->label('Bank')
-                    ->state(fn (Bond $record): ?string => $record->cpo_bank_name ?: $record->bank?->name)
+                    ->state(fn(Bond $record): ?string => $record->cpo_bank_name ?: $record->bank?->name)
                     ->placeholder('-')
                     ->searchable(),
                 TextColumn::make('status')
                     ->badge()
-                    ->formatStateUsing(fn (string $state): string => Bond::statusOptions()[$state] ?? str($state)->headline()->toString())
-                    ->color(fn (string $state): string => match ($state) {
+                    ->formatStateUsing(fn(string $state): string => Bond::statusOptions()[$state] ?? str($state)->headline()->toString())
+                    ->color(fn(string $state): string => match ($state) {
                         Bond::STATUS_PENDING => 'gray',
                         Bond::STATUS_ACTIVE => 'warning',
                         Bond::STATUS_RECOVERED => 'success',
@@ -77,12 +77,12 @@ class BondsTable
             ->recordActions([
                 Action::make('return_bond')
                     ->label('Return Bond')
-                    ->icon('heroicon-o-arrow-down-tray')
+                    ->icon('heroicon-o-banknotes')
                     ->color('gray')
-                    ->visible(fn (Bond $record): bool => filled($record->issue_payment_id) && blank($record->recovery_payment_id))
-                    ->schema(fn (Bond $record): array => self::bondPaymentSchema($record))
-                    ->action(fn (Bond $record, array $data): mixed => self::handleBondAction(
-                        fn () => $record->recover(...self::bondRecoveryData($record, $data)),
+                    ->visible(fn(Bond $record): bool => filled($record->issue_payment_id) && blank($record->recovery_payment_id))
+                    ->schema(fn(Bond $record): array => self::bondPaymentSchema($record))
+                    ->action(fn(Bond $record, array $data): mixed => self::handleBondAction(
+                        fn() => $record->recover(...self::bondRecoveryData($record, $data)),
                         'Bond returned',
                     )),
             ])
@@ -121,18 +121,18 @@ class BondsTable
                     ->live(),
                 Select::make('bank_id')
                     ->label('Bank Account')
-                    ->options(fn (): array => Bank::query()->pluck('name', 'id')->all())
+                    ->options(fn(): array => Bank::query()->pluck('name', 'id')->all())
                     ->searchable()
                     ->preload()
-                    ->visible(fn (callable $get): bool => in_array($get('method'), ['bank', 'bank_transfer', 'cheque', 'check'], true))
-                    ->required(fn (callable $get): bool => in_array($get('method'), ['bank', 'bank_transfer', 'cheque', 'check'], true))
-                    ->dehydrated(fn (callable $get): bool => in_array($get('method'), ['bank', 'bank_transfer', 'cheque', 'check'], true)),
+                    ->visible(fn(callable $get): bool => in_array($get('method'), ['bank', 'bank_transfer', 'cheque', 'check'], true))
+                    ->required(fn(callable $get): bool => in_array($get('method'), ['bank', 'bank_transfer', 'cheque', 'check'], true))
+                    ->dehydrated(fn(callable $get): bool => in_array($get('method'), ['bank', 'bank_transfer', 'cheque', 'check'], true)),
                 TextInput::make('cpo_bank_name')
                     ->label('CPO Bank')
                     ->maxLength(255)
-                    ->visible(fn (callable $get): bool => $get('method') === 'cpo')
-                    ->required(fn (callable $get): bool => $get('method') === 'cpo')
-                    ->dehydrated(fn (callable $get): bool => $get('method') === 'cpo'),
+                    ->visible(fn(callable $get): bool => $get('method') === 'cpo')
+                    ->required(fn(callable $get): bool => $get('method') === 'cpo')
+                    ->dehydrated(fn(callable $get): bool => $get('method') === 'cpo'),
                 DatePicker::make('payment_date')
                     ->default(now())
                     ->required(),

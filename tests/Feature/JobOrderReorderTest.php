@@ -79,8 +79,8 @@ it('duplicates a job order with tasks as a fresh draft reorder', function (): vo
 
 it('registers reorder actions where job orders are managed', function (): void {
     expect(file_get_contents(app_path('Filament/Resources/JobOrders/Actions/JobOrderActions.php')))
-        ->toContain('public static function make(): ActionGroup')
-        ->toContain('ActionGroup::make([')
+        ->toContain('public static function make(bool $includeDelete = false): ActionGroup')
+        ->toContain('ActionGroup::make(array_filter([')
         ->toContain("Action::make('reorder')")
         ->toContain('DuplicateJobOrder::class')
         ->toContain("(string) \$record->status !== 'draft'")
@@ -88,8 +88,8 @@ it('registers reorder actions where job orders are managed', function (): void {
         ->and(file_get_contents(app_path('Filament/Resources/JobOrders/Tables/JobOrdersTable.php')))
         ->toContain('JobOrderActions::make()')
         ->and(file_get_contents(app_path('Filament/Resources/JobOrders/Pages/EditJobOrder.php')))
-        ->toContain("Action::make('reorder')")
-        ->toContain('DuplicateJobOrder::class')
+        ->toContain('JobOrderActions::make(includeDelete: true)')
+        ->not->toContain("Action::make('reorder')")
         ->and(file_get_contents(app_path('Filament/Resources/JobOrders/Pages/ViewJobOrder.php')))
         ->toContain('JobOrderActions::make()')
         ->not->toContain("Action::make('reorder')");

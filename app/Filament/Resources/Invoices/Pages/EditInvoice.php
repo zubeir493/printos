@@ -2,9 +2,9 @@
 
 namespace App\Filament\Resources\Invoices\Pages;
 
+use App\Filament\Resources\Invoices\Actions\InvoiceActions;
 use App\Filament\Resources\Invoices\InvoiceResource;
 use BackedEnum;
-use Filament\Actions;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 
@@ -19,44 +19,7 @@ class EditInvoice extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            Actions\ActionGroup::make([
-                Actions\Action::make('save')
-                    ->label('Save Changes')
-                    ->action('save')
-                    ->icon('heroicon-o-check')
-                    ->color('gray'),
-
-                Actions\Action::make('mark_sent')
-                    ->label('Mark Sent')
-                    ->icon('heroicon-o-paper-airplane')
-                    ->color('gray')
-                    ->visible(fn (): bool => in_array($this->record->status, ['draft', 'unpaid'], true))
-                    ->action(function (): void {
-                        $this->record->update(['status' => 'sent']);
-                        $this->record->refresh();
-
-                        Notification::make()->title('Invoice marked as sent')->success()->send();
-                    }),
-
-                Actions\Action::make('cancel_invoice')
-                    ->label('Cancel Invoice')
-                    ->icon('heroicon-o-x-circle')
-                    ->color('gray')
-                    ->requiresConfirmation()
-                    ->visible(fn (): bool => in_array($this->record->status, ['draft', 'sent', 'unpaid', 'partial', 'overdue'], true))
-                    ->action(function (): void {
-                        $this->record->update(['status' => 'cancelled']);
-                        $this->record->refresh();
-
-                        Notification::make()->title('Invoice cancelled')->success()->send();
-                    }),
-
-                Actions\Action::make('cancel')
-                    ->label('Cancel')
-                    ->url($this->getResource()::getUrl('index'))
-                    ->icon('heroicon-o-x-mark')
-                    ->color('gray'),
-            ]),
+            InvoiceActions::editMake($this->getResource()::getUrl('index')),
         ];
     }
 

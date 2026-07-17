@@ -2,11 +2,8 @@
 
 namespace App\Filament\Resources\AccountingExports\Tables;
 
+use App\Filament\Resources\AccountingExports\Actions\AccountingExportActions;
 use App\Models\AccountingExport;
-use App\Services\Accounting\GenerateAccountingExport;
-use Filament\Actions\Action;
-use Filament\Actions\ActionGroup;
-use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -26,12 +23,12 @@ class AccountingExportsTable
                     ->sortable(),
                 TextColumn::make('status')
                     ->badge()
-                    ->icon(fn (string $state): string => match ($state) {
+                    ->icon(fn(string $state): string => match ($state) {
                         AccountingExport::STATUS_COMPLETED => 'heroicon-o-check-circle',
                         AccountingExport::STATUS_FAILED => 'heroicon-o-exclamation-triangle',
                         default => 'heroicon-o-arrow-path',
                     })
-                    ->color(fn (string $state): string => match ($state) {
+                    ->color(fn(string $state): string => match ($state) {
                         AccountingExport::STATUS_COMPLETED => 'success',
                         AccountingExport::STATUS_FAILED => 'danger',
                         default => 'gray',
@@ -54,36 +51,9 @@ class AccountingExportsTable
                     AccountingExport::STATUS_PROCESSING => 'Processing',
                 ]),
             ])
-            ->recordActions([
-                ActionGroup::make([
-                    Action::make('download')
-                        ->label('Download Excel')
-                        ->icon('heroicon-o-arrow-down-tray')
-                        ->openUrlInNewTab()
-                        ->color('gray')
-                        ->url(fn (AccountingExport $record): string => route('accounting-exports.download', $record))
-                        ->visible(fn (AccountingExport $record): bool => $record->status === AccountingExport::STATUS_COMPLETED),
-                    Action::make('retry')
-                        ->icon('heroicon-o-arrow-path')
-                        ->color('gray')
-                        ->requiresConfirmation()
-                        ->visible(fn (AccountingExport $record): bool => $record->status === AccountingExport::STATUS_FAILED)
-                        ->action(function (AccountingExport $record): void {
-                            $result = app(GenerateAccountingExport::class)->handle(
-                                $record->integration,
-                                $record->cutoff_at,
-                                auth()->user(),
-                                $record,
-                            );
-
-                            Notification::make()
-                                ->title($result?->status === AccountingExport::STATUS_COMPLETED ? 'Export generated' : 'Export retry failed')
-                                ->body($result?->error_message)
-                                ->color($result?->status === AccountingExport::STATUS_COMPLETED ? 'success' : 'danger')
-                                ->send();
-                        }),
-                ]),
-            ])
+            ->recordActions(
+                AccountingExportActions::make(),
+            )
             ->toolbarActions([]);
     }
 }

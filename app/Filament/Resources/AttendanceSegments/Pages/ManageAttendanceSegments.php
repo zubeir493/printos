@@ -41,23 +41,23 @@ class ManageAttendanceSegments extends ManageRecords
     protected function getTableQuery(): Builder|Relation|null
     {
         return parent::getTableQuery()
-            ?->when($this->selectedEmployeeId, fn (Builder $query): Builder => $query->where('employee_id', $this->selectedEmployeeId));
+            ?->when($this->selectedEmployeeId, fn(Builder $query): Builder => $query->where('employee_id', $this->selectedEmployeeId));
     }
 
     protected function getHeaderActions(): array
     {
         return [
             CreateAction::make()
-                ->after(fn ($record) => app(RebuildAttendanceDailySummaries::class)->forSegments(collect([$record]))),
-            ImportAction::make('importAttendanceCsv')
-                ->label('Import attendance CSV')
-                ->importer(AttendanceSegmentImporter::class)
-                ->fileRules([
-                    File::types(['csv', 'txt'])->max(10240),
-                ]),
+                ->after(fn($record) => app(RebuildAttendanceDailySummaries::class)->forSegments(collect([$record]))),
             ActionGroup::make([
                 ExportAction::make()
                     ->exporter(AttendanceSegmentExporter::class),
+                ImportAction::make('importAttendanceCsv')
+                    ->label('Import attendance CSV')
+                    ->importer(AttendanceSegmentImporter::class)
+                    ->fileRules([
+                        File::types(['csv', 'txt'])->max(10240),
+                    ]),
             ]),
         ];
     }

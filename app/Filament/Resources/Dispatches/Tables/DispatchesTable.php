@@ -2,14 +2,11 @@
 
 namespace App\Filament\Resources\Dispatches\Tables;
 
+use App\Filament\Resources\Dispatches\Actions\DispatchActions;
 use App\Filament\Tables\Filters\DateRangeFilter;
 use App\Models\JobOrder;
-use Filament\Actions\Action;
-use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\EditAction;
-use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -56,41 +53,7 @@ class DispatchesTable
             ])
             ->defaultSort('delivery_date', 'desc')
             ->recordActions([
-                ActionGroup::make([
-                    Action::make('complete_dispatch')
-                        ->label('Mark as Delivered')
-                        ->icon('heroicon-o-check-circle')
-                        ->color('gray')
-                        ->visible(fn ($record) => $record->status === 'pending')
-                        ->requiresConfirmation()
-                        ->modalHeading('Confirm Delivery')
-                        ->modalDescription('Mark this dispatch as delivered? This confirms the items have been received by the customer.')
-                        ->action(function ($record): void {
-                            $record->update(['status' => 'completed']);
-
-                            Notification::make()
-                                ->title('Dispatch marked as delivered')
-                                ->success()
-                                ->send();
-                        }),
-                    Action::make('cancel_dispatch')
-                        ->label('Cancel Dispatch')
-                        ->icon('heroicon-o-x-circle')
-                        ->color('gray')
-                        ->visible(fn ($record) => $record->status === 'pending')
-                        ->requiresConfirmation()
-                        ->modalHeading('Cancel Dispatch')
-                        ->modalDescription('Are you sure you want to cancel this dispatch?')
-                        ->action(function ($record): void {
-                            $record->update(['status' => 'cancelled']);
-
-                            Notification::make()
-                                ->title('Dispatch cancelled')
-                                ->danger()
-                                ->send();
-                        }),
-                    EditAction::make(),
-                ]),
+                DispatchActions::make(),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

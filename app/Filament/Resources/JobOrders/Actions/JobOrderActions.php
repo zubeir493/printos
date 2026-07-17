@@ -24,6 +24,7 @@ use App\States\JobOrder\Completed;
 use App\Support\Money;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
+use Filament\Actions\DeleteAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
@@ -37,9 +38,9 @@ use Illuminate\Validation\ValidationException;
 
 class JobOrderActions
 {
-    public static function make(): ActionGroup
+    public static function make(bool $includeDelete = false): ActionGroup
     {
-        return ActionGroup::make([
+        return ActionGroup::make(array_filter([
             self::edit(),
             self::reorder(),
             self::print(),
@@ -51,7 +52,8 @@ class JobOrderActions
             self::generatePurchaseOrder(),
             self::invoice(),
             self::pay(),
-        ]);
+            $includeDelete ? self::delete() : null,
+        ]));
     }
 
     public static function edit(): Action
@@ -557,5 +559,10 @@ class JobOrderActions
                         ->send();
                 }
             });
+    }
+
+    public static function delete(): DeleteAction
+    {
+        return DeleteAction::make();
     }
 }

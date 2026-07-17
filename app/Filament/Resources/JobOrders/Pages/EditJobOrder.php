@@ -10,6 +10,7 @@ use App\Models\MaterialRequest;
 use App\Models\StockMovement;
 use App\Models\Warehouse;
 use App\Services\InventoryService;
+use App\Services\JobOrders\DuplicateJobOrder;
 use App\Services\MaterialIssueService;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -187,6 +188,25 @@ class EditJobOrder extends EditRecord
                                 ->persistent()
                                 ->send();
                         }
+                    }),
+                Action::make('reorder')
+                    ->label('Reorder')
+                    ->icon('heroicon-o-document-duplicate')
+                    ->color('gray')
+                    ->visible(fn () => PanelAccess::canManageJobOrders())
+                    ->requiresConfirmation()
+                    ->modalHeading('Reorder this job order?')
+                    ->modalDescription('This creates a new draft job order with the same tasks and current dates.')
+                    ->action(function ($record): void {
+                        $duplicate = app(DuplicateJobOrder::class)->handle($record);
+
+                        Notification::make()
+                            ->title('Job order duplicated')
+                            ->body("Created {$duplicate->job_order_number}.")
+                            ->success()
+                            ->send();
+
+                        $this->redirect(JobOrderResource::getUrl('edit', ['record' => $duplicate]));
                     }),
                 DeleteAction::make(),
             ]),

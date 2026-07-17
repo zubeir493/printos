@@ -52,6 +52,7 @@ class BidForm
                                     ->suffix(fn (): string => Money::suffix())
                                     ->required(),
                                 DatePicker::make('deadline_date')
+                                    ->default(now()->addDays(30))
                                     ->label('Closing Date'),
                                 TextInput::make('bid_bond_amount')
                                     ->label('Bond Amount')

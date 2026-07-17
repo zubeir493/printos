@@ -74,3 +74,30 @@ test('job order task global search eager loads result detail relations', functio
 
     expect($results)->toHaveCount(1);
 });
+
+test('job order task resource only lists tasks for active job orders', function () {
+    Filament::setCurrentPanel(Filament::getPanel('admin'));
+
+    $activeJobOrder = JobOrder::factory()->create(['status' => 'active']);
+    $draftJobOrder = JobOrder::factory()->create(['status' => 'draft']);
+    $completedJobOrder = JobOrder::factory()->create(['status' => 'completed']);
+
+    $activeTask = JobOrderTask::factory()->create([
+        'job_order_id' => $activeJobOrder->id,
+        'name' => 'Visible active task',
+    ]);
+
+    JobOrderTask::factory()->create([
+        'job_order_id' => $draftJobOrder->id,
+        'name' => 'Hidden draft task',
+    ]);
+
+    JobOrderTask::factory()->create([
+        'job_order_id' => $completedJobOrder->id,
+        'name' => 'Hidden completed task',
+    ]);
+
+    $tasks = JobOrderTaskResource::getEloquentQuery()->pluck('id');
+
+    expect($tasks->all())->toBe([$activeTask->id]);
+});

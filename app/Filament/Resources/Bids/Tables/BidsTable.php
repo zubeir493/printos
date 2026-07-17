@@ -114,6 +114,7 @@ class BidsTable
                         ->label('Return Bid Bond')
                         ->icon('heroicon-o-arrow-down-tray')
                         ->color('gray')
+                        ->modalWidth('md')
                         ->visible(fn (Bid $record): bool => filled($record->currentBidBond()?->issue_payment_id)
                             && blank($record->currentBidBond()?->recovery_payment_id)
                             && PanelAccess::canManageBidBonds())

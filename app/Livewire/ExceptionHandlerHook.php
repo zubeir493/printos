@@ -7,6 +7,7 @@ use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
 use Illuminate\Validation\ValidationException;
+use League\Flysystem\UnableToWriteFile;
 use Livewire\ComponentHook;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
@@ -47,13 +48,14 @@ class ExceptionHandlerHook extends ComponentHook
         }
 
         $message = self::humanise($e);
+        $title = self::notificationTitle($e);
 
         if ($message === self::unexpectedErrorMessage()) {
             report($e);
         }
 
         Notification::make()
-            ->title('Something went wrong')
+            ->title($title)
             ->body($message)
             ->danger()
             ->persistent()
@@ -69,6 +71,10 @@ class ExceptionHandlerHook extends ComponentHook
     {
         if ($e instanceof QueryException) {
             return self::humaniseQuery($e);
+        }
+
+        if (self::isStorageConnectionFailure($e)) {
+            return 'The file could not be uploaded because the storage service is unreachable. Check your internet connection and try again. If you are working locally or offline, switch private uploads to local storage.';
         }
 
         if ($e instanceof AuthorizationException) {
@@ -103,6 +109,37 @@ class ExceptionHandlerHook extends ComponentHook
         }
 
         return self::unexpectedErrorMessage();
+    }
+
+    private static function notificationTitle(\Throwable $e): string
+    {
+        return self::isStorageConnectionFailure($e)
+            ? 'File upload failed'
+            : 'Something went wrong';
+    }
+
+    private static function isStorageConnectionFailure(\Throwable $e): bool
+    {
+        if (! $e instanceof UnableToWriteFile) {
+            return false;
+        }
+
+        for ($throwable = $e; $throwable; $throwable = $throwable->getPrevious()) {
+            $message = $throwable->getMessage();
+
+            if (
+                str_contains($message, 'Could not resolve host')
+                || str_contains($message, 'Connection timed out')
+                || str_contains($message, 'Failed to connect')
+                || str_contains($message, 'cURL error 6')
+                || str_contains($message, 'cURL error 7')
+                || str_contains($message, 'cURL error 28')
+            ) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static function userSafeDomainMessage(\Throwable $e): ?string

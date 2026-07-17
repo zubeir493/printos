@@ -1,6 +1,8 @@
 <?php
 
+use Filament\Notifications\Livewire\Notifications;
 use Illuminate\Support\Facades\Route;
+use League\Flysystem\UnableToWriteFile;
 use Livewire\Component;
 use Livewire\Livewire;
 
@@ -14,6 +16,14 @@ class ExceptionRenderingTestComponent extends Component
     public function missing(): void
     {
         abort(404);
+    }
+
+    public function storageOffline(): void
+    {
+        throw UnableToWriteFile::atLocation(
+            'job-order-cost-calculations/All Employee.csv',
+            'Error executing "PutObject"; cURL error 6: Could not resolve host: s3.eu-central-003.backblazeb2.com'
+        );
     }
 
     public function render(): string
@@ -77,4 +87,21 @@ it('turns stale livewire actions into a record not found notification', function
     Livewire::test(ExceptionRenderingTestComponent::class)
         ->call('missing')
         ->assertNotified('Record not found');
+});
+
+it('turns offline private storage upload failures into actionable notifications', function (): void {
+    Livewire::test(ExceptionRenderingTestComponent::class)
+        ->call('storageOffline');
+
+    $notifications = new Notifications;
+    $notifications->mount();
+
+    $notification = $notifications->notifications
+        ->first(fn ($notification): bool => $notification->getTitle() === 'File upload failed');
+
+    $body = (string) $notification?->getBody();
+
+    expect($notification)->not->toBeNull()
+        ->and(str_contains($body, 'storage service is unreachable'))->toBeTrue()
+        ->and(str_contains($body, 'switch private uploads to local storage'))->toBeTrue();
 });

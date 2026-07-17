@@ -74,7 +74,9 @@ class JobOrderTaskResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        $query = parent::getEloquentQuery()->with(['designer', 'jobOrder.partner']);
+        $query = parent::getEloquentQuery()
+            ->with(['designer', 'jobOrder.partner'])
+            ->whereHas('jobOrder', fn (Builder $query): Builder => $query->where('status', 'active'));
 
         if (Filament::getCurrentPanel()?->getId() === 'production') {
             $query->where('status', 'production');

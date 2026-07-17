@@ -108,8 +108,8 @@ trait InteractsWithBidActions
     protected function sendBidBondAction(): Action
     {
         return Action::make('send_bond')
-            ->label('Send Bid Bond')
-            ->icon('heroicon-o-arrow-up-tray')
+            ->label('Send Bond')
+            ->icon('heroicon-o-banknotes')
             ->color('gray')
             ->visible(fn (): bool => $this->record->status === Bid::STATUS_DRAFT
                 && (float) ($this->record->bid_bond_amount ?? 0) > 0

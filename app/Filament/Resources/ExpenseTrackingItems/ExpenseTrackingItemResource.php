@@ -25,7 +25,7 @@ class ExpenseTrackingItemResource extends Resource
 {
     protected static ?string $model = ExpenseTrackingItem::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedQrCode;
 
     protected static ?string $modelLabel = 'Tracking Item';
 
@@ -68,7 +68,7 @@ class ExpenseTrackingItemResource extends Resource
             ->columns([
                 TextColumn::make('type')
                     ->badge()
-                    ->formatStateUsing(fn (string $state): string => ExpenseTrackingType::tryFrom($state)?->label() ?? str($state)->headline()->toString())
+                    ->formatStateUsing(fn(string $state): string => ExpenseTrackingType::tryFrom($state)?->label() ?? str($state)->headline()->toString())
                     ->sortable(),
                 TextColumn::make('code')
                     ->searchable()
@@ -78,7 +78,7 @@ class ExpenseTrackingItemResource extends Resource
                     ->sortable(),
                 TextColumn::make('status')
                     ->badge()
-                    ->color(fn (string $state): string => $state === ExpenseTrackingItem::STATUS_ACTIVE ? 'success' : 'gray'),
+                    ->color(fn(string $state): string => $state === ExpenseTrackingItem::STATUS_ACTIVE ? 'success' : 'gray'),
             ])
             ->filters([
                 SelectFilter::make('type')

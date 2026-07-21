@@ -9,6 +9,7 @@ use App\Filament\Design\Widgets\DesignQueueWidget;
 use App\Filament\Design\Widgets\DesignSLAStats;
 use App\Filament\Pages\Auth\EditProfile;
 use App\Filament\Resources\Artworks\ArtworkResource;
+use App\Filament\Resources\Dielines\DielineResource;
 use App\Filament\Resources\EmailLogs\EmailLogResource;
 use App\Filament\Resources\JobOrders\JobOrderResource;
 use App\Filament\Resources\JobOrderTasks\JobOrderTaskResource;
@@ -53,11 +54,11 @@ class DesignPanelProvider extends PanelProvider
             ])
             ->resources([
                 ArtworkResource::class,
+                DielineResource::class,
                 JobOrderResource::class,
                 JobOrderTaskResource::class,
                 EmailLogResource::class,
                 PartnerResource::class,
-
             ])
             ->discoverPages(in: app_path('Filament/Design/Pages'), for: 'App\Filament\Design\Pages')
             ->pages([

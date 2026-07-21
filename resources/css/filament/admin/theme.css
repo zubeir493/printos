@@ -840,3 +840,373 @@ button>.fi-sc-wizard-header-step-text{
         order: -1;
     }
 }
+
+html:has(.dieline-canvas-shell),
+body:has(.dieline-canvas-shell) {
+    block-size: 100%;
+    overflow: hidden;
+}
+
+body:has(.dieline-canvas-shell) .fi-topbar-ctn,
+body:has(.dieline-canvas-shell) .fi-main-sidebar,
+body:has(.dieline-canvas-shell) .fi-sidebar-close-overlay,
+body:has(.dieline-canvas-shell) .fi-layout-sidebar-toggle-btn-ctn {
+    display: none;
+}
+
+body:has(.dieline-canvas-shell) .fi-main-ctn {
+    display: flex;
+    block-size: 100dvh;
+    inline-size: 100%;
+    overflow: hidden;
+}
+
+body:has(.dieline-canvas-shell) .fi-main {
+    block-size: 100dvh;
+    inline-size: 100%;
+    max-inline-size: none;
+    overflow: hidden;
+    padding: 0;
+}
+
+body:has(.dieline-canvas-shell) .fi-page,
+body:has(.dieline-canvas-shell) .fi-page-header-main-ctn,
+body:has(.dieline-canvas-shell) .fi-page-main {
+    block-size: 100dvh;
+    margin: 0;
+    overflow: hidden;
+    padding: 0;
+}
+
+body:has(.dieline-canvas-shell) .fi-page-content {
+    block-size: 100dvh;
+    overflow: hidden;
+    padding: 0;
+}
+
+[x-cloak] {
+    display: none !important;
+}
+
+.dieline-canvas-shell {
+    background:
+        linear-gradient(var(--gray-100) 1px, transparent 1px),
+        linear-gradient(90deg, var(--gray-100) 1px, transparent 1px),
+        linear-gradient(var(--gray-300) 1px, transparent 1px),
+        linear-gradient(90deg, var(--gray-300) 1px, transparent 1px);
+    background-color: var(--gray-50);
+    background-size: 10px 10px, 10px 10px, 100px 100px, 100px 100px;
+    block-size: 100dvh;
+    box-sizing: border-box;
+    display: flex;
+    gap: 1.5rem;
+    inline-size: 100vw;
+    overflow: hidden;
+    padding: .75rem;
+}
+
+.dieline-editor-sidebar {
+    align-self: flex-start;
+    background: var(--color-white);
+    border-radius: .6rem;
+    box-shadow:
+        0 14px 35px rgb(15 23 42 / .12),
+        0 0 0 1px rgb(15 23 42 / .05);
+    block-size: fit-content;
+    display: flex;
+    flex: 0 0 15.25rem;
+    flex-direction: column;
+    max-block-size: calc(100dvh - 1.5rem);
+    min-block-size: 0;
+    overflow: hidden;
+    z-index: 10;
+}
+
+.dieline-editor-sidebar-scroll {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-block-size: 0;
+    overflow: auto;
+    padding: .85rem;
+    scrollbar-width: thin;
+}
+
+.dieline-editor-fields {
+    display: flex;
+    flex-direction: column;
+    gap: .8rem;
+    padding-block-start: 1rem;
+}
+
+.dieline-editor-field {
+    display: grid;
+    font-size: .78rem;
+    gap: .38rem;
+}
+
+.dieline-editor-field sup {
+    color: var(--danger-600);
+    font-size: .72rem;
+    line-height: 0;
+}
+
+.dieline-editor-field small {
+    color: var(--danger-600);
+    font-size: .7rem;
+    font-weight: 600;
+}
+
+.dieline-editor-field .fi-input-wrp,
+.dieline-editor-field .fi-select-input {
+    inline-size: 100%;
+}
+
+.dieline-editor-field .fi-input {
+    font-variant-numeric: tabular-nums;
+}
+
+.dieline-editor-field select.fi-select-input {
+    -webkit-box-orient: initial;
+    -webkit-line-clamp: unset;
+    display: block;
+}
+
+.dieline-editor-actions {
+    background: var(--color-white);
+    box-shadow: 0 -10px 20px rgb(15 23 42 / .07);
+    display: flex;
+    flex: 0 0 auto;
+    gap: 0;
+    inset-block-end: 0;
+    margin-block-start: auto;
+    padding: .65rem;
+    position: sticky;
+    z-index: 12;
+}
+
+.dieline-save-action,
+.dieline-save-menu {
+    align-items: center;
+    background: var(--primary-600);
+    color: var(--color-white);
+    display: inline-flex;
+    justify-content: center;
+    min-block-size: 2.5rem;
+    transition-duration: 160ms;
+    transition-property: background-color, box-shadow, scale;
+    transition-timing-function: cubic-bezier(.2, 0, 0, 1);
+}
+.dieline-save-menu{
+    border-left: none !important;
+}
+.dieline-save-action:hover,
+.dieline-save-menu:hover {
+    background: var(--primary-500);
+}
+
+.dieline-save-action:active,
+.dieline-save-menu:active {
+    scale: .96;
+}
+
+.dieline-save-action {
+    border-end-start-radius: .5rem;
+    border-start-start-radius: .5rem;
+    box-shadow:
+        inset 0 1px 0 rgb(255 255 255 / .25),
+        0 0 0 1px var(--primary-700),
+        0 4px 8px rgb(15 23 42 / .22);
+    flex: 1 1 auto;
+    gap: .4rem;
+    font-size: .78rem;
+    font-weight: 700;
+}
+
+.dieline-save-action svg {
+    block-size: 1rem;
+    fill: currentColor;
+    inline-size: 1rem;
+}
+
+.dieline-save-menu {
+    border-end-end-radius: .5rem;
+    border-inline-start: 1px solid color-mix(in srgb, var(--color-white) 35%, transparent);
+    border-start-end-radius: .5rem;
+    box-shadow:
+        inset 0 1px 0 rgb(255 255 255 / .25),
+        0 0 0 1px var(--primary-700),
+        0 4px 8px rgb(15 23 42 / .22);
+    flex: 0 0 2.75rem;
+}
+
+.dieline-save-menu svg {
+    block-size: 1rem;
+    fill: currentColor;
+    inline-size: 1rem;
+}
+
+.dieline-download-menu {
+    background: var(--color-white);
+    border-radius: .5rem;
+    box-shadow:
+        0 16px 32px rgb(15 23 42 / .16),
+        0 0 0 1px rgb(15 23 42 / .06);
+    display: grid;
+    gap: .15rem;
+    inset-block-end: calc(100% + .4rem);
+    inset-inline: .65rem;
+    padding: .3rem;
+    position: absolute;
+    z-index: 14;
+}
+
+.dieline-download-menu button {
+    border-radius: .35rem;
+    color: var(--gray-800);
+    font-size: .78rem;
+    font-weight: 650;
+    min-block-size: 2.1rem;
+    padding-inline: .6rem;
+    text-align: start;
+}
+
+.dieline-download-menu button:hover,
+.dieline-download-menu button:focus-visible {
+    background: var(--gray-100);
+    color: var(--gray-950);
+}
+
+.dieline-editor-canvas {
+    align-items: stretch;
+    block-size: calc(100dvh - 1.5rem);
+    display: flex;
+    flex: 1 1 auto;
+    justify-content: center;
+    min-inline-size: 0;
+}
+
+.dieline-preview-frame {
+    background: transparent;
+    border: 0;
+    display: grid;
+    gap: .75rem;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    block-size: 100%;
+    inline-size: 100%;
+    padding: 0;
+}
+
+.dieline-preview-toolbar {
+    align-items: center;
+    color: var(--gray-600);
+    display: flex;
+    flex-wrap: wrap;
+    font-size: .76rem;
+    font-weight: 700;
+    gap: .75rem;
+    justify-content: space-between;
+}
+
+.dieline-preview-artboard {
+    align-items: center;
+    background: transparent;
+    border: 0;
+    display: flex;
+    justify-content: center;
+    min-height: 0;
+    overflow: hidden;
+    padding: 1.5rem 2rem;
+}
+
+.dieline-preview-artboard svg {
+    block-size: auto;
+    height: auto;
+    inline-size: auto;
+    max-height: 100%;
+    max-width: 100%;
+    width: auto;
+}
+
+.dieline-preview-legend {
+    display: flex;
+    align-self: center;
+    justify-content: center;
+    padding: 1rem;
+    gap: 2rem;
+}
+
+.dieline-preview-legend span {
+    align-items: center;
+    display: inline-flex;
+    gap: .42rem;
+}
+
+.dieline-preview-legend strong {
+    color: var(--gray-900);
+    font-size: .75rem;
+}
+
+.dieline-preview-legend em {
+    color: var(--gray-600);
+    font-size: .7rem;
+    font-style: normal;
+    font-weight: 600;
+}
+
+.dieline-legend-line,
+.dieline-legend-area {
+    display: inline-flex;
+    flex: 0 0 auto;
+}
+
+.dieline-legend-line {
+    border-top: 2px solid currentColor;
+    height: 0;
+    width: 1.35rem;
+}
+
+.dieline-legend-area {
+    border: 1px solid var(--success-600);
+    border-radius: .18rem;
+    height: .7rem;
+    width: .9rem;
+}
+
+.dieline-legend-cut {
+    color: var(--gray-950);
+}
+
+.dieline-legend-crease {
+    border-top-style: dashed;
+    color: var(--primary-600);
+}
+
+.dieline-legend-glue {
+    background: var(--success-100);
+}
+
+.dieline-legend-bleed {
+    border-top-style: dashed;
+    color: var(--warning-600);
+}
+
+.dieline-preview-empty {
+    align-items: center;
+    color: var(--gray-600);
+    display: flex;
+    font-size: .85rem;
+    justify-content: center;
+    text-align: center;
+}
+
+@media screen and (max-width: 1279px) {
+    .dieline-canvas-shell {
+        gap: 1rem;
+    }
+
+    .dieline-editor-sidebar {
+        inline-size: 14rem;
+        flex-basis: 14rem;
+    }
+}

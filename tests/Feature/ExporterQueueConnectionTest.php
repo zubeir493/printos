@@ -1,5 +1,6 @@
 <?php
 
+use App\Filament\Exports\InventoryItemExporter;
 use App\Filament\Exports\JobOrderExporter;
 use App\Filament\Exports\PurchaseOrderExporter;
 use App\Filament\Exports\SalesOrderExporter;
@@ -34,3 +35,31 @@ test('order exporters include financial totals and payment balances', function (
     'purchase orders' => PurchaseOrderExporter::class,
     'job orders' => JobOrderExporter::class,
 ]);
+
+test('inventory item exporter includes all item fields', function (): void {
+    $columnNames = collect(InventoryItemExporter::getColumns())
+        ->map(fn ($column): string => $column->getName());
+
+    expect($columnNames)
+        ->toContain(
+            'id',
+            'name',
+            'image',
+            'sku',
+            'unit',
+            'purchase_unit',
+            'conversion_factor',
+            'type',
+            'category',
+            'is_sellable',
+            'price',
+            'average_cost',
+            'low_stock_threshold',
+            'gsm',
+            'width',
+            'height',
+            'default_waste_percent',
+            'created_at',
+            'updated_at',
+        );
+});

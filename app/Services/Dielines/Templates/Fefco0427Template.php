@@ -100,12 +100,7 @@ class Fefco0427Template implements DielineTemplateContract
                 'cut' => $cut,
                 'crease' => $crease,
                 'glue' => [],
-                'bleed' => [
-                    $this->line($left - $bleed, $baseTop - $bleed, $right + $bleed, $baseTop - $bleed),
-                    $this->line($right + $bleed, $baseTop - $bleed, $right + $bleed, $baseBottom + $bleed),
-                    $this->line($right + $bleed, $baseBottom + $bleed, $left - $bleed, $baseBottom + $bleed),
-                    $this->line($left - $bleed, $baseBottom + $bleed, $left - $bleed, $baseTop - $bleed),
-                ],
+                'bleed' => $this->bleedBox($left, $baseTop, $length, $width, $bleed),
             ],
             'labels' => [
                 $this->label($left + ($length / 2), $baseTop + ($width / 2), 'Base'),

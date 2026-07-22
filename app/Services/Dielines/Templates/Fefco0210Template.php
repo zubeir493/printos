@@ -74,22 +74,20 @@ class Fefco0210Template implements DielineTemplateContract
         $totalWidth = array_sum($panelWidths);
         $totalHeight = $height + ($tuckFlap * 2);
 
-        $cut = [
-            $this->line(0, $bodyTop, $totalWidth, $bodyTop),
-            $this->line($totalWidth, $bodyTop, $totalWidth, $bodyBottom),
-            $this->line($totalWidth, $bodyBottom, 0, $bodyBottom),
-            $this->line(0, $bodyBottom, 0, $bodyTop),
-        ];
+        $cut = $this->rectangle(0, $bodyTop, $totalWidth, $height);
 
         $panelStart = $glueFlap;
         foreach ([$width, $length, $width, $length] as $index => $panelWidth) {
-            $flapDepth = in_array($index, [1, 3], true) ? $tuckFlap : $dustFlap;
-            $cut[] = $this->line($panelStart, $bodyTop, $panelStart, $bodyTop - $flapDepth);
-            $cut[] = $this->line($panelStart, $bodyTop - $flapDepth, $panelStart + $panelWidth, $bodyTop - $flapDepth);
-            $cut[] = $this->line($panelStart + $panelWidth, $bodyTop - $flapDepth, $panelStart + $panelWidth, $bodyTop);
-            $cut[] = $this->line($panelStart, $bodyBottom, $panelStart, $bodyBottom + $flapDepth);
-            $cut[] = $this->line($panelStart, $bodyBottom + $flapDepth, $panelStart + $panelWidth, $bodyBottom + $flapDepth);
-            $cut[] = $this->line($panelStart + $panelWidth, $bodyBottom + $flapDepth, $panelStart + $panelWidth, $bodyBottom);
+            $isTuckPanel = in_array($index, [1, 3], true);
+            $flapDepth = $isTuckPanel ? $tuckFlap : $dustFlap;
+            $flapBuilder = $isTuckPanel ? $this->tuckFlap(...) : $this->dustFlap(...);
+
+            array_push(
+                $cut,
+                ...$flapBuilder($panelStart, $bodyTop, $panelWidth, $flapDepth, 'top'),
+                ...$flapBuilder($panelStart, $bodyBottom, $panelWidth, $flapDepth, 'bottom'),
+            );
+
             $panelStart += $panelWidth;
         }
 
@@ -111,14 +109,9 @@ class Fefco0210Template implements DielineTemplateContract
                 'cut' => $cut,
                 'crease' => $crease,
                 'glue' => [
-                    ['points' => $this->polygon(0, $bodyTop, $glueFlap, $height)],
+                    $this->glueArea(0, $bodyTop, $glueFlap, $height),
                 ],
-                'bleed' => [
-                    $this->line(-$bleed, $bodyTop - $bleed, $totalWidth + $bleed, $bodyTop - $bleed),
-                    $this->line($totalWidth + $bleed, $bodyTop - $bleed, $totalWidth + $bleed, $bodyBottom + $bleed),
-                    $this->line($totalWidth + $bleed, $bodyBottom + $bleed, -$bleed, $bodyBottom + $bleed),
-                    $this->line(-$bleed, $bodyBottom + $bleed, -$bleed, $bodyTop - $bleed),
-                ],
+                'bleed' => $this->bleedBox(0, $bodyTop, $totalWidth, $height, $bleed),
             ],
             'labels' => [
                 $this->label($glueFlap + ($width / 2), $bodyTop + ($height / 2), 'Side'),

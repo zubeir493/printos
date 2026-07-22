@@ -912,11 +912,10 @@ body:has(.dieline-canvas-shell) .fi-page-content {
     box-shadow:
         0 14px 35px rgb(15 23 42 / .12),
         0 0 0 1px rgb(15 23 42 / .05);
-    block-size: fit-content;
+    block-size: calc(100dvh - 1.5rem);
     display: flex;
     flex: 0 0 15.25rem;
     flex-direction: column;
-    max-block-size: calc(100dvh - 1.5rem);
     min-block-size: 0;
     overflow: hidden;
     z-index: 10;

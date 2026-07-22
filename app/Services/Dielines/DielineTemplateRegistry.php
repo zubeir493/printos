@@ -5,6 +5,7 @@ namespace App\Services\Dielines;
 use App\Models\DielineTemplate;
 use App\Services\Dielines\Templates\Fefco0210Template;
 use App\Services\Dielines\Templates\Fefco0427Template;
+use App\Services\Dielines\Templates\RoundedTuckCartonTemplate;
 use Illuminate\Support\Collection;
 
 class DielineTemplateRegistry
@@ -17,6 +18,7 @@ class DielineTemplateRegistry
         return [
             'fefco-0210' => Fefco0210Template::class,
             'fefco-0427' => Fefco0427Template::class,
+            'rounded-tuck-carton' => RoundedTuckCartonTemplate::class,
         ];
     }
 

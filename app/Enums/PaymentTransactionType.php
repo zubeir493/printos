@@ -41,25 +41,6 @@ enum PaymentTransactionType: string
         };
     }
 
-    public function description(): string
-    {
-        return match ($this) {
-            self::CUSTOMER_RECEIPT => 'Money received from a customer. Debits cash/bank and credits AR.',
-            self::SUPPLIER_PAYMENT => 'Payment to settle a supplier or bill. Debits AP and credits cash/bank.',
-            self::DIRECT_EXPENSE => 'Normal operating expense paid from the selected source. Debits an expense account.',
-            self::PETTY_CASH_FUNDING => 'Moves money into petty cash. Debits petty cash and credits cash/bank.',
-            self::PETTY_CASH_EXPENSE => 'Expense paid out of petty cash. Debits expense and credits petty cash.',
-            self::CASH_SALE_RECEIPT => 'Receipt record for a cash sale already posted by the sales journal.',
-            self::PAYROLL_PAYMENT => 'Salary payment. Debits payroll payable and credits cash/bank.',
-            self::EMPLOYEE_LOAN_DISBURSEMENT => 'Employee loan paid out. Debits employee loan receivable and credits cash/bank.',
-            self::EMPLOYEE_LOAN_REPAYMENT => 'Employee loan repayment. Debits cash/bank and credits employee loan receivable.',
-            self::BID_BOND_ISSUE => 'Refundable bid bond issued. Debits bid bond receivable and credits cash/bank.',
-            self::BID_BOND_RECOVERY => 'Refundable bid bond recovered. Debits cash/bank and credits bid bond receivable.',
-            self::PERFORMANCE_BOND_ISSUE => 'Refundable performance bond issued. Debits performance bond receivable and credits cash/bank.',
-            self::PERFORMANCE_BOND_RECOVERY => 'Refundable performance bond recovered. Debits cash/bank and credits performance bond receivable.',
-        };
-    }
-
     public function paymentFormLabel(): string
     {
         return match ($this) {

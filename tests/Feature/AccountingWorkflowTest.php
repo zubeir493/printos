@@ -395,6 +395,60 @@ class AccountingWorkflowTest extends TestCase
         ]);
     }
 
+    public function test_supplier_payment_withholding_posts_net_cash_and_withholding_payable()
+    {
+        $supplier = Partner::create([
+            'name' => 'Supplier Withholding',
+            'is_supplier' => true,
+        ]);
+        $bank = Bank::create([
+            'name' => 'Supplier Withholding Bank',
+            'code' => 'SWB',
+            'account_number' => '1234567890',
+            'account_holder_name' => 'Packledge',
+            'bank_name' => 'Supplier Withholding Bank',
+            'branch' => 'Main',
+            'current_balance' => 1000,
+            'status' => 'active',
+        ]);
+
+        $payment = Payment::create([
+            'partner_id' => $supplier->id,
+            'payment_date' => now(),
+            'amount' => 600.00,
+            'withholding_amount' => 30.00,
+            'transaction_type' => 'supplier_payment',
+            'method' => 'bank',
+            'bank_id' => $bank->id,
+        ]);
+
+        $journalEntry = JournalEntry::where('source_type', Payment::class)
+            ->where('source_id', $payment->id)
+            ->firstOrFail();
+        $accountsPayable = Account::getSystemAccount(Account::CODE_AP, 'Accounts Payable', 'Liability');
+        $bankAccount = Account::getSystemAccount('1010', 'Bank Current Account', 'Asset');
+        $withholdingPayable = Account::getSystemAccount(Account::CODE_WITHHOLDING_PAYABLE, 'Withholding Payable', 'Liability');
+
+        $this->assertDatabaseHas('journal_items', [
+            'journal_entry_id' => $journalEntry->id,
+            'account_id' => $accountsPayable->id,
+            'debit' => 600.00,
+        ]);
+        $this->assertDatabaseHas('journal_items', [
+            'journal_entry_id' => $journalEntry->id,
+            'account_id' => $bankAccount->id,
+            'credit' => 570.00,
+        ]);
+        $this->assertDatabaseHas('journal_items', [
+            'journal_entry_id' => $journalEntry->id,
+            'account_id' => $withholdingPayable->id,
+            'credit' => 30.00,
+        ]);
+
+        $this->assertSame(430.0, (float) $bank->fresh()->current_balance);
+        $this->assertSame(-570.0, (float) BankTransaction::where('source_type', 'payment')->where('source_id', $payment->id)->firstOrFail()->balance_delta);
+    }
+
     public function test_finance_repair_command_backfills_missing_journals_once()
     {
         $customer = Partner::create(['name' => 'Repair Customer', 'is_customer' => true]);

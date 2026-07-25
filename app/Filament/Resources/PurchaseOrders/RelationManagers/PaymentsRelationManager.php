@@ -32,8 +32,16 @@ class PaymentsRelationManager extends RelationManager
             TextInput::make('amount')
                 ->numeric()
                 ->required()
+                ->live(onBlur: true)
                 ->suffix(fn (): string => Money::suffix())
                 ->maxValue(fn (?Model $record): float => $this->remainingBalance($record)),
+            TextInput::make('withholding_amount')
+                ->label('Withholding')
+                ->numeric()
+                ->default(0)
+                ->minValue(0)
+                ->maxValue(fn (callable $get): float => (float) ($get('amount') ?? 0))
+                ->suffix(fn (): string => Money::suffix()),
             Select::make('method')
                 ->label('Payment method')
                 ->options([
@@ -72,6 +80,9 @@ class PaymentsRelationManager extends RelationManager
                 TextColumn::make('amount')
                     ->formatStateUsing(fn ($state) => Money::format($state))
                     ->weight('bold'),
+                TextColumn::make('withholding_amount')
+                    ->label('Withholding')
+                    ->formatStateUsing(fn ($state) => Money::format($state)),
             ])
             ->filters([
                 DateRangeFilter::make('payment_date_range', 'payment_date', 'Payment date'),

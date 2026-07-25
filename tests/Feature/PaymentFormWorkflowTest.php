@@ -119,7 +119,34 @@ test('payment form keeps transaction type searchable and drives dependent fields
             'method' => 'petty_cash',
         ])
         ->assertFormFieldIsHidden('method')
+        ->assertFormFieldIsHidden('withholding_amount')
         ->assertFormFieldIsHidden('bank_id');
+});
+
+test('payment entry forms expose withholding where receipts and supplier payments are created', function (): void {
+    Filament::setCurrentPanel(Filament::getPanel('finance'));
+
+    $this->actingAs(User::factory()->create([
+        'role' => UserRole::Finance,
+    ]));
+
+    Livewire::test(CreatePayment::class)
+        ->assertFormFieldIsVisible('withholding_amount')
+        ->set('data.transaction_type', PaymentTransactionType::DIRECT_EXPENSE->value)
+        ->assertFormFieldIsHidden('withholding_amount')
+        ->set('data.transaction_type', PaymentTransactionType::SUPPLIER_PAYMENT->value)
+        ->assertFormFieldIsVisible('withholding_amount');
+
+    foreach ([
+        app_path('Filament/Resources/JobOrders/Actions/JobOrderActions.php'),
+        app_path('Filament/Resources/PurchaseOrders/Actions/PurchaseOrderActions.php'),
+        app_path('Filament/Resources/SalesOrders/Actions/SalesOrderActions.php'),
+        app_path('Filament/Resources/JobOrders/RelationManagers/PaymentsRelationManager.php'),
+        app_path('Filament/Resources/PurchaseOrders/RelationManagers/PaymentsRelationManager.php'),
+        app_path('Filament/Resources/SalesOrders/RelationManagers/PaymentsRelationManager.php'),
+    ] as $path) {
+        expect(file_get_contents($path))->toContain("TextInput::make('withholding_amount')");
+    }
 });
 
 test('expense account default tracking reveals the relevant structured tracking field', function (): void {

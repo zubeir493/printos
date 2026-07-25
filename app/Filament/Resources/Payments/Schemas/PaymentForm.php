@@ -11,7 +11,6 @@ use App\Models\ExpenseTrackingItem;
 use App\Support\Money;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
-use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
@@ -33,11 +32,6 @@ class PaymentForm
                             ->options(PaymentTransactionType::paymentFormOptions())
                             ->default(PaymentTransactionType::CUSTOMER_RECEIPT->value)
                             ->searchable()
-                            ->helperText(function (Get $get): ?string {
-                                return PaymentTransactionType::tryFrom(
-                                    $get('transaction_type') ?? PaymentTransactionType::CUSTOMER_RECEIPT->value
-                                )?->description();
-                            })
                             ->afterStateUpdated(function (Set $set, ?string $state): void {
                                 $transactionType = PaymentTransactionType::tryFrom((string) $state);
 
@@ -73,15 +67,15 @@ class PaymentForm
                                         : $query->where('is_customer', true);
                                 }
                             )
-                            ->visible(fn ($get): bool => PaymentTransactionType::tryFrom(
+                            ->visible(fn($get): bool => PaymentTransactionType::tryFrom(
                                 $get('transaction_type') ?? PaymentTransactionType::CUSTOMER_RECEIPT->value
                             )?->requiresPartner() ?? false)
-                            ->required(fn ($get): bool => PaymentTransactionType::tryFrom(
+                            ->required(fn($get): bool => PaymentTransactionType::tryFrom(
                                 $get('transaction_type') ?? PaymentTransactionType::CUSTOMER_RECEIPT->value
                             )?->requiresPartner() ?? false)
                             ->searchable()
                             ->preload()
-                            ->createOptionForm(fn ($get) => $get('transaction_type') === PaymentTransactionType::SUPPLIER_PAYMENT->value
+                            ->createOptionForm(fn($get) => $get('transaction_type') === PaymentTransactionType::SUPPLIER_PAYMENT->value
                                 ? [
                                     TextInput::make('name')->required(),
                                     TextInput::make('phone')->required(),
@@ -99,13 +93,23 @@ class PaymentForm
                         TextInput::make('amount')
                             ->required()
                             ->numeric()
-                            ->suffix(fn (): string => Money::suffix()),
+                            ->live(onBlur: true)
+                            ->suffix(fn(): string => Money::suffix()),
+                        TextInput::make('withholding_amount')
+                            ->label('Withholding')
+                            ->numeric()
+                            ->default(0)
+                            ->minValue(0)
+                            ->maxValue(fn(Get $get): float => (float) ($get('amount') ?? 0))
+                            ->suffix(fn(): string => Money::suffix())
+                            ->visible(fn(Get $get): bool => self::supportsWithholding($get('transaction_type')))
+                            ->dehydrated(fn(Get $get): bool => self::supportsWithholding($get('transaction_type'))),
                         DatePicker::make('payment_date')
                             ->default(now())
                             ->required(),
                         Select::make('method')
                             ->label('Payment method')
-                            ->options(fn (Get $get): array => self::methodOptions($get('transaction_type')))
+                            ->options(fn(Get $get): array => self::methodOptions($get('transaction_type')))
                             ->default('bank')
                             ->afterStateHydrated(function (Select $component, $record): void {
                                 if (! $record) {
@@ -118,8 +122,8 @@ class PaymentForm
                                     default => $record->method,
                                 });
                             })
-                            ->visible(fn (Get $get): bool => $get('transaction_type') !== PaymentTransactionType::PETTY_CASH_EXPENSE->value)
-                            ->required(fn (Get $get): bool => $get('transaction_type') !== PaymentTransactionType::PETTY_CASH_EXPENSE->value)
+                            ->visible(fn(Get $get): bool => $get('transaction_type') !== PaymentTransactionType::PETTY_CASH_EXPENSE->value)
+                            ->required(fn(Get $get): bool => $get('transaction_type') !== PaymentTransactionType::PETTY_CASH_EXPENSE->value)
                             ->dehydratedWhenHidden()
                             ->live(),
                         Select::make('bank_id')
@@ -127,9 +131,9 @@ class PaymentForm
                             ->relationship('bank', 'name')
                             ->searchable()
                             ->preload()
-                            ->visible(fn (Get $get): bool => self::requiresBankAccount($get('method')) && $get('transaction_type') !== PaymentTransactionType::PETTY_CASH_EXPENSE->value)
-                            ->required(fn (Get $get): bool => self::requiresBankAccount($get('method')) && $get('transaction_type') !== PaymentTransactionType::PETTY_CASH_EXPENSE->value)
-                            ->dehydrated(fn (Get $get): bool => self::requiresBankAccount($get('method')) && $get('transaction_type') !== PaymentTransactionType::PETTY_CASH_EXPENSE->value),
+                            ->visible(fn(Get $get): bool => self::requiresBankAccount($get('method')) && $get('transaction_type') !== PaymentTransactionType::PETTY_CASH_EXPENSE->value)
+                            ->required(fn(Get $get): bool => self::requiresBankAccount($get('method')) && $get('transaction_type') !== PaymentTransactionType::PETTY_CASH_EXPENSE->value)
+                            ->dehydrated(fn(Get $get): bool => self::requiresBankAccount($get('method')) && $get('transaction_type') !== PaymentTransactionType::PETTY_CASH_EXPENSE->value),
                         Select::make('petty_cash_account_id')
                             ->label('Petty Cash Account')
                             ->visible(false)
@@ -137,7 +141,7 @@ class PaymentForm
                             ->dehydrated(false),
                         Select::make('expense_account_id')
                             ->label('Expense Category')
-                            ->options(fn (): array => self::expenseAccountOptions())
+                            ->options(fn(): array => self::expenseAccountOptions())
                             ->searchable()
                             ->preload()
                             ->live()
@@ -167,42 +171,42 @@ class PaymentForm
                                 Hidden::make('type')
                                     ->default('Expense'),
                             ])
-                            ->createOptionUsing(fn (array $data): int => Account::create([
+                            ->createOptionUsing(fn(array $data): int => Account::create([
                                 'code' => $data['code'],
                                 'name' => $data['name'],
                                 'type' => 'Expense',
                                 'default_tracking_type' => $data['default_tracking_type'] ?? ExpenseTrackingType::NONE->value,
                             ])->id)
-                            ->visible(fn (Get $get): bool => self::isExpenseTransaction($get('transaction_type')))
-                            ->required(fn (Get $get): bool => self::isExpenseTransaction($get('transaction_type')))
-                            ->dehydrated(fn (Get $get): bool => self::isExpenseTransaction($get('transaction_type'))),
+                            ->visible(fn(Get $get): bool => self::isExpenseTransaction($get('transaction_type')))
+                            ->required(fn(Get $get): bool => self::isExpenseTransaction($get('transaction_type')))
+                            ->dehydrated(fn(Get $get): bool => self::isExpenseTransaction($get('transaction_type'))),
                         Hidden::make('expense_tracking_type')
                             ->default(ExpenseTrackingType::NONE->value)
-                            ->dehydrated(fn (Get $get): bool => self::isExpenseTransaction($get('transaction_type'))),
+                            ->dehydrated(fn(Get $get): bool => self::isExpenseTransaction($get('transaction_type'))),
                         Select::make('expense_tracking_item_id')
-                            ->label(fn (Get $get): string => ExpenseTrackingType::tryFrom((string) $get('expense_tracking_type'))?->label() ?? 'Tracking Item')
-                            ->options(fn (Get $get): array => self::trackingItemOptions($get('expense_tracking_type')))
+                            ->label(fn(Get $get): string => ExpenseTrackingType::tryFrom((string) $get('expense_tracking_type'))?->label() ?? 'Tracking Item')
+                            ->options(fn(Get $get): array => self::trackingItemOptions($get('expense_tracking_type')))
                             ->searchable()
                             ->preload()
-                            ->visible(fn (Get $get): bool => ExpenseTrackingType::tryFrom((string) $get('expense_tracking_type'))?->usesTrackingItem() ?? false)
-                            ->required(fn (Get $get): bool => ExpenseTrackingType::tryFrom((string) $get('expense_tracking_type'))?->usesTrackingItem() ?? false)
-                            ->dehydrated(fn (Get $get): bool => self::isExpenseTransaction($get('transaction_type'))),
+                            ->visible(fn(Get $get): bool => ExpenseTrackingType::tryFrom((string) $get('expense_tracking_type'))?->usesTrackingItem() ?? false)
+                            ->required(fn(Get $get): bool => ExpenseTrackingType::tryFrom((string) $get('expense_tracking_type'))?->usesTrackingItem() ?? false)
+                            ->dehydrated(fn(Get $get): bool => self::isExpenseTransaction($get('transaction_type'))),
                         Select::make('expense_tracking_employee_id')
                             ->label('Employee')
-                            ->options(fn (): array => self::employeeOptions())
+                            ->options(fn(): array => self::employeeOptions())
                             ->searchable()
                             ->preload()
-                            ->visible(fn (Get $get): bool => $get('expense_tracking_type') === ExpenseTrackingType::EMPLOYEE->value)
-                            ->required(fn (Get $get): bool => $get('expense_tracking_type') === ExpenseTrackingType::EMPLOYEE->value)
-                            ->dehydrated(fn (Get $get): bool => self::isExpenseTransaction($get('transaction_type'))),
+                            ->visible(fn(Get $get): bool => $get('expense_tracking_type') === ExpenseTrackingType::EMPLOYEE->value)
+                            ->required(fn(Get $get): bool => $get('expense_tracking_type') === ExpenseTrackingType::EMPLOYEE->value)
+                            ->dehydrated(fn(Get $get): bool => self::isExpenseTransaction($get('transaction_type'))),
                         Select::make('expense_tracking_bid_id')
                             ->label('Bid')
-                            ->options(fn (): array => self::bidOptions())
+                            ->options(fn(): array => self::bidOptions())
                             ->searchable()
                             ->preload()
-                            ->visible(fn (Get $get): bool => $get('expense_tracking_type') === ExpenseTrackingType::BID->value)
-                            ->required(fn (Get $get): bool => $get('expense_tracking_type') === ExpenseTrackingType::BID->value)
-                            ->dehydrated(fn (Get $get): bool => self::isExpenseTransaction($get('transaction_type'))),
+                            ->visible(fn(Get $get): bool => $get('expense_tracking_type') === ExpenseTrackingType::BID->value)
+                            ->required(fn(Get $get): bool => $get('expense_tracking_type') === ExpenseTrackingType::BID->value)
+                            ->dehydrated(fn(Get $get): bool => self::isExpenseTransaction($get('transaction_type'))),
                         TextInput::make('reference')
                             ->label('Memo / Reference')
                             ->placeholder('For example: receipt number, bill number, or short note')
@@ -236,6 +240,14 @@ class PaymentForm
         return PaymentTransactionType::tryFrom((string) $transactionType)?->isExpense() ?? false;
     }
 
+    private static function supportsWithholding(?string $transactionType): bool
+    {
+        return in_array($transactionType, [
+            PaymentTransactionType::CUSTOMER_RECEIPT->value,
+            PaymentTransactionType::SUPPLIER_PAYMENT->value,
+        ], true);
+    }
+
     private static function requiresBankAccount(?string $method): bool
     {
         return in_array($method, ['bank', 'cheque', 'check'], true);
@@ -260,7 +272,7 @@ class PaymentForm
             ->where('type', 'Expense')
             ->orderBy('code')
             ->get()
-            ->mapWithKeys(fn (Account $account): array => [$account->id => "{$account->code} - {$account->name}"])
+            ->mapWithKeys(fn(Account $account): array => [$account->id => "{$account->code} - {$account->name}"])
             ->all();
     }
 
@@ -275,7 +287,7 @@ class PaymentForm
             ->orderBy('code')
             ->orderBy('name')
             ->get()
-            ->mapWithKeys(fn (ExpenseTrackingItem $item): array => [$item->id => $item->display_name])
+            ->mapWithKeys(fn(ExpenseTrackingItem $item): array => [$item->id => $item->display_name])
             ->all();
     }
 
@@ -288,7 +300,7 @@ class PaymentForm
             ->orderBy('first_name')
             ->orderBy('last_name')
             ->get()
-            ->mapWithKeys(fn (Employee $employee): array => [$employee->id => $employee->full_name])
+            ->mapWithKeys(fn(Employee $employee): array => [$employee->id => $employee->full_name])
             ->all();
     }
 
@@ -300,7 +312,7 @@ class PaymentForm
         return Bid::query()
             ->orderByDesc('id')
             ->get()
-            ->mapWithKeys(fn (Bid $bid): array => [
+            ->mapWithKeys(fn(Bid $bid): array => [
                 $bid->id => filled($bid->title) ? "{$bid->bid_number} - {$bid->title}" : $bid->bid_number,
             ])
             ->all();

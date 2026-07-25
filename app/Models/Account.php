@@ -34,6 +34,8 @@ class Account extends Model
 
     public const CODE_WITHHOLDING_RECEIVABLE = '1260';
 
+    public const CODE_WITHHOLDING_PAYABLE = '2180';
+
     /**
      * The attributes that are mass assignable.
      *

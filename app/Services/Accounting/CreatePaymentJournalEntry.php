@@ -34,6 +34,7 @@ class CreatePaymentJournalEntry
         $arAccount = Account::getSystemAccount(Account::CODE_AR, 'Accounts Receivable', 'Asset');
         $apAccount = Account::getSystemAccount(Account::CODE_AP, 'Accounts Payable', 'Liability');
         $withholdingAccount = Account::getSystemAccount(Account::CODE_WITHHOLDING_RECEIVABLE, 'Withholding Receivable', 'Asset');
+        $withholdingPayableAccount = Account::getSystemAccount(Account::CODE_WITHHOLDING_PAYABLE, 'Withholding Payable', 'Liability');
         $sourceAccountId = $this->resolveSourceAccountId($payment, $cashAccount, $bankAccount);
         $expenseAccountId = $this->resolveExpenseAccountId($payment);
         $pettyCashAccountId = $this->resolvePettyCashAccountId($payment);
@@ -52,7 +53,7 @@ class CreatePaymentJournalEntry
 
         match ($transactionType) {
             PaymentTransactionType::CUSTOMER_RECEIPT => $this->createCustomerReceiptItems($journalEntry->id, $sourceAccountId, $withholdingAccount->id, $arAccount->id, $amount, (float) $payment->withholding_amount),
-            PaymentTransactionType::SUPPLIER_PAYMENT => $this->createItems($journalEntry->id, $apAccount->id, $sourceAccountId, $amount),
+            PaymentTransactionType::SUPPLIER_PAYMENT => $this->createSupplierPaymentItems($journalEntry->id, $apAccount->id, $sourceAccountId, $withholdingPayableAccount->id, $amount, (float) $payment->withholding_amount),
             PaymentTransactionType::DIRECT_EXPENSE => $this->createItems($journalEntry->id, $expenseAccountId, $sourceAccountId, $amount),
             PaymentTransactionType::PETTY_CASH_FUNDING => $this->createItems($journalEntry->id, $pettyCashAccountId, $sourceAccountId, $amount),
             PaymentTransactionType::PETTY_CASH_EXPENSE => $this->createItems($journalEntry->id, $expenseAccountId, $pettyCashAccountId, $amount),
@@ -191,5 +192,36 @@ class CreatePaymentJournalEntry
             'debit' => 0,
             'credit' => $amount,
         ]);
+    }
+
+    private function createSupplierPaymentItems(int $entryId, int $payableAccountId, int $sourceAccountId, int $withholdingPayableAccountId, float $amount, float $withholdingAmount): void
+    {
+        $withholdingAmount = min($amount, max(0, round($withholdingAmount, 2)));
+        $cashAmount = round($amount - $withholdingAmount, 2);
+
+        JournalItem::create([
+            'journal_entry_id' => $entryId,
+            'account_id' => $payableAccountId,
+            'debit' => $amount,
+            'credit' => 0,
+        ]);
+
+        if ($cashAmount > 0) {
+            JournalItem::create([
+                'journal_entry_id' => $entryId,
+                'account_id' => $sourceAccountId,
+                'debit' => 0,
+                'credit' => $cashAmount,
+            ]);
+        }
+
+        if ($withholdingAmount > 0) {
+            JournalItem::create([
+                'journal_entry_id' => $entryId,
+                'account_id' => $withholdingPayableAccountId,
+                'debit' => 0,
+                'credit' => $withholdingAmount,
+            ]);
+        }
     }
 }

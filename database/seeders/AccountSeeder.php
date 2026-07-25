@@ -29,6 +29,7 @@ class AccountSeeder extends Seeder
             ['code' => '2160', 'name' => 'PAYE Tax Payable', 'type' => 'Liability'],
             ['code' => '2165', 'name' => 'Payroll Penalty Clearing', 'type' => 'Liability'],
             ['code' => '2170', 'name' => 'Pension Payable', 'type' => 'Liability'],
+            ['code' => '2180', 'name' => 'Withholding Payable', 'type' => 'Liability'],
             ['code' => '2190', 'name' => 'Workers Union Payable', 'type' => 'Liability'],
             ['code' => '2200', 'name' => 'Accrued Salaries', 'type' => 'Liability'],
             ['code' => '2500', 'name' => 'Bank Loan', 'type' => 'Liability'],

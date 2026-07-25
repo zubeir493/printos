@@ -148,10 +148,18 @@ class SalesOrderActions
                         ->label('Payment Amount')
                         ->required()
                         ->numeric()
+                        ->live(onBlur: true)
                         ->suffix(fn (): string => Money::suffix())
                         ->default(fn (SalesOrder $record): mixed => $record->balance)
                         ->maxValue(fn (SalesOrder $record): float => $record->balance)
                         ->helperText(fn (SalesOrder $record): string => 'Balance: '.Money::format($record->balance)),
+                    TextInput::make('withholding_amount')
+                        ->label('Withholding')
+                        ->numeric()
+                        ->default(0)
+                        ->minValue(0)
+                        ->maxValue(fn (callable $get): float => (float) ($get('amount') ?? 0))
+                        ->suffix(fn (): string => Money::suffix()),
                     DatePicker::make('payment_date')
                         ->label('Payment Date')
                         ->default(now())
@@ -169,9 +177,14 @@ class SalesOrderActions
                             ->lockForUpdate()
                             ->findOrFail($record->getKey());
                         $amount = (float) $data['amount'];
+                        $withholdingAmount = (float) ($data['withholding_amount'] ?? 0);
 
                         if ($amount > $lockedRecord->balance) {
                             throw new \Exception('Cannot pay more than the remaining balance of '.Money::format($lockedRecord->balance).'.');
+                        }
+
+                        if ($withholdingAmount > $amount) {
+                            throw new \Exception('Withholding cannot be greater than the settled payment amount.');
                         }
 
                         Payment::create([
@@ -179,6 +192,7 @@ class SalesOrderActions
                             'payment_date' => $data['payment_date'],
                             'transaction_type' => PaymentTransactionType::CUSTOMER_RECEIPT->value,
                             'amount' => $amount,
+                            'withholding_amount' => $withholdingAmount,
                             'method' => $data['method'],
                             'bank_id' => $data['bank_id'] ?? null,
                             'reference' => $data['reference'] ?? 'Payment for '.$lockedRecord->order_number,

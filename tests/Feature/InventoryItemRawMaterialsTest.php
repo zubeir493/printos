@@ -53,3 +53,10 @@ test('raw material category scopes only include matching costing materials', fun
         ->and(InventoryItem::query()->glueMaterials()->pluck('id'))
         ->toContain($glue->id);
 });
+
+test('history is only available as a finished good category', function (): void {
+    expect(InventoryItem::FINISHED_GOOD_CATEGORIES)
+        ->toHaveKey('history')
+        ->and(InventoryItem::FINISHED_GOOD_CATEGORIES['history'])->toBe('History')
+        ->and(InventoryItem::RAW_MATERIAL_CATEGORIES)->not->toHaveKey('history');
+});

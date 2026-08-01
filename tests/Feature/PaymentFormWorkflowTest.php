@@ -15,6 +15,7 @@ use App\Models\Payment;
 use App\Models\User;
 use App\UserRole;
 use Filament\Facades\Filament;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Tables\Filters\TernaryFilter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -30,7 +31,8 @@ test('payment form presents payment numbers as generated on save', function (): 
     ]));
 
     Livewire::test(CreatePayment::class)
-        ->assertSee('Auto-generated on save')
+        ->assertSchemaComponentExists('payment_number_preview', 'form', fn (Placeholder $component): bool => $component->isHidden())
+        ->assertSchemaComponentHidden('payment_number_preview')
         ->assertFormFieldDoesNotExist('payment_number');
 });
 

@@ -4,7 +4,6 @@ namespace App\Services\Dielines\Templates;
 
 use App\Services\Dielines\Concerns\BuildsDielineGeometry;
 use App\Services\Dielines\DielineTemplateContract;
-use App\Services\Dielines\Geometry\DielineCanvas;
 
 class RoundedTuckCartonTemplate implements DielineTemplateContract
 {
@@ -22,7 +21,7 @@ class RoundedTuckCartonTemplate implements DielineTemplateContract
 
     public function description(): string
     {
-        return 'Canvas-style starter dieline with a rounded tuck flap.';
+        return 'Rounded tuck carton with a closure panel, dust flap, and tapered glue flap.';
     }
 
     public function defaults(): array
@@ -31,14 +30,20 @@ class RoundedTuckCartonTemplate implements DielineTemplateContract
             'l' => 200,
             'w' => 50,
             'h' => 100,
-            'tuck_radius' => 30,
+            'tuck_flap' => 15,
+            'tuck_radius' => 6,
+            'dust_flap' => 100,
+            'glue_flap' => 20,
         ];
     }
 
     public function advancedFields(): array
     {
         return [
-            ['key' => 'tuck_radius', 'label' => 'Tuck radius', 'default' => 30, 'min' => 0, 'suffix' => 'mm'],
+            ['key' => 'tuck_flap', 'label' => 'Tuck flap height', 'default' => 15, 'min' => 0, 'suffix' => 'mm'],
+            ['key' => 'tuck_radius', 'label' => 'Tuck radius', 'default' => 6, 'min' => 0, 'suffix' => 'mm'],
+            ['key' => 'dust_flap', 'label' => 'Dust flap depth', 'default' => 100, 'min' => 0, 'suffix' => 'mm'],
+            ['key' => 'glue_flap', 'label' => 'Glue flap width', 'default' => 20, 'min' => 0, 'suffix' => 'mm'],
         ];
     }
 
@@ -47,68 +52,65 @@ class RoundedTuckCartonTemplate implements DielineTemplateContract
         $defaults = $this->defaults();
         $width = $this->dimension($dimensions, 'l', $defaults['l']);
         $height = $this->dimension($dimensions, 'h', $defaults['h']);
+        $tuckHeight = $this->dimension($dimensions, 'tuck_flap', $defaults['tuck_flap']);
         $radius = $this->dimension($dimensions, 'tuck_radius', $defaults['tuck_radius']);
+        $dustDepth = $this->dimension($dimensions, 'dust_flap', $width * 0.5);
+        $glueWidth = $this->dimension($dimensions, 'glue_flap', $defaults['glue_flap']);
+        $closureHeight = $width;
+        $panelX = 35 + $width;
+        $hingeY = $height;
+        $tuckY = $hingeY - $closureHeight - 1.0;
 
-        $ctx = new DielineCanvas;
+        $tuckFlap = $this->tuckFlapComponent(
+            x: $panelX,
+            y: $tuckY,
+            span: $width,
+            closureHeight: $closureHeight,
+            direction: 'top',
+            tuckHeight: $tuckHeight,
+            radius: $radius,
+        );
 
-        $drawTuckFlaps = function () use ($ctx, $width, $height, $radius): void {
-            $ctx->beginPath();
+        $dustFlap = $this->dustFlap(
+            x: 35,
+            y: $hingeY,
+            span: $width,
+            depth: $dustDepth,
+            direction: 'top',
+            flipHorizontal: true,
+        );
 
-            $ctx->moveTo(0, 0);
+        $glueFlap = $this->glueFlapComponent(
+            x: 35,
+            y: $hingeY,
+            width: $glueWidth,
+            height: $closureHeight,
+            direction: 'left',
+        );
 
-            $ctx->lineTo(0, -$height + $radius);
-            $ctx->arcTo(0, -$height, $radius, -$height, $radius);
-
-            $ctx->lineTo($width - $radius, -$height);
-
-            $ctx->arcTo($width, -$height, $width, -$height + $radius, $radius);
-            $ctx->lineTo($width, 0);
-
-            $ctx->moveTo(0, -$height + $radius - 5);
-            $ctx->lineTo(25, -$height + $radius - 5);
-            $ctx->lineTo(25, -$height + $radius + 5);
-
-            $ctx->moveTo($width, -$height + $radius - 5);
-            $ctx->lineTo($width - 25, -$height + $radius - 5);
-            $ctx->lineTo($width - 25, -$height + $radius + 5);
-
-            $ctx->strokeStyle = 'red';
-            $ctx->stroke();
-
-            $ctx->beginPath();
-            $ctx->moveTo(25, -$height + $radius);
-            $ctx->lineTo($width - 25, -$height + $radius);
-            $ctx->strokeStyle = 'black';
-            $ctx->stroke();
-        };
-
-        $ctx->beginPath();
-        $ctx->strokeStyle = 'red';
-        $ctx->moveTo(0, $height + 25);
-        $ctx->lineTo(35, $height);
-        $ctx->lineTo(35 + $width, $height);
-        $ctx->stroke();
-
-        $ctx->save();
-        $ctx->translate(35 + $width, $height);
-        $drawTuckFlaps();
-        $ctx->restore();
-
-        $layers = $ctx->layers();
+        $cut = array_merge($tuckFlap['cut'], $dustFlap['cut'], $glueFlap['cut']);
+        $crease = array_merge($tuckFlap['crease'], $dustFlap['crease'], $glueFlap['crease']);
 
         return [
             'template' => $this->key(),
             'name' => $this->name(),
             'unit' => 'mm',
-            'bounds' => ['width' => (35 + ($width * 2)), 'height' => ($height + 25)],
+            'bounds' => [
+                'x' => 0.0,
+                'y' => $tuckY - $tuckHeight,
+                'width' => (35 + ($width * 2)),
+                'height' => ($height + $closureHeight) - ($tuckY - $tuckHeight),
+            ],
             'layers' => [
-                'cut' => $layers['cut'],
-                'crease' => $layers['crease'],
-                'glue' => [],
+                'cut' => $cut,
+                'crease' => $crease,
+                'glue' => $glueFlap['glue'],
                 'bleed' => [],
             ],
             'labels' => [
-                $this->label(35 + $width + ($width / 2), $height / 2, 'Tuck'),
+                $this->label($panelX + ($width / 2), $tuckY - ($tuckHeight / 2), 'Tuck Flap'),
+                $this->label($panelX + ($width / 2), $tuckY + 1 + ($closureHeight / 2), 'Closure Panel'),
+                $this->label(35 + ($width / 2), $hingeY - ($dustDepth / 2), 'Dust'),
             ],
         ];
     }

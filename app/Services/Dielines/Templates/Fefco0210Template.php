@@ -41,9 +41,9 @@ class Fefco0210Template implements DielineTemplateContract
     public function advancedFields(): array
     {
         return [
-            ['key' => 'tuck_flap', 'label' => 'Tuck flap', 'default' => 28, 'min' => 1, 'suffix' => 'mm'],
-            ['key' => 'glue_flap', 'label' => 'Glue flap', 'default' => 18, 'min' => 1, 'suffix' => 'mm'],
-            ['key' => 'dust_flap', 'label' => 'Dust flap', 'default' => 25, 'min' => 1, 'suffix' => 'mm'],
+            ['key' => 'tuck_flap', 'label' => 'Tuck flap', 'default' => 15, 'min' => 1, 'suffix' => 'mm'],
+            ['key' => 'glue_flap', 'label' => 'Glue flap', 'default' => 15, 'min' => 1, 'suffix' => 'mm'],
+            ['key' => 'dust_flap', 'label' => 'Dust flap', 'default' => 50, 'min' => 1, 'suffix' => 'mm'],
             ['key' => 'bleed', 'label' => 'Bleed', 'default' => 3, 'min' => 0, 'suffix' => 'mm'],
             ['key' => 'board_thickness', 'label' => 'Board thickness', 'default' => 1.5, 'min' => 0, 'suffix' => 'mm'],
         ];
@@ -79,14 +79,23 @@ class Fefco0210Template implements DielineTemplateContract
         $panelStart = $glueFlap;
         foreach ([$width, $length, $width, $length] as $index => $panelWidth) {
             $isTuckPanel = in_array($index, [1, 3], true);
-            $flapDepth = $isTuckPanel ? $tuckFlap : $dustFlap;
-            $flapBuilder = $isTuckPanel ? $this->tuckFlap(...) : $this->dustFlap(...);
 
-            array_push(
-                $cut,
-                ...$flapBuilder($panelStart, $bodyTop, $panelWidth, $flapDepth, 'top'),
-                ...$flapBuilder($panelStart, $bodyBottom, $panelWidth, $flapDepth, 'bottom'),
-            );
+            if ($isTuckPanel) {
+                array_push(
+                    $cut,
+                    ...$this->straightFlap($panelStart, $bodyTop, $panelWidth, $tuckFlap, 'top'),
+                    ...$this->straightFlap($panelStart, $bodyBottom, $panelWidth, $tuckFlap, 'bottom'),
+                );
+            } else {
+                $topDustFlap = $this->dustFlap($panelStart, $bodyTop, $panelWidth, $dustFlap, 'top');
+                $bottomDustFlap = $this->dustFlap($panelStart, $bodyBottom, $panelWidth, $dustFlap, 'bottom');
+
+                array_push(
+                    $cut,
+                    ...$topDustFlap['cut'],
+                    ...$bottomDustFlap['cut'],
+                );
+            }
 
             $panelStart += $panelWidth;
         }

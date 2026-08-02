@@ -19,6 +19,7 @@ class DielinePath
         private float $originY = 0,
         private string $direction = 'top',
         private int $arcSegments = 8,
+        private ?float $mirrorWidth = null,
     ) {}
 
     public function moveTo(float $x, float $y): self
@@ -190,6 +191,8 @@ class DielinePath
      */
     private function point(float $x, float $y): array
     {
+        $x = $this->mirrorWidth === null ? $x : $this->mirrorWidth - $x;
+
         return match ($this->direction) {
             'top' => [$this->originX + $x, $this->originY + $y],
             'bottom' => [$this->originX + $x, $this->originY - $y],

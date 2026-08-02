@@ -23,8 +23,14 @@ class DielineGeometryService
     {
         $defaults = $this->registry->template($templateKey)->defaults();
 
-        return collect($defaults)
+        $normalized = collect($defaults)
             ->map(fn (float|int $default, string $key): float|int => (float) ($dimensions[$key] ?? $default))
             ->all();
+
+        if ($templateKey === 'rounded-tuck-carton' && ! array_key_exists('dust_flap', $dimensions)) {
+            $normalized['dust_flap'] = (float) $normalized['l'] * 0.5;
+        }
+
+        return $normalized;
     }
 }

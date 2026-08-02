@@ -20,7 +20,7 @@ class DielineResource extends Resource
     protected static ?string $model = Dieline::class;
 
     //To be removed once calculator is finished
-    protected static bool $shouldRegisterNavigation = false;
+    // protected static bool $shouldRegisterNavigation = false;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCubeTransparent;
 

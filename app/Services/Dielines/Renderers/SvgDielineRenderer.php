@@ -15,10 +15,12 @@ class SvgDielineRenderer
         $bounds = $geometry['bounds'] ?? ['width' => 100, 'height' => 100];
         $width = max(1, (float) $bounds['width']);
         $height = max(1, (float) $bounds['height']);
+        $originX = (float) ($bounds['x'] ?? 0);
+        $originY = (float) ($bounds['y'] ?? 0);
         $padding = max(12, min($width, $height) * 0.05);
         $viewBox = implode(' ', [
-            Number::format(-$padding, maxPrecision: 3),
-            Number::format(-$padding, maxPrecision: 3),
+            Number::format($originX - $padding, maxPrecision: 3),
+            Number::format($originY - $padding, maxPrecision: 3),
             Number::format($width + ($padding * 2), maxPrecision: 3),
             Number::format($height + ($padding * 2), maxPrecision: 3),
         ]);
@@ -27,8 +29,8 @@ class SvgDielineRenderer
             '<g stroke-linecap="round" stroke-linejoin="round" fill="none">' .
             $this->layer($geometry, 'bleed', '#d97706', '1.2', '6 5') .
             $this->areas($geometry['layers']['glue'] ?? []) .
-            $this->layer($geometry, 'crease', '#2563eb', '1.4', '8 6') .
-            $this->layer($geometry, 'cut', '#111827', '1.8') .
+            $this->layer($geometry, 'crease', '#2563eb', '1.5', '8 6') .
+            $this->layer($geometry, 'cut', '#111827', '1.5') .
             '</g>' .
             $this->labels($geometry['labels'] ?? []) .
             '</svg>';
@@ -90,7 +92,7 @@ class SvgDielineRenderer
     private function labels(array $labels): string
     {
         return collect($labels)
-            ->map(fn(array $label): string => '<text x="' . $label['x'] . '" y="' . $label['y'] . '" text-anchor="middle" dominant-baseline="middle" font-family="Plus Jakarta Sans, Arial, sans-serif" font-size="9" fill="#374151">' . $this->escape($label['text']) . '</text>')
+            ->map(fn(array $label): string => '<text x="' . $label['x'] . '" y="' . $label['y'] . '" text-anchor="middle" dominant-baseline="middle" font-family="Plus Jakarta Sans, Arial, sans-serif" font-size="5" fill="#374151">' . $this->escape($label['text']) . '</text>')
             ->implode('');
     }
 

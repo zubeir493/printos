@@ -97,6 +97,14 @@ class DielineForm
             ->minValue($min)
             ->suffix($suffix)
             ->default($default)
+            ->afterStateHydrated(function (TextInput $component, mixed $state, Get $get) use ($key, $default): void {
+                if ($state !== null && $state !== '') {
+                    return;
+                }
+
+                $length = (float) ($get('dimensions.l') ?? 0);
+                $component->state($key === 'dust_flap' && $length > 0 ? $length * 0.5 : $default);
+            })
             ->live(onBlur: true)
             ->required();
     }

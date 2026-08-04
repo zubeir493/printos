@@ -3,7 +3,7 @@
 namespace Database\Factories;
 
 use App\Models\DielineTemplate;
-use App\Services\Dielines\Templates\Fefco0210Template;
+use App\Services\Dielines\Templates\ReverseTuckFlapBoxTemplate;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -22,7 +22,7 @@ class DielineTemplateFactory extends Factory
             'key' => fake()->unique()->slug(2),
             'name' => fake()->words(2, true),
             'standard' => 'FEFCO',
-            'service_class' => Fefco0210Template::class,
+            'service_class' => ReverseTuckFlapBoxTemplate::class,
             'active' => true,
             'defaults' => [
                 'l' => 160,

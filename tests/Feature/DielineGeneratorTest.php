@@ -28,8 +28,6 @@ it('renders the dieline editor as a fullscreen canvas with a left settings sideb
     Livewire::test(EditDieline::class, ['record' => $dieline->getKey()])
         ->assertSuccessful()
         ->assertSee('Settings')
-        ->assertSee('FEFCO 0210')
-        ->assertSee('FEFCO 0427')
         ->assertSeeHtml('dieline-canvas-shell')
         ->assertDontSeeHtml('x-on:pointerdown')
         ->assertSeeHtml('dieline-editor-sidebar')
@@ -53,7 +51,7 @@ it('creates dieline drafts from a setup modal then saves dimensions and geometry
         ->mountAction('createDieline')
         ->setActionData([
             'name' => 'Pharma carton',
-            'template_key' => 'fefco-0210',
+            'template_key' => 'reverse-tuck-flap-box',
             'job_order_task_id' => null,
         ])
         ->callMountedAction()
@@ -64,7 +62,7 @@ it('creates dieline drafts from a setup modal then saves dimensions and geometry
     Livewire::test(EditDieline::class, ['record' => $dieline->getKey()])
         ->fillForm([
             'name' => 'Pharma carton',
-            'template_key' => 'fefco-0210',
+            'template_key' => 'reverse-tuck-flap-box',
             'dimensions' => [
                 'l' => 160,
                 'w' => 50,
@@ -84,20 +82,20 @@ it('creates dieline drafts from a setup modal then saves dimensions and geometry
     expect($dieline)
         ->not->toBeNull()
         ->name->toBe('Pharma carton')
-        ->template_key->toBe('fefco-0210')
+        ->template_key->toBe('reverse-tuck-flap-box')
         ->and($dieline->dimensions)->toHaveKeys(['l', 'w', 'h'])
         ->and($dieline->geometry['layers'])->toHaveKeys(['cut', 'crease', 'glue', 'bleed']);
 });
 
 it('validates required base dimensions', function (): void {
     $dieline = Dieline::factory()->create([
-        'template_key' => 'fefco-0427',
+        'template_key' => 'reverse-tuck-flap-box',
     ]);
 
     Livewire::test(EditDieline::class, ['record' => $dieline->getKey()])
         ->fillForm([
             'name' => 'Invalid dieline',
-            'template_key' => 'fefco-0427',
+            'template_key' => 'reverse-tuck-flap-box',
             'dimensions' => [
                 'l' => null,
                 'w' => 160,
@@ -122,14 +120,14 @@ it('lists saved dielines and exposes compact edit page download actions', functi
         ->assertSee('Download PDF')
         ->assertSee('Download DXF')
         ->call('downloadInstantSvg')
-        ->assertFileDownloaded('fefco-0210-test-dieline.svg')
+        ->assertFileDownloaded('reverse-tuck-flap-box-test-dieline.svg')
         ->assertSeeHtml('dieline-preview-artboard');
 });
 
 it('can build instant svg and dxf downloads without a saved record', function (): void {
     $data = [
         'name' => 'Instant mailer',
-        'template_key' => 'fefco-0427',
+        'template_key' => 'reverse-tuck-flap-box',
         'dimensions' => [
             'l' => 220,
             'w' => 160,

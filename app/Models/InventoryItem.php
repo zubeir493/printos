@@ -32,7 +32,13 @@ class InventoryItem extends Model
         'hadeeth' => 'Hadeeth',
         'aqeedah' => 'Aqeedah',
         'fiqh' => 'Fiqh',
+        'dua' => 'Dua',
         'history' => 'History',
+        'comparative' => 'Comparative Religion',
+        'language' => 'Language',
+        'children' => 'Children',
+        'women' => 'Women',
+        'other' => 'Other',
         'external' => 'External',
     ];
 

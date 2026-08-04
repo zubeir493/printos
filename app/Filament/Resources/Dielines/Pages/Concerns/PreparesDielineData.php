@@ -18,7 +18,7 @@ trait PreparesDielineData
      */
     protected function prepareDielineData(array $data): array
     {
-        $templateKey = (string) ($data['template_key'] ?? 'fefco-0210');
+        $templateKey = (string) ($data['template_key'] ?? 'reverse-tuck-flap-box');
         $dimensions = app(DielineGeometryService::class)->normalize($templateKey, (array) ($data['dimensions'] ?? []));
         $geometry = app(DielineGeometryService::class)->generate($templateKey, $dimensions);
 

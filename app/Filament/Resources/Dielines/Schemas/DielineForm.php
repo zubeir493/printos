@@ -40,7 +40,7 @@ class DielineForm
                                 Select::make('template_key')
                                     ->label('Dieline type')
                                     ->options(fn (): array => app(DielineTemplateRegistry::class)->options())
-                                    ->default('fefco-0210')
+                                    ->default('reverse-tuck-flap-box')
                                     ->required()
                                     ->live()
                                     ->afterStateUpdated(fn (Set $set, ?string $state): mixed => self::applyTemplateDefaults($set, $state))
@@ -84,8 +84,8 @@ class DielineForm
                 (float) ($field['min'] ?? 0),
                 $field['suffix'] ?? 'mm',
             )
-                ->visible(fn (Get $get): bool => in_array($get('template_key') ?: 'fefco-0210', $field['templates'], true))
-                ->required(fn (Get $get): bool => in_array($get('template_key') ?: 'fefco-0210', $field['templates'], true)))
+                ->visible(fn (Get $get): bool => in_array($get('template_key') ?: 'reverse-tuck-flap-box', $field['templates'], true))
+                ->required(fn (Get $get): bool => in_array($get('template_key') ?: 'reverse-tuck-flap-box', $field['templates'], true)))
             ->all();
     }
 
@@ -111,7 +111,7 @@ class DielineForm
 
     private static function applyTemplateDefaults(Set $set, ?string $templateKey): null
     {
-        $template = app(DielineTemplateRegistry::class)->template($templateKey ?: 'fefco-0210');
+        $template = app(DielineTemplateRegistry::class)->template($templateKey ?: 'reverse-tuck-flap-box');
 
         foreach ($template->defaults() as $key => $value) {
             $set("dimensions.{$key}", $value);
@@ -124,7 +124,7 @@ class DielineForm
     {
         try {
             $geometry = app(DielineGeometryService::class)->generate(
-                (string) ($get('template_key') ?: 'fefco-0210'),
+                (string) ($get('template_key') ?: 'reverse-tuck-flap-box'),
                 (array) ($get('dimensions') ?? []),
             );
 

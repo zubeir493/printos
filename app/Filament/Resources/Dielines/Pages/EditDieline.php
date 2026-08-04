@@ -49,7 +49,7 @@ class EditDieline extends EditRecord
      */
     public function dimensionFields(): array
     {
-        $templateKey = (string) data_get($this->data, 'template_key', 'fefco-0210');
+        $templateKey = (string) data_get($this->data, 'template_key', 'reverse-tuck-flap-box');
         $fields = [
             ['key' => 'l', 'label' => 'Length', 'suffix' => 'mm'],
             ['key' => 'w', 'label' => 'Width', 'suffix' => 'mm'],
@@ -73,7 +73,7 @@ class EditDieline extends EditRecord
     {
         try {
             $geometry = app(DielineGeometryService::class)->generate(
-                (string) data_get($this->data, 'template_key', 'fefco-0210'),
+                (string) data_get($this->data, 'template_key', 'reverse-tuck-flap-box'),
                 (array) data_get($this->data, 'dimensions', []),
             );
 
@@ -85,7 +85,7 @@ class EditDieline extends EditRecord
 
     public function updatedDataTemplateKey(?string $templateKey): void
     {
-        $template = app(DielineTemplateRegistry::class)->template($templateKey ?: 'fefco-0210');
+        $template = app(DielineTemplateRegistry::class)->template($templateKey ?: 'reverse-tuck-flap-box');
 
         foreach ($template->defaults() as $key => $value) {
             data_set($this->data, "dimensions.{$key}", $value);

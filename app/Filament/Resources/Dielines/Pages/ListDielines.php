@@ -35,7 +35,7 @@ class ListDielines extends ListRecords
                             Select::make('template_key')
                                 ->label('Dieline type')
                                 ->options(fn (): array => app(DielineTemplateRegistry::class)->options())
-                                ->default('fefco-0210')
+                                ->default('reverse-tuck-flap-box')
                                 ->required()
                                 ->searchable(),
                             Select::make('job_order_task_id')

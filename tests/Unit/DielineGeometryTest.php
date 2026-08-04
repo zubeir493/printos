@@ -1,14 +1,11 @@
 <?php
 
 use App\Services\Dielines\Concerns\BuildsDielineGeometry;
-use App\Services\Dielines\DielineGeometryService;
 use App\Services\Dielines\DielineTemplateRegistry;
 use App\Services\Dielines\Geometry\DielineCanvas;
 use App\Services\Dielines\Renderers\SvgDielineRenderer;
-use App\Services\Dielines\Templates\Fefco0210Template;
-use App\Services\Dielines\Templates\Fefco0427Template;
 use App\Services\Dielines\Templates\ReverseTuckFlapBoxTemplate;
-use App\Services\Dielines\Templates\RoundedTuckCartonTemplate;
+use App\Services\Dielines\Templates\StraightTuckFlapTemplate;
 
 function dielineGeometryHelpers(): object
 {
@@ -93,86 +90,17 @@ it('registers the reverse tuck flap box template', function (): void {
         ->toHaveKey('reverse-tuck-flap-box');
 });
 
+it('registers the straight tuck flap template', function (): void {
+    expect((new DielineTemplateRegistry)->fallbackTypes())
+        ->toHaveKey('straight-tuck-flap');
+});
+
 it('defines templates with shared base dimensions', function (): void {
-    foreach ([new Fefco0210Template, new Fefco0427Template, new RoundedTuckCartonTemplate, new ReverseTuckFlapBoxTemplate] as $template) {
+    foreach ([new ReverseTuckFlapBoxTemplate, new StraightTuckFlapTemplate] as $template) {
         expect($template->key())->not->toBeEmpty();
         expect($template->defaults())
             ->toHaveKeys(['l', 'w', 'h']);
     }
-});
-
-it('keeps tuck slit and glue taper dimensions as internal defaults', function (): void {
-    $fields = collect((new RoundedTuckCartonTemplate)->advancedFields())->pluck('key')->all();
-
-    expect($fields)
-        ->not->toContain('tuck_slit_width')
-        ->not->toContain('tuck_slit_height')
-        ->not->toContain('glue_top_taper')
-        ->not->toContain('glue_bottom_taper');
-
-    expect((new RoundedTuckCartonTemplate)->defaults())
-        ->toMatchArray([
-            'tuck_flap' => 15,
-            'dust_flap' => 100,
-            'glue_flap' => 20,
-        ]);
-
-    expect(collect((new RoundedTuckCartonTemplate)->advancedFields())->keyBy('key')->all())
-        ->toHaveKey('dust_flap');
-});
-
-it('derives the rounded dust flap default from half the length', function (): void {
-    $registry = Mockery::mock(DielineTemplateRegistry::class);
-    $registry->shouldReceive('template')
-        ->with('rounded-tuck-carton')
-        ->andReturn(new RoundedTuckCartonTemplate);
-
-    $dimensions = (new DielineGeometryService($registry))->normalize('rounded-tuck-carton', [
-        'l' => 160,
-        'w' => 55,
-        'h' => 120,
-    ]);
-
-    expect($dimensions['dust_flap'])->toBe(80.0);
-});
-
-it('generates fefco 0210 geometry with cut crease glue and bleed layers', function (): void {
-    $geometry = (new Fefco0210Template)->generate([
-        'l' => 160,
-        'w' => 50,
-        'h' => 90,
-        'tuck_flap' => 28,
-        'glue_flap' => 18,
-        'dust_flap' => 25,
-        'bleed' => 3,
-        'board_thickness' => 1.5,
-    ]);
-
-    expect($geometry['bounds'])
-        ->toBe(['width' => 438.0, 'height' => 146.0])
-        ->and($geometry['layers']['cut'])->not->toBeEmpty()
-        ->and($geometry['layers']['crease'])->not->toBeEmpty()
-        ->and($geometry['layers']['glue'])->not->toBeEmpty()
-        ->and($geometry['layers']['bleed'])->not->toBeEmpty();
-});
-
-it('generates fefco 0427 geometry without glue layers', function (): void {
-    $geometry = (new Fefco0427Template)->generate([
-        'l' => 220,
-        'w' => 160,
-        'h' => 45,
-        'lid_tuck' => 35,
-        'side_lock' => 28,
-        'front_lock' => 24,
-        'bleed' => 3,
-        'board_thickness' => 1.5,
-    ]);
-
-    expect($geometry['bounds'])
-        ->toBe(['width' => 366.0, 'height' => 514.0])
-        ->and($geometry['layers']['cut'])->not->toBeEmpty()
-        ->and($geometry['layers']['crease'])->not->toBeEmpty()
-        ->and($geometry['layers']['glue'])->toBeEmpty();
 });
 
 it('generates reverse tuck flap box with reference flap directions', function (): void {
@@ -213,44 +141,41 @@ it('generates reverse tuck flap box with reference flap directions', function ()
         ->not->toContain(['x1' => 235.0, 'y1' => 120.0, 'x2' => 395.0, 'y2' => 120.0]);
 });
 
-it('generates rounded tuck carton geometry with rounded tuck flap cut and crease layers', function (): void {
-    $geometry = (new RoundedTuckCartonTemplate)->generate([
+it('generates straight tuck flap with both closure assemblies on the second Length panel', function (): void {
+    $template = new StraightTuckFlapTemplate;
+    $geometry = $template->generate([
         'l' => 160,
         'w' => 55,
         'h' => 120,
         'tuck_flap' => 15,
         'tuck_radius' => 6,
-        'dust_flap' => 34,
+        'dust_flap' => 50,
         'glue_flap' => 20,
-        'bleed' => 3,
-        'board_thickness' => 1.5,
     ]);
 
-    expect($geometry['bounds'])
-        ->toBe(['x' => 0.0, 'y' => -56.0, 'width' => 355.0, 'height' => 336.0])
+    expect($template->name())->toBe('Straight Tuck flap')
+        ->and($geometry['bounds'])
+        ->toBe(['x' => 0.0, 'y' => -71.0, 'width' => 450.0, 'height' => 262.0])
         ->and($geometry['layers']['cut'])
-        ->toContain(['x1' => 195.0, 'y1' => -41.0, 'x2' => 195.0, 'y2' => 120.0])
-        ->toContain(['x1' => 195.0, 'y1' => 120.0, 'x2' => 189.9, 'y2' => 114.9])
-        ->toContain(['x1' => 35.0, 'y1' => 120.0, 'x2' => 15.0, 'y2' => 130.0])
-        ->and($geometry['layers']['crease'])->toEqual([
-            ['x1' => 200.0, 'y1' => -40.0, 'x2' => 350.0, 'y2' => -40.0],
-            ['x1' => 355.0, 'y1' => 120.0, 'x2' => 195.0, 'y2' => 120.0],
-            ['x1' => 35.0, 'y1' => 120.0, 'x2' => 195.0, 'y2' => 120.0],
-            ['x1' => 35.0, 'y1' => 120.0, 'x2' => 35.0, 'y2' => 280.0],
-        ])
-        ->and($geometry['layers']['glue'])->toEqual([
-            [
-                'points' => [
-                    ['x' => 35.0, 'y' => 120.0],
-                    ['x' => 15.0, 'y' => 130.0],
-                    ['x' => 15.0, 'y' => 270.0],
-                    ['x' => 35.0, 'y' => 280.0],
-                ],
-            ],
-        ])
-        ->and(collect($geometry['labels'])->pluck('text')->all())
-        ->not->toContain('Glue')
-        ->and($geometry['labels'])->toHaveCount(3);
+        ->toContain(['x1' => 235.0, 'y1' => -56.0, 'x2' => 235.0, 'y2' => 0.0])
+        ->toContain(['x1' => 235.0, 'y1' => 176.0, 'x2' => 235.0, 'y2' => 120.0])
+        ->toContain(['x1' => 20.0, 'y1' => 0.0, 'x2' => 180.0, 'y2' => 0.0])
+        ->toContain(['x1' => 20.0, 'y1' => 120.0, 'x2' => 180.0, 'y2' => 120.0])
+        ->toContain(['x1' => 235.0, 'y1' => 120.0, 'x2' => 232.25, 'y2' => 122.75])
+        ->toContain(['x1' => 395.0, 'y1' => 120.0, 'x2' => 397.75, 'y2' => 122.75])
+        ->and($geometry['layers']['crease'])
+        ->toContain(['x1' => 235.0, 'y1' => 120.0, 'x2' => 395.0, 'y2' => 120.0])
+        ->toContain(['x1' => 395.0, 'y1' => 0.0, 'x2' => 235.0, 'y2' => 0.0])
+        ->toContain(['x1' => 180.0, 'y1' => 0.0, 'x2' => 235.0, 'y2' => 0.0])
+        ->and(collect($template->advancedFields())->pluck('key')->all())
+        ->toBe(['tuck_flap', 'tuck_radius', 'dust_flap', 'glue_flap']);
+
+    expect($geometry['layers']['cut'])
+        ->not->toContain(['x1' => 235.0, 'y1' => 120.0, 'x2' => 395.0, 'y2' => 120.0])
+        ->not->toContain(['x1' => 20.0, 'y1' => 176.0, 'x2' => 20.0, 'y2' => 120.0]);
+
+    expect($geometry['layers']['crease'])
+        ->not->toContain(['x1' => 20.0, 'y1' => 120.0, 'x2' => 180.0, 'y2' => 120.0]);
 });
 
 it('builds reusable dieline helper geometry for directional flaps and areas', function (): void {
@@ -261,7 +186,7 @@ it('builds reusable dieline helper geometry for directional flaps and areas', fu
         ['x1' => 10.0, 'y1' => 15.0, 'x2' => 40.0, 'y2' => 15.0],
         ['x1' => 40.0, 'y1' => 15.0, 'x2' => 40.0, 'y2' => 20.0],
     ])
-    ->and($helpers->dust(10, 20, 30, 5, 'bottom'))->toEqual([
+        ->and($helpers->dust(10, 20, 30, 5, 'bottom'))->toEqual([
         'cut' => [
             ['x1' => 10.0, 'y1' => 20.0, 'x2' => 10.75, 'y2' => 20.75],
             ['x1' => 10.75, 'y1' => 20.75, 'x2' => 12.0, 'y2' => 25.0],

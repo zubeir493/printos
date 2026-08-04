@@ -23,7 +23,7 @@ class DielineExportService
      */
     public function downloadFromData(array $data, string $format): Response|StreamedResponse
     {
-        $templateKey = (string) ($data['template_key'] ?? 'fefco-0210');
+        $templateKey = (string) ($data['template_key'] ?? 'reverse-tuck-flap-box');
         $dimensions = (array) ($data['dimensions'] ?? []);
         $geometry = $this->geometry->generate($templateKey, $dimensions);
         $name = (string) ($data['name'] ?? $geometry['name'] ?? 'dieline');

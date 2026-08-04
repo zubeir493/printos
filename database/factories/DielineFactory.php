@@ -23,19 +23,18 @@ class DielineFactory extends Factory
             'l' => 160,
             'w' => 50,
             'h' => 90,
-            'tuck_flap' => 28,
-            'glue_flap' => 18,
-            'dust_flap' => 25,
-            'bleed' => 3,
-            'board_thickness' => 1.5,
+            'tuck_flap' => 15,
+            'tuck_radius' => 6,
+            'dust_flap' => 100,
+            'glue_flap' => 20,
         ];
 
         return [
-            'name' => 'FEFCO 0210 test dieline',
-            'template_key' => 'fefco-0210',
+            'name' => 'Reverse tuck flap box test dieline',
+            'template_key' => 'reverse-tuck-flap-box',
             'created_by' => User::factory(),
             'dimensions' => $dimensions,
-            'geometry' => app(DielineGeometryService::class)->generate('fefco-0210', $dimensions),
+            'geometry' => app(DielineGeometryService::class)->generate('reverse-tuck-flap-box', $dimensions),
         ];
     }
 }

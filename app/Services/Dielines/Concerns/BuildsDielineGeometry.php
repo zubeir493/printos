@@ -58,7 +58,8 @@ trait BuildsDielineGeometry
     /**
      * Build a closure panel with a short rounded tuck flap above its crease.
      *
-     * The local origin is the top of the closure panel. The closure extends
+     * The tuck hinge is offset into the closure by half the slit height so the
+     * requested closure and tuck dimensions remain exact. The closure extends
      * toward positive local Y; the tuck flap extends toward negative local Y.
      *
      * @return array{cut: array<int, array{x1: float, y1: float, x2: float, y2: float}>, crease: array<int, array{x1: float, y1: float, x2: float, y2: float}>}
@@ -81,35 +82,36 @@ trait BuildsDielineGeometry
         $radius = min(max(0, $radius), $span / 2, $tuckHeight);
         $slitWidth = min(max(0, $slitWidth), $span / 2);
         $slitHeight = min(max(0, $slitHeight), $closureHeight);
-        $creaseOffset = $slitHeight / 2;
-        $closureBottom = $creaseOffset + $closureHeight;
+        $hingeOffset = $slitHeight / 2;
+        $creaseY = $hingeOffset + ($slitHeight / 2);
+        $closureBottom = $hingeOffset + $closureHeight;
         $arcSegments = max(2, $arcSegments);
 
         $cut = $this->drawPath(
             $x,
             $y,
             $direction,
-            function (DielinePath $ctx) use ($span, $closureBottom, $tuckHeight, $radius, $slitWidth, $slitHeight): void {
-                $ctx->moveTo(0, 0)
+            function (DielinePath $ctx) use ($span, $hingeOffset, $closureBottom, $tuckHeight, $radius, $slitWidth, $slitHeight): void {
+                $ctx->moveTo(0, $hingeOffset)
                     ->lineTo(0, $closureBottom);
 
-                $ctx->moveTo($span, 0)
+                $ctx->moveTo($span, $hingeOffset)
                     ->lineTo($span, $closureBottom);
 
-                $ctx->moveTo(0, 0)
-                    ->lineTo(0, -$tuckHeight + $radius)
-                    ->arcTo(0, -$tuckHeight, $radius, -$tuckHeight, $radius)
-                    ->lineTo($span - $radius, -$tuckHeight)
-                    ->arcTo($span, -$tuckHeight, $span, -$tuckHeight + $radius, $radius)
-                    ->lineTo($span, 0);
+                $ctx->moveTo(0, $hingeOffset)
+                    ->lineTo(0, $hingeOffset - $tuckHeight + $radius)
+                    ->arcTo(0, $hingeOffset - $tuckHeight, $radius, $hingeOffset - $tuckHeight, $radius)
+                    ->lineTo($span - $radius, $hingeOffset - $tuckHeight)
+                    ->arcTo($span, $hingeOffset - $tuckHeight, $span, $hingeOffset - $tuckHeight + $radius, $radius)
+                    ->lineTo($span, $hingeOffset);
 
-                $ctx->moveTo(0, 0)
-                    ->lineTo($slitWidth, 0)
-                    ->lineTo($slitWidth, $slitHeight);
+                $ctx->moveTo(0, $hingeOffset)
+                    ->lineTo($slitWidth, $hingeOffset)
+                    ->lineTo($slitWidth, $hingeOffset + $slitHeight);
 
-                $ctx->moveTo($span, 0)
-                    ->lineTo($span - $slitWidth, 0)
-                    ->lineTo($span - $slitWidth, $slitHeight);
+                $ctx->moveTo($span, $hingeOffset)
+                    ->lineTo($span - $slitWidth, $hingeOffset)
+                    ->lineTo($span - $slitWidth, $hingeOffset + $slitHeight);
             },
             $arcSegments,
         );
@@ -122,8 +124,8 @@ trait BuildsDielineGeometry
                     $y,
                     $direction,
                     fn (DielinePath $ctx): DielinePath => $ctx
-                        ->moveTo($slitWidth, $creaseOffset)
-                        ->lineTo($span - $slitWidth, $creaseOffset),
+                        ->moveTo($slitWidth, $creaseY)
+                        ->lineTo($span - $slitWidth, $creaseY),
                 ),
                 ...$this->drawPath(
                     $x,

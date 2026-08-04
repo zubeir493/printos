@@ -3,24 +3,29 @@
 <head>
     <meta charset="utf-8">
     <style>
-        @page { margin: 12mm; }
+        @page {
+            margin: 0;
+            size: {{ $widthMm ?? 210 }}mm {{ $heightMm ?? 297 }}mm;
+        }
         body {
             color: #111827;
             font-family: DejaVu Sans, sans-serif;
             margin: 0;
         }
-        .title {
-            font-size: 10px;
-            margin-bottom: 8px;
+        .drawing {
+            height: {{ $heightMm ?? 297 }}mm;
+            width: {{ $widthMm ?? 210 }}mm;
         }
-        .drawing svg {
-            height: auto;
+        .drawing img {
+            display: block;
+            height: 100%;
             width: 100%;
         }
     </style>
 </head>
 <body>
-    <div class="title">{{ $name }}</div>
-    <div class="drawing">{!! $svg !!}</div>
+    <div class="drawing">
+        <img src="data:image/svg+xml;base64,{{ base64_encode($svg) }}" alt="Dieline">
+    </div>
 </body>
 </html>

@@ -6,7 +6,6 @@ use App\Models\Dieline;
 use App\Services\Dielines\DielineExportService;
 use App\Services\Dielines\DielineGeometryService;
 use Filament\Actions\Action;
-use Illuminate\Http\Response;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -30,7 +29,7 @@ trait PreparesDielineData
         return $data;
     }
 
-    protected function downloadInstant(string $format): Response|StreamedResponse
+    protected function downloadInstant(string $format): StreamedResponse
     {
         return app(DielineExportService::class)->downloadFromData(
             $this->prepareDielineData($this->form->getState()),
@@ -38,7 +37,7 @@ trait PreparesDielineData
         );
     }
 
-    protected function saveAndDownload(string $format): Response|StreamedResponse
+    protected function saveAndDownload(string $format): StreamedResponse
     {
         $data = $this->prepareDielineData($this->form->getState());
         $record = $this->record ?? null;

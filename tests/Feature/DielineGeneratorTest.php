@@ -6,6 +6,7 @@ use App\Models\Dieline;
 use App\Models\Setting;
 use App\Models\User;
 use App\Services\Dielines\DielineExportService;
+use App\Services\Dielines\DielineGeometryService;
 use App\UserRole;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -121,6 +122,8 @@ it('lists saved dielines and exposes compact edit page download actions', functi
         ->assertSee('Download DXF')
         ->call('downloadInstantSvg')
         ->assertFileDownloaded('reverse-tuck-flap-box-test-dieline.svg')
+        ->call('downloadInstantPdf')
+        ->assertFileDownloaded('reverse-tuck-flap-box-test-dieline.pdf')
         ->assertSeeHtml('dieline-preview-artboard');
 });
 
@@ -142,15 +145,47 @@ it('can build instant svg and dxf downloads without a saved record', function ()
 
     $svg = app(DielineExportService::class)->downloadFromData($data, 'svg');
     $dxf = app(DielineExportService::class)->downloadFromData($data, 'dxf');
+    $pdf = app(DielineExportService::class)->downloadFromData($data, 'pdf');
+
+    ob_start();
+    $pdf->sendContent();
+    $pdfContent = ob_get_clean();
+
+    preg_match_all('/\/Type\s*\/Page\b/', $pdfContent, $pages);
+    preg_match('/\/MediaBox\s*\[\s*0\.000\s+0\.000\s+([0-9.]+)\s+([0-9.]+)\s*\]/', $pdfContent, $mediaBox);
+    $geometry = app(DielineGeometryService::class)->generate($data['template_key'], $data['dimensions']);
 
     expect($svg->headers->get('content-disposition'))
         ->toContain('instant-mailer.svg')
         ->and($dxf->headers->get('content-disposition'))
         ->toContain('instant-mailer.dxf')
+        ->and($pdf->headers->get('content-disposition'))
+        ->toContain('instant-mailer.pdf')
+        ->and($pages[0])
+        ->toHaveCount(1)
+        ->and($mediaBox)
+        ->not->toBeEmpty()
+        ->and(abs((float) $mediaBox[1] - ((float) $geometry['bounds']['width'] * 72 / 25.4)))
+        ->toBeLessThan(0.01)
+        ->and(abs((float) $mediaBox[2] - ((float) $geometry['bounds']['height'] * 72 / 25.4)))
+        ->toBeLessThan(0.01)
         ->and(Dieline::query()->count())
         ->toBe(0);
 
-    expect(str_contains($svg->getContent(), 'fill="#fafafa"'))->toBeFalse();
+    expect(str_contains($svg->getContent(), 'fill="#fafafa"'))->toBeFalse()
+        ->and(str_contains($svg->getContent(), '<text'))->toBeFalse();
+});
+
+it('embeds the dieline SVG as an image for PDF rendering', function (): void {
+    $html = view('dielines.pdf', [
+        'svg' => '<svg><line x1="0" y1="0" x2="10" y2="10" /></svg>',
+    ])->render();
+
+    expect($html)
+        ->toContain('data:image/svg+xml;base64,')
+        ->toContain('alt="Dieline"')
+        ->not->toContain('Test dieline')
+        ->not->toContain('<div class="drawing"><svg');
 });
 
 it('validates the setup modal before creating a dieline draft', function (): void {

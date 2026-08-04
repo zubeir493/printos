@@ -9,7 +9,6 @@ use App\Services\Dielines\DielineTemplateRegistry;
 use App\Services\Dielines\Renderers\SvgDielineRenderer;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Contracts\Support\Htmlable;
-use Illuminate\Http\Response;
 use Illuminate\Support\HtmlString;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -92,17 +91,17 @@ class EditDieline extends EditRecord
         }
     }
 
-    public function downloadInstantSvg(): Response|StreamedResponse
+    public function downloadInstantSvg(): StreamedResponse
     {
         return $this->downloadInstant('svg');
     }
 
-    public function downloadInstantPdf(): Response|StreamedResponse
+    public function downloadInstantPdf(): StreamedResponse
     {
         return $this->downloadInstant('pdf');
     }
 
-    public function downloadInstantDxf(): Response|StreamedResponse
+    public function downloadInstantDxf(): StreamedResponse
     {
         return $this->downloadInstant('dxf');
     }

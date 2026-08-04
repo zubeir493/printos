@@ -9,7 +9,7 @@ class ReverseTuckFlapBoxTemplate implements DielineTemplateContract
 {
     use BuildsDielineGeometry;
 
-    private const TUCK_SLIT_CENTER_OFFSET = 1.0;
+    private const TUCK_HINGE_OFFSET = 1.0;
 
     public function key(): string
     {
@@ -66,9 +66,9 @@ class ReverseTuckFlapBoxTemplate implements DielineTemplateContract
         $secondWidthX = $secondLengthX + $length;
         $bodyRight = $secondWidthX + $width;
         $closureHeight = $width;
-        $creaseOffset = self::TUCK_SLIT_CENTER_OFFSET;
-        $topClosureY = -$closureHeight - $creaseOffset;
-        $bottomClosureY = $height + $closureHeight + $creaseOffset;
+        $tuckHingeOffset = self::TUCK_HINGE_OFFSET;
+        $topClosureY = -$closureHeight - $tuckHingeOffset;
+        $bottomClosureY = $height + $closureHeight + $tuckHingeOffset;
 
         // Dust flaps 1 and 3 are horizontally mirrored to match the reference.
         $dustFlaps = [
@@ -131,8 +131,8 @@ class ReverseTuckFlapBoxTemplate implements DielineTemplateContract
             $crease = [...$crease, ...$dustFlap['crease']];
         }
 
-        $minimumY = $topClosureY - $tuckHeight;
-        $maximumY = $bottomClosureY + $tuckHeight;
+        $minimumY = $topClosureY - $tuckHeight + $tuckHingeOffset;
+        $maximumY = $bottomClosureY + $tuckHeight - $tuckHingeOffset;
 
         return [
             'template' => $this->key(),

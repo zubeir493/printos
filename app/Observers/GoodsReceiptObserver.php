@@ -92,6 +92,7 @@ class GoodsReceiptObserver
             UserRole::Admin->value,
             UserRole::Warehouse->value,
             UserRole::Finance->value,
+            UserRole::Operations->value,
         ])->get();
 
         if ($recipients->isNotEmpty()) {

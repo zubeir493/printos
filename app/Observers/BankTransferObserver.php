@@ -3,7 +3,11 @@
 namespace App\Observers;
 
 use App\Models\BankTransfer;
+use App\Notifications\BankTransferStatusChangedNotification;
 use App\Support\Money;
+use App\Support\NotificationRecipients;
+use App\UserRole;
+use Illuminate\Support\Facades\Notification;
 
 class BankTransferObserver
 {
@@ -42,11 +46,19 @@ class BankTransferObserver
      */
     public function updated(BankTransfer $bankTransfer): void
     {
-        if (! $bankTransfer->wasChanged('status') || $bankTransfer->status !== 'completed') {
+        if (! $bankTransfer->wasChanged('status') || ! in_array($bankTransfer->status, ['completed', 'cancelled'], true)) {
             return;
         }
 
-        $bankTransfer->fromBank()->decrement('current_balance', $bankTransfer->amount);
-        $bankTransfer->toBank()->increment('current_balance', $bankTransfer->amount);
+        if ($bankTransfer->status === 'completed') {
+            $bankTransfer->fromBank()->decrement('current_balance', $bankTransfer->amount);
+            $bankTransfer->toBank()->increment('current_balance', $bankTransfer->amount);
+        }
+
+        $recipients = NotificationRecipients::roles(UserRole::Admin, UserRole::Finance, UserRole::Operations);
+
+        if ($recipients->isNotEmpty()) {
+            Notification::send($recipients, new BankTransferStatusChangedNotification($bankTransfer->loadMissing(['fromBank', 'toBank'])));
+        }
     }
 }

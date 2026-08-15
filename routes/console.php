@@ -12,13 +12,13 @@ Artisan::command('inspire', function () {
 Schedule::command('backup:database')->dailyAt('02:00')->withoutOverlapping()->onOneServer();
 
 // Mark overdue invoices every morning
-Schedule::command('invoices:update-overdue')->dailyAt('06:00')->withoutOverlapping();
+Schedule::command('invoices:update-overdue')->dailyAt('06:00')->withoutOverlapping()->onOneServer();
 
 // Notify about late job orders every morning
-Schedule::command('job-orders:notify-late')->dailyAt('06:05')->withoutOverlapping();
+Schedule::command('job-orders:notify-late')->dailyAt('06:05')->withoutOverlapping()->onOneServer();
 
 // Nightly reconciliation safety net — keeps invoice balances in sync
-Schedule::command('invoices:fix-balances')->dailyAt('03:00')->withoutOverlapping();
+Schedule::command('invoices:fix-balances')->dailyAt('03:00')->withoutOverlapping()->onOneServer();
 
 Schedule::command('payroll:generate-monthly-drafts')->monthlyOn(25, '06:15')->withoutOverlapping()->onOneServer();
 

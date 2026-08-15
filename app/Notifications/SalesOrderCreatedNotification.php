@@ -3,33 +3,43 @@
 namespace App\Notifications;
 
 use App\Models\SalesOrder;
-use App\Support\Money;
-use App\Notifications\Concerns\RoutesNotificationClicks;
+use App\Notifications\Concerns\SendsWebPushNotifications;
 use Filament\Notifications\Notification as FilamentNotification;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueueAfterCommit;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
+use NotificationChannels\WebPush\WebPushChannel;
 
 class SalesOrderCreatedNotification extends Notification implements ShouldQueueAfterCommit
 {
     use Queueable;
-    use RoutesNotificationClicks;
+    use SendsWebPushNotifications;
 
     public function __construct(public SalesOrder $salesOrder) {}
 
     public function via($notifiable): array
     {
-        return ['database', 'mail'];
+        return ['database', 'mail', WebPushChannel::class];
+    }
+
+    protected function webPushTitle(): string
+    {
+        return 'New Sales Order Created';
+    }
+
+    protected function webPushBody(): string
+    {
+        return 'New Sales Order '.$this->salesOrder->order_number.' has been created.';
     }
 
     public function toMail($notifiable): MailMessage
     {
         return (new MailMessage)
-            ->subject('New Sales Order Created: ' . $this->salesOrder->order_number)
-            ->line('A new sales order ' . $this->salesOrder->order_number . ' has been created.')
-            ->line('Customer: ' . $this->salesOrder->partner?->name)
-            ->line('Total: ' . number_format($this->salesOrder->total, 2) . ' Birr')
+            ->subject('New Sales Order Created: '.$this->salesOrder->order_number)
+            ->line('A new sales order '.$this->salesOrder->order_number.' has been created.')
+            ->line('Customer: '.$this->salesOrder->partner?->name)
+            ->line('Total: '.number_format($this->salesOrder->total, 2).' Birr')
             ->action('View Sales Order', $this->notificationUrl($notifiable))
             ->line('Thank you for using our application!');
     }
@@ -38,7 +48,7 @@ class SalesOrderCreatedNotification extends Notification implements ShouldQueueA
     {
         return FilamentNotification::make()
             ->title('New Sales Order Created')
-            ->body('New Sales Order ' . $this->salesOrder->order_number . ' has been created.')
+            ->body('New Sales Order '.$this->salesOrder->order_number.' has been created.')
             ->icon('heroicon-o-shopping-cart')
             ->iconColor('primary')
             ->actions($this->databaseActions($notifiable, 'Open sales order'))
@@ -52,7 +62,7 @@ class SalesOrderCreatedNotification extends Notification implements ShouldQueueA
             'order_number' => $this->salesOrder->order_number,
             'customer_name' => $this->salesOrder->partner?->name,
             'total' => $this->salesOrder->total,
-            'message' => 'New Sales Order ' . $this->salesOrder->order_number . ' has been created.',
+            'message' => 'New Sales Order '.$this->salesOrder->order_number.' has been created.',
             'url' => $this->notificationUrl($notifiable),
         ];
     }

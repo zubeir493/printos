@@ -233,17 +233,19 @@ class JobOrder extends Model
         return ($totalIssued / $totalRequired) * 100;
     }
 
-    public function syncCompletionStatus(): void
+    public function syncCompletionStatus(): bool
     {
         if (in_array((string) $this->status, ['completed', 'cancelled'], true)) {
-            return;
+            return false;
         }
 
         if (! $this->isFullyPaid() || ! $this->allTasksCompleted()) {
-            return;
+            return false;
         }
 
         $this->updateQuietly(['status' => 'completed']);
+
+        return true;
     }
 
     public function isFullyPaid(): bool

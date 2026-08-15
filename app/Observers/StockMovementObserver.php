@@ -6,6 +6,7 @@ use App\Models\InventoryBalance;
 use App\Models\JobOrderTask;
 use App\Models\StockMovement;
 use App\Notifications\ProductionLoggedNotification;
+use App\Notifications\WipReadyForDispatchNotification;
 use App\Support\NotificationRecipients;
 use App\UserRole;
 use Illuminate\Support\Facades\Log;
@@ -131,6 +132,22 @@ class StockMovementObserver
 
         if ($recipients->isNotEmpty()) {
             Notification::send($recipients, new ProductionLoggedNotification($task, $stockMovement));
+        }
+
+        $balance = InventoryBalance::query()
+            ->with(['inventoryItem', 'warehouse'])
+            ->where('inventory_item_id', $stockMovement->inventory_item_id)
+            ->where('warehouse_id', $stockMovement->warehouse_id)
+            ->first();
+
+        if ($balance?->inventoryItem?->type !== 'wip' || (float) $stockMovement->quantity <= 0) {
+            return;
+        }
+
+        $warehouseUsers = NotificationRecipients::inventoryUsers($balance->warehouse);
+
+        if ($warehouseUsers->isNotEmpty()) {
+            Notification::send($warehouseUsers, new WipReadyForDispatchNotification($balance));
         }
     }
 }

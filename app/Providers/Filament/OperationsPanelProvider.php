@@ -12,6 +12,7 @@ use App\Filament\Resources\Bids\BidResource;
 use App\Filament\Resources\Dispatches\DispatchResource;
 use App\Filament\Resources\EmailLogs\EmailLogResource;
 use App\Filament\Resources\GoodsReceipts\GoodsReceiptResource;
+use App\Filament\Resources\InventoryItems\InventoryItemResource;
 use App\Filament\Resources\JobOrders\JobOrderResource;
 use App\Filament\Resources\JobOrderTasks\JobOrderTaskResource;
 use App\Filament\Resources\MaterialIssueApprovals\MaterialIssueApprovalResource;
@@ -68,6 +69,7 @@ class OperationsPanelProvider extends PanelProvider
                 GoodsReceiptResource::class,
                 PartnerResource::class,
                 JobOrderResource::class,
+                InventoryItemResource::class,
                 WarehouseResource::class,
                 JobOrderTaskResource::class,
                 MaterialRequestResource::class,

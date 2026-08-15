@@ -7,10 +7,11 @@ use App\Models\Bank;
 use App\Models\JournalEntry;
 use App\Models\Partner;
 use App\Models\Payment;
-use App\Models\User;
 use App\Notifications\PaymentReceivedNotification;
+use App\Notifications\PaymentVoidedNotification;
 use App\Services\Accounting\CreatePaymentJournalEntry;
 use App\Support\Money;
+use App\Support\NotificationRecipients;
 use App\UserRole;
 use Illuminate\Support\Facades\Notification;
 
@@ -63,7 +64,7 @@ class PaymentObserver
         app(CreatePaymentJournalEntry::class)->handle($payment);
 
         if ($payment->direction === 'inbound') {
-            $recipients = User::whereIn('role', [UserRole::Admin->value, UserRole::Finance->value])->get();
+            $recipients = NotificationRecipients::roles(UserRole::Admin, UserRole::Finance, UserRole::Sales, UserRole::Operations);
             if ($recipients->isNotEmpty()) {
                 Notification::send($recipients, new PaymentReceivedNotification($payment));
             }
@@ -80,6 +81,19 @@ class PaymentObserver
         }
 
         $payment->bank()->increment('current_balance', $this->cashAmount($payment));
+    }
+
+    public function updated(Payment $payment): void
+    {
+        if (! $payment->wasChanged('voided_at') || ! $payment->voided_at) {
+            return;
+        }
+
+        $recipients = NotificationRecipients::roles(UserRole::Admin, UserRole::Finance, UserRole::Sales, UserRole::Operations);
+
+        if ($recipients->isNotEmpty()) {
+            Notification::send($recipients, new PaymentVoidedNotification($payment->refresh()));
+        }
     }
 
     public function updating(Payment $payment): void

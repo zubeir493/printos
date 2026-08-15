@@ -3,23 +3,34 @@
 namespace App\Notifications;
 
 use App\Models\GoodsReceipt;
-use App\Notifications\Concerns\RoutesNotificationClicks;
+use App\Notifications\Concerns\SendsWebPushNotifications;
 use Filament\Notifications\Notification as FilamentNotification;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueueAfterCommit;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
+use NotificationChannels\WebPush\WebPushChannel;
 
 class GoodsReceiptPostedNotification extends Notification implements ShouldQueueAfterCommit
 {
     use Queueable;
-    use RoutesNotificationClicks;
+    use SendsWebPushNotifications;
 
     public function __construct(public GoodsReceipt $goodsReceipt) {}
 
     public function via($notifiable): array
     {
-        return ['database', 'mail'];
+        return ['database', 'mail', WebPushChannel::class];
+    }
+
+    protected function webPushTitle(): string
+    {
+        return 'Goods Receipt Posted';
+    }
+
+    protected function webPushBody(): string
+    {
+        return 'Goods Receipt '.$this->goodsReceipt->receipt_number.' has been posted.';
     }
 
     public function toMail($notifiable): MailMessage

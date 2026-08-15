@@ -58,7 +58,7 @@ class VoidPaymentJournalEntry
                 ]);
             }
 
-            Payment::whereKey($payment->id)->update([
+            $payment->update([
                 'voided_at' => $timestamp,
                 'voided_by' => $user?->id,
                 'void_reason' => $reason,

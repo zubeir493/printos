@@ -2,12 +2,16 @@
 
 namespace App\Models;
 
+use App\Notifications\StockTransferCompletedNotification;
+use App\Support\NotificationRecipients;
 use App\Support\SequentialNumber;
+use App\UserRole;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 
 class StockTransfer extends Model
 {
@@ -83,7 +87,7 @@ class StockTransfer extends Model
 
     public function post(): void
     {
-        DB::transaction(function () {
+        $posted = DB::transaction(function (): bool {
             $alreadyPosted = StockMovement::where('reference_type', self::class)
                 ->where('reference_id', $this->id)
                 ->whereIn('type', ['transfer_out', 'transfer_in'])
@@ -92,7 +96,7 @@ class StockTransfer extends Model
             if ($alreadyPosted) {
                 $this->updateQuietly(['status' => 'completed']);
 
-                return;
+                return false;
             }
 
             foreach ($this->items as $item) {
@@ -140,6 +144,18 @@ class StockTransfer extends Model
             }
 
             $this->updateQuietly(['status' => 'completed']);
+
+            return true;
         });
+
+        if (! $posted) {
+            return;
+        }
+
+        $recipients = NotificationRecipients::roles(UserRole::Admin, UserRole::Warehouse, UserRole::Operations);
+
+        if ($recipients->isNotEmpty()) {
+            Notification::send($recipients, new StockTransferCompletedNotification($this->fresh(['toWarehouse'])));
+        }
     }
 }

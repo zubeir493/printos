@@ -4,13 +4,18 @@ namespace App\Models;
 
 use App\Enums\ExpenseTrackingType;
 use App\Enums\PaymentTransactionType;
+use App\Notifications\InvoiceStatusChangedNotification;
+use App\Notifications\JobOrderCompletedNotification;
+use App\Support\NotificationRecipients;
 use App\Support\SequentialNumber;
+use App\UserRole;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Notification;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 
@@ -181,7 +186,13 @@ class Payment extends Model
                 'advance_paid' => $jobOrder->paid_amount > 0,
                 'advance_amount' => $jobOrder->paid_amount,
             ]);
-            $jobOrder->syncCompletionStatus();
+            if ($jobOrder->syncCompletionStatus()) {
+                $recipients = NotificationRecipients::roles(UserRole::Sales, UserRole::Finance, UserRole::Operations);
+
+                if ($recipients->isNotEmpty()) {
+                    Notification::send($recipients, new JobOrderCompletedNotification($jobOrder->refresh()));
+                }
+            }
             $this->syncInvoicesForDocument($jobOrder);
         }
 
@@ -273,7 +284,8 @@ class Payment extends Model
 
         $balanceDue = max(0, round($totalAmount - $paidAmount, 2));
 
-        $status = $invoice->status;
+        $previousStatus = $invoice->status;
+        $status = $previousStatus;
         if ($balanceDue <= 0.001) {
             $status = 'paid';
         } elseif ($paidAmount > 0) {
@@ -286,5 +298,13 @@ class Payment extends Model
             'balance_due' => $balanceDue,
             'status' => $status,
         ]);
+
+        if ($previousStatus !== $status && in_array($status, ['sent', 'paid'], true)) {
+            $recipients = NotificationRecipients::roles(UserRole::Admin, UserRole::Finance, UserRole::Sales, UserRole::Operations);
+
+            if ($recipients->isNotEmpty()) {
+                Notification::send($recipients, new InvoiceStatusChangedNotification($invoice->refresh()));
+            }
+        }
     }
 }

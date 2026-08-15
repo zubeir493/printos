@@ -3,23 +3,34 @@
 namespace App\Notifications;
 
 use App\Models\PurchaseOrder;
-use App\Notifications\Concerns\RoutesNotificationClicks;
+use App\Notifications\Concerns\SendsWebPushNotifications;
 use Filament\Notifications\Notification as FilamentNotification;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueueAfterCommit;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
+use NotificationChannels\WebPush\WebPushChannel;
 
 class PurchaseOrderApprovedNotification extends Notification implements ShouldQueueAfterCommit
 {
     use Queueable;
-    use RoutesNotificationClicks;
+    use SendsWebPushNotifications;
 
     public function __construct(public PurchaseOrder $purchaseOrder) {}
 
     public function via($notifiable): array
     {
-        return ['database', 'mail'];
+        return ['database', 'mail', WebPushChannel::class];
+    }
+
+    protected function webPushTitle(): string
+    {
+        return 'Purchase Order Approved';
+    }
+
+    protected function webPushBody(): string
+    {
+        return 'Purchase Order '.$this->purchaseOrder->po_number.' has been approved.';
     }
 
     public function toMail($notifiable): MailMessage

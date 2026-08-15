@@ -1,7 +1,9 @@
 <?php
 
+use App\Models\AccountingExport;
 use App\Models\JobOrderTask;
 use App\Models\User;
+use App\Notifications\AccountingExportFailed;
 use App\Notifications\DesignerAssignedToTask;
 use App\Notifications\TaskSentToProductionNotification;
 use App\UserRole;
@@ -24,8 +26,38 @@ test('database notifications also include the web push channel', function () {
         ->toContain(WebPushChannel::class)
         ->and($notification->viaConnections())
         ->toMatchArray([
-            'database' => 'sync',
-            WebPushChannel::class => 'sync',
+            'database' => 'database',
+            WebPushChannel::class => 'database',
+        ]);
+});
+
+test('accounting export failures are queued after commit and delivered in browser', function () {
+    $financeUser = User::factory()->create([
+        'role' => UserRole::Finance,
+    ]);
+    $export = AccountingExport::factory()->create([
+        'status' => AccountingExport::STATUS_FAILED,
+        'error_message' => 'Peachtree is unavailable.',
+    ]);
+    $notification = new AccountingExportFailed($export);
+
+    expect($notification)
+        ->toBeInstanceOf(ShouldQueueAfterCommit::class)
+        ->and($notification->via($financeUser))
+        ->toContain('database')
+        ->toContain(WebPushChannel::class)
+        ->and($notification->viaConnections())
+        ->toMatchArray([
+            'database' => 'database',
+            WebPushChannel::class => 'database',
+        ])
+        ->and($notification->toWebPush($financeUser, new stdClass)->toArray())
+        ->toMatchArray([
+            'title' => 'Peachtree Export Failed',
+            'body' => 'Peachtree is unavailable.',
+            'data' => [
+                'url' => route('filament.finance.resources.accounting-exports.view', ['record' => $export]),
+            ],
         ]);
 });
 

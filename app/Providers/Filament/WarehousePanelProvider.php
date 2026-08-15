@@ -14,6 +14,7 @@ use App\Filament\Resources\StockMovements\StockMovementResource;
 use App\Filament\Resources\StockTransfers\StockTransferResource;
 use App\Filament\Resources\Warehouses\WarehouseResource;
 use App\Filament\Warehouse\Widgets\LogisticsActivityWidget;
+use App\Filament\Warehouse\Widgets\PendingPickListTable;
 use App\Filament\Warehouse\Widgets\StockMovementPulseWidget;
 use App\Filament\Warehouse\Widgets\WarehouseHealthStats;
 use App\Filament\Warehouse\Widgets\WipAvailabilityWidget;
@@ -73,6 +74,7 @@ class WarehousePanelProvider extends PanelProvider
                 WarehouseHealthStats::class,
                 LogisticsActivityWidget::class,
                 WipAvailabilityWidget::class,
+                PendingPickListTable::class,
                 StockMovementPulseWidget::class,
             ])
             ->globalSearch(true)

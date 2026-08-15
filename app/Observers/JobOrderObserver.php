@@ -3,6 +3,7 @@
 namespace App\Observers;
 
 use App\Models\JobOrder;
+use App\Notifications\JobOrderCancelledNotification;
 use App\Notifications\JobOrderCompletedNotification;
 use App\Services\Accounting\CreateSalesJournalEntry;
 use App\Support\NotificationRecipients;
@@ -46,6 +47,16 @@ class JobOrderObserver
     public function updated(JobOrder $jobOrder): void
     {
         if (! $jobOrder->wasChanged('status')) {
+            return;
+        }
+
+        if ((string) $jobOrder->status === 'cancelled') {
+            $recipients = NotificationRecipients::roles(UserRole::Admin, UserRole::Sales, UserRole::Finance, UserRole::Operations, UserRole::Production);
+
+            if ($recipients->isNotEmpty()) {
+                Notification::send($recipients, new JobOrderCancelledNotification($jobOrder));
+            }
+
             return;
         }
 

@@ -133,6 +133,7 @@ class MaterialIssueService
                 'rejected_at' => null,
             ]);
 
+            $this->notifyMaterialsIssued($materialRequest->fresh(['inventoryItem', 'jobOrderTask.jobOrder']), (float) $approval->quantity);
             // Notify the requester of the decision
             if ($approval->requested_by) {
                 $approval->requester?->notify(new MaterialIssueDecisionNotification($approval));

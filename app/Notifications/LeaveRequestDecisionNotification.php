@@ -3,23 +3,34 @@
 namespace App\Notifications;
 
 use App\Models\LeaveRequest;
-use App\Notifications\Concerns\RoutesNotificationClicks;
+use App\Notifications\Concerns\SendsWebPushNotifications;
 use Filament\Notifications\Notification as FilamentNotification;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueueAfterCommit;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
+use NotificationChannels\WebPush\WebPushChannel;
 
 class LeaveRequestDecisionNotification extends Notification implements ShouldQueueAfterCommit
 {
     use Queueable;
-    use RoutesNotificationClicks;
+    use SendsWebPushNotifications;
 
     public function __construct(public LeaveRequest $leaveRequest) {}
 
     public function via($notifiable): array
     {
-        return ['database', 'mail'];
+        return ['database', 'mail', WebPushChannel::class];
+    }
+
+    protected function webPushTitle(): string
+    {
+        return 'Leave Request '.ucfirst($this->leaveRequest->status);
+    }
+
+    protected function webPushBody(): string
+    {
+        return $this->message();
     }
 
     public function toMail($notifiable): MailMessage
@@ -28,7 +39,7 @@ class LeaveRequestDecisionNotification extends Notification implements ShouldQue
 
         return (new MailMessage)
             ->subject('Leave Request '.$status)
-            ->line('Your leave request has been '.strtolower($status).'.')
+            ->line($this->message())
             ->line('Dates: '.$this->leaveRequest->start_date->format('Y-m-d').' to '.$this->leaveRequest->end_date->format('Y-m-d'))
             ->action('View Request', $this->notificationUrl($notifiable))
             ->line('Thank you for using our application!');
@@ -38,7 +49,7 @@ class LeaveRequestDecisionNotification extends Notification implements ShouldQue
     {
         return FilamentNotification::make()
             ->title('Leave Request '.ucfirst($this->leaveRequest->status))
-            ->body('Your leave request has been '.$this->leaveRequest->status.'.')
+            ->body($this->message())
             ->icon('heroicon-o-calendar-days')
             ->iconColor($this->leaveRequest->status === 'approved' ? 'success' : 'danger')
             ->actions($this->databaseActions($notifiable, 'Open request'))
@@ -50,7 +61,7 @@ class LeaveRequestDecisionNotification extends Notification implements ShouldQue
         return [
             'leave_request_id' => $this->leaveRequest->id,
             'status' => $this->leaveRequest->status,
-            'message' => 'Your leave request has been '.$this->leaveRequest->status.'.',
+            'message' => $this->message(),
             'url' => $this->notificationUrl($notifiable),
         ];
     }
@@ -58,5 +69,12 @@ class LeaveRequestDecisionNotification extends Notification implements ShouldQue
     protected function notificationUrl(object $notifiable): string
     {
         return $this->resourceUrl($notifiable, 'leave-requests', 'index');
+    }
+
+    protected function message(): string
+    {
+        $employee = $this->leaveRequest->employee?->full_name ?? 'Employee';
+
+        return "{$employee}'s leave request has been {$this->leaveRequest->status}.";
     }
 }

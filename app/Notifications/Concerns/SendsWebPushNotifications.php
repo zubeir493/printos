@@ -25,9 +25,15 @@ trait SendsWebPushNotifications
      */
     public function viaConnections(): array
     {
+        $connection = config('queue.default', 'database');
+
+        if ($connection === 'sync') {
+            $connection = 'database';
+        }
+
         return [
-            'database' => 'sync',
-            WebPushChannel::class => 'sync',
+            'database' => $connection,
+            WebPushChannel::class => $connection,
         ];
     }
 

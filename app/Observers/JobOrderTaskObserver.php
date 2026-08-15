@@ -6,6 +6,7 @@ use App\Models\JobOrder;
 use App\Models\JobOrderTask;
 use App\Notifications\DesignerAssignedToTask;
 use App\Notifications\JobOrderCompletedNotification;
+use App\Notifications\JobOrderTaskCancelledNotification;
 use App\Notifications\ProductionTaskCompletedNotification;
 use App\Notifications\TaskSentToProductionNotification;
 use App\Notifications\TypistAssignedToTask;
@@ -107,6 +108,14 @@ class JobOrderTaskObserver
 
             if ($recipients->isNotEmpty()) {
                 Notification::send($recipients, new ProductionTaskCompletedNotification($task));
+            }
+        }
+
+        if ($task->status === 'cancelled') {
+            $recipients = NotificationRecipients::roles(UserRole::Admin, UserRole::Operations, UserRole::Sales, UserRole::Production);
+
+            if ($recipients->isNotEmpty()) {
+                Notification::send($recipients, new JobOrderTaskCancelledNotification($task->loadMissing('jobOrder')));
             }
         }
     }

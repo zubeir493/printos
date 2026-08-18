@@ -24,10 +24,6 @@ class DielineResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCubeTransparent;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Design';
-
-    protected static ?int $navigationSort = 130;
-
     public static function form(Schema $schema): Schema
     {
         return DielineForm::configure($schema);

@@ -29,13 +29,13 @@ class StraightTuckFlapTemplate implements DielineTemplateContract
     public function defaults(): array
     {
         return [
-            'l' => 200,
+            'l' => 50,
             'w' => 50,
-            'h' => 100,
+            'h' => 50,
             'tuck_flap' => 15,
             'tuck_radius' => 6,
-            'dust_flap' => 100,
-            'glue_flap' => 20,
+            'dust_flap' => 20,
+            'glue_flap' => 10,
         ];
     }
 

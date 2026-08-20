@@ -23,6 +23,7 @@ use App\Filament\Resources\BankTransactions\BankTransactionResource;
 use App\Filament\Resources\BankTransfers\BankTransferResource;
 use App\Filament\Resources\Bids\BidResource;
 use App\Filament\Resources\Bonds\BondResource;
+use App\Filament\Resources\CashDeposits\CashDepositResource;
 use App\Filament\Resources\EmployeeLoans\EmployeeLoanResource;
 use App\Filament\Resources\Expenses\ExpenseResource;
 use App\Filament\Resources\ExpenseTrackingItems\ExpenseTrackingItemResource;
@@ -83,6 +84,7 @@ class FinancePanelProvider extends PanelProvider
                 BankResource::class,
                 BankTransactionResource::class,
                 BankTransferResource::class,
+                CashDepositResource::class,
                 BondResource::class,
                 BidResource::class,
                 ExpenseTrackingItemResource::class,

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Banks\Schemas;
 
+use App\Support\Money;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -62,6 +63,14 @@ class BankForm
                             ->default('active')
                             ->required()
                             ->helperText('Current status of this bank account'),
+                        TextInput::make('opening_balance')
+                            ->label('Opening Balance')
+                            ->numeric()
+                            ->minValue(0)
+                            ->default(0)
+                            ->suffix(fn (): string => Money::suffix())
+                            ->visibleOn('create')
+                            ->helperText('Balance before transactions recorded in Printerp.'),
                         Textarea::make('notes')
                             ->label('Additional Notes')
                             ->rows(3)

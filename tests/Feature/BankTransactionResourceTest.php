@@ -8,9 +8,11 @@ use App\Models\BankTransfer;
 use App\Models\Partner;
 use App\Models\Payment;
 use App\Models\User;
+use App\Services\Accounting\VoidPaymentJournalEntry;
 use App\UserRole;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 
 uses(RefreshDatabase::class);
@@ -121,6 +123,40 @@ test('bank opening balance separates stored balance from transaction movement', 
         ->and((float) $bank->opening_balance)->toBe(1000.0)
         ->and((float) $bank->expected_balance)->toBe(1250.0)
         ->and((float) $bank->current_balance)->toBe(1250.0);
+
+    DB::table('banks')->where('id', $bank->id)->update(['current_balance' => 999]);
+    $bank = $bank->fresh();
+
+    expect((float) $bank->calculated_balance)->toBe(1250.0);
+
+    $bank->updateBalance();
+
+    expect((float) $bank->fresh()->current_balance)->toBe(1250.0);
+});
+
+test('cheque payments and withholding reconcile stored and transaction balances', function (): void {
+    $bank = createBankTransactionResourceBank('Cheque Bank', 1000);
+    $supplier = Partner::factory()->create(['is_supplier' => true]);
+
+    $payment = Payment::create([
+        'partner_id' => $supplier->id,
+        'bank_id' => $bank->id,
+        'payment_date' => '2026-08-19',
+        'amount' => 200,
+        'withholding_amount' => 20,
+        'transaction_type' => PaymentTransactionType::SUPPLIER_PAYMENT->value,
+        'method' => 'cheque',
+    ]);
+
+    expect((float) $bank->fresh()->current_balance)->toBe(820.0)
+        ->and((float) $bank->fresh()->transaction_balance)->toBe(-180.0)
+        ->and((float) $bank->fresh()->calculated_balance)->toBe(820.0);
+
+    app(VoidPaymentJournalEntry::class)->handle($payment, 'Cheque cancelled');
+
+    expect((float) $bank->fresh()->current_balance)->toBe(1000.0)
+        ->and((float) $bank->fresh()->transaction_balance)->toBe(0.0)
+        ->and((float) $bank->fresh()->calculated_balance)->toBe(1000.0);
 });
 
 function createBankTransactionResourceBank(string $name, float $currentBalance): Bank

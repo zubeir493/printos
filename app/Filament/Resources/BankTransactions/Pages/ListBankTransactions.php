@@ -5,6 +5,8 @@ namespace App\Filament\Resources\BankTransactions\Pages;
 use App\Filament\Exports\BankTransactionExporter;
 use App\Filament\Imports\BankTransactionImporter;
 use App\Filament\Resources\BankTransactions\BankTransactionResource;
+use App\Filament\Resources\CashDeposits\CashDepositResource;
+use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\ExportAction;
 use Filament\Actions\ImportAction;
@@ -17,6 +19,10 @@ class ListBankTransactions extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('deposit_cash')
+                ->label('New deposit')
+                ->icon('heroicon-o-banknotes')
+                ->url(CashDepositResource::getUrl('create')),
             ActionGroup::make([
                 ImportAction::make()
                     ->importer(BankTransactionImporter::class),

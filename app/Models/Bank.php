@@ -28,6 +28,7 @@ class Bank extends Model
         'account_holder_name',
         'bank_name',
         'branch',
+        'opening_balance',
         'current_balance',
         'status',
         'notes',
@@ -37,6 +38,7 @@ class Bank extends Model
     {
         return [
             'id' => 'integer',
+            'opening_balance' => 'decimal:2',
             'current_balance' => 'decimal:2',
             'status' => 'string',
         ];
@@ -57,31 +59,30 @@ class Bank extends Model
         return $this->hasMany(BankTransfer::class, 'to_bank_id');
     }
 
+    public function cashDeposits(): HasMany
+    {
+        return $this->hasMany(CashDeposit::class);
+    }
+
     public function getTotalInflowAttribute(): float
     {
-        return (float) $this->payments()
-            ->where('direction', 'inbound')
-            ->selectRaw('COALESCE(SUM(amount - COALESCE(withholding_amount, 0)), 0) as total')
-            ->value('total') +
-            (float) $this->transfersTo()
-                ->where('status', 'completed')
-                ->sum('amount');
+        return (float) BankTransaction::query()
+            ->where('bank_id', $this->id)
+            ->where('balance_delta', '>', 0)
+            ->sum('balance_delta');
     }
 
     public function getTotalOutflowAttribute(): float
     {
-        return (float) $this->payments()
-            ->where('direction', 'outbound')
-            ->selectRaw('COALESCE(SUM(amount - COALESCE(withholding_amount, 0)), 0) as total')
-            ->value('total') +
-            (float) $this->transfersFrom()
-                ->where('status', 'completed')
-                ->sum('amount');
+        return abs((float) BankTransaction::query()
+            ->where('bank_id', $this->id)
+            ->where('balance_delta', '<', 0)
+            ->sum('balance_delta'));
     }
 
     public function getExpectedBalanceAttribute(): float
     {
-        return $this->opening_balance + $this->transaction_balance;
+        return round($this->opening_balance + $this->transaction_balance, 2);
     }
 
     public function getCalculatedBalanceAttribute(): float
@@ -98,7 +99,8 @@ class Bank extends Model
 
     public function getOpeningBalanceAttribute(): float
     {
-        return round((float) $this->current_balance - $this->transaction_balance, 2);
+        return (float) ($this->attributes['opening_balance']
+            ?? round((float) $this->current_balance - $this->transaction_balance, 2));
     }
 
     public function updateBalance(): void
@@ -110,6 +112,18 @@ class Bank extends Model
 
     protected static function booted(): void
     {
+        static::creating(function (self $bank): void {
+            $hasOpeningBalance = array_key_exists('opening_balance', $bank->getAttributes());
+
+            if (! array_key_exists('current_balance', $bank->getAttributes())) {
+                $bank->setAttribute('current_balance', $hasOpeningBalance ? $bank->getAttributes()['opening_balance'] : 0);
+            }
+
+            if (! $hasOpeningBalance) {
+                $bank->setAttribute('opening_balance', $bank->current_balance);
+            }
+        });
+
         static::saving(function ($model) {
             if ($model->current_balance < 0) {
                 throw new \InvalidArgumentException('Bank balance cannot be negative');

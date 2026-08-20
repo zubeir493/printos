@@ -32,7 +32,6 @@ class VoidPaymentJournalEntry
             $timestamp = now();
 
             $originalJournal->update([
-                'status' => 'void',
                 'voided_at' => $timestamp,
             ]);
 

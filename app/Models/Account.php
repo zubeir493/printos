@@ -22,7 +22,11 @@ class Account extends Model
             ->useLogName('accounting');
     }
 
-    public const CODE_CASH = '1010';
+    public const CODE_CASH = '1000';
+
+    public const CODE_BANK = '1010';
+
+    public const CODE_PETTY_CASH = '1090';
 
     public const CODE_AR = '1200';
 

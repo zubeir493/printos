@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Banks\Tables;
 
+use App\Filament\Resources\CashDeposits\CashDepositResource;
 use App\Support\Money;
 use Filament\Actions\Action as ActionsAction;
 use Filament\Actions\ActionGroup;
@@ -55,6 +56,13 @@ class BanksTable
             ])
             ->recordActions([
                 ActionGroup::make([
+                    ActionsAction::make('deposit_cash')
+                        ->label('Deposit cash')
+                        ->icon('heroicon-o-banknotes')
+                        ->url(fn ($record): string => CashDepositResource::getUrl('create', [
+                            'bank_id' => $record->id,
+                        ]))
+                        ->visible(fn ($record): bool => $record->status === 'active'),
                     EditAction::make()
                         ->color('gray'),
                     ActionsAction::make('recalculate_balance')

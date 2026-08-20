@@ -60,6 +60,8 @@ class BankTransactionsTable
                         'payment' => 'Payment',
                         'payment_void' => 'Payment Void',
                         'bank_transfer' => 'Transfer',
+                        'cash_deposit' => 'Cash Deposit',
+                        'cash_deposit_reversal' => 'Deposit Reversal',
                     ]),
             ])
             ->recordActions([])

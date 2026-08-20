@@ -556,7 +556,7 @@ class AccountingWorkflowTest extends TestCase
 
         $this->assertDatabaseHas('journal_entries', [
             'id' => $originalJournal->id,
-            'status' => 'void',
+            'status' => 'posted',
         ]);
 
         $this->assertDatabaseHas('journal_entries', [

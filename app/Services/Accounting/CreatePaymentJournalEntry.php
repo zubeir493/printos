@@ -120,7 +120,7 @@ class CreatePaymentJournalEntry
             return $payment->petty_cash_account_id;
         }
 
-        return Account::getSystemAccount('1090', 'Petty Cash', 'Asset')->id;
+        return Account::getSystemAccount(Account::CODE_PETTY_CASH, 'Petty Cash', 'Asset')->id;
     }
 
     private function resolveBidBondReceivableAccountId(): int
@@ -139,12 +139,12 @@ class CreatePaymentJournalEntry
             return Account::findOrFail($payment->account_id);
         }
 
-        return Account::getSystemAccount('1000', 'Cash in Hand', 'Asset');
+        return Account::getSystemAccount(Account::CODE_CASH, 'Cash in Hand', 'Asset');
     }
 
     private function resolveBankAccount(): Account
     {
-        return Account::getSystemAccount('1010', 'Bank Current Account', 'Asset');
+        return Account::getSystemAccount(Account::CODE_BANK, 'Bank Current Account', 'Asset');
     }
 
     private function createItems(int $entryId, int $debitAccountId, int $creditAccountId, float $amount): void

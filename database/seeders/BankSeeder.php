@@ -36,7 +36,7 @@ class BankSeeder extends Seeder
 
         foreach ($banks as $bank) {
             Bank::updateOrCreate(
-                ['code' => $bank['code']],
+                ['account_number' => $bank['account_number']],
                 $bank
             );
         }

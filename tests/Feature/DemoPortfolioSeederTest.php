@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Bank;
 use Database\Seeders\AccountSeeder;
 use Database\Seeders\BankSeeder;
 use Database\Seeders\DemoPortfolioSeeder;
@@ -36,4 +37,17 @@ test('demo portfolio seeder creates connected data and can be rerun', function (
     expect(DB::table('invoices')->where('invoice_number', 'like', '%PORT-%')->count())->toBe(3);
     expect(DB::table('bids')->where('bid_number', 'BID-PORT-1001')->exists())->toBeTrue();
     expect(DB::table('employees')->where('employee_id', 'like', 'EMP-100%')->count())->toBe(4);
+});
+
+test('bank seeder reconciles existing banks by account number', function (): void {
+    $this->seed(BankSeeder::class);
+
+    Bank::query()
+        ->where('account_number', '1000000001')
+        ->update(['code' => 'LEGACY-BOA']);
+
+    $this->seed(BankSeeder::class);
+
+    expect(Bank::query()->where('account_number', '1000000001')->count())->toBe(1)
+        ->and(Bank::query()->where('account_number', '1000000001')->value('code'))->toBe('BOAN');
 });

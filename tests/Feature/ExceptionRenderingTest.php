@@ -2,35 +2,8 @@
 
 use Filament\Notifications\Livewire\Notifications;
 use Illuminate\Support\Facades\Route;
-use League\Flysystem\UnableToWriteFile;
-use Livewire\Component;
 use Livewire\Livewire;
-
-class ExceptionRenderingTestComponent extends Component
-{
-    public function fail(): void
-    {
-        throw new RuntimeException('Cannot complete this action in its current state.');
-    }
-
-    public function missing(): void
-    {
-        abort(404);
-    }
-
-    public function storageOffline(): void
-    {
-        throw UnableToWriteFile::atLocation(
-            'job-order-cost-calculations/All Employee.csv',
-            'Error executing "PutObject"; cURL error 6: Could not resolve host: s3.eu-central-003.backblazeb2.com'
-        );
-    }
-
-    public function render(): string
-    {
-        return '<div>Exception test</div>';
-    }
-}
+use Tests\Support\ExceptionRenderingTestComponent;
 
 it('redirects logged-out panel users to login', function (): void {
     $this->get(route('filament.admin.pages.dashboard'))

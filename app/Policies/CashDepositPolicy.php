@@ -46,6 +46,12 @@ class CashDepositPolicy
             && $cashDeposit->status === CashDeposit::STATUS_POSTED;
     }
 
+    public function reconcile(User $user, CashDeposit $cashDeposit): bool
+    {
+        return $user->role === UserRole::Admin
+            && CashDeposit::cashOnHandBalance() < 0;
+    }
+
     public function restore(User $user, CashDeposit $cashDeposit): bool
     {
         return false;

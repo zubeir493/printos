@@ -265,6 +265,51 @@ test('cash deposit pages use the generated deposit number in their titles', func
         ->toBe('Edit #CD-TITLE-001');
 });
 
+test('administrators can reconcile a negative cash balance from the view page', function (): void {
+    Filament::setCurrentPanel(Filament::getPanel('admin'));
+    $this->actingAs(User::factory()->create(['role' => UserRole::Admin]));
+    $cashAccount = createCashDeficit(1000);
+    $deposit = CashDeposit::factory()->create([
+        'bank_id' => createDepositBank()->id,
+        'cash_account_id' => $cashAccount->id,
+    ]);
+    $offsetAccount = Account::getSystemAccount('3000', 'Owners Capital', 'Equity');
+
+    Livewire::test(ViewCashDeposit::class, ['record' => $deposit->id])
+        ->assertFormFieldExists('status_display')
+        ->assertFormFieldDisabled('status_display')
+        ->assertFormFieldExists('source_account')
+        ->assertFormFieldDisabled('source_account')
+        ->assertFormFieldDoesNotExist('deposit_number')
+        ->assertActionVisible('reconcile_cash')
+        ->callAction('reconcile_cash', [
+            'amount' => 1000,
+            'offset_account_id' => $offsetAccount->id,
+            'reason' => 'Historical cash deposits were posted before cash-sales tracking was enabled.',
+        ])
+        ->assertNotified('Cash balance reconciled');
+
+    $journal = JournalEntry::query()->where('source_type', 'cash_reconciliation')->firstOrFail();
+
+    expect(CashDeposit::cashOnHandBalance())->toBe(0.0)
+        ->and($journal->reference)->toStartWith('CR-')
+        ->and(JournalItem::query()->where('journal_entry_id', $journal->id)->where('account_id', $cashAccount->id)->value('debit'))->toEqual('1000.00')
+        ->and(JournalItem::query()->where('journal_entry_id', $journal->id)->where('account_id', $offsetAccount->id)->value('credit'))->toEqual('1000.00');
+});
+
+test('cash reconciliation is hidden from non-administrators', function (): void {
+    Filament::setCurrentPanel(Filament::getPanel('finance'));
+    $this->actingAs(User::factory()->create(['role' => UserRole::Finance]));
+    $cashAccount = createCashDeficit(1000);
+    $deposit = CashDeposit::factory()->create([
+        'bank_id' => createDepositBank()->id,
+        'cash_account_id' => $cashAccount->id,
+    ]);
+
+    Livewire::test(ViewCashDeposit::class, ['record' => $deposit->id])
+        ->assertActionHidden('reconcile_cash');
+});
+
 test('cash deposit creation does not offer create another', function (): void {
     $property = new ReflectionProperty(CreateCashDeposit::class, 'canCreateAnother');
 
@@ -359,6 +404,35 @@ function createCashBalance(float $amount, ?Account $cashAccount = null): Account
     JournalItem::create([
         'journal_entry_id' => $journal->id,
         'account_id' => $revenueAccount->id,
+        'debit' => 0,
+        'credit' => $amount,
+    ]);
+
+    return $cashAccount;
+}
+
+function createCashDeficit(float $amount): Account
+{
+    $cashAccount = Account::getSystemAccount(Account::CODE_CASH, 'Cash in Hand', 'Asset');
+    $bankAccount = Account::getSystemAccount(Account::CODE_BANK, 'Bank Current Account', 'Asset');
+    $journal = JournalEntry::create([
+        'date' => now(),
+        'reference' => fake()->unique()->bothify('DEFICIT-####'),
+        'total_debit' => $amount,
+        'total_credit' => $amount,
+        'status' => 'posted',
+        'posted_at' => now(),
+    ]);
+
+    JournalItem::create([
+        'journal_entry_id' => $journal->id,
+        'account_id' => $bankAccount->id,
+        'debit' => $amount,
+        'credit' => 0,
+    ]);
+    JournalItem::create([
+        'journal_entry_id' => $journal->id,
+        'account_id' => $cashAccount->id,
         'debit' => 0,
         'credit' => $amount,
     ]);

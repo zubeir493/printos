@@ -7,7 +7,6 @@ use App\Filament\Resources\CashDeposits\Pages\EditCashDeposit;
 use App\Filament\Resources\CashDeposits\Pages\ListCashDeposits;
 use App\Filament\Resources\CashDeposits\Pages\ViewCashDeposit;
 use App\Filament\Resources\CashDeposits\Schemas\CashDepositForm;
-use App\Filament\Resources\CashDeposits\Schemas\CashDepositInfolist;
 use App\Filament\Resources\CashDeposits\Tables\CashDepositsTable;
 use App\Models\CashDeposit;
 use Filament\Resources\Resource;
@@ -29,11 +28,6 @@ class CashDepositResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return CashDepositForm::configure($schema);
-    }
-
-    public static function infolist(Schema $schema): Schema
-    {
-        return CashDepositInfolist::configure($schema);
     }
 
     public static function table(Table $table): Table

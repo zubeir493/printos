@@ -31,6 +31,16 @@ class CashDepositForm
                         ])
                         ->default(CashDeposit::TYPE_CASH_TRANSFER)
                         ->required(),
+                    TextInput::make('status_display')
+                        ->label('Status')
+                        ->disabled()
+                        ->dehydrated(false)
+                        ->visible(fn (string $operation): bool => $operation === 'view'),
+                    TextInput::make('source_account')
+                        ->label('Source account')
+                        ->disabled()
+                        ->dehydrated(false)
+                        ->visible(fn (string $operation): bool => $operation === 'view'),
                     DatePicker::make('deposit_date')
                         ->label('Deposit date')
                         ->default(now())
@@ -66,7 +76,8 @@ class CashDepositForm
                         ->rows(3)
                         ->columnSpanFull(),
                     Hidden::make('status')
-                        ->default(CashDeposit::STATUS_PENDING),
+                        ->default(CashDeposit::STATUS_PENDING)
+                        ->visible(fn (string $operation): bool => $operation !== 'view'),
                 ])
                 ->columnSpanFull(),
         ]);

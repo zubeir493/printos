@@ -2,7 +2,6 @@
 
 namespace App\Filament\Resources\CashDeposits\Schemas;
 
-use App\Models\Account;
 use App\Models\Bank;
 use App\Models\CashDeposit;
 use App\Support\Money;
@@ -21,14 +20,17 @@ class CashDepositForm
     {
         return $schema->components([
             Section::make('Deposit details')
-                ->description('Record cash moving from a cash account into a bank account.')
+                ->description('Record money deposited into a bank account.')
                 ->columns(2)
                 ->schema([
-                    TextInput::make('deposit_number')
-                        ->label('Deposit number')
-                        ->default(fn (): string => self::nextDepositNumber())
-                        ->readOnly()
-                        ->dehydrated(false),
+                    Select::make('deposit_type')
+                        ->label('Deposit type')
+                        ->options(fn (): array => [
+                            CashDeposit::TYPE_CASH_TRANSFER => 'Cash sales balance ('.Money::format(CashDeposit::cashOnHandBalance(), 2).')',
+                            CashDeposit::TYPE_OTHER_SOURCES => 'Other sources',
+                        ])
+                        ->default(CashDeposit::TYPE_CASH_TRANSFER)
+                        ->required(),
                     DatePicker::make('deposit_date')
                         ->label('Deposit date')
                         ->default(now())
@@ -44,20 +46,6 @@ class CashDepositForm
                         ->searchable()
                         ->preload()
                         ->required(),
-                    Select::make('cash_account_id')
-                        ->label('Source cash account')
-                        ->options(fn (): array => Account::query()
-                            ->whereIn('code', [Account::CODE_CASH, Account::CODE_PETTY_CASH])
-                            ->orderBy('code')
-                            ->pluck('name', 'id')
-                            ->all())
-                        ->default(fn (): int => Account::getSystemAccount(
-                            Account::CODE_CASH,
-                            'Cash in Hand',
-                            'Asset',
-                        )->id)
-                        ->required()
-                        ->helperText('Available cash is checked when the deposit is posted.'),
                     TextInput::make('amount')
                         ->label('Amount')
                         ->numeric()
@@ -82,13 +70,5 @@ class CashDepositForm
                 ])
                 ->columnSpanFull(),
         ]);
-    }
-
-    private static function nextDepositNumber(): string
-    {
-        $lastNumber = CashDeposit::query()->latest('id')->value('deposit_number');
-        $sequence = preg_match('/CD-(\d+)/', (string) $lastNumber, $matches) ? (int) $matches[1] + 1 : 1;
-
-        return 'CD-'.str_pad((string) $sequence, 6, '0', STR_PAD_LEFT);
     }
 }

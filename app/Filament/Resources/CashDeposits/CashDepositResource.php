@@ -14,6 +14,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Schema as DatabaseSchema;
 
 class CashDepositResource extends Resource
 {
@@ -42,7 +43,13 @@ class CashDepositResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()->with(['bank', 'cashAccount']);
+        $with = ['bank', 'cashAccount'];
+
+        if (DatabaseSchema::hasColumn('cash_deposits', 'income_account_id')) {
+            $with[] = 'incomeAccount';
+        }
+
+        return parent::getEloquentQuery()->with($with);
     }
 
     public static function getRelations(): array

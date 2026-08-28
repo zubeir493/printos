@@ -2,23 +2,13 @@
 
 namespace App\Filament\Resources\CashDeposits\Tables;
 
+use App\Filament\Resources\CashDeposits\Actions\CashDepositActions;
 use App\Filament\Tables\Filters\DateRangeFilter;
 use App\Models\CashDeposit;
-use App\Services\Accounting\PostCashDeposit;
-use App\Services\Accounting\ReverseCashDeposit;
 use App\Support\Money;
-use Filament\Actions\Action;
-use Filament\Actions\ActionGroup;
-use Filament\Actions\DeleteAction;
-use Filament\Actions\EditAction;
-use Filament\Actions\ViewAction;
-use Filament\Forms\Components\Textarea;
-use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
-use Illuminate\Support\Facades\Gate;
-use Throwable;
 
 class CashDepositsTable
 {
@@ -28,16 +18,28 @@ class CashDepositsTable
             ->columns([
                 TextColumn::make('deposit_number')
                     ->label('Deposit')
+                    ->description(fn (CashDeposit $record): string => $record->bank?->name ?? '-')
                     ->searchable()
                     ->sortable()
                     ->copyable(),
-                TextColumn::make('bank.name')
-                    ->label('Bank')
-                    ->searchable()
-                    ->sortable(),
-                TextColumn::make('cashAccount.name')
+                TextColumn::make('deposit_type')
+                    ->label('Type')
+                    ->badge()
+                    ->formatStateUsing(fn (?string $state): string => match ($state) {
+                        CashDeposit::TYPE_OTHER_INCOME,
+                        CashDeposit::TYPE_OTHER_SOURCES => 'Other sources',
+                        default => 'Cash sales wallet',
+                    })
+                    ->color(fn (?string $state): string => match ($state) {
+                        CashDeposit::TYPE_OTHER_INCOME,
+                        CashDeposit::TYPE_OTHER_SOURCES => 'info',
+                        default => 'primary',
+                    }),
+                TextColumn::make('source_account')
                     ->label('Source')
-                    ->toggleable(),
+                    ->state(fn (CashDeposit $record): string => $record->cashAccount?->name
+                        ?? $record->incomeAccount?->name
+                        ?? '-'),
                 TextColumn::make('amount')
                     ->formatStateUsing(fn ($state): string => Money::format($state))
                     ->weight('bold')
@@ -72,70 +74,7 @@ class CashDepositsTable
                     ]),
             ])
             ->defaultSort('deposit_date', 'desc')
-            ->recordActions([
-                ActionGroup::make([
-                    ViewAction::make()->color('gray'),
-                    EditAction::make()
-                        ->color('gray')
-                        ->visible(fn (CashDeposit $record): bool => $record->status === CashDeposit::STATUS_PENDING),
-                    Action::make('post')
-                        ->label('Post deposit')
-                        ->icon('heroicon-o-check-circle')
-                        ->requiresConfirmation()
-                        ->modalDescription('This posts the bank debit and cash credit. The deposit cannot be edited afterward.')
-                        ->visible(fn (CashDeposit $record): bool => $record->status === CashDeposit::STATUS_PENDING)
-                        ->action(fn (CashDeposit $record) => self::post($record)),
-                    Action::make('reverse')
-                        ->label('Reverse deposit')
-                        ->icon('heroicon-o-arrow-uturn-left')
-                        ->color('danger')
-                        ->schema([
-                            Textarea::make('reason')
-                                ->label('Reversal reason')
-                                ->required()
-                                ->maxLength(1000),
-                        ])
-                        ->visible(fn (CashDeposit $record): bool => $record->status === CashDeposit::STATUS_POSTED)
-                        ->action(fn (CashDeposit $record, array $data) => self::reverse($record, $data['reason'])),
-                    DeleteAction::make()
-                        ->color('gray')
-                        ->visible(fn (CashDeposit $record): bool => $record->status === CashDeposit::STATUS_PENDING),
-                ]),
-            ])
+            ->recordActions([CashDepositActions::make(includeEdit: true, includeDelete: true)])
             ->bulkActions([]);
-    }
-
-    private static function post(CashDeposit $deposit): void
-    {
-        Gate::authorize('post', $deposit);
-
-        try {
-            app(PostCashDeposit::class)->handle($deposit, auth()->user());
-            Notification::make()->title('Cash deposit posted')->success()->send();
-        } catch (Throwable $exception) {
-            Notification::make()
-                ->title('Cash deposit could not be posted')
-                ->body($exception->getMessage())
-                ->danger()
-                ->persistent()
-                ->send();
-        }
-    }
-
-    private static function reverse(CashDeposit $deposit, string $reason): void
-    {
-        Gate::authorize('reverse', $deposit);
-
-        try {
-            app(ReverseCashDeposit::class)->handle($deposit, $reason, auth()->user());
-            Notification::make()->title('Cash deposit reversed')->success()->send();
-        } catch (Throwable $exception) {
-            Notification::make()
-                ->title('Cash deposit could not be reversed')
-                ->body($exception->getMessage())
-                ->danger()
-                ->persistent()
-                ->send();
-        }
     }
 }

@@ -26,7 +26,13 @@ class Account extends Model
 
     public const CODE_BANK = '1010';
 
+    public const CODE_OTHER_CASH = '1020';
+
     public const CODE_PETTY_CASH = '1090';
+
+    public const CODE_SALES_REVENUE = '4000';
+
+    public const CODE_OTHER_INCOME = '4300';
 
     public const CODE_AR = '1200';
 

@@ -13,6 +13,7 @@ class AccountSeeder extends Seeder
             // ASSETS (1000 - 1999)
             ['code' => '1000', 'name' => 'Cash in Hand', 'type' => 'Asset'],
             ['code' => '1010', 'name' => 'Bank Current Account', 'type' => 'Asset'],
+            ['code' => '1020', 'name' => 'Other Cash Sources', 'type' => 'Asset'],
             ['code' => '1090', 'name' => 'Petty Cash', 'type' => 'Asset'],
             ['code' => '1200', 'name' => 'Accounts Receivable (Debtors)', 'type' => 'Asset'],
             ['code' => '1230', 'name' => 'Employee Loans Receivable', 'type' => 'Asset'],
@@ -42,6 +43,7 @@ class AccountSeeder extends Seeder
             ['code' => '4000', 'name' => 'Sales Revenue', 'type' => 'Revenue'],
             ['code' => '4100', 'name' => 'Service Income', 'type' => 'Revenue'],
             ['code' => '4200', 'name' => 'Interest Income', 'type' => 'Revenue'],
+            ['code' => '4300', 'name' => 'Other Income', 'type' => 'Revenue'],
 
             // EXPENSES (5000 - 5999)
             ['code' => '5000', 'name' => 'Cost of Goods Sold (COGS)', 'type' => 'Expense'],

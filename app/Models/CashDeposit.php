@@ -21,10 +21,18 @@ class CashDeposit extends Model
 
     public const STATUS_REVERSED = 'reversed';
 
+    public const TYPE_CASH_TRANSFER = 'cash_transfer';
+
+    public const TYPE_OTHER_SOURCES = 'other_sources';
+
+    public const TYPE_OTHER_INCOME = 'other_income';
+
     protected $fillable = [
         'deposit_number',
+        'deposit_type',
         'bank_id',
         'cash_account_id',
+        'income_account_id',
         'amount',
         'deposit_date',
         'reference',
@@ -44,6 +52,7 @@ class CashDeposit extends Model
         return [
             'bank_id' => 'integer',
             'cash_account_id' => 'integer',
+            'income_account_id' => 'integer',
             'amount' => 'decimal:2',
             'deposit_date' => 'date',
             'created_by' => 'integer',
@@ -72,6 +81,11 @@ class CashDeposit extends Model
         return $this->belongsTo(Account::class, 'cash_account_id');
     }
 
+    public function incomeAccount(): BelongsTo
+    {
+        return $this->belongsTo(Account::class, 'income_account_id');
+    }
+
     public function createdBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
@@ -92,6 +106,34 @@ class CashDeposit extends Model
         return $this->morphMany(JournalEntry::class, 'source');
     }
 
+    public static function cashOnHandAccount(): Account
+    {
+        return Account::getSystemAccount(
+            Account::CODE_CASH,
+            'Cash on Hand',
+            'Asset',
+        );
+    }
+
+    public static function otherIncomeAccount(): Account
+    {
+        return Account::getSystemAccount(
+            Account::CODE_OTHER_INCOME,
+            'Other Income',
+            'Revenue',
+        );
+    }
+
+    public static function cashOnHandBalance(): float
+    {
+        return (float) JournalItem::query()
+            ->join('journal_entries', 'journal_entries.id', '=', 'journal_items.journal_entry_id')
+            ->where('journal_items.account_id', self::cashOnHandAccount()->id)
+            ->where('journal_entries.status', 'posted')
+            ->selectRaw('COALESCE(SUM(journal_items.debit - journal_items.credit), 0) AS balance')
+            ->value('balance');
+    }
+
     protected static function booted(): void
     {
         static::creating(function (self $deposit): void {
@@ -103,6 +145,7 @@ class CashDeposit extends Model
                 padding: 6,
                 likePattern: 'CD-%',
             );
+            $deposit->deposit_type ??= self::TYPE_CASH_TRANSFER;
             $deposit->status ??= self::STATUS_PENDING;
             $deposit->created_by ??= auth()->id();
         });

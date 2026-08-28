@@ -23,7 +23,12 @@ class ReverseCashDeposit
             }
 
             $bank = Bank::query()->lockForUpdate()->findOrFail($deposit->bank_id);
-            $cashAccount = Account::query()->lockForUpdate()->findOrFail($deposit->cash_account_id);
+            $sourceAccount = in_array($deposit->deposit_type, [
+                CashDeposit::TYPE_OTHER_INCOME,
+                CashDeposit::TYPE_OTHER_SOURCES,
+            ], true)
+                ? Account::query()->lockForUpdate()->findOrFail($deposit->income_account_id)
+                : Account::query()->lockForUpdate()->findOrFail($deposit->cash_account_id);
 
             if ((float) $bank->current_balance < (float) $deposit->amount) {
                 throw new RuntimeException('The bank balance is too low to reverse this deposit.');
@@ -50,7 +55,7 @@ class ReverseCashDeposit
 
             JournalItem::create([
                 'journal_entry_id' => $reversal->id,
-                'account_id' => $cashAccount->id,
+                'account_id' => $sourceAccount->id,
                 'debit' => $deposit->amount,
                 'credit' => 0,
             ]);

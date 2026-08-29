@@ -18,7 +18,7 @@ class RetailDemandChart extends ChartWidget
         return [
             'datasets' => [
                 [
-                    'label' => 'Cash sales value',
+                    'label' => 'Paid-now sales value',
                     'data' => $days
                         ->map(fn (int $daysAgo) => (float) SalesOrder::query()
                             ->where('payment_mode', 'cash')

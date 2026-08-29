@@ -30,7 +30,7 @@ enum PaymentTransactionType: string
             self::DIRECT_EXPENSE => 'Direct Expense',
             self::PETTY_CASH_FUNDING => 'Petty Cash Funding',
             self::PETTY_CASH_EXPENSE => 'Petty Cash Expense',
-            self::CASH_SALE_RECEIPT => 'Cash Sale Receipt',
+            self::CASH_SALE_RECEIPT => 'Paid-now Sale Receipt',
             self::PAYROLL_PAYMENT => 'Payroll Payment',
             self::EMPLOYEE_LOAN_DISBURSEMENT => 'Employee Loan Disbursement',
             self::EMPLOYEE_LOAN_REPAYMENT => 'Employee Loan Repayment',
@@ -56,7 +56,7 @@ enum PaymentTransactionType: string
             self::BID_BOND_RECOVERY => 'Recover bid bond',
             self::PERFORMANCE_BOND_ISSUE => 'Issue performance bond',
             self::PERFORMANCE_BOND_RECOVERY => 'Recover performance bond',
-            self::CASH_SALE_RECEIPT => 'Cash sale receipt',
+            self::CASH_SALE_RECEIPT => 'Paid-now sale receipt',
         };
     }
 

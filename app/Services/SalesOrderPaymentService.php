@@ -18,10 +18,11 @@ class SalesOrderPaymentService
             return null;
         }
 
-        $amount = (float) $salesOrder->fresh()->total;
+        $salesOrder = $salesOrder->fresh() ?? $salesOrder;
+        $amount = (float) $salesOrder->total;
 
-        if ($amount <= 0) {
-            $amount = (float) $salesOrder->fresh()->total;
+        if ($this->requiresBank($salesOrder->payment_method) && ! $salesOrder->bank_id) {
+            throw new \RuntimeException('A bank account is required for bank transfer and cheque sales.');
         }
 
         if ($amount <= 0 || $salesOrder->payments()->whereNull('voided_at')->exists()) {
@@ -35,6 +36,7 @@ class SalesOrderPaymentService
                 'direction' => 'inbound',
                 'transaction_type' => PaymentTransactionType::CASH_SALE_RECEIPT->value,
                 'method' => $salesOrder->payment_method ?: 'cash',
+                'bank_id' => $salesOrder->bank_id,
                 'reference' => $salesOrder->payment_reference ?: 'Immediate receipt for sale '.$salesOrder->order_number,
                 'payment_date' => $salesOrder->order_date,
                 'payable_type' => SalesOrder::class,
@@ -51,17 +53,25 @@ class SalesOrderPaymentService
     public function processMultiplePayments(SalesOrder $salesOrder, array $paymentsData): array
     {
         return DB::transaction(function () use ($salesOrder, $paymentsData) {
+            $salesOrder = $salesOrder->newQuery()
+                ->lockForUpdate()
+                ->findOrFail($salesOrder->getKey());
             $createdPayments = [];
             $totalPayments = collect($paymentsData)->sum('amount');
+            $remainingBalance = (float) $salesOrder->total - (float) $salesOrder->paid_amount;
 
             // Validate total payments don't exceed order total
-            if ($totalPayments > $salesOrder->total) {
-                throw new \Exception('Total payments ('.Money::format($totalPayments).') exceed order total ('.Money::format($salesOrder->total).')');
+            if ($totalPayments > $remainingBalance) {
+                throw new \Exception('Total payments ('.Money::format($totalPayments).') exceed the remaining balance ('.Money::format($remainingBalance).')');
             }
 
             foreach ($paymentsData as $paymentData) {
                 if (empty($paymentData['amount']) || $paymentData['amount'] <= 0) {
                     continue; // Skip empty payment rows
+                }
+
+                if ($this->requiresBank($paymentData['method'] ?? null) && empty($paymentData['bank_id'])) {
+                    throw new \RuntimeException('A bank account is required for bank transfer and cheque payments.');
                 }
 
                 $payment = $this->createPaymentFromData($salesOrder, $paymentData);
@@ -86,9 +96,14 @@ class SalesOrderPaymentService
             'method' => $paymentData['method'],
             'bank_id' => $paymentData['bank_id'] ?? null,
             'reference' => $paymentData['reference'] ?? 'Payment for '.$salesOrder->order_number,
-            'payment_date' => $salesOrder->order_date,
+            'payment_date' => $paymentData['payment_date'] ?? $salesOrder->order_date,
             'payable_type' => SalesOrder::class,
             'payable_id' => $salesOrder->id,
         ]);
+    }
+
+    private function requiresBank(?string $method): bool
+    {
+        return in_array($method, ['bank', 'bank_transfer', 'cheque', 'check'], true);
     }
 }

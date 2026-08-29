@@ -31,14 +31,14 @@ class RetailStockHealthStats extends BaseWidget
                 ->descriptionIcon('heroicon-m-exclamation-triangle')
                 ->color($lowSellable > 0 ? 'warning' : 'success'),
             Stat::make('Open Retail Tickets', $unpaidRetailOrders)
-                ->description('Cash orders not yet closed')
+                ->description('Paid-now orders not yet closed')
                 ->descriptionIcon('heroicon-m-clock')
                 ->color($unpaidRetailOrders > 0 ? 'warning' : 'success'),
             Stat::make('Avg Ticket Size', Money::abbreviate(SalesOrder::query()
                 ->where('payment_mode', 'cash')
                 ->where('order_date', '>=', now()->subDays(30))
                 ->avg('total'), precision: 2))
-                ->description('Cash sales, last 30 days')
+                ->description('Paid-now sales, last 30 days')
                 ->descriptionIcon('heroicon-m-chart-bar')
                 ->color('primary'),
         ];

@@ -42,7 +42,7 @@ class CreateSalesJournalEntry
 
         $debitAccount = $sale instanceof SalesOrder && $sale->payment_mode === 'credit'
             ? Account::getSystemAccount(Account::CODE_AR, 'Accounts Receivable', 'Asset')
-            : Account::getSystemAccount('1000', 'Cash in Hand', 'Asset');
+            : $this->resolveImmediateSaleAccount($sale);
         $revenueAccount = Account::getSystemAccount('4000', 'Sales Revenue', 'Revenue');
         $taxPayableAccount = Account::getSystemAccount('2100', 'VAT Payable', 'Liability');
 
@@ -58,7 +58,7 @@ class CreateSalesJournalEntry
             'posted_at' => now(),
         ]);
 
-        // Debit: Accounts Receivable (full invoice amount)
+        // Debit the settlement account for the full invoice amount.
         JournalItem::create([
             'journal_entry_id' => $journalEntry->id,
             'account_id' => $debitAccount->id,
@@ -83,5 +83,14 @@ class CreateSalesJournalEntry
                 'credit' => $taxAmount,
             ]);
         }
+    }
+
+    private function resolveImmediateSaleAccount(SalesOrder|JobOrder $sale): Account
+    {
+        if ($sale instanceof SalesOrder && in_array($sale->payment_method, ['bank', 'bank_transfer', 'cheque', 'check'], true)) {
+            return Account::getSystemAccount(Account::CODE_BANK, 'Bank Current Account', 'Asset');
+        }
+
+        return Account::getSystemAccount(Account::CODE_CASH, 'Cash in Hand', 'Asset');
     }
 }

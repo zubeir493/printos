@@ -204,6 +204,15 @@ class Payment extends Model
                 $salesOrder->isPaidInFull()
             ) {
                 $salesOrder->updateQuietly(['status' => SalesOrder::STATUS_COMPLETED]);
+            } elseif (
+                $salesOrder->payment_mode === 'credit' &&
+                in_array($salesOrder->status, [SalesOrder::STATUS_DRAFT, SalesOrder::STATUS_DEPOSIT_RECEIVED], true)
+            ) {
+                $salesOrder->updateQuietly([
+                    'status' => $salesOrder->paid_amount > 0
+                        ? SalesOrder::STATUS_DEPOSIT_RECEIVED
+                        : SalesOrder::STATUS_DRAFT,
+                ]);
             }
 
             $this->syncInvoicesForDocument($salesOrder);

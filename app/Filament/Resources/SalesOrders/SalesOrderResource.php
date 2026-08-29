@@ -64,7 +64,7 @@ class SalesOrderResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
-            ->with(['partner'])
+            ->with(['partner', 'bank'])
             ->withCount('payments');
     }
 

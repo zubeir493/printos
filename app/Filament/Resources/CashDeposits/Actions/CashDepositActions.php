@@ -167,8 +167,8 @@ class CashDepositActions
             ->modalHeading('Reconcile Cash on Hand')
             ->modalDescription('This posts a debit to Cash on Hand and a credit to the selected offset account. It does not change or delete historical journals.')
             ->modalSubmitActionLabel('Post reconciliation')
-            ->visible(fn (): bool => auth()->user()?->role === UserRole::Admin
-                && CashDeposit::cashOnHandBalance() < 0)
+            // ->visible(fn (): bool => auth()->user()?->role === UserRole::Admin
+            //     && CashDeposit::cashOnHandBalance() < 0)
             ->action(function (CashDeposit $record, array $data): void {
                 Gate::authorize('reconcile', $record);
 

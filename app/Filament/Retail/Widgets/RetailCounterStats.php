@@ -14,7 +14,7 @@ class RetailCounterStats extends BaseWidget
 
     protected function getStats(): array
     {
-        $cashSales = (float) SalesOrder::query()
+        $paidNowSales = (float) SalesOrder::query()
             ->where('payment_mode', 'cash')
             ->whereDate('order_date', today())
             ->sum('total');
@@ -34,10 +34,10 @@ class RetailCounterStats extends BaseWidget
             ->avg('total');
 
         return [
-            Stat::make('Counter Sales Today', Money::abbreviate($cashSales, precision: 2))
-                ->description('Cash sales booked today')
+            Stat::make('Counter Sales Today', Money::abbreviate($paidNowSales, precision: 2))
+                ->description('Paid-now sales booked today')
                 ->descriptionIcon('heroicon-m-banknotes')
-                ->color($cashSales > 0 ? 'success' : 'gray'),
+                ->color($paidNowSales > 0 ? 'success' : 'gray'),
             Stat::make('Tickets Today', $tickets)
                 ->description('Retail orders processed')
                 ->descriptionIcon('heroicon-m-receipt-percent')
@@ -47,7 +47,7 @@ class RetailCounterStats extends BaseWidget
                 ->descriptionIcon('heroicon-m-exclamation-triangle')
                 ->color($lowSellable > 0 ? 'warning' : 'success'),
             Stat::make('Avg Ticket Size', Money::abbreviate($averageTicket, precision: 2))
-                ->description('Cash sales, last 30 days')
+                ->description('Paid-now sales, last 30 days')
                 ->descriptionIcon('heroicon-m-chart-bar')
                 ->color('primary'),
         ];

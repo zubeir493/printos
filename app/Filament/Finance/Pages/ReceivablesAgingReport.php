@@ -149,6 +149,11 @@ class ReceivablesAgingReport extends Page implements HasForms, HasTable
             ->selectRaw('sales_orders.created_at as created_at')
             ->selectRaw('sales_orders.updated_at as updated_at')
             ->selectRaw('(sales_orders.total - COALESCE((SELECT SUM(payments.amount) FROM payments WHERE payments.payable_type = ? AND payments.payable_id = sales_orders.id AND payments.payment_date <= ? AND payments.voided_at IS NULL), 0)) as balance', [SalesOrder::class, $this->asOfDate])
+            ->whereIn('sales_orders.status', [
+                SalesOrder::STATUS_DEPOSIT_RECEIVED,
+                SalesOrder::STATUS_SUBMITTED,
+                SalesOrder::STATUS_COMPLETED,
+            ])
             ->whereRaw('(sales_orders.total - COALESCE((SELECT SUM(payments.amount) FROM payments WHERE payments.payable_type = ? AND payments.payable_id = sales_orders.id AND payments.payment_date <= ? AND payments.voided_at IS NULL), 0)) > 0', [SalesOrder::class, $this->asOfDate])
             ->when($this->asOfDate, fn ($query) => $query->whereDate('sales_orders.order_date', '<=', Carbon::parse($this->asOfDate)->toDateString()))
             ->unionAll($jobOrderQuery)

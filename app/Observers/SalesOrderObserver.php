@@ -31,6 +31,7 @@ class SalesOrderObserver
     {
         if ($salesOrder->wasChanged('status')) {
             $roles = match ($salesOrder->status) {
+                SalesOrder::STATUS_DEPOSIT_RECEIVED => [UserRole::Admin, UserRole::Sales, UserRole::Finance],
                 SalesOrder::STATUS_SUBMITTED => [UserRole::Admin, UserRole::Operations, UserRole::Warehouse],
                 SalesOrder::STATUS_COMPLETED => [UserRole::Admin, UserRole::Sales, UserRole::Finance, UserRole::Operations],
                 SalesOrder::STATUS_VOID => [UserRole::Admin, UserRole::Sales, UserRole::Finance, UserRole::Operations],

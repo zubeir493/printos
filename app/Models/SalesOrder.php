@@ -17,11 +17,32 @@ class SalesOrder extends Model
 
     public const STATUS_DRAFT = 'draft';
 
+    public const STATUS_DEPOSIT_RECEIVED = 'deposit_received';
+
     public const STATUS_SUBMITTED = 'submitted';
 
     public const STATUS_COMPLETED = 'completed';
 
     public const STATUS_VOID = 'void';
+
+    /**
+     * @return array<string, string>
+     */
+    public static function statusOptions(): array
+    {
+        return [
+            self::STATUS_DRAFT => 'Draft',
+            self::STATUS_DEPOSIT_RECEIVED => 'Deposit Received',
+            self::STATUS_SUBMITTED => 'Submitted',
+            self::STATUS_COMPLETED => 'Completed',
+            self::STATUS_VOID => 'Void',
+        ];
+    }
+
+    public static function statusLabel(?string $status): string
+    {
+        return self::statusOptions()[$status] ?? str((string) $status)->headline()->toString();
+    }
 
     public function getActivitylogOptions(): LogOptions
     {
@@ -39,6 +60,7 @@ class SalesOrder extends Model
         'due_date',
         'payment_mode',
         'payment_method',
+        'bank_id',
         'payment_reference',
         'subtotal',
         'tax_amount',
@@ -52,6 +74,7 @@ class SalesOrder extends Model
             'id' => 'integer',
             'warehouse_id' => 'integer',
             'partner_id' => 'integer',
+            'bank_id' => 'integer',
             'order_date' => 'date',
             'due_date' => 'date',
             'subtotal' => 'decimal:2',
@@ -68,6 +91,11 @@ class SalesOrder extends Model
     public function partner(): BelongsTo
     {
         return $this->belongsTo(Partner::class);
+    }
+
+    public function bank(): BelongsTo
+    {
+        return $this->belongsTo(Bank::class);
     }
 
     public function salesOrderItems(): HasMany

@@ -18,12 +18,12 @@ class SalesOrderStatusChangedNotification extends Notification implements Should
 
     protected function webPushTitle(): string
     {
-        return 'Sales Order '.ucfirst((string) $this->salesOrder->status);
+        return 'Sales Order '.SalesOrder::statusLabel($this->salesOrder->status);
     }
 
     protected function webPushBody(): string
     {
-        return "Sales order {$this->salesOrder->order_number} is now {$this->salesOrder->status}.";
+        return "Sales order {$this->salesOrder->order_number} is now ".SalesOrder::statusLabel($this->salesOrder->status).'.';
     }
 
     protected function notificationUrl(object $notifiable): string

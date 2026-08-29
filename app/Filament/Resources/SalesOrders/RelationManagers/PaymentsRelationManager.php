@@ -6,6 +6,7 @@ use App\Enums\PaymentTransactionType;
 use App\Filament\Support\PanelAccess;
 use App\Filament\Tables\Filters\DateRangeFilter;
 use App\Models\Bank;
+use App\Models\SalesOrder;
 use App\Support\Money;
 use Filament\Actions\CreateAction;
 use Filament\Forms\Components\DatePicker;
@@ -89,6 +90,9 @@ class PaymentsRelationManager extends RelationManager
             ])
             ->headerActions([
                 CreateAction::make()
+                    ->visible(fn (): bool => $this->getOwnerRecord()->payment_mode === 'credit'
+                        && $this->getOwnerRecord()->status !== SalesOrder::STATUS_VOID
+                        && $this->getOwnerRecord()->balance > 0)
                     ->mutateDataUsing(function (array $data): array {
                         $salesOrder = $this->getOwnerRecord();
 

@@ -28,8 +28,20 @@ class SalesOrdersTable
                     ->description(fn ($record) => $record->partner?->name)
                     ->weight('bold')
                     ->color('primary'),
+                TextColumn::make('payment_mode')
+                    ->label('Settlement')
+                    ->badge()
+                    ->formatStateUsing(fn (string $state): string => $state === 'cash' ? 'Paid now' : 'Credit')
+                    ->color(fn (string $state): string => $state === 'cash' ? 'success' : 'warning')
+                    ->description(fn ($record): ?string => $record->payment_mode === 'cash'
+                        ? match ($record->payment_method) {
+                            'bank', 'bank_transfer' => 'Bank Transfer',
+                            'cheque', 'check' => 'Cheque',
+                            default => 'Cash',
+                        }
+                        : 'Receivable'),
                 TextColumn::make('paid_amount')
-                    ->label('Payment Status')
+                    ->label('Payment Progress')
                     ->state(fn ($record) => Money::format($record->paid_amount).'/'.Money::format($record->total))
                     ->color(fn ($record) => $record->balance > 0 ? 'warning' : 'success')
                     ->description(fn ($record) => $record->payments_count > 0
@@ -37,7 +49,9 @@ class SalesOrdersTable
                         : 'No payments'),
                 TextColumn::make('status')
                     ->badge()
+                    ->formatStateUsing(fn (?string $state): string => SalesOrder::statusLabel($state))
                     ->color(fn ($state) => match ($state) {
+                        SalesOrder::STATUS_DEPOSIT_RECEIVED => 'warning',
                         SalesOrder::STATUS_SUBMITTED => 'info',
                         SalesOrder::STATUS_COMPLETED => 'success',
                         SalesOrder::STATUS_VOID => 'danger',
@@ -51,16 +65,11 @@ class SalesOrdersTable
                 DateRangeFilter::make('order_date_range', 'order_date', 'Order date'),
 
                 SelectFilter::make('status')
-                    ->options([
-                        'draft' => 'Draft',
-                        'submitted' => 'Submitted',
-                        'completed' => 'Completed',
-                        'void' => 'Void',
-                    ]),
+                    ->options(SalesOrder::statusOptions()),
                 SelectFilter::make('payment_mode')
-                    ->label('Payment Type')
+                    ->label('Settlement')
                     ->options([
-                        'cash' => 'Cash',
+                        'cash' => 'Paid now',
                         'credit' => 'Credit',
                     ]),
                 SelectFilter::make('warehouse_id')

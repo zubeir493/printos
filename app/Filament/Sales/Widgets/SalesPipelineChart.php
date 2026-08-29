@@ -13,7 +13,7 @@ class SalesPipelineChart extends ChartWidget
 
     protected function getData(): array
     {
-        $statuses = ['draft', 'pending', 'approved', 'completed', 'cancelled'];
+        $statuses = array_keys(SalesOrder::statusOptions());
 
         return [
             'datasets' => [
@@ -22,10 +22,10 @@ class SalesPipelineChart extends ChartWidget
                     'data' => collect($statuses)
                         ->map(fn (string $status) => SalesOrder::query()->where('status', $status)->count())
                         ->all(),
-                    'backgroundColor' => ['#6366f1', '#38bdf8', '#0d9488', '#059669', '#e11d48'],
+                    'backgroundColor' => ['#6366f1', '#f59e0b', '#38bdf8', '#059669', '#e11d48'],
                 ],
             ],
-            'labels' => ['Draft', 'Pending', 'Approved', 'Completed', 'Cancelled'],
+            'labels' => array_values(SalesOrder::statusOptions()),
         ];
     }
 

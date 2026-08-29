@@ -22,13 +22,26 @@ class SalesOrderExporter extends Exporter
             ExportColumn::make('partner.name')->label('Customer'),
             ExportColumn::make('warehouse.name')->label('Warehouse'),
             ExportColumn::make('order_date')->label('Order Date'),
-            ExportColumn::make('payment_mode')->label('Payment Type'),
+            ExportColumn::make('payment_mode')
+                ->label('Settlement')
+                ->formatStateUsing(fn (string $state): string => $state === 'cash' ? 'Paid now' : 'Credit'),
+            ExportColumn::make('payment_method')
+                ->label('Payment Method')
+                ->formatStateUsing(fn (?string $state): string => match ($state) {
+                    'bank', 'bank_transfer' => 'Bank Transfer',
+                    'cheque', 'check' => 'Cheque',
+                    'cash' => 'Cash',
+                    default => '-',
+                }),
+            ExportColumn::make('bank.name')->label('Bank Account'),
             ExportColumn::make('subtotal')->label('Subtotal ('.Money::suffix().')'),
             ExportColumn::make('tax_amount')->label('Tax Amount ('.Money::suffix().')'),
             ExportColumn::make('total')->label('Total ('.Money::suffix().')'),
             ExportColumn::make('paid_amount')->label('Paid Amount ('.Money::suffix().')'),
             ExportColumn::make('balance')->label('Balance ('.Money::suffix().')'),
-            ExportColumn::make('status')->label('Status'),
+            ExportColumn::make('status')
+                ->label('Status')
+                ->formatStateUsing(fn (?string $state): string => SalesOrder::statusLabel($state)),
         ];
     }
 

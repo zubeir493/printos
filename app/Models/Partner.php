@@ -132,7 +132,11 @@ class Partner extends Model
     public function receivableBalance(): float
     {
         $salesOrderBalance = $this->salesOrders()
-            ->whereIn('status', [SalesOrder::STATUS_SUBMITTED, SalesOrder::STATUS_COMPLETED])
+            ->whereIn('status', [
+                SalesOrder::STATUS_DEPOSIT_RECEIVED,
+                SalesOrder::STATUS_SUBMITTED,
+                SalesOrder::STATUS_COMPLETED,
+            ])
             ->with(['payments' => fn ($query) => $query->whereNull('voided_at')])
             ->get()
             ->sum(fn (SalesOrder $salesOrder): float => $this->statementDocumentBalance($salesOrder));
@@ -187,7 +191,11 @@ class Partner extends Model
     public function statementRows(): Collection
     {
         $salesOrderRows = $this->salesOrders()
-            ->whereIn('status', [SalesOrder::STATUS_SUBMITTED, SalesOrder::STATUS_COMPLETED])
+            ->whereIn('status', [
+                SalesOrder::STATUS_DEPOSIT_RECEIVED,
+                SalesOrder::STATUS_SUBMITTED,
+                SalesOrder::STATUS_COMPLETED,
+            ])
             ->with(['payments' => fn ($query) => $query->whereNull('voided_at')])
             ->latest('order_date')
             ->get()

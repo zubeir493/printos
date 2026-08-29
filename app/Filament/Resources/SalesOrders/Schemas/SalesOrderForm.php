@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\SalesOrders\Schemas;
 
 use App\Filament\Support\Calculations;
+use App\Models\Bank;
 use App\Models\InventoryItem;
 use App\Models\Partner;
 use App\Models\Setting;
@@ -18,6 +19,7 @@ use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Repeater\TableColumn;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Actions as SchemaActions;
 use Filament\Schemas\Components\Grid;
@@ -74,24 +76,67 @@ class SalesOrderForm
                                     ->default(now())
                                     ->required(),
                                 Select::make('payment_mode')
-                                    ->label('Payment Type')
+                                    ->label('Settlement Type')
                                     ->options([
-                                        'cash' => 'Cash',
+                                        'cash' => 'Paid now',
                                         'credit' => 'Credit',
                                     ])
                                     ->default('cash')
                                     ->required()
+                                    ->live()
+                                    ->afterStateUpdated(function (Set $set, ?string $state): void {
+                                        if ($state !== 'credit') {
+                                            $set('has_initial_payment', false);
+                                        }
+                                    }),
+                                Select::make('payment_method')
+                                    ->label('Payment Method')
+                                    ->options([
+                                        'cash' => 'Cash',
+                                        'bank' => 'Bank Transfer',
+                                        'cheque' => 'Cheque',
+                                    ])
+                                    ->default('cash')
+                                    ->visible(fn (Get $get): bool => $get('payment_mode') === 'cash')
+                                    ->required(fn (Get $get): bool => $get('payment_mode') === 'cash')
+                                    ->dehydrated(fn (Get $get): bool => $get('payment_mode') === 'cash')
                                     ->live(),
+                                Select::make('bank_id')
+                                    ->label('Bank Account')
+                                    ->relationship('bank', 'name', modifyQueryUsing: fn ($query) => $query->where('status', 'active'))
+                                    ->searchable()
+                                    ->preload()
+                                    ->visible(fn (Get $get): bool => $get('payment_mode') === 'cash'
+                                        && in_array($get('payment_method'), ['bank', 'bank_transfer', 'cheque', 'check'], true))
+                                    ->required(fn (Get $get): bool => $get('payment_mode') === 'cash'
+                                        && in_array($get('payment_method'), ['bank', 'bank_transfer', 'cheque', 'check'], true))
+                                    ->dehydrated(fn (Get $get): bool => $get('payment_mode') === 'cash'
+                                        && in_array($get('payment_method'), ['bank', 'bank_transfer', 'cheque', 'check'], true)),
+                                TextInput::make('payment_reference')
+                                    ->label('Payment Reference')
+                                    ->placeholder('Transfer reference, cheque number, or short note')
+                                    ->maxLength(255)
+                                    ->visible(fn (Get $get): bool => $get('payment_mode') === 'cash')
+                                    ->dehydrated(fn (Get $get): bool => $get('payment_mode') === 'cash'),
                                 DatePicker::make('due_date')
                                     ->label('Payment Due Date')
                                     ->live()
                                     ->default(now())
-                                    ->required(),
+                                    ->visible(fn (Get $get): bool => $get('payment_mode') === 'credit')
+                                    ->required(fn (Get $get): bool => $get('payment_mode') === 'credit')
+                                    ->dehydrated(fn (Get $get): bool => $get('payment_mode') === 'credit'),
+                                Toggle::make('has_initial_payment')
+                                    ->label('Record Initial Payment')
+                                    ->helperText('Enter a payment received with this credit order.')
+                                    ->default(false)
+                                    ->visible(fn (Get $get): bool => $get('payment_mode') === 'credit')
+                                    ->dehydrated(fn (Get $get): bool => $get('payment_mode') === 'credit')
+                                    ->live(),
                                 // Standalone import button — FileUpload lives inside the action modal,
                                 // completely isolated from the form's save lifecycle.
                                 SchemaActions::make([
                                     Action::make('import_items')
-                                        ->label('Import from CSV / Excel')
+                                        ->label('Import items from CSV / Excel')
                                         ->icon('heroicon-o-arrow-up-tray')
                                         ->color('gray')
                                         ->visible(fn () => ! request()->routeIs('*.view'))
@@ -168,6 +213,62 @@ class SalesOrderForm
                                         }),
                                 ])->label('Bulk Import'),
                             ]),
+                        Section::make('Initial Payment')
+                            ->description('Optional payment received now. It will be recorded when you save this credit order.')
+                            ->visible(fn (Get $get): bool => $get('payment_mode') === 'credit'
+                                && (bool) $get('has_initial_payment'))
+                            ->schema([
+                                TextInput::make('initial_payment_amount')
+                                    ->label('Amount')
+                                    ->numeric()
+                                    ->minValue(0)
+                                    ->maxValue(fn (Get $get): float => (float) ($get('total') ?? 0))
+                                    ->default(0)
+                                    ->live(onBlur: true)
+                                    ->dehydrated(fn (Get $get): bool => (bool) $get('has_initial_payment'))
+                                    ->suffix(fn (): string => Money::suffix())
+                                    ->helperText(fn (Get $get): string => 'Order total: '.self::summaryValueText($get('total'))),
+                                Select::make('initial_payment_method')
+                                    ->label('Payment Method')
+                                    ->options([
+                                        'cash' => 'Cash',
+                                        'bank' => 'Bank Transfer',
+                                        'cheque' => 'Cheque',
+                                    ])
+                                    ->default('cash')
+                                    ->required(fn (Get $get): bool => (bool) $get('has_initial_payment')
+                                        && (float) ($get('initial_payment_amount') ?? 0) > 0)
+                                    ->dehydrated(fn (Get $get): bool => (bool) $get('has_initial_payment')
+                                        && (float) ($get('initial_payment_amount') ?? 0) > 0)
+                                    ->live(),
+                                Select::make('initial_payment_bank_id')
+                                    ->label('Bank Account')
+                                    ->options(fn (): array => Bank::query()
+                                        ->where('status', 'active')
+                                        ->orderBy('name')
+                                        ->pluck('name', 'id')
+                                        ->all())
+                                    ->searchable()
+                                    ->preload()
+                                    ->visible(fn (Get $get): bool => (bool) $get('has_initial_payment')
+                                        && in_array($get('initial_payment_method'), ['bank', 'bank_transfer', 'cheque', 'check'], true))
+                                    ->required(fn (Get $get): bool => (bool) $get('has_initial_payment')
+                                        && (float) ($get('initial_payment_amount') ?? 0) > 0
+                                        && in_array($get('initial_payment_method'), ['bank', 'bank_transfer', 'cheque', 'check'], true))
+                                    ->dehydrated(fn (Get $get): bool => (bool) $get('has_initial_payment')
+                                        && (float) ($get('initial_payment_amount') ?? 0) > 0
+                                        && in_array($get('initial_payment_method'), ['bank', 'bank_transfer', 'cheque', 'check'], true)),
+                                TextInput::make('initial_payment_reference')
+                                    ->label('Payment Reference')
+                                    ->placeholder('Receipt number, transfer reference, or short note')
+                                    ->maxLength(255)
+                                    ->visible(fn (Get $get): bool => (bool) $get('has_initial_payment')
+                                        && in_array($get('initial_payment_method'), ['bank', 'bank_transfer', 'cheque', 'check'], true))
+                                    ->dehydrated(fn (Get $get): bool => (bool) $get('has_initial_payment')
+                                        && in_array($get('initial_payment_method'), ['bank', 'bank_transfer', 'cheque', 'check'], true)),
+                            ])
+                            ->columns(2)
+                            ->columnSpanFull(),
                         Repeater::make('salesOrderItems')
                             ->relationship('salesOrderItems')
                             ->label('Sale Items')
@@ -198,6 +299,11 @@ class SalesOrderForm
                                         $set('unit_label', $unit);
                                         $set('unit_price', $price);
                                         $set('total', round($qty * $price, 2));
+
+                                        // Selecting an item updates the row values programmatically, so
+                                        // recalculate the form-level totals here as well as on manual edits.
+                                        Calculations::updateSubtotal($get, $set, '../../salesOrderItems', '../../subtotal');
+                                        Calculations::updateTaxedTotal($get, $set, '../../subtotal', '../../tax_amount', '../../total');
                                     }),
                                 TextInput::make('quantity')
                                     ->numeric()
@@ -302,12 +408,15 @@ class SalesOrderForm
                     ->schema([
                         Hidden::make('subtotal')
                             ->default(0)
+                            ->live()
                             ->dehydrated(),
                         Hidden::make('tax_amount')
                             ->default(0)
+                            ->live()
                             ->dehydrated(),
                         Hidden::make('total')
                             ->default(0)
+                            ->live()
                             ->dehydrated(),
 
                         Placeholder::make('summary_subtotal')
@@ -344,7 +453,7 @@ class SalesOrderForm
         foreach ($importedRows as $newRow) {
             $matchIndex = $rows->search(
                 fn ($row): bool => (int) ($row['inventory_item_id'] ?? 0) === (int) ($newRow['inventory_item_id'] ?? 0)
-                    && (float) ($row['unit_price'] ?? 0) === (float) ($newRow['unit_price'] ?? 0)
+                && (float) ($row['unit_price'] ?? 0) === (float) ($newRow['unit_price'] ?? 0)
             );
 
             if ($matchIndex !== false) {
@@ -370,5 +479,10 @@ class SalesOrderForm
             e(Number::format((float) ($amount ?? 0), precision: 2)),
             e(Money::suffix()),
         ));
+    }
+
+    private static function summaryValueText(mixed $amount): string
+    {
+        return Number::format((float) ($amount ?? 0), precision: 2).' '.Money::suffix();
     }
 }

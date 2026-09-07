@@ -24,6 +24,7 @@ it('renders the live summary as a styled estimator panel', function (): void {
     Livewire::test(CreateCostEstimate::class)
         ->assertSee('Final Price')
         ->assertSee('Unit Price')
+        ->assertSee('Calculator Type')
         ->assertDontSee('Service Type')
         ->assertDontSee('Deadline')
         ->assertDontSee('Remarks')
@@ -32,6 +33,54 @@ it('renders the live summary as a styled estimator panel', function (): void {
         ->assertDontSee('Warnings')
         ->assertSeeHtml('cost-summary-metric cost-summary-total')
         ->assertDontSeeHtml('cost-summary-alert');
+});
+
+it('switches the wizard to the selected calculator type', function (): void {
+    Livewire::test(CreateCostEstimate::class)
+        ->fillForm([
+            'job_type' => 'books',
+        ])
+        ->assertFormFieldIsVisible('services.book.page_count')
+        ->assertFormFieldDoesNotExist('services.production.printing_speed')
+        ->assertFormFieldDoesNotExist('services.production.artwork_hours')
+        ->assertFormFieldDoesNotExist('services.label.width')
+        ->assertFormFieldDoesNotExist('services.box.length');
+});
+
+it('renders the Sheet2 workbook total in the live book preview', function (): void {
+    Livewire::test(CreateCostEstimate::class)
+        ->fillForm([
+            'description' => 'Sheet2 sample book',
+            'job_type' => 'books',
+            'quantity' => 1000,
+            'services' => [
+                'book' => [
+                    'page_count' => 64,
+                    'size' => 'A5',
+                    'binding' => 'Perfect',
+                    'cover_laminated' => 'Yes',
+                    'inside_printing' => 'Yes',
+                    'text_colors' => 1,
+                    'cover_colors' => 4,
+                    'text_allowance_per_signature' => 50,
+                    'cover_allowance' => 20,
+                    'text_ink_coverage' => 1,
+                    'cover_ink_coverage' => 1,
+                    'cover_paper_format' => 'A1',
+                ],
+                'material' => [
+                    'text_paper_unit_cost' => 7000 / 1.15,
+                    'text_plate_unit_cost' => 0,
+                    'cover_plate_unit_cost' => 900,
+                ],
+                'commercial' => [
+                    'overhead_percent' => 15,
+                    'profit_margin_percent' => 25,
+                    'discount_percent' => 0,
+                ],
+            ],
+        ])
+        ->assertSee('79,895.31');
 });
 
 it('renders inventory and machine snapshots with structured costing details', function (): void {
@@ -156,6 +205,8 @@ it('keeps book material and machine details in the sidebar only', function (): v
         ->assertSee('4.8 hour')
         ->assertDontSee('5,000 hour')
         ->assertSee('Discount')
+        ->assertSee('Material Cost Breakdown')
+        ->assertSee('Labour & Production Cost Breakdown')
         ->assertDontSee('Selected Material Details')
         ->assertDontSee('Machine Snapshots');
 });

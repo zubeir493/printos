@@ -101,8 +101,12 @@ class CostEstimateForm
                     ->label('Product Name')
                     ->required()
                     ->maxLength(255),
-                Hidden::make('job_type')
-                    ->default('labels'),
+                Select::make('job_type')
+                    ->label('Calculator Type')
+                    ->options(fn (): array => app(CostingRegistry::class)->options())
+                    ->default('labels')
+                    ->live()
+                    ->required(),
                 TextInput::make('quantity')
                     ->numeric()
                     ->minValue(1)

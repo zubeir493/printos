@@ -23,18 +23,18 @@ trait BuildsCostingResults
 
     protected function commercialTotals(array $lines, int $quantity, array $commercial, Setting $settings): CostingResult
     {
-        $subtotal = round((float) collect($lines)->sum('total'), 2);
+        $subtotal = (float) collect($lines)->sum('total');
         $overheadPercent = (float) ($commercial['overhead_percent'] ?? ($settings->costing_defaults['overhead_percent'] ?? 15));
         $profitPercent = (float) ($commercial['profit_margin_percent'] ?? ($settings->costing_defaults['profit_margin_percent'] ?? 20));
         $discountPercent = (float) ($commercial['discount_percent'] ?? 0);
 
-        $overhead = round($subtotal * $overheadPercent / 100, 2);
+        $overhead = $subtotal * $overheadPercent / 100;
         $costWithOverhead = $subtotal + $overhead;
-        $profit = round($costWithOverhead * $profitPercent / 100, 2);
-        $discount = round(($costWithOverhead + $profit) * $discountPercent / 100, 2);
+        $profit = $costWithOverhead * $profitPercent / 100;
+        $discount = ($costWithOverhead + $profit) * $discountPercent / 100;
         $beforeVat = max(0, $costWithOverhead + $profit - $discount);
         $vatRate = $settings->vat_enabled ? (float) $settings->vat_rate : 0.0;
-        $vat = round($beforeVat * $vatRate / 100, 2);
+        $vat = $beforeVat * $vatRate / 100;
         $total = round($beforeVat + $vat, 2);
         $unitPrice = $quantity > 0 ? $total / $quantity : 0.0;
 
@@ -105,7 +105,7 @@ trait BuildsCostingResults
             'quantity' => round($quantity, 4),
             'unit' => $unit,
             'unit_cost' => round($unitCost, 4),
-            'total' => round($quantity * $unitCost, 2),
+            'total' => $quantity * $unitCost,
             'snapshot' => array_filter([
                 'inventory' => $this->inventorySnapshot($item),
                 ...$snapshot,

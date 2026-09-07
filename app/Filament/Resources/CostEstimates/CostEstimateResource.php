@@ -22,9 +22,6 @@ class CostEstimateResource extends Resource
 {
     protected static ?string $model = CostEstimate::class;
 
-    //To be removed once calculator is finished
-    protected static bool $shouldRegisterNavigation = false;
-
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-calculator';
 
     protected static string|UnitEnum|null $navigationGroup = 'Sales';
@@ -49,7 +46,7 @@ class CostEstimateResource extends Resource
     public static function table(Table $table): Table
     {
         return CostEstimatesTable::configure($table)
-            ->recordUrl(fn(CostEstimate $record): string => static::getUrl('view', ['record' => $record]));
+            ->recordUrl(fn (CostEstimate $record): string => static::getUrl('view', ['record' => $record]));
     }
 
     public static function getEloquentQuery(): Builder

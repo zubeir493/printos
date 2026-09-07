@@ -106,7 +106,7 @@ class Setting extends Model
                 'package_die_unit_cost' => 10000,
                 'manual_finishing_unit_cost' => 0.05,
                 'varnish_unit_cost' => 0,
-                'book_text_paper_unit_cost' => 6086.96,
+                'book_text_paper_unit_cost' => 7000 / 1.15,
                 'book_cover_paper_unit_cost' => 0,
                 'book_case_paper_unit_cost' => 0,
                 'book_grey_board_unit_cost' => 0,

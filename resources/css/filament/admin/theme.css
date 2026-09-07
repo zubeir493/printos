@@ -787,6 +787,44 @@ button>.fi-sc-wizard-header-step-text{
     padding: 0;
 }
 
+.cost-breakdown-field {
+    padding: 0;
+}
+
+.cost-breakdown-table-wrap {
+    overflow-x: auto;
+}
+
+.cost-breakdown-table {
+    border-collapse: collapse;
+    font-size: .76rem;
+    min-width: 34rem;
+    width: 100%;
+}
+
+.cost-breakdown-table th,
+.cost-breakdown-table td {
+    border-bottom: 1px solid var(--gray-200);
+    padding: .45rem .6rem;
+    text-align: right;
+    white-space: nowrap;
+}
+
+.cost-breakdown-table th:first-child,
+.cost-breakdown-table td:first-child {
+    text-align: left;
+}
+
+.cost-breakdown-table th {
+    color: var(--gray-600);
+    font-size: .68rem;
+    font-weight: 700;
+}
+
+.cost-breakdown-table td {
+    color: var(--gray-800);
+}
+
 .cost-snapshot-card {
     display: grid;
     gap: .35rem;

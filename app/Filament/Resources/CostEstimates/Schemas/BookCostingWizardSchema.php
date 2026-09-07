@@ -2,11 +2,15 @@
 
 namespace App\Filament\Resources\CostEstimates\Schemas;
 
+use App\Services\Costing\BookCostCalculator;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Wizard\Step;
+use Illuminate\Support\HtmlString;
+use Illuminate\Support\Number;
 
 class BookCostingWizardSchema
 {
@@ -36,6 +40,21 @@ class BookCostingWizardSchema
                                 ->default('Perfect')
                                 ->live()
                                 ->required(),
+                            TextInput::make('services.book.text_gsm')
+                                ->label('Text GSM')
+                                ->numeric()
+                                ->minValue(0)
+                                ->live(onBlur: true),
+                            TextInput::make('services.book.cover_gsm')
+                                ->label('Cover GSM')
+                                ->numeric()
+                                ->minValue(0)
+                                ->live(onBlur: true),
+                            TextInput::make('services.book.endsheet_gsm')
+                                ->label('Endsheet GSM')
+                                ->numeric()
+                                ->minValue(0)
+                                ->live(onBlur: true),
                         ]),
                     Section::make('Print Setup')
                         ->columns(3)
@@ -83,13 +102,19 @@ class BookCostingWizardSchema
                     Section::make('Consumable Costs')
                         ->columns(3)
                         ->schema([
-                            TextInput::make('services.material.plate_unit_cost')->label('Plate / Plate')->numeric()->default(900)->live(onBlur: true),
+                            TextInput::make('services.material.text_plate_unit_cost')->label('Text Plate / Plate')->numeric()->default(0)->live(onBlur: true),
+                            TextInput::make('services.material.cover_plate_unit_cost')->label('Cover Plate / Plate')->numeric()->default(900)->live(onBlur: true),
                             TextInput::make('services.material.ink_unit_cost')->label('Ink / Kg')->numeric()->default(3000)->live(onBlur: true),
                             TextInput::make('services.material.lamination_unit_cost')->label('Lamination / m2')->numeric()->default(0)->live(onBlur: true)->visible(fn (Get $get): bool => $get('services.book.cover_laminated') !== 'No'),
                             TextInput::make('services.material.wire_unit_cost')->label('Wire / Kg')->numeric()->default(160)->live(onBlur: true)->visible(fn (Get $get): bool => $get('services.book.binding') === 'Saddle'),
                             TextInput::make('services.material.hotmelt_glue_unit_cost')->label('Hotmelt Glue')->numeric()->default(10000)->live(onBlur: true),
                             TextInput::make('services.material.white_glue_unit_cost')->label('White Glue')->numeric()->default(0)->live(onBlur: true),
                             TextInput::make('services.material.packing_unit_cost')->label('Packing Material')->numeric()->default(30)->live(onBlur: true),
+                            Placeholder::make('book_material_cost_breakdown')
+                                ->label('Material Cost Breakdown')
+                                ->content(fn (Get $get): HtmlString => self::costBreakdown($get, ['Material', 'Plate', 'Ink', 'Finishing', 'Packing']))
+                                ->extraAttributes(['class' => 'cost-breakdown-field'])
+                                ->columnSpanFull(),
                         ]),
                 ]),
             Step::make('Book Production')
@@ -98,12 +123,26 @@ class BookCostingWizardSchema
                     Section::make('Operation Speeds')
                         ->columns(3)
                         ->schema([
-                            TextInput::make('services.production.printing_speed')->label('Printing Speed')->numeric()->default(2500)->live(onBlur: true),
-                            TextInput::make('services.production.folding_speed')->label('Folding Speed')->numeric()->default(2500)->live(onBlur: true),
-                            TextInput::make('services.production.collating_speed')->label('Collating Speed')->numeric()->default(2500)->live(onBlur: true),
-                            TextInput::make('services.production.laminating_speed')->label('Laminating Speed')->numeric()->default(300)->live(onBlur: true),
-                            TextInput::make('services.production.perfect_binding_speed')->label('Perfect Binding Speed')->numeric()->default(700)->live(onBlur: true)->visible(fn (Get $get): bool => $get('services.book.binding') === 'Perfect'),
-                            TextInput::make('services.production.gluing_speed')->label('Gluing Speed')->numeric()->default(25)->live(onBlur: true)->visible(fn (Get $get): bool => $get('services.book.binding') === 'Hard cover'),
+                            Placeholder::make('printing_speed')
+                                ->label('Printing Speed')
+                                ->content(fn (): string => self::fixedValue(2500, 'costing units/hr')),
+                            Placeholder::make('folding_speed')
+                                ->label('Folding Speed')
+                                ->content(fn (): string => self::fixedValue(2500, 'costing units/hr')),
+                            Placeholder::make('collating_speed')
+                                ->label('Collating Speed')
+                                ->content(fn (): string => self::fixedValue(2500, 'costing units/hr')),
+                            Placeholder::make('laminating_speed')
+                                ->label('Laminating Speed')
+                                ->content(fn (): string => self::fixedValue(300, 'costing units/hr')),
+                            Placeholder::make('perfect_binding_speed')
+                                ->label('Perfect Binding Speed')
+                                ->content(fn (): string => self::fixedValue(700, 'costing units/hr'))
+                                ->visible(fn (Get $get): bool => $get('services.book.binding') === 'Perfect'),
+                            Placeholder::make('gluing_speed')
+                                ->label('Gluing Speed')
+                                ->content(fn (): string => self::fixedValue(25, 'costing units/hr'))
+                                ->visible(fn (Get $get): bool => $get('services.book.binding') === 'Hard cover'),
                         ]),
                     Section::make('Operation Rates')
                         ->columns(3)
@@ -116,10 +155,19 @@ class BookCostingWizardSchema
                             TextInput::make('services.production.perfect_binding_rate')->label('Perfect Binding / Hour')->numeric()->default(140)->live(onBlur: true)->visible(fn (Get $get): bool => $get('services.book.binding') === 'Perfect'),
                             TextInput::make('services.production.gluing_rate')->label('Gluing / Hour')->numeric()->default(60)->live(onBlur: true)->visible(fn (Get $get): bool => $get('services.book.binding') === 'Hard cover'),
                             TextInput::make('services.production.packing_rate')->label('Packing / Hour')->numeric()->default(30)->live(onBlur: true),
-                            TextInput::make('services.production.packing_multiplier')->label('Packing Multiplier')->numeric()->default(12)->live(onBlur: true),
+                            Placeholder::make('packing_multiplier')
+                                ->label('Packing Multiplier')
+                                ->content(fn (): string => self::fixedValue(12, 'x')),
                             TextInput::make('services.production.typesetting_rate')->label('Typesetting / Page')->numeric()->default(20)->live(onBlur: true),
-                            TextInput::make('services.production.artwork_hours')->label('Artwork Hours')->numeric()->default(3)->live(onBlur: true),
+                            Placeholder::make('artwork_hours')
+                                ->label('Artwork Hours')
+                                ->content(fn (): string => self::fixedValue(3, 'hour')),
                             TextInput::make('services.production.artwork_rate')->label('Artwork / Hour')->numeric()->default(600)->live(onBlur: true),
+                            Placeholder::make('book_production_cost_breakdown')
+                                ->label('Labour & Production Cost Breakdown')
+                                ->content(fn (Get $get): HtmlString => self::costBreakdown($get, ['Labour', 'Machine', 'Packing']))
+                                ->extraAttributes(['class' => 'cost-breakdown-field'])
+                                ->columnSpanFull(),
                         ]),
                 ]),
             self::commercialStep(),
@@ -136,5 +184,24 @@ class BookCostingWizardSchema
                 TextInput::make('services.commercial.profit_margin_percent')->numeric()->suffix('%')->live(onBlur: true),
                 TextInput::make('services.commercial.discount_percent')->numeric()->suffix('%')->live(onBlur: true),
             ]);
+    }
+
+    /**
+     * @param  array<int, string>  $categories
+     */
+    private static function costBreakdown(Get $get, array $categories): HtmlString
+    {
+        $preview = app(BookCostCalculator::class)->calculate([
+            'quantity' => (int) ($get('quantity') ?: 1),
+            'job_type' => 'books',
+            'services' => $get('services') ?? [],
+        ]);
+
+        return CostingSnapshotPresenter::costLines($preview->lines, $categories);
+    }
+
+    private static function fixedValue(float|int $value, string $unit): string
+    {
+        return Number::format($value, maxPrecision: 2).' '.$unit;
     }
 }

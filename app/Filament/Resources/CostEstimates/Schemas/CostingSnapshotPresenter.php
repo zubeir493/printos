@@ -83,6 +83,30 @@ class CostingSnapshotPresenter
     }
 
     /**
+     * @param  array<int, array<string, mixed>>  $lines
+     * @param  array<int, string>  $categories
+     */
+    public static function costLines(array $lines, array $categories): HtmlString
+    {
+        $rows = collect($lines)
+            ->filter(fn (array $line): bool => in_array($line['category'] ?? null, $categories, true))
+            ->map(fn (array $line): string => sprintf(
+                '<tr><td>%s</td><td>%s %s</td><td>%s</td><td>%s</td></tr>',
+                e($line['label'] ?? ''),
+                e(Number::format((float) ($line['quantity'] ?? 0), maxPrecision: 4)),
+                e($line['unit'] ?? ''),
+                e(Money::format((float) ($line['unit_cost'] ?? 0), 2)),
+                e(Money::format((float) ($line['total'] ?? 0), 2)),
+            ))
+            ->implode('');
+
+        return new HtmlString(sprintf(
+            '<div class="cost-breakdown-table-wrap"><table class="cost-breakdown-table"><thead><tr><th>Item</th><th>Quantity</th><th>Unit Cost</th><th>Total Cost</th></tr></thead><tbody>%s</tbody></table></div>',
+            $rows,
+        ));
+    }
+
+    /**
      * @param  array{name?: string|null, quantity: int|float|string, unit?: string|null, inventory?: array<string, mixed>}  $material
      */
     private static function materialTooltip(array $material): string

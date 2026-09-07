@@ -46,7 +46,8 @@ class BookCostCalculator implements CostingCalculator
         $laminationQuantity = $coverLaminated ? $this->laminationSquareMeters($binding, $size, $pages, $quantity) : 0;
         $wireQuantity = $this->isSaddle($binding) ? ($quantity * 0.2 / 1000) / 2 : 0;
         $packingQuantity = $quantity / 1200;
-        $bookPlateUnitCost = (float) ($material['plate_unit_cost'] ?? $defaults['book_plate_unit_cost'] ?? $defaults['book_cover_plate_unit_cost'] ?? $defaults['plate_unit_cost'] ?? 900);
+        $textPlateUnitCost = (float) ($material['text_plate_unit_cost'] ?? $material['plate_unit_cost'] ?? $defaults['book_text_plate_unit_cost'] ?? 0);
+        $coverPlateUnitCost = (float) ($material['cover_plate_unit_cost'] ?? $material['plate_unit_cost'] ?? $defaults['book_cover_plate_unit_cost'] ?? $defaults['book_plate_unit_cost'] ?? $defaults['plate_unit_cost'] ?? 900);
 
         $materialLines = [
             $this->line('Material', 'Text paper', $textPaperPurchaseQuantity, 'ream', (float) ($material['text_paper_unit_cost'] ?? $defaults['book_text_paper_unit_cost'] ?? (7000 / 1.15)), null, ['sheets' => $textPaperSheets]),
@@ -54,8 +55,8 @@ class BookCostCalculator implements CostingCalculator
             $this->line('Material', 'Case paper', $casePaperQuantity, 'sheet', (float) ($material['case_paper_unit_cost'] ?? $defaults['book_case_paper_unit_cost'] ?? 0)),
             $this->line('Material', 'Grey board', $greyBoardQuantity, 'sheet', (float) ($material['grey_board_unit_cost'] ?? $defaults['book_grey_board_unit_cost'] ?? 0)),
             $this->line('Material', 'Endsheet', $endsheetQuantity, 'sheet', (float) ($material['endsheet_unit_cost'] ?? $defaults['book_endsheet_unit_cost'] ?? 0)),
-            $this->line('Plate', 'Text plates', $textPlates, 'plate', $bookPlateUnitCost),
-            $this->line('Plate', 'Cover plates', $coverPlates, 'plate', $bookPlateUnitCost),
+            $this->line('Plate', 'Text plates', $textPlates, 'plate', $textPlateUnitCost),
+            $this->line('Plate', 'Cover plates', $coverPlates, 'plate', $coverPlateUnitCost),
             $this->line('Ink', 'Ink', $inkQuantity, 'kg', (float) ($material['ink_unit_cost'] ?? $defaults['book_ink_unit_cost'] ?? 3000)),
             $this->line('Finishing', 'Lamination film', $laminationQuantity, 'm2', (float) ($material['lamination_unit_cost'] ?? $defaults['book_lamination_unit_cost'] ?? 0)),
             $this->line('Material', 'Wire', $wireQuantity, 'kg', (float) ($material['wire_unit_cost'] ?? $defaults['book_wire_unit_cost'] ?? 160)),

@@ -43,6 +43,11 @@ it('calculates a book estimate from the workbook sample formula', function (): v
                 'cover_ink_coverage' => 1,
                 'cover_paper_format' => 'A1',
             ],
+            'material' => [
+                'text_paper_unit_cost' => 7000 / 1.15,
+                'text_plate_unit_cost' => 0,
+                'cover_plate_unit_cost' => 900,
+            ],
             'commercial' => [
                 'overhead_percent' => 15,
                 'profit_margin_percent' => 25,
@@ -51,13 +56,16 @@ it('calculates a book estimate from the workbook sample formula', function (): v
     ]);
 
     $textPlates = collect($result->lines)->firstWhere('label', 'Text plates');
+    $coverPlates = collect($result->lines)->firstWhere('label', 'Cover plates');
 
     expect($textPlates['quantity'])->toBe(8.0)
-        ->and($textPlates['unit_cost'])->toBe(900.0)
-        ->and($result->total)->toBeGreaterThan(91797.82)
-        ->and($result->total)->toBeLessThan(91797.84)
-        ->and($result->unitPrice)->toBeGreaterThan(91.7978)
-        ->and($result->unitPrice)->toBeLessThan(91.7979);
+        ->and($textPlates['unit_cost'])->toBe(0.0)
+        ->and($coverPlates['quantity'])->toBe(4.0)
+        ->and($coverPlates['unit_cost'])->toBe(900.0)
+        ->and($result->total)->toBeGreaterThan(79895.30)
+        ->and($result->total)->toBeLessThan(79895.32)
+        ->and($result->unitPrice)->toBeGreaterThan(79.8952)
+        ->and($result->unitPrice)->toBeLessThan(79.8954);
 });
 
 it('calculates hard cover book-only material and gluing lines', function (): void {

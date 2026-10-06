@@ -3,7 +3,12 @@
 namespace App\Services\Dielines;
 
 use App\Models\DielineTemplate;
+use App\Services\Dielines\Templates\AutoBottomTuckTopTemplate;
+use App\Services\Dielines\Templates\FoodTrayTemplate;
+use App\Services\Dielines\Templates\FullOverlapCartonTemplate;
 use App\Services\Dielines\Templates\ReverseTuckFlapBoxTemplate;
+use App\Services\Dielines\Templates\SleeveBoxTemplate;
+use App\Services\Dielines\Templates\SnapLockBottomTemplate;
 use App\Services\Dielines\Templates\StraightTuckFlapTemplate;
 use Illuminate\Support\Collection;
 
@@ -15,7 +20,12 @@ class DielineTemplateRegistry
     public function fallbackTypes(): array
     {
         return [
+            'auto-bottom-tuck-top' => AutoBottomTuckTopTemplate::class,
+            'four-corner-food-tray' => FoodTrayTemplate::class,
+            'full-overlap-carton' => FullOverlapCartonTemplate::class,
+            'open-ended-sleeve' => SleeveBoxTemplate::class,
             'reverse-tuck-flap-box' => ReverseTuckFlapBoxTemplate::class,
+            'snap-lock-bottom-tuck-top' => SnapLockBottomTemplate::class,
             'straight-tuck-flap' => StraightTuckFlapTemplate::class,
         ];
     }

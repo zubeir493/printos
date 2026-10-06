@@ -276,6 +276,159 @@ trait BuildsDielineGeometry
     }
 
     /**
+     * Build a closure panel with an optional centered locking tongue.
+     *
+     * @return array{cut: array<int, array{x1: float, y1: float, x2: float, y2: float}>, crease: array<int, array{x1: float, y1: float, x2: float, y2: float}>}
+     */
+    protected function closurePanel(
+        float $x,
+        float $y,
+        float $span,
+        float $depth,
+        string $direction,
+        float $tongueWidth = 0,
+        float $tongueDepth = 0,
+    ): array {
+        $span = max(0, $span);
+        $depth = max(0, $depth);
+        $tongueWidth = min(max(0, $tongueWidth), $span);
+        $tongueDepth = max(0, $tongueDepth);
+        $sign = match ($direction) {
+            'top' => -1,
+            'bottom' => 1,
+            default => throw new InvalidArgumentException('Closure panel direction must be top or bottom.'),
+        };
+        $outerY = $y + ($sign * $depth);
+
+        if ($tongueWidth <= 0 || $tongueDepth <= 0) {
+            return [
+                'cut' => [
+                    $this->line($x, $y, $x, $outerY),
+                    $this->line($x, $outerY, $x + $span, $outerY),
+                    $this->line($x + $span, $outerY, $x + $span, $y),
+                ],
+                'crease' => [$this->line($x, $y, $x + $span, $y)],
+            ];
+        }
+
+        $tongueLeft = $x + (($span - $tongueWidth) / 2);
+        $tongueRight = $tongueLeft + $tongueWidth;
+        $tongueY = $outerY + ($sign * $tongueDepth);
+
+        return [
+            'cut' => [
+                $this->line($x, $y, $x, $outerY),
+                $this->line($x, $outerY, $tongueLeft, $outerY),
+                $this->line($tongueLeft, $outerY, $tongueLeft, $tongueY),
+                $this->line($tongueLeft, $tongueY, $tongueRight, $tongueY),
+                $this->line($tongueRight, $tongueY, $tongueRight, $outerY),
+                $this->line($tongueRight, $outerY, $x + $span, $outerY),
+                $this->line($x + $span, $outerY, $x + $span, $y),
+            ],
+            'crease' => [$this->line($x, $y, $x + $span, $y)],
+        ];
+    }
+
+    /**
+     * Build a short horizontal locking slit on a closure panel.
+     *
+     * @return array{x1: float, y1: float, x2: float, y2: float}
+     */
+    protected function lockingSlot(float $x, float $y, float $span, float $offset, float $slotWidth, string $direction): array
+    {
+        $sign = match ($direction) {
+            'top' => -1,
+            'bottom' => 1,
+            default => throw new InvalidArgumentException('Locking slot direction must be top or bottom.'),
+        };
+        $slotWidth = min(max(0, $slotWidth), max(0, $span));
+        $slotLeft = $x + (($span - $slotWidth) / 2);
+        $slotRight = $slotLeft + $slotWidth;
+        $slotY = $y + ($sign * max(0, $offset));
+
+        return $this->line($slotLeft, $slotY, $slotRight, $slotY);
+    }
+
+    /**
+     * Build a tapered crash-lock wing with diagonal scores from its two
+     * hinged corners to the midpoint of its free edge.
+     *
+     * @return array{cut: array<int, array{x1: float, y1: float, x2: float, y2: float}>, crease: array<int, array{x1: float, y1: float, x2: float, y2: float}>}
+     */
+    protected function crashLockWing(float $x, float $y, float $span, float $depth, string $direction, float $caliper): array
+    {
+        $span = max(0, $span);
+        $depth = max(0, $depth);
+        $caliper = max(0, $caliper);
+        $shoulderInset = min($span * 0.08, max($caliper * 2, $depth * 0.12));
+        $wing = $this->dustFlap(
+            $x,
+            $y,
+            $span,
+            $depth,
+            $direction,
+            topLeftInset: $shoulderInset,
+            topRightInset: $shoulderInset,
+            leftToeWidth: min($caliper, $shoulderInset),
+            leftToeDepth: min($caliper, $depth),
+            rightShoulderInset: min($caliper, $span),
+            rightShoulderDepth: min($depth * 0.3, max($caliper * 2, $depth * 0.2)),
+            rightEdgeDepth: min($depth * 0.1, max($caliper, 0.5)),
+        );
+        $sign = match ($direction) {
+            'top' => -1,
+            'bottom' => 1,
+            default => throw new InvalidArgumentException('Crash-lock wing direction must be top or bottom.'),
+        };
+        $centerX = $x + ($span / 2);
+        $freeEdgeY = $y + ($sign * $depth);
+
+        return [
+            'cut' => $wing['cut'],
+            'crease' => [
+                ...$wing['crease'],
+                $this->line($x, $y, $centerX, $freeEdgeY),
+                $this->line($x + $span, $y, $centerX, $freeEdgeY),
+            ],
+        ];
+    }
+
+    /**
+     * Build a rounded flap outline without drawing a cut across its hinge.
+     *
+     * @return array{cut: array<int, array{x1: float, y1: float, x2: float, y2: float}>, crease: array<int, array{x1: float, y1: float, x2: float, y2: float}>}
+     */
+    protected function roundedFlapComponent(float $x, float $y, float $span, float $depth, string $direction, float $radius): array
+    {
+        $span = max(0, $span);
+        $depth = max(0, $depth);
+        $radius = min(max(0, $radius), $depth, $span / 2);
+        $cut = $this->drawPath(
+            $x,
+            $y,
+            $direction,
+            function (DielinePath $ctx) use ($span, $depth, $radius): void {
+                $ctx->moveTo(0, 0)
+                    ->lineTo(0, -$depth + $radius)
+                    ->arcTo(0, -$depth, $radius, -$depth, $radius)
+                    ->lineTo($span - $radius, -$depth)
+                    ->arcTo($span, -$depth, $span, -$depth + $radius, $radius)
+                    ->lineTo($span, 0);
+            },
+        );
+        $crease = match ($direction) {
+            'top', 'bottom' => [$this->line($x, $y, $x + $span, $y)],
+            'left', 'right' => [$this->line($x, $y, $x, $y + $span)],
+            default => throw new InvalidArgumentException('Rounded flap direction must be top, bottom, left, or right.'),
+        };
+
+        return [
+            'cut' => $cut,
+            'crease' => $crease,
+        ];
+    }
+
+    /**
      * @return array<int, array{x1: float, y1: float, x2: float, y2: float}>
      */
     protected function bleedBox(float $x, float $y, float $width, float $height, float $bleed): array

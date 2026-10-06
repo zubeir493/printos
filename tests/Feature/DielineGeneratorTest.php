@@ -7,6 +7,7 @@ use App\Models\Setting;
 use App\Models\User;
 use App\Services\Dielines\DielineExportService;
 use App\Services\Dielines\DielineGeometryService;
+use App\Services\Dielines\DielineTemplateRegistry;
 use App\UserRole;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -86,6 +87,27 @@ it('creates dieline drafts from a setup modal then saves dimensions and geometry
         ->template_key->toBe('reverse-tuck-flap-box')
         ->and($dieline->dimensions)->toHaveKeys(['l', 'w', 'h'])
         ->and($dieline->geometry['layers'])->toHaveKeys(['cut', 'crease', 'glue', 'bleed']);
+});
+
+it('lists the additional templates in the new dieline selector', function (): void {
+    expect(app(DielineTemplateRegistry::class)->options())
+        ->toHaveKeys([
+            'auto-bottom-tuck-top',
+            'four-corner-food-tray',
+            'full-overlap-carton',
+            'open-ended-sleeve',
+            'snap-lock-bottom-tuck-top',
+        ]);
+
+    expect(app(DielineTemplateRegistry::class)->advancedFields())
+        ->toContain([
+            'key' => 'flap_height',
+            'label' => 'Flap height',
+            'default' => 50,
+            'min' => 0,
+            'suffix' => 'mm',
+            'templates' => ['full-overlap-carton'],
+        ]);
 });
 
 it('validates required base dimensions', function (): void {

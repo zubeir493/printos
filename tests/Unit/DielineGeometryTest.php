@@ -462,9 +462,12 @@ it('renders DXF exports with solid print layers and print lineweight', function 
         ->not->toContain('Width');
 });
 
-it('keeps the snap-lock top and locking bottom closure on the reference panels', function (): void {
+it('draws the snap-lock bottom across both length and width panels', function (): void {
     $template = new SnapLockBottomTemplate;
     $geometry = $template->generate($template->defaults());
+
+    expect($geometry['bounds'])
+        ->toBe(['x' => 0.0, 'y' => -58.0, 'width' => 212.0, 'height' => 193.0]);
 
     expect($geometry['layers']['crease'])
         ->toContain(['x1' => 72.0, 'y1' => 0.0, 'x2' => 12.0, 'y2' => 0.0])
@@ -472,10 +475,21 @@ it('keeps the snap-lock top and locking bottom closure on the reference panels',
 
     expect($geometry['layers']['cut'])
         ->toContain(['x1' => 112.0, 'y1' => 0.0, 'x2' => 172.0, 'y2' => 0.0])
-        ->toContain(['x1' => 32.4, 'y1' => 120.0, 'x2' => 32.4, 'y2' => 125.0]);
+        ->toContain(['x1' => 12.0, 'y1' => 100.0, 'x2' => 27.0, 'y2' => 113.4])
+        ->toContain(['x1' => 72.0, 'y1' => 100.0, 'x2' => 72.0, 'y2' => 135.0])
+        ->toContain(['x1' => 112.0, 'y1' => 100.0, 'x2' => 112.0, 'y2' => 125.0])
+        ->toContain(['x1' => 212.0, 'y1' => 100.0, 'x2' => 212.0, 'y2' => 135.0])
+        ->toContain(['x1' => 126.0, 'y1' => 113.4, 'x2' => 158.0, 'y2' => 113.4]);
 
-    expect(collect($geometry['layers']['cut'])->contains(fn (array $line): bool => $line['y1'] === 119.5 && $line['y2'] === 119.5 && $line['x1'] > 112 && $line['x2'] < 172
-    ))->toBeTrue();
+    $bottomCreases = collect($geometry['layers']['crease'])
+        ->filter(fn (array $line): bool => $line['y1'] === 100.0 && $line['y2'] === 100.0);
+
+    expect($bottomCreases)
+        ->toHaveCount(4)
+        ->toContain(['x1' => 12.0, 'y1' => 100.0, 'x2' => 72.0, 'y2' => 100.0])
+        ->toContain(['x1' => 72.0, 'y1' => 100.0, 'x2' => 112.0, 'y2' => 100.0])
+        ->toContain(['x1' => 112.0, 'y1' => 100.0, 'x2' => 172.0, 'y2' => 100.0])
+        ->toContain(['x1' => 172.0, 'y1' => 100.0, 'x2' => 212.0, 'y2' => 100.0]);
 });
 
 it('draws the auto-bottom crease wings and glue zones as a crash-lock base', function (): void {

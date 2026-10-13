@@ -63,7 +63,6 @@ class SnapLockBottomTemplate implements DielineTemplateContract
         $glueWidth = $this->dimension($dimensions, 'glue_flap', $defaults['glue_flap']);
         $boardThickness = $this->dimension($dimensions, 'board_thickness', $defaults['board_thickness']);
         $lockTabDepth = min($this->dimension($dimensions, 'lock_tab', $defaults['lock_tab']), $width * 0.15);
-        $tongueWidth = min($length * 0.32, max(0, $length - ($boardThickness * 2)));
 
         $bodyX = $glueWidth;
         $firstWidthX = $bodyX + $length;
@@ -86,21 +85,16 @@ class SnapLockBottomTemplate implements DielineTemplateContract
             $this->dustFlap($secondWidthX, 0, $width, $dustDepth, 'top'),
         ];
         $mainBottomDepth = $width * 0.5;
-        $lockingBottom = $this->closurePanel($bodyX, $height, $length, $mainBottomDepth, 'bottom', $tongueWidth, $lockTabDepth);
-        $receiverBottom = $this->closurePanel($secondLengthX, $height, $length, $mainBottomDepth, 'bottom');
         $sideBottomDepth = $length * 0.5;
-        $sideFlaps = [
-            $this->dustFlap($firstWidthX, $height, $width, $sideBottomDepth, 'bottom'),
-            $this->dustFlap($secondWidthX, $height, $width, $sideBottomDepth, 'bottom'),
-        ];
-        $slotClearance = $boardThickness * 2;
-        $bottomSlot = $this->lockingSlot(
-            $secondLengthX,
+        $bottomLock = $this->snapLockBottomAssembly(
+            $bodyX,
             $height,
             $length,
-            max(0, $mainBottomDepth - max($boardThickness, 0.5)),
-            min($length, $tongueWidth + $slotClearance),
-            'bottom',
+            $width,
+            $mainBottomDepth,
+            $sideBottomDepth,
+            $lockTabDepth,
+            $boardThickness,
         );
         $glueFlap = $this->glueFlapComponent($bodyX, 0, $glueWidth, $height, 'left');
 
@@ -108,9 +102,7 @@ class SnapLockBottomTemplate implements DielineTemplateContract
             $this->line($secondLengthX, 0, $secondWidthX, 0),
             $this->line($bodyRight, 0, $bodyRight, $height),
             ...$topClosure['cut'],
-            ...$lockingBottom['cut'],
-            ...$receiverBottom['cut'],
-            $bottomSlot,
+            ...$bottomLock['cut'],
             ...$glueFlap['cut'],
         ];
         $crease = [
@@ -118,17 +110,16 @@ class SnapLockBottomTemplate implements DielineTemplateContract
             $this->line($secondLengthX, 0, $secondLengthX, $height),
             $this->line($secondWidthX, 0, $secondWidthX, $height),
             ...$topClosure['crease'],
-            ...$lockingBottom['crease'],
-            ...$receiverBottom['crease'],
+            ...$bottomLock['crease'],
             ...$glueFlap['crease'],
         ];
 
-        foreach ([...$topDustFlaps, ...$sideFlaps] as $sideFlap) {
+        foreach ($topDustFlaps as $sideFlap) {
             $cut = [...$cut, ...$sideFlap['cut']];
             $crease = [...$crease, ...$sideFlap['crease']];
         }
 
-        $bottomDepth = max($mainBottomDepth + $lockTabDepth, $sideBottomDepth);
+        $bottomDepth = $bottomLock['depth'];
         $minimumY = min($topClosureY - $tuckHeight + 1, -$dustDepth);
 
         return [

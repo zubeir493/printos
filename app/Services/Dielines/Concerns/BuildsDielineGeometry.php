@@ -330,6 +330,155 @@ trait BuildsDielineGeometry
     }
 
     /**
+     * Build a four-panel snap-lock base: one locking tongue, two side wings,
+     * and a matching receiver with paired locking lugs.
+     *
+     * @return array{cut: array<int, array{x1: float, y1: float, x2: float, y2: float}>, crease: array<int, array{x1: float, y1: float, x2: float, y2: float}>, depth: float}
+     */
+    protected function snapLockBottomAssembly(
+        float $x,
+        float $y,
+        float $length,
+        float $width,
+        float $lengthFlapDepth,
+        float $widthFlapDepth,
+        float $tabDepth,
+        float $boardThickness,
+    ): array {
+        $length = max(0, $length);
+        $width = max(0, $width);
+        $lengthFlapDepth = max(0, $lengthFlapDepth);
+        $widthFlapDepth = max(0, $widthFlapDepth);
+        $tabDepth = max(0, $tabDepth);
+        $boardThickness = max(0, $boardThickness);
+
+        $panels = [
+            [$x, $length, $lengthFlapDepth, 'tongue', false],
+            [$x + $length, $width, $widthFlapDepth, 'side-wing', false],
+            [$x + $length + $width, $length, $lengthFlapDepth, 'receiver', false],
+            [$x + (2 * $length) + $width, $width, $widthFlapDepth, 'side-wing', true],
+        ];
+        $cut = [];
+        $crease = [];
+        $depths = [];
+
+        foreach ($panels as [$panelX, $span, $flapDepth, $profile, $mirror]) {
+            $component = $this->snapLockBottomPanel(
+                $panelX,
+                $y,
+                $span,
+                $flapDepth,
+                $tabDepth,
+                $boardThickness,
+                $profile,
+                $mirror,
+            );
+            $cut = [...$cut, ...$component['cut']];
+            $crease = [...$crease, ...$component['crease']];
+            $depths[] = $component['depth'];
+        }
+
+        return [
+            'cut' => $cut,
+            'crease' => $crease,
+            'depth' => max($depths),
+        ];
+    }
+
+    /**
+     * Build one profile used by the four-panel snap-lock base.
+     *
+     * @param  'tongue'|'side-wing'|'receiver'  $profile
+     * @return array{cut: array<int, array{x1: float, y1: float, x2: float, y2: float}>, crease: array<int, array{x1: float, y1: float, x2: float, y2: float}>, depth: float}
+     */
+    private function snapLockBottomPanel(
+        float $x,
+        float $y,
+        float $span,
+        float $depth,
+        float $tabDepth,
+        float $boardThickness,
+        string $profile,
+        bool $mirror,
+    ): array {
+        $span = max(0, $span);
+        $depth = max(0, $depth);
+        $tabDepth = min(max(0, $tabDepth), $span * 0.15);
+        $totalDepth = $depth + $tabDepth;
+        $shoulderDepth = $depth * 0.67;
+        $cornerRadius = min(
+            $span * 0.05,
+            $depth * 0.15,
+            max($boardThickness, $tabDepth * 0.35),
+        );
+
+        $outline = $this->drawPath(
+            $x,
+            $y,
+            'bottom',
+            function (DielinePath $ctx) use ($span, $tabDepth, $totalDepth, $shoulderDepth, $cornerRadius, $boardThickness, $profile): void {
+                if ($profile === 'tongue') {
+                    $tabLeft = $span * 0.25;
+                    $tabRight = $span * 0.75;
+
+                    $ctx->moveTo(0, 0)
+                        ->lineTo($tabLeft, -$shoulderDepth)
+                        ->lineTo($tabLeft, -$totalDepth + $cornerRadius)
+                        ->arcTo($tabLeft, -$totalDepth, $tabLeft + $cornerRadius, -$totalDepth, $cornerRadius)
+                        ->lineTo($tabRight - $cornerRadius, -$totalDepth)
+                        ->arcTo($tabRight, -$totalDepth, $tabRight, -$totalDepth + $cornerRadius, $cornerRadius)
+                        ->lineTo($tabRight, -$shoulderDepth)
+                        ->lineTo($span, 0);
+
+                    return;
+                }
+
+                if ($profile === 'receiver') {
+                    $tabWidth = $span * 0.5;
+                    $clearance = min($span * 0.1, max(1, $boardThickness * 2));
+                    $notchWidth = min($span, $tabWidth + ($clearance * 2));
+                    $notchLeft = ($span - $notchWidth) / 2;
+                    $notchRight = $notchLeft + $notchWidth;
+                    $radius = min($cornerRadius, ($span - $notchWidth) / 2);
+
+                    $ctx->moveTo(0, 0)
+                        ->lineTo(0, -$totalDepth)
+                        ->lineTo($notchLeft - $radius, -$totalDepth)
+                        ->arcTo($notchLeft, -$totalDepth, $notchLeft, -$totalDepth + $radius, $radius)
+                        ->lineTo($notchLeft, -$shoulderDepth)
+                        ->lineTo($notchRight, -$shoulderDepth)
+                        ->lineTo($notchRight, -$totalDepth + $radius)
+                        ->arcTo($notchRight, -$totalDepth, $notchRight + $radius, -$totalDepth, $radius)
+                        ->lineTo($span, -$totalDepth)
+                        ->lineTo($span, 0);
+
+                    return;
+                }
+
+                $toeWidth = min($span * 0.1, max(0.5, $tabDepth * 2, $boardThickness * 4));
+                $toeLeft = ($span - $toeWidth) / 2;
+                $toeRight = $toeLeft + $toeWidth;
+                $radius = min($cornerRadius, $toeWidth / 2);
+
+                $ctx->moveTo(0, 0)
+                    ->lineTo(0, -$totalDepth)
+                    ->lineTo($toeLeft - $radius, -$totalDepth)
+                    ->lineTo($toeRight - $radius, -$totalDepth)
+                    ->arcTo($toeRight, -$totalDepth, $toeRight, -$totalDepth + $radius, $radius)
+                    ->lineTo($toeRight, -$shoulderDepth)
+                    ->lineTo($span, 0);
+            },
+            mirrorWidth: $mirror ? $span : null,
+        );
+
+        return [
+            'cut' => $outline,
+            'crease' => [$this->line($x, $y, $x + $span, $y)],
+            'depth' => $totalDepth,
+        ];
+    }
+
+    /**
      * Build a short horizontal locking slit on a closure panel.
      *
      * @return array{x1: float, y1: float, x2: float, y2: float}

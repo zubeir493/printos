@@ -1,11 +1,10 @@
 <?php
 
-use App\Filament\Resources\JobOrderTasks\Pages\ListJobOrderTasks;
-use App\Filament\Resources\JobOrderTasks\Pages\ViewJobOrderTask;
+use App\Filament\Resources\JobOrders\Pages\ListJobOrders;
+use App\Filament\Resources\JobOrders\Pages\ViewJobOrder;
 use App\Filament\Resources\MaterialRequests\Pages\ManageMaterialRequests;
 use App\Models\InventoryItem;
 use App\Models\JobOrder;
-use App\Models\JobOrderTask;
 use App\Models\MaterialRequest;
 use App\Models\Partner;
 use App\Models\StockMovement;
@@ -27,7 +26,7 @@ it('stores the batch reason when requesting materials from the task table', func
 
     [$task, $item] = makeProductionTaskWithPaper();
 
-    Livewire::test(ListJobOrderTasks::class)
+    Livewire::test(ListJobOrders::class)
         ->callTableAction('request_materials', $task, [
             'items' => [[
                 'inventory_item_id' => $item->id,
@@ -39,7 +38,7 @@ it('stores the batch reason when requesting materials from the task table', func
         ->assertHasNoTableActionErrors();
 
     $this->assertDatabaseHas('material_requests', [
-        'job_order_task_id' => $task->id,
+        'job_order_id' => $task->id,
         'inventory_item_id' => $item->id,
         'requested_quantity' => 25,
         'reason' => 'Needed for urgent reprint',
@@ -55,7 +54,7 @@ it('stores the batch reason when requesting materials from the task view page', 
 
     [$task, $item] = makeProductionTaskWithPaper();
 
-    Livewire::test(ViewJobOrderTask::class, ['record' => $task->id])
+    Livewire::test(ViewJobOrder::class, ['record' => $task->id])
         ->callAction('request_materials', [
             'items' => [[
                 'inventory_item_id' => $item->id,
@@ -67,7 +66,7 @@ it('stores the batch reason when requesting materials from the task view page', 
         ->assertHasNoActionErrors();
 
     $this->assertDatabaseHas('material_requests', [
-        'job_order_task_id' => $task->id,
+        'job_order_id' => $task->id,
         'inventory_item_id' => $item->id,
         'requested_quantity' => 25,
         'reason' => 'Needed for urgent reprint',
@@ -86,7 +85,7 @@ it('opens the material request create action and stores the reason', function ()
     Livewire::test(ManageMaterialRequests::class)
         ->mountAction('create')
         ->setActionData([
-            'job_order_task_id' => $task->id,
+            'job_order_id' => $task->id,
             'inventory_item_id' => $item->id,
             'required_quantity' => 25,
             'requested_quantity' => 25,
@@ -97,7 +96,7 @@ it('opens the material request create action and stores the reason', function ()
         ->assertHasNoActionErrors();
 
     $this->assertDatabaseHas('material_requests', [
-        'job_order_task_id' => $task->id,
+        'job_order_id' => $task->id,
         'inventory_item_id' => $item->id,
         'requested_quantity' => 25,
         'reason' => 'Needed from direct material request',
@@ -113,7 +112,7 @@ it('defaults table production logging quantity to the remaining unlogged quantit
 
     [$task] = makeTaskReadyForProductionLog();
 
-    Livewire::test(ListJobOrderTasks::class)
+    Livewire::test(ListJobOrders::class)
         ->mountTableAction('log_production', $task)
         ->assertTableActionDataSet([
             'quantity' => 60.0,
@@ -129,7 +128,7 @@ it('defaults view page production logging quantity to the remaining unlogged qua
 
     [$task] = makeTaskReadyForProductionLog();
 
-    Livewire::test(ViewJobOrderTask::class, ['record' => $task->id])
+    Livewire::test(ViewJobOrder::class, ['record' => $task->id])
         ->mountAction('log_production')
         ->assertActionDataSet([
             'quantity' => 60.0,
@@ -151,12 +150,12 @@ function makeProductionTaskWithPaper(): array
 
     $jobOrder = JobOrder::factory()->create([
         'partner_id' => Partner::factory(),
-        'status' => 'active',
+        'status' => 'design',
         'production_mode' => 'make_to_order',
     ]);
 
-    $task = JobOrderTask::factory()->create([
-        'job_order_id' => $jobOrder->id,
+    $task = tap($jobOrder, fn (JobOrder $record) => $record->updateQuietly([
+
         'name' => 'Printing',
         'quantity' => 100,
         'status' => 'production',
@@ -164,7 +163,7 @@ function makeProductionTaskWithPaper(): array
             'inventory_item_id' => $item->id,
             'required_quantity' => 25,
         ]],
-    ]);
+    ]));
 
     return [$task, $item];
 }
@@ -178,7 +177,7 @@ function makeTaskReadyForProductionLog(): array
     ]);
 
     MaterialRequest::create([
-        'job_order_task_id' => $task->id,
+        'job_order_id' => $task->id,
         'inventory_item_id' => $item->id,
         'required_quantity' => 100,
         'requested_quantity' => 100,
@@ -190,7 +189,7 @@ function makeTaskReadyForProductionLog(): array
         'inventory_item_id' => $item->id,
         'warehouse_id' => $warehouse->id,
         'type' => 'production_output',
-        'reference_type' => JobOrderTask::class,
+        'reference_type' => JobOrder::class,
         'reference_id' => $task->id,
         'quantity' => 40,
         'movement_date' => now(),

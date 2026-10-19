@@ -9,7 +9,7 @@ use App\Filament\Support\MaterialRequestActionForms;
 use App\Filament\Support\PanelAccess;
 use App\Models\Bank;
 use App\Models\InventoryItem;
-use App\Models\MaterialRequest;
+use App\Models\JobOrder;
 use App\Models\Partner;
 use App\Models\Payment;
 use App\Models\PurchaseOrder;
@@ -18,13 +18,13 @@ use App\Models\Warehouse;
 use App\Services\InventoryService;
 use App\Services\InvoiceGeneratorService;
 use App\Services\JobOrders\DuplicateJobOrder;
+use App\Services\JobOrders\JobOrderWorkflow;
 use App\Services\MaterialIssueService;
-use App\States\JobOrder\Cancelled;
-use App\States\JobOrder\Completed;
 use App\Support\Money;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
+use Filament\Facades\Filament;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
@@ -34,17 +34,22 @@ use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Grid;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 
 class JobOrderActions
 {
-    public static function make(bool $includeDelete = false): ActionGroup
+    public static function make(bool $includeDelete = true): ActionGroup
     {
         return ActionGroup::make(array_filter([
-            self::edit(),
             self::reorder(),
             self::print(),
             self::activate(),
+            JobOrderWorkflowActions::assignDesigner(),
+            JobOrderWorkflowActions::assignTypist(),
+            JobOrderWorkflowActions::sendToProduction(),
+            JobOrderWorkflowActions::requestMaterials(),
+            JobOrderWorkflowActions::logProduction(),
             self::complete(),
             self::cancel(),
             self::issueMaterials(),
@@ -65,21 +70,21 @@ class JobOrderActions
             ->url(fn ($record): string => JobOrderResource::getUrl('edit', ['record' => $record]))
             ->visible(fn ($record = null): bool => is_object($record)
                 && PanelAccess::canManageJobOrders()
-                && (string) $record->status === 'draft');
+                && Gate::allows('update', $record));
     }
 
     public static function reorder(): Action
     {
-        return Action::make('reorder')
+        return Action::make('reorder')->authorize(fn ($record): bool => Gate::allows('create', JobOrder::class))
             ->label('Reorder')
             ->icon('heroicon-o-document-duplicate')
             ->color('gray')
             ->visible(fn ($record = null): bool => is_object($record)
                 && PanelAccess::canManageJobOrders()
-                && (string) $record->status !== 'draft')
+                && in_array((string) $record->status, ['completed', 'cancelled'], true))
             ->requiresConfirmation()
             ->modalHeading('Reorder this job order?')
-            ->modalDescription('This creates a new draft job order with the same tasks and current dates.')
+            ->modalDescription('This creates a new draft job order with the same specifications and current dates.')
             ->action(function ($record) {
                 $duplicate = app(DuplicateJobOrder::class)->handle($record);
 
@@ -99,6 +104,7 @@ class JobOrderActions
             ->label('Print Job Order')
             ->icon('heroicon-o-printer')
             ->color('gray')
+            ->visible(fn (?JobOrder $record): bool => $record !== null && (string) $record->status !== 'draft')
             ->url(fn ($record): string => route('job-orders.print', $record))
             ->openUrlInNewTab();
     }
@@ -106,7 +112,7 @@ class JobOrderActions
     public static function activate(): Action
     {
         return Action::make('activate')
-            ->label('Start Job Order')
+            ->label('Start Job Order')->authorize(fn ($record): bool => Gate::allows('manageWorkflow', $record))
             ->icon('heroicon-o-rocket-launch')
             ->color('gray')
             ->visible(fn ($record = null): bool => is_object($record)
@@ -114,13 +120,13 @@ class JobOrderActions
                 && PanelAccess::canManageJobOrders())
             ->requiresConfirmation()
             ->modalHeading('Start this Job Order?')
-            ->modalDescription('This marks the job order as active and signals that work has begun. Make sure all tasks and materials are set up.')
+            ->modalDescription('Start the design and preparation stage for this job.')
             ->action(function ($record): void {
                 try {
-                    $record->update(['status' => 'active']);
+                    app(JobOrderWorkflow::class)->transition($record, 'design');
 
                     Notification::make()
-                        ->title('Job order is now active')
+                        ->title('Job order started')
                         ->success()
                         ->send();
                 } catch (ValidationException $exception) {
@@ -144,17 +150,18 @@ class JobOrderActions
     public static function complete(): Action
     {
         return Action::make('complete')
-            ->label('Mark as Completed')
+            ->label('Mark as Completed')->authorize(fn ($record): bool => Gate::allows('manageWorkflow', $record))
             ->icon('heroicon-o-check-circle')
             ->color('gray')
             ->visible(fn ($record = null): bool => is_object($record)
-                && (string) $record->status === 'active'
+                && (string) $record->status === 'production'
+                && $record->canComplete()
                 && PanelAccess::canManageJobOrders())
             ->requiresConfirmation()
             ->modalHeading('Complete Job Order')
-            ->modalDescription('Mark this job order as completed? Make sure all tasks and dispatches are done.')
+            ->modalDescription('Complete this job after production and its payment requirements are satisfied.')
             ->action(function ($record): void {
-                $record->status->transitionTo(Completed::class);
+                app(JobOrderWorkflow::class)->transition($record, 'completed');
                 Notification::make()->title('Job order marked as completed')->success()->send();
             });
     }
@@ -162,11 +169,11 @@ class JobOrderActions
     public static function cancel(): Action
     {
         return Action::make('cancel_job_order')
-            ->label('Cancel')
+            ->label('Cancel')->authorize(fn ($record): bool => Gate::allows('manageWorkflow', $record))
             ->icon('heroicon-o-x-circle')
             ->color('gray')
             ->visible(fn ($record = null): bool => is_object($record)
-                && (string) $record->status === 'active'
+                && in_array((string) $record->status, ['design', 'production'], true)
                 && PanelAccess::canManageJobOrders())
             ->form([
                 Textarea::make('cancel_reason')
@@ -178,18 +185,19 @@ class JobOrderActions
             ->modalHeading('Cancel Job Order')
             ->action(function ($record, array $data) {
                 $record->update(['remarks' => trim(($record->remarks ? $record->remarks."\n\n" : '').'Cancelled: '.$data['cancel_reason'])]);
-                $record->status->transitionTo(Cancelled::class);
+                $record->cancel();
                 Notification::make()->title('Job order cancelled')->danger()->send();
             });
     }
 
     public static function invoice(): Action
     {
-        return Action::make('invoice')
+        return Action::make('invoice')->authorize(fn ($record): bool => Gate::allows('recordPayment', $record))
             ->label('Invoice')
             ->icon('heroicon-o-document-text')
             ->color('gray')
             ->hidden(fn ($record = null): bool => ! is_object($record)
+                || ! in_array((string) $record->status, ['design', 'production', 'completed'], true)
                 || $record->invoices()->exists()
                 || ! PanelAccess::canSeeMoneyValues()
                 || $record->balance <= 0
@@ -223,14 +231,14 @@ class JobOrderActions
 
     public static function pay(): Action
     {
-        return Action::make('pay')
+        return Action::make('pay')->authorize(fn ($record): bool => Gate::allows('recordPayment', $record))
             ->label('Receive Payment')
             ->icon('heroicon-o-banknotes')
             ->color('gray')
             ->visible(fn ($record = null): bool => is_object($record)
                 && $record->balance > 0
                 && PanelAccess::canAccessFinanceSection()
-                && in_array((string) $record->status, ['active', 'completed'], true)
+                && in_array((string) $record->status, ['design', 'production', 'completed'], true)
                 && ($record->production_mode ?? null) !== 'make_to_stock')
             ->schema([
                 Grid::make(2)->schema([
@@ -307,7 +315,7 @@ class JobOrderActions
 
                         $lockedRecord->updateQuietly([
                             'advance_paid' => true,
-                            'advance_amount' => $lockedRecord->paid_amount + $amount,
+                            'advance_amount' => $lockedRecord->paid_amount,
                         ]);
                         $lockedRecord->refresh()->syncCompletionStatus();
                     });
@@ -329,25 +337,25 @@ class JobOrderActions
 
     public static function issueMaterials(): Action
     {
-        return Action::make('issue_materials')
+        return Action::make('issue_materials')->authorize(fn ($record): bool => Gate::allows('manageMaterials', $record))
             ->label('Issue Materials')
             ->icon('heroicon-o-archive-box-arrow-down')
             ->color('gray')
             ->visible(
                 fn ($record = null): bool => is_object($record) &&
-                    PanelAccess::canAccessWarehouseSection() &&
-                    ! in_array((string) $record->status, ['completed', 'cancelled'], true) &&
+                    in_array(Filament::getCurrentPanel()?->getId(), ['admin', 'operations', 'warehouse'], true) &&
+                    in_array((string) $record->status, ['design', 'production'], true) &&
+                    ! $record->production_completed_at &&
                     $record->materialRequests()
                         ->whereColumn('issued_quantity', '<', 'requested_quantity')
                         ->whereDoesntHave('pendingIssueApprovals', fn ($query) => $query->where('status', 'pending'))
-                        ->whereHas('jobOrderTask', fn ($q) => $q->whereNotIn('status', ['completed', 'cancelled']))
                         ->exists()
             )
             ->modalWidth('lg')
             ->form(fn ($record): array => [
                 MaterialRequestActionForms::warehouseSelect(),
                 MaterialRequestActionForms::issueItemsRepeater(
-                    fn ($query) => $query->whereHas('jobOrderTask', fn ($q) => $q->whereNotIn('status', ['completed', 'cancelled'])),
+                    fn ($query) => $query,
                 ),
             ])
             ->action(function ($record, array $data): void {
@@ -359,7 +367,7 @@ class JobOrderActions
                             continue;
                         }
 
-                        $materialRequest = MaterialRequest::findOrFail($item['material_request_id']);
+                        $materialRequest = $record->materialRequests()->findOrFail($item['material_request_id']);
                         $result = app(MaterialIssueService::class)->issue($materialRequest, (int) $data['warehouse_id'], (float) $item['quantity'], auth()->user());
                         $results[$result['status']]++;
                     }
@@ -384,17 +392,16 @@ class JobOrderActions
 
     public static function returnMaterials(): Action
     {
-        return Action::make('return_materials')
+        return Action::make('return_materials')->authorize(fn ($record): bool => Gate::allows('manageMaterials', $record))
             ->label('Return Materials')
             ->icon('heroicon-o-arrow-path')
             ->color('gray')
             ->visible(
                 fn ($record = null): bool => is_object($record) &&
-                    PanelAccess::canAccessWarehouseSection() &&
-                    (string) $record->status !== 'completed' &&
+                    in_array(Filament::getCurrentPanel()?->getId(), ['admin', 'operations', 'warehouse'], true) &&
+                    in_array((string) $record->status, ['design', 'production'], true) &&
                     $record->materialRequests()
                         ->where('issued_quantity', '>', 0)
-                        ->whereHas('jobOrderTask', fn ($q) => $q->where('status', '!=', 'completed'))
                         ->exists()
             )
             ->form(fn ($record): array => [
@@ -419,11 +426,10 @@ class JobOrderActions
                     ])->columns(2)
                     ->default(fn (): array => $record->materialRequests()
                         ->where('issued_quantity', '>', 0)
-                        ->whereHas('jobOrderTask', fn ($q) => $q->where('status', '!=', 'completed'))
                         ->get()
                         ->map(function ($materialRequest) use ($record): array {
                             $originalWarehouse = StockMovement::where('type', 'consumption')
-                                ->where('reference_id', $record->id)
+                                ->where('reference_type', JobOrder::class)->where('reference_id', $record->id)
                                 ->where('inventory_item_id', $materialRequest->inventory_item_id)
                                 ->orderByDesc('movement_date')
                                 ->value('warehouse_id');
@@ -447,18 +453,17 @@ class JobOrderActions
                                 continue;
                             }
 
-                            $materialRequest = MaterialRequest::findOrFail($item['material_request_id']);
+                            $materialRequest = $record->materialRequests()->findOrFail($item['material_request_id']);
 
                             if ($item['quantity'] > $materialRequest->issued_quantity) {
                                 throw new \Exception("Cannot return more than what was issued for {$materialRequest->inventoryItem->name}.");
                             }
 
-                            $inventoryService->receiveStock(
+                            $inventoryService->returnJobMaterials(
                                 $materialRequest->inventory_item_id,
                                 $item['original_warehouse_id'] ?? $defaultWarehouseId,
                                 $item['quantity'],
                                 $materialRequest->inventoryItem->price,
-                                'material_return',
                                 $record->id
                             );
 
@@ -483,14 +488,15 @@ class JobOrderActions
 
     public static function generatePurchaseOrder(): Action
     {
-        return Action::make('generate_po')
+        return Action::make('generate_po')->authorize(fn ($record): bool => Gate::allows('create', PurchaseOrder::class))
             ->label('Generate PO')
             ->icon('heroicon-o-shopping-cart')
             ->color('gray')
             ->visible(
                 fn ($record = null): bool => is_object($record) &&
                     PanelAccess::canManagePurchaseOrders() &&
-                    (string) $record->status === 'active' &&
+                    in_array((string) $record->status, ['design', 'production'], true) &&
+                    ! $record->production_completed_at &&
                     collect($record->materials_summary)->where('remaining', '>', 0)->isNotEmpty()
             )
             ->form([
@@ -522,7 +528,7 @@ class JobOrderActions
                         ]);
 
                         foreach ($missingMaterials as $material) {
-                            $inventoryItem = InventoryItem::where('name', $material['material_name'])->first();
+                            $inventoryItem = InventoryItem::find($material['inventory_item_id']);
 
                             if (! $inventoryItem) {
                                 continue;
@@ -563,6 +569,7 @@ class JobOrderActions
 
     public static function delete(): DeleteAction
     {
-        return DeleteAction::make();
+        return DeleteAction::make()
+            ->visible(fn (?JobOrder $record): bool => $record !== null && (string) $record->status === 'draft');
     }
 }

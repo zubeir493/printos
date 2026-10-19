@@ -4,68 +4,42 @@ namespace App\Services;
 
 use App\Models\InventoryBalance;
 use App\Models\InventoryItem;
-use App\Models\JobOrderTask;
+use App\Models\JobOrder;
 
 class DispatchStockService
 {
-    public function dispatchIssue(int|string|null $taskId, int|string|null $warehouseId, int|float|string|null $quantity, int|float|string|null $currentQuantity = 0): ?string
+    public function dispatchIssue(int|string|null $jobOrderId, int|string|null $warehouseId, int|float|string|null $quantity, int|float|string|null $currentQuantity = 0): ?string
     {
-        $dispatchQuantity = (float) ($quantity ?: 0);
-        $alreadyDispatchedQuantity = (float) ($currentQuantity ?: 0);
-        $additionalQuantity = $dispatchQuantity - $alreadyDispatchedQuantity;
-
-        if ($additionalQuantity <= 0) {
-            return null;
+        if (! $jobOrderId || ! $warehouseId) {
+            return 'Select a job order and warehouse.';
         }
-
-        if (! $taskId || ! $warehouseId) {
-            return null;
+        $job = JobOrder::find($jobOrderId);
+        if (! $job || ! in_array((string) $job->status, ['production', 'completed'], true)) {
+            return 'Select a job with production output available for dispatch.';
         }
-
-        $task = JobOrderTask::query()
-            ->with('jobOrder')
-            ->find($taskId);
-
-        if (! $task) {
-            return 'One of the selected dispatch tasks could not be found.';
+        $qty = (float) $quantity;
+        if ($qty < 0 || $qty > $job->remaining_quantity + (float) $currentQuantity) {
+            return 'Dispatch quantity exceeds the remaining produced quantity.';
         }
-
-        $inventoryItem = $this->inventoryItemForTask($task);
-
-        if (! $inventoryItem) {
-            return "No dispatchable stock item was found for {$task->name}.";
+        $item = $this->inventoryItemForJobOrder($job);
+        if (! $item) {
+            return 'No dispatchable output inventory item was found.';
         }
-
-        $availableQuantity = $this->availableQuantity($inventoryItem, (int) $warehouseId);
-
-        if ($additionalQuantity > $availableQuantity) {
-            return sprintf(
-                'Only %s %s of %s is available in the selected warehouse',
-                number_format($availableQuantity, 2),
-                $inventoryItem->unit,
-                $inventoryItem->name,
-                number_format($additionalQuantity, 2),
-            );
+        if ($qty - (float) $currentQuantity > $this->availableQuantity($item, (int) $warehouseId)) {
+            return 'Insufficient output stock in the selected warehouse.';
         }
 
         return null;
     }
 
-    public function inventoryItemForTask(JobOrderTask $task): ?InventoryItem
+    public function inventoryItemForJobOrder(JobOrder $jobOrder): ?InventoryItem
     {
-        if ($task->jobOrder->production_mode === 'make_to_order') {
-            return InventoryItem::where('sku', 'TASK-'.$task->id)->first();
-        }
-
-        return InventoryItem::where('type', 'finished_good')
-            ->where('name', 'like', "%{$task->name}%")
-            ->first();
+        return $jobOrder->outputInventoryItem;
     }
 
     public function availableQuantity(InventoryItem $inventoryItem, int $warehouseId): float
     {
         return (float) (InventoryBalance::where('warehouse_id', $warehouseId)
-            ->where('inventory_item_id', $inventoryItem->id)
-            ->value('quantity_on_hand') ?? 0);
+            ->where('inventory_item_id', $inventoryItem->id)->value('quantity_on_hand') ?? 0);
     }
 }

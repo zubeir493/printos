@@ -2,10 +2,10 @@
 
 namespace App\Filament\Design\Widgets;
 
-use App\Models\JobOrderTask;
+use App\Models\JobOrder;
 use Filament\Widgets\ChartWidget;
 
-class JobOrderTaskStatusChart extends ChartWidget
+class JobOrderStatusChart extends ChartWidget
 {
     protected ?string $heading = 'Task Completion Rate';
 
@@ -13,7 +13,7 @@ class JobOrderTaskStatusChart extends ChartWidget
 
     protected function getData(): array
     {
-        $distribution = JobOrderTask::query()
+        $distribution = JobOrder::query()
             ->selectRaw('status, COUNT(*) as aggregate')
             ->groupBy('status')
             ->orderBy('status')

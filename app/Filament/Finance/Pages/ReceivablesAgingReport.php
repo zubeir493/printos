@@ -127,7 +127,7 @@ class ReceivablesAgingReport extends Page implements HasForms, HasTable
             ->selectRaw('job_orders.created_at as created_at')
             ->selectRaw('job_orders.updated_at as updated_at')
             ->selectRaw('(job_orders.total - COALESCE((SELECT SUM(payments.amount) FROM payments WHERE payments.payable_type = ? AND payments.payable_id = job_orders.id AND payments.payment_date <= ? AND payments.voided_at IS NULL), 0)) as balance', [JobOrder::class, $this->asOfDate])
-            ->whereIn('job_orders.status', ['active', 'completed'])
+            ->where('job_orders.production_mode', 'make_to_order')->whereIn('job_orders.status', ['design', 'production', 'completed'])
             ->whereRaw('(job_orders.total - COALESCE((SELECT SUM(payments.amount) FROM payments WHERE payments.payable_type = ? AND payments.payable_id = job_orders.id AND payments.payment_date <= ? AND payments.voided_at IS NULL), 0)) > 0', [JobOrder::class, $this->asOfDate])
             ->when($this->asOfDate, fn ($query) => $query->whereDate('job_orders.submission_date', '<=', Carbon::parse($this->asOfDate)->toDateString()));
 

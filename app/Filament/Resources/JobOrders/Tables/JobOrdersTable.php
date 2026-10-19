@@ -29,18 +29,20 @@ class JobOrdersTable
                     ->color('primary')
                     ->searchable()
                     ->sortable(),
+                TextColumn::make('name')->label('Work Item')->searchable(),
+                TextColumn::make('quantity')->numeric(),
                 TextColumn::make('status')
                     ->badge()
-                    ->color(fn ($state) => match ($state) {
+                    ->color(fn ($state) => match ((string) $state) {
                         'draft' => 'warning',
-                        'active' => 'info',
+                        'design' => 'info', 'production' => 'primary',
                         'completed' => 'success',
                         'cancelled' => 'danger',
                         default => 'gray',
                     })
                     ->weight(FontWeight::SemiBold)
                     ->formatStateUsing(fn ($state) => ucfirst($state))
-                    ->description(fn ($record) => $record->completed_job_order_tasks_count.' / '.$record->job_order_tasks_count.' tasks done.'),
+                    ->description(fn ($record) => $record->production_completed_at && (string) $record->status === 'production' ? 'Awaiting payment' : null),
                 TextColumn::make('submission_date')
                     ->label('Submission Date')
                     ->date()
@@ -68,6 +70,7 @@ class JobOrdersTable
                     ->sortable(),
             ])
             ->filters([
+                SelectFilter::make('proforma_id')->relationship('proforma', 'proforma_number')->searchable()->preload(),
                 DateRangeFilter::make('submission_date_range', 'submission_date', 'Submission date'),
 
                 TernaryFilter::make('payment_status')
@@ -82,7 +85,7 @@ class JobOrdersTable
                 SelectFilter::make('status')
                     ->options([
                         'draft' => 'Draft',
-                        'active' => 'Active',
+                        'design' => 'Design', 'production' => 'Production',
                         'completed' => 'Completed',
                         'cancelled' => 'Cancelled',
                     ])

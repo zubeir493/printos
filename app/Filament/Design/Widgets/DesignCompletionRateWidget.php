@@ -2,7 +2,7 @@
 
 namespace App\Filament\Design\Widgets;
 
-use App\Models\JobOrderTask;
+use App\Models\JobOrder;
 use LaravelDaily\FilaWidgets\Data\CompletionRateWidgetData;
 use LaravelDaily\FilaWidgets\Widgets\CompletionRateWidget;
 
@@ -14,8 +14,8 @@ class DesignCompletionRateWidget extends CompletionRateWidget
 
     protected function getData(): CompletionRateWidgetData
     {
-        $total = JobOrderTask::query()->where('status', '!=', 'cancelled')->count();
-        $completed = JobOrderTask::query()->where('status', 'completed')->count();
+        $total = JobOrder::query()->where('status', '!=', 'cancelled')->count();
+        $completed = JobOrder::query()->whereNotNull('design_completed_at')->count();
 
         if ($total === 0) {
             return new CompletionRateWidgetData(0, isEmpty: true);

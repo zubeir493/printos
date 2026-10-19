@@ -7,6 +7,7 @@ use App\Filament\Resources\TextFiles\Pages\ListTextFiles;
 use App\Filament\Resources\TextFiles\Schemas\TextFileForm;
 use App\Filament\Resources\TextFiles\Tables\TextFilesTable;
 use App\Models\TextFile;
+use App\UserRole;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -36,7 +37,8 @@ class TextFileResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()->with(['jobOrderTask.jobOrder', 'uploader']);
+        return parent::getEloquentQuery()->with(['jobOrder', 'uploader'])
+            ->when(auth()->user()?->role === UserRole::Typist, fn (Builder $query) => $query->whereHas('jobOrder', fn (Builder $jobs) => $jobs->where('typist_id', auth()->id())));
     }
 
     public static function getRelations(): array

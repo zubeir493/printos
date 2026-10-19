@@ -21,7 +21,7 @@ class TodaysProductionScheduleTable extends BaseWidget
             ->query(
                 ProductionPlanItem::query()
                     ->with([
-                        'jobOrderTask.jobOrder.partner',
+                        'jobOrder.partner',
                         'productionPlanMachine.machine',
                         'productionPlanMachine.productionPlan',
                     ])
@@ -37,10 +37,10 @@ class TodaysProductionScheduleTable extends BaseWidget
                 Tables\Columns\TextColumn::make('productionPlanMachine.machine.name')
                     ->label('Machine')
                     ->searchable(),
-                Tables\Columns\TextColumn::make('jobOrderTask.jobOrder.job_order_number')
+                Tables\Columns\TextColumn::make('jobOrder.job_order_number')
                     ->label('Job Order')
                     ->searchable(),
-                Tables\Columns\TextColumn::make('jobOrderTask.name')
+                Tables\Columns\TextColumn::make('jobOrder.name')
                     ->label('Task')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('planned_quantity')

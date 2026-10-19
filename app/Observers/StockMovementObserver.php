@@ -3,7 +3,7 @@
 namespace App\Observers;
 
 use App\Models\InventoryBalance;
-use App\Models\JobOrderTask;
+use App\Models\JobOrder;
 use App\Models\StockMovement;
 use App\Notifications\ProductionLoggedNotification;
 use App\Notifications\WipReadyForDispatchNotification;
@@ -118,11 +118,11 @@ class StockMovementObserver
 
     private function notifyProductionOutput(StockMovement $stockMovement): void
     {
-        if ($stockMovement->type !== 'production_output' || $stockMovement->reference_type !== JobOrderTask::class) {
+        if ($stockMovement->type !== 'production_output' || $stockMovement->reference_type !== JobOrder::class) {
             return;
         }
 
-        $task = JobOrderTask::query()->with('jobOrder')->find($stockMovement->reference_id);
+        $task = JobOrder::query()->with('partner')->find($stockMovement->reference_id);
 
         if (! $task) {
             return;

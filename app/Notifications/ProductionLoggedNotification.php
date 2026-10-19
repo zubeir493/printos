@@ -2,7 +2,7 @@
 
 namespace App\Notifications;
 
-use App\Models\JobOrderTask;
+use App\Models\JobOrder;
 use App\Models\StockMovement;
 use App\Notifications\Concerns\SendsWebPushNotifications;
 use Filament\Notifications\Notification as FilamentNotification;
@@ -16,7 +16,7 @@ class ProductionLoggedNotification extends Notification implements ShouldQueueAf
     use SendsWebPushNotifications;
 
     public function __construct(
-        protected JobOrderTask $task,
+        protected JobOrder $task,
         protected StockMovement $stockMovement,
     ) {}
 
@@ -28,12 +28,12 @@ class ProductionLoggedNotification extends Notification implements ShouldQueueAf
     protected function webPushBody(): string
     {
         return number_format((float) $this->stockMovement->quantity, 2)
-            ." units were produced for task '{$this->task->name}' on job {$this->task->jobOrder->job_order_number}.";
+            ." units were produced for task '{$this->task->name}' on job {$this->task->job_order_number}.";
     }
 
     protected function notificationUrl(object $notifiable): string
     {
-        return $this->resourceUrl($notifiable, 'job-order-tasks', 'view', ['record' => $this->task]);
+        return $this->resourceUrl($notifiable, 'job-orders', 'view', ['record' => $this->task]);
     }
 
     public function toDatabase(object $notifiable): array

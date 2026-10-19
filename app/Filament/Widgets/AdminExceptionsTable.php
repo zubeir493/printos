@@ -21,7 +21,7 @@ class AdminExceptionsTable extends BaseWidget
         return $table
             ->query(
                 JobOrder::query()
-                    ->with(['partner', 'jobOrderTasks'])
+                    ->with(['partner', 'productionMovements'])
                     ->whereNotIn('status', ['completed', 'cancelled'])
                     ->orderByRaw('CASE WHEN due_date IS NULL THEN 1 ELSE 0 END')
                     ->orderBy('due_date')
@@ -39,9 +39,9 @@ class AdminExceptionsTable extends BaseWidget
                     ->label('Due')
                     ->date()
                     ->color(fn ($state) => $state && $state->isBefore(today()) ? 'danger' : 'warning'),
-                Tables\Columns\TextColumn::make('jobOrderTasks_count')
+                Tables\Columns\TextColumn::make('quantity')
                     ->label('Tasks')
-                    ->state(fn (JobOrder $record) => $record->jobOrderTasks->count())
+                    ->state(fn (JobOrder $record) => $record->quantity)
                     ->alignEnd(),
                 Tables\Columns\TextColumn::make('total')
                     ->label('Value')

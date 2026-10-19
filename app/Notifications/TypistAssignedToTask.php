@@ -2,7 +2,7 @@
 
 namespace App\Notifications;
 
-use App\Models\JobOrderTask;
+use App\Models\JobOrder;
 use App\Notifications\Concerns\SendsWebPushNotifications;
 use Filament\Notifications\Notification as FilamentNotification;
 use Filament\Support\Colors\Color;
@@ -15,7 +15,7 @@ class TypistAssignedToTask extends Notification implements ShouldQueueAfterCommi
     use Queueable;
     use SendsWebPushNotifications;
 
-    public function __construct(protected JobOrderTask $task) {}
+    public function __construct(protected JobOrder $task) {}
 
     protected function webPushTitle(): string
     {
@@ -24,7 +24,7 @@ class TypistAssignedToTask extends Notification implements ShouldQueueAfterCommi
 
     protected function webPushBody(): string
     {
-        $body = "You have been assigned to type task '{$this->task->name}' for job {$this->task->jobOrder->job_order_number}.";
+        $body = "You have been assigned to type task '{$this->task->name}' for job {$this->task->job_order_number}.";
 
         if (filled($this->task->instructions)) {
             $body .= "\n\nBrief: {$this->task->instructions}";
@@ -35,7 +35,7 @@ class TypistAssignedToTask extends Notification implements ShouldQueueAfterCommi
 
     protected function notificationUrl(object $notifiable): string
     {
-        return $this->resourceUrl($notifiable, 'job-order-tasks', 'view', ['record' => $this->task]);
+        return $this->resourceUrl($notifiable, 'job-orders', 'view', ['record' => $this->task]);
     }
 
     public function toDatabase(object $notifiable): array

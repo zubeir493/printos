@@ -75,14 +75,14 @@ class User extends Authenticatable implements FilamentUser
         return $this->role->canAccessPanel($panel);
     }
 
-    public function assignedDesignTasks(): HasMany
+    public function assignedDesignJobOrders(): HasMany
     {
-        return $this->hasMany(JobOrderTask::class, 'designer_id');
+        return $this->hasMany(JobOrder::class, 'designer_id');
     }
 
-    public function assignedTypistTasks(): HasMany
+    public function assignedTypistJobOrders(): HasMany
     {
-        return $this->hasMany(JobOrderTask::class, 'typist_id');
+        return $this->hasMany(JobOrder::class, 'typist_id');
     }
 
     public function warehouses(): BelongsToMany

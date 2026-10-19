@@ -2,8 +2,9 @@
 
 namespace App\Filament\Resources\Artworks\Schemas;
 
-use App\Models\JobOrderTask;
+use App\Models\JobOrder;
 use App\Support\PrivateStorage;
+use App\UserRole;
 use Filament\Forms\Components\BaseFileUpload;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
@@ -25,10 +26,10 @@ class ArtworkForm
             ->components([
                 Grid::make(1)
                     ->schema([
-                        Select::make('job_order_task_id')
-                            ->label('Task / Job Order')
-                            ->relationship('jobOrderTask', 'name', fn ($query) => $query->with('jobOrder'))
-                            ->getOptionLabelFromRecordUsing(fn ($record) => "{$record->name} ({$record->jobOrder->job_order_number})")
+                        Select::make('job_order_id')
+                            ->label('Job Order')
+                            ->relationship('jobOrder', 'name', fn ($query) => $query->with('partner')->when(auth()->user()?->role === UserRole::Design, fn ($jobs) => $jobs->where('designer_id', auth()->id())))
+                            ->getOptionLabelFromRecordUsing(fn ($record) => "{$record->name} ({$record->job_order_number})")
                             ->required()
                             ->searchable()
                             ->preload()
@@ -36,9 +37,9 @@ class ArtworkForm
                             ->columnSpan(1),
                         Select::make('deliverable')
                             ->label('Deliverable')
-                            ->options(fn (UtilitiesGet $get): array => self::artworkDeliverableOptions((int) $get('job_order_task_id')))
-                            ->visible(fn (UtilitiesGet $get): bool => filled(self::artworkDeliverableOptions((int) $get('job_order_task_id'))))
-                            ->required(fn (UtilitiesGet $get): bool => filled(self::artworkDeliverableOptions((int) $get('job_order_task_id'))))
+                            ->options(fn (UtilitiesGet $get): array => self::artworkDeliverableOptions((int) $get('job_order_id')))
+                            ->visible(fn (UtilitiesGet $get): bool => filled(self::artworkDeliverableOptions((int) $get('job_order_id'))))
+                            ->required(fn (UtilitiesGet $get): bool => filled(self::artworkDeliverableOptions((int) $get('job_order_id'))))
                             ->searchable()
                             ->preload()
                             ->placeholder('Select an artwork deliverable'),
@@ -58,7 +59,8 @@ class ArtworkForm
                             ->columnSpanFull(),
                     ])->columnSpanFull(),
                 Flex::make([
-                    Toggle::make('is_approved')
+                    Toggle::make('is_approved')->disabled(fn (): bool => ! in_array(auth()->user()?->role, [UserRole::Admin, UserRole::Operations], true))
+                        ->dehydrated(fn (): bool => in_array(auth()->user()?->role, [UserRole::Admin, UserRole::Operations], true))
                         ->label('Production Ready')
                         ->onColor('success')
                         ->offColor('danger')
@@ -66,8 +68,8 @@ class ArtworkForm
                         ->columnSpan(1)
                         ->live()
                         ->afterStateUpdated(function ($state, callable $get, callable $set, $record) {
-                            if ($record && $record->jobOrderTask) {
-                                $record->jobOrderTask->updateStatus();
+                            if ($record && $record->jobOrder) {
+                                $record->jobOrder->updateStatus();
                             }
                         }),
                     Placeholder::make('download_link')
@@ -99,7 +101,7 @@ class ArtworkForm
             return [];
         }
 
-        $task = JobOrderTask::find($taskId);
+        $task = JobOrder::find($taskId);
 
         if (! $task) {
             return [];

@@ -3,7 +3,7 @@
 namespace App\Filament\Design\Widgets;
 
 use App\Models\Artwork;
-use App\Models\JobOrderTask;
+use App\Models\JobOrder;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use Illuminate\Support\Facades\DB;
@@ -26,13 +26,8 @@ class DesignSLAStats extends BaseWidget
             ->value('avg_days') ?? 0;
 
         // 2. Count of active design tasks that still need design/artwork work.
-        $designQueueCount = JobOrderTask::query()
-            ->whereNotIn('status', ['completed', 'cancelled'])
-            ->where(function ($query) {
-                $query
-                    ->whereIn('status', ['pending', 'draft', 'design'])
-                    ->orWhereDoesntHave('artworks');
-            })
+        $designQueueCount = JobOrder::query()
+            ->where('status', 'design')
             ->count();
 
         // 3. Recently approved work, separate from the pipeline distribution chart.

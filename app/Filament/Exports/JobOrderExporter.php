@@ -18,6 +18,11 @@ class JobOrderExporter extends Exporter
     public static function getColumns(): array
     {
         return [
+            ExportColumn::make('name')->label('Work Item'),
+            ExportColumn::make('quantity'),
+            ExportColumn::make('produced_quantity'),
+            ExportColumn::make('size'),
+            ExportColumn::make('proforma.proforma_number')->label('Source Proforma'),
             ExportColumn::make('job_order_number')
                 ->label('Job Order #'),
             ExportColumn::make('partner.name')

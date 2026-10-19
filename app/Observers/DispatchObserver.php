@@ -11,6 +11,14 @@ use Illuminate\Support\Facades\Notification;
 
 class DispatchObserver
 {
+    public function deleting(Dispatch $dispatch): void
+    {
+        foreach ($dispatch->stockMovements()->get() as $movement) {
+            $movement->delete();
+        }
+        $dispatch->dispatchItems()->delete();
+    }
+
     public function created(Dispatch $dispatch): void
     {
         $recipients = NotificationRecipients::roles(UserRole::Warehouse, UserRole::Operations, UserRole::Sales);

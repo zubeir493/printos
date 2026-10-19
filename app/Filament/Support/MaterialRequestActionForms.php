@@ -4,7 +4,7 @@ namespace App\Filament\Support;
 
 use App\Models\InventoryBalance;
 use App\Models\InventoryItem;
-use App\Models\JobOrderTask;
+use App\Models\JobOrder;
 use App\Models\MaterialRequest;
 use App\Models\Warehouse;
 use Closure;
@@ -98,7 +98,7 @@ class MaterialRequestActionForms
     /**
      * @return array<int, mixed>
      */
-    public static function requestMaterialsForm(JobOrderTask $record): array
+    public static function requestMaterialsForm(JobOrder $record): array
     {
         return [
             Repeater::make('items')
@@ -139,7 +139,7 @@ class MaterialRequestActionForms
         ];
     }
 
-    public static function createMaterialRequests(JobOrderTask $record, array $data): int
+    public static function createMaterialRequests(JobOrder $record, array $data): int
     {
         $created = 0;
 
@@ -158,7 +158,7 @@ class MaterialRequestActionForms
             }
 
             MaterialRequest::create([
-                'job_order_task_id' => $record->id,
+                'job_order_id' => $record->id,
                 'inventory_item_id' => $item['inventory_item_id'],
                 'requested_quantity' => $quantity,
                 'required_quantity' => (float) ($paperRow['required_quantity'] ?? 0),

@@ -23,8 +23,8 @@ class MaterialRequestCreatedNotification extends Notification implements ShouldQ
 
     protected function webPushBody(): string
     {
-        $task = $this->materialRequest->jobOrderTask;
-        $jobOrder = $task->jobOrder;
+        $task = $this->materialRequest->jobOrder;
+        $jobOrder = $task;
 
         return "Task '{$task->name}' on job {$jobOrder->job_order_number} requires {$this->materialRequest->requested_quantity} of {$this->materialRequest->inventoryItem->name}.";
     }

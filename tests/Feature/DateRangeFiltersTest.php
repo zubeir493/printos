@@ -10,7 +10,7 @@ test('date based resource tables use the shared date range filter', function (st
     ['app/Filament/Resources/BankTransactions/Tables/BankTransactionsTable.php', "DateRangeFilter::make('transaction_date_range', 'transaction_date', 'Transaction date')"],
     ['app/Filament/Resources/BankTransfers/Tables/BankTransfersTable.php', "DateRangeFilter::make('transfer_date_range', 'transfer_date', 'Transfer date')"],
     ['app/Filament/Resources/JobOrders/Tables/JobOrdersTable.php', "DateRangeFilter::make('submission_date_range', 'submission_date', 'Submission date')"],
-    ['app/Filament/Resources/JobOrderTasks/Tables/JobOrderTasksTable.php', "DateRangeFilter::makeForRelation('deadline_date_range', 'jobOrder', 'submission_date', 'Deadline')"],
+    ['app/Filament/Resources/JobOrders/Tables/JobOrdersTable.php', "DateRangeFilter::make('submission_date_range', 'submission_date', 'Submission date')"],
     ['app/Filament/Resources/SalesOrders/Tables/SalesOrdersTable.php', "DateRangeFilter::make('order_date_range', 'order_date', 'Order date')"],
     ['app/Filament/Resources/PurchaseOrders/Tables/PurchaseOrdersTable.php', "DateRangeFilter::make('order_date_range', 'order_date', 'Order date')"],
     ['app/Filament/Resources/PayrollRuns/PayrollRunResource.php', "DateRangeFilter::make('period', 'period_start', 'Period', 'period_end')"],

@@ -17,6 +17,7 @@ use App\Models\SalesOrder;
 use App\Models\SalesOrderItem;
 use App\Models\Warehouse;
 use App\Services\Accounting\VoidPaymentJournalEntry;
+use App\Services\JobOrders\LogJobOrderProduction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -224,10 +225,11 @@ class AccountingWorkflowTest extends TestCase
         $this->assertDatabaseMissing('journal_entries', ['source_type' => Payment::class]);
     }
 
-    public function test_completed_job_order_posts_cash_and_revenue()
+    public function test_completed_job_order_posts_receivable_and_revenue()
     {
         $customer = Partner::create(['name' => 'Job Customer', 'is_customer' => true]);
         $jobOrder = JobOrder::create([
+            'name' => 'Printing', 'quantity' => 100,
             'partner_id' => $customer->id,
             'job_type' => 'books',
             'cost_calc_file' => 'job.pdf',
@@ -237,13 +239,16 @@ class AccountingWorkflowTest extends TestCase
             'subtotal' => 800.00,
             'tax_amount' => 0.00,
             'total' => 800.00,
-            'status' => 'active',
+            'status' => 'design',
         ]);
 
-        $jobOrder->update(['status' => 'completed']);
+        $jobOrder->update(['status' => 'production']);
+        app(LogJobOrderProduction::class)->handle($jobOrder, Warehouse::factory()->create()->id, 100);
+        Payment::create(['partner_id' => $customer->id, 'payable_type' => JobOrder::class, 'payable_id' => $jobOrder->id,
+            'amount' => 800, 'payment_date' => today(), 'direction' => 'inbound', 'method' => 'cash', 'transaction_type' => 'customer_receipt']);
 
         $entry = JournalEntry::where('source_type', JobOrder::class)->where('source_id', $jobOrder->id)->firstOrFail();
-        $cashAccount = Account::getSystemAccount('1000', 'Cash in Hand', 'Asset');
+        $cashAccount = Account::getSystemAccount(Account::CODE_AR, 'Accounts Receivable', 'Asset');
         $revenueAccount = Account::getSystemAccount('4000', 'Sales Revenue', 'Revenue');
 
         $this->assertDatabaseHas('journal_items', ['journal_entry_id' => $entry->id, 'account_id' => $cashAccount->id, 'debit' => 800.00]);
@@ -264,6 +269,7 @@ class AccountingWorkflowTest extends TestCase
             'status' => 'active',
         ]);
         $jobOrder = JobOrder::create([
+            'name' => 'Printing', 'quantity' => 100,
             'partner_id' => $customer->id,
             'job_type' => 'books',
             'cost_calc_file' => 'withholding.pdf',
@@ -273,7 +279,7 @@ class AccountingWorkflowTest extends TestCase
             'subtotal' => 1000.00,
             'tax_amount' => 0.00,
             'total' => 1000.00,
-            'status' => 'active',
+            'status' => 'design',
         ]);
 
         $payment = Payment::create([
@@ -490,6 +496,7 @@ class AccountingWorkflowTest extends TestCase
         SalesOrderItem::create(['sales_order_id' => $salesOrder->id, 'inventory_item_id' => $item->id, 'quantity' => 1, 'unit_price' => 200.00, 'total' => 200.00]);
 
         $jobOrder = JobOrder::withoutEvents(fn () => JobOrder::create([
+            'name' => 'Printing', 'quantity' => 100,
             'job_order_number' => 'JO-REPAIR-001',
             'partner_id' => $customer->id,
             'job_type' => 'books',

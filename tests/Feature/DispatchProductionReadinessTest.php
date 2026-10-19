@@ -8,8 +8,8 @@ use App\Models\DispatchItem;
 use App\Models\InventoryBalance;
 use App\Models\InventoryItem;
 use App\Models\JobOrder;
-use App\Models\JobOrderTask;
 use App\Models\Partner;
+use App\Models\StockMovement;
 use App\Models\User;
 use App\Models\Warehouse;
 use App\UserRole;
@@ -34,19 +34,19 @@ it('creates dispatch stock movement while lazy loading is prevented', function (
     $jobOrder = JobOrder::factory()->create([
         'partner_id' => Partner::factory(),
         'production_mode' => 'make_to_order',
-        'status' => 'active',
+        'status' => 'design',
     ]);
 
-    $task = JobOrderTask::factory()->create([
-        'job_order_id' => $jobOrder->id,
+    $task = tap($jobOrder, fn (JobOrder $record) => $record->updateQuietly([
+
         'name' => 'Binding',
         'quantity' => 50,
         'status' => 'production',
-    ]);
+    ]));
 
     $wipItem = InventoryItem::factory()->create([
         'name' => 'Binding WIP',
-        'sku' => 'TASK-'.$task->id,
+        'sku' => 'JOB-'.$task->id,
         'unit' => 'pcs',
         'purchase_unit' => 'pcs',
         'conversion_factor' => 1,
@@ -54,6 +54,12 @@ it('creates dispatch stock movement while lazy loading is prevented', function (
         'is_sellable' => false,
     ]);
 
+    $task->updateQuietly(['output_inventory_item_id' => $wipItem->id]);
+    StockMovement::withoutEvents(fn () => StockMovement::create([
+        'inventory_item_id' => $wipItem->id, 'warehouse_id' => $warehouse->id,
+        'type' => 'production_output', 'reference_type' => JobOrder::class, 'reference_id' => $task->id,
+        'quantity' => $task->quantity, 'movement_date' => now(),
+    ]));
     InventoryBalance::create([
         'inventory_item_id' => $wipItem->id,
         'warehouse_id' => $warehouse->id,
@@ -68,9 +74,7 @@ it('creates dispatch stock movement while lazy loading is prevented', function (
                 'job_order_id' => $jobOrder->id,
                 'warehouse_id' => $warehouse->id,
                 'delivery_date' => now()->toDateString(),
-                'quantities' => [
-                    $task->id => 10,
-                ],
+                'quantity' => 10,
             ])
             ->call('create')
             ->assertHasNoFormErrors();
@@ -79,7 +83,7 @@ it('creates dispatch stock movement while lazy loading is prevented', function (
     }
 
     $this->assertDatabaseHas('dispatch_items', [
-        'job_order_task_id' => $task->id,
+        'job_order_id' => $task->id,
         'quantity' => 10,
     ]);
 
@@ -111,19 +115,19 @@ it('halts dispatch creation with a notification when stock is insufficient', fun
     $jobOrder = JobOrder::factory()->create([
         'partner_id' => Partner::factory(),
         'production_mode' => 'make_to_order',
-        'status' => 'active',
+        'status' => 'design',
     ]);
 
-    $task = JobOrderTask::factory()->create([
-        'job_order_id' => $jobOrder->id,
+    $task = tap($jobOrder, fn (JobOrder $record) => $record->updateQuietly([
+
         'name' => 'Binding',
         'quantity' => 5000,
         'status' => 'production',
-    ]);
+    ]));
 
     $wipItem = InventoryItem::factory()->create([
         'name' => 'Binding WIP',
-        'sku' => 'TASK-'.$task->id,
+        'sku' => 'JOB-'.$task->id,
         'unit' => 'pcs',
         'purchase_unit' => 'pcs',
         'conversion_factor' => 1,
@@ -131,6 +135,12 @@ it('halts dispatch creation with a notification when stock is insufficient', fun
         'is_sellable' => false,
     ]);
 
+    $task->updateQuietly(['output_inventory_item_id' => $wipItem->id]);
+    StockMovement::withoutEvents(fn () => StockMovement::create([
+        'inventory_item_id' => $wipItem->id, 'warehouse_id' => $warehouse->id,
+        'type' => 'production_output', 'reference_type' => JobOrder::class, 'reference_id' => $task->id,
+        'quantity' => $task->quantity, 'movement_date' => now(),
+    ]));
     InventoryBalance::create([
         'inventory_item_id' => $wipItem->id,
         'warehouse_id' => $warehouse->id,
@@ -142,12 +152,10 @@ it('halts dispatch creation with a notification when stock is insufficient', fun
             'job_order_id' => $jobOrder->id,
             'warehouse_id' => $warehouse->id,
             'delivery_date' => now()->toDateString(),
-            'quantities' => [
-                $task->id => 5000,
-            ],
+            'quantity' => 5000,
         ])
         ->call('create')
-        ->assertNotified('Dispatch cannot be saved');
+        ->assertHasFormErrors(['quantity']);
 
     $this->assertDatabaseMissing('dispatches', [
         'job_order_id' => $jobOrder->id,
@@ -155,7 +163,7 @@ it('halts dispatch creation with a notification when stock is insufficient', fun
     ]);
 
     $this->assertDatabaseMissing('dispatch_items', [
-        'job_order_task_id' => $task->id,
+        'job_order_id' => $task->id,
         'quantity' => 5000,
     ]);
 
@@ -180,19 +188,19 @@ it('halts dispatch editing with a notification when the increase exceeds availab
     $jobOrder = JobOrder::factory()->create([
         'partner_id' => Partner::factory(),
         'production_mode' => 'make_to_order',
-        'status' => 'active',
+        'status' => 'design',
     ]);
 
-    $task = JobOrderTask::factory()->create([
-        'job_order_id' => $jobOrder->id,
+    $task = tap($jobOrder, fn (JobOrder $record) => $record->updateQuietly([
+
         'name' => 'Binding',
         'quantity' => 50,
         'status' => 'production',
-    ]);
+    ]));
 
     $wipItem = InventoryItem::factory()->create([
         'name' => 'Binding WIP',
-        'sku' => 'TASK-'.$task->id,
+        'sku' => 'JOB-'.$task->id,
         'unit' => 'pcs',
         'purchase_unit' => 'pcs',
         'conversion_factor' => 1,
@@ -200,6 +208,12 @@ it('halts dispatch editing with a notification when the increase exceeds availab
         'is_sellable' => false,
     ]);
 
+    $task->updateQuietly(['output_inventory_item_id' => $wipItem->id]);
+    StockMovement::withoutEvents(fn () => StockMovement::create([
+        'inventory_item_id' => $wipItem->id, 'warehouse_id' => $warehouse->id,
+        'type' => 'production_output', 'reference_type' => JobOrder::class, 'reference_id' => $task->id,
+        'quantity' => $task->quantity, 'movement_date' => now(),
+    ]));
     InventoryBalance::create([
         'inventory_item_id' => $wipItem->id,
         'warehouse_id' => $warehouse->id,
@@ -214,7 +228,7 @@ it('halts dispatch editing with a notification when the increase exceeds availab
 
     DispatchItem::factory()->create([
         'dispatch_id' => $dispatch->id,
-        'job_order_task_id' => $task->id,
+        'job_order_id' => $task->id,
         'quantity' => 10,
     ]);
 
@@ -223,14 +237,12 @@ it('halts dispatch editing with a notification when the increase exceeds availab
             'job_order_id' => $jobOrder->id,
             'warehouse_id' => $warehouse->id,
             'delivery_date' => now()->toDateString(),
-            'quantities' => [
-                $task->id => 20,
-            ],
+            'quantity' => 20,
         ])
         ->call('save')
-        ->assertNotified('Dispatch cannot be saved');
+        ->assertHasFormErrors(['quantity']);
 
-    expect($dispatch->dispatchItems()->where('job_order_task_id', $task->id)->value('quantity'))->toBe(10);
+    expect($dispatch->dispatchItems()->where('job_order_id', $task->id)->value('quantity'))->toBe(10);
 
     $this->assertDatabaseMissing('stock_movements', [
         'inventory_item_id' => $wipItem->id,
@@ -250,7 +262,7 @@ it('updates dispatch status from table actions', function (string $action, strin
         'warehouse_id' => Warehouse::factory(),
         'job_order_id' => JobOrder::factory([
             'partner_id' => Partner::factory(),
-            'status' => 'active',
+            'status' => 'production',
         ]),
         'status' => 'pending',
     ]);

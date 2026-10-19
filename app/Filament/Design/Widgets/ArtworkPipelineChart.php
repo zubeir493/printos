@@ -3,7 +3,7 @@
 namespace App\Filament\Design\Widgets;
 
 use App\Models\Artwork;
-use App\Models\JobOrderTask;
+use App\Models\JobOrder;
 use Filament\Widgets\ChartWidget;
 
 class ArtworkPipelineChart extends ChartWidget
@@ -14,7 +14,7 @@ class ArtworkPipelineChart extends ChartWidget
 
     protected function getData(): array
     {
-        $waitingUpload = JobOrderTask::query()
+        $waitingUpload = JobOrder::query()
             ->whereNotIn('status', ['completed', 'cancelled'])
             ->whereDoesntHave('artworks')
             ->count();

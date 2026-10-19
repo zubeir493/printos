@@ -145,6 +145,7 @@ test('receivables aging includes job orders with open balances', function (): vo
     $customer = Partner::factory()->create(['is_customer' => true]);
 
     JobOrder::create([
+        'name' => 'Printing', 'quantity' => 100,
         'partner_id' => $customer->id,
         'job_type' => 'books',
         'cost_calc_file' => 'aging.pdf',
@@ -154,7 +155,7 @@ test('receivables aging includes job orders with open balances', function (): vo
         'subtotal' => 700,
         'tax_amount' => 0,
         'total' => 700,
-        'status' => 'active',
+        'status' => 'design',
     ]);
 
     $page = new ReceivablesAgingReport;

@@ -5,7 +5,6 @@ namespace Tests\Feature;
 use App\Models\InventoryBalance;
 use App\Models\InventoryItem;
 use App\Models\JobOrder;
-use App\Models\JobOrderTask;
 use App\Models\MaterialIssueApproval;
 use App\Models\MaterialRequest;
 use App\Models\Partner;
@@ -89,7 +88,7 @@ class MaterialIssueApprovalWorkflowTest extends TestCase
             'warehouse_id' => $warehouse->id,
             'type' => 'consumption',
             'reference_type' => JobOrder::class,
-            'reference_id' => $materialRequest->jobOrderTask->job_order_id,
+            'reference_id' => $materialRequest->jobOrder->id,
             'quantity' => -120.00,
         ]);
     }
@@ -143,13 +142,14 @@ class MaterialIssueApprovalWorkflowTest extends TestCase
         ]);
 
         $jobOrder = JobOrder::create([
+            'name' => 'Printing', 'quantity' => 100,
             'cost_calc_file' => 'job-order-cost-calculations/materials.csv',
             'job_order_number' => 'JO-TEST-001',
             'partner_id' => Partner::factory()->create()->id,
             'job_type' => 'books',
             'services' => json_encode(['printing']),
             'submission_date' => now()->toDateString(),
-            'status' => 'active',
+            'status' => 'design',
             'remarks' => 'Testing over-issue flow',
             'advance_amount' => 0,
             'advance_paid' => false,
@@ -157,21 +157,21 @@ class MaterialIssueApprovalWorkflowTest extends TestCase
             'production_mode' => 'make_to_order',
         ]);
 
-        $task = JobOrderTask::create([
-            'job_order_id' => $jobOrder->id,
+        $task = tap($jobOrder, fn (JobOrder $record) => $record->updateQuietly([
+
             'name' => 'Printing',
             'quantity' => 1000,
-            'task_cost' => 0,
+            'subtotal' => 0,
             'status' => 'production',
             'paper' => [[
                 'inventory_item_id' => $item->id,
                 'required_quantity' => $requiredQuantity,
                 'reserve_quantity' => max(0, $requestedQuantity - $requiredQuantity),
             ]],
-        ]);
+        ]));
 
         $materialRequest = MaterialRequest::create([
-            'job_order_task_id' => $task->id,
+            'job_order_id' => $task->id,
             'inventory_item_id' => $item->id,
             'required_quantity' => $requiredQuantity,
             'requested_quantity' => $requestedQuantity,

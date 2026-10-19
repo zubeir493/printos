@@ -13,13 +13,12 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use UnitEnum;
 
 class DielineResource extends Resource
 {
     protected static ?string $model = Dieline::class;
 
-    //To be removed once calculator is finished
+    // To be removed once calculator is finished
     // protected static bool $shouldRegisterNavigation = false;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCubeTransparent;
@@ -36,7 +35,7 @@ class DielineResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()->with(['creator', 'jobOrderTask.jobOrder']);
+        return parent::getEloquentQuery()->with(['creator', 'jobOrder']);
     }
 
     public static function getPages(): array

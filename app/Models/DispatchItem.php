@@ -17,7 +17,7 @@ class DispatchItem extends Model
      */
     protected $fillable = [
         'dispatch_id',
-        'job_order_task_id',
+        'job_order_id',
         'quantity',
     ];
 
@@ -31,7 +31,7 @@ class DispatchItem extends Model
         return [
             'id' => 'integer',
             'dispatch_id' => 'integer',
-            'job_order_task_id' => 'integer',
+            'job_order_id' => 'integer',
         ];
     }
 
@@ -40,8 +40,8 @@ class DispatchItem extends Model
         return $this->belongsTo(Dispatch::class);
     }
 
-    public function jobOrderTask(): BelongsTo
+    public function jobOrder(): BelongsTo
     {
-        return $this->belongsTo(JobOrderTask::class);
+        return $this->belongsTo(JobOrder::class);
     }
 }

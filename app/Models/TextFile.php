@@ -6,14 +6,13 @@ use App\Support\PrivateStorage;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasOneThrough;
 
 class TextFile extends Model
 {
     use HasFactory;
 
     protected $fillable = [
-        'job_order_task_id',
+        'job_order_id',
         'uploaded_by',
         'filename',
         'original_name',
@@ -28,21 +27,9 @@ class TextFile extends Model
         ];
     }
 
-    public function jobOrderTask(): BelongsTo
+    public function jobOrder(): BelongsTo
     {
-        return $this->belongsTo(JobOrderTask::class);
-    }
-
-    public function jobOrder(): HasOneThrough
-    {
-        return $this->hasOneThrough(
-            JobOrder::class,
-            JobOrderTask::class,
-            'id',             // Foreign key on job_order_tasks table
-            'id',             // Foreign key on job_orders table
-            'job_order_task_id', // Local key on text_files table
-            'job_order_id'    // Local key on job_order_tasks table
-        );
+        return $this->belongsTo(JobOrder::class);
     }
 
     public function uploader(): BelongsTo

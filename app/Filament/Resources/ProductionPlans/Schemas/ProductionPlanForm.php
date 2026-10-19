@@ -2,7 +2,7 @@
 
 namespace App\Filament\Resources\ProductionPlans\Schemas;
 
-use App\Models\JobOrderTask;
+use App\Models\JobOrder;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
@@ -39,15 +39,15 @@ class ProductionPlanForm
                                 TableColumn::make('Rounds')->alignLeft(),
                             ])
                             ->schema([
-                                Select::make('job_order_task_id')
+                                Select::make('job_order_id')
                                     ->relationship(
-                                        'jobOrderTask',
+                                        'jobOrder',
                                         'name',
                                         modifyQueryUsing: fn ($query) => $query
                                             ->where('status', 'production')
-                                            ->with('jobOrder.partner')
+                                            ->with('partner')
                                     )
-                                    ->getOptionLabelFromRecordUsing(fn (JobOrderTask $record): string => $record->name.' - '.($record->jobOrder?->partner?->name ?? 'Internal'))
+                                    ->getOptionLabelFromRecordUsing(fn (JobOrder $record): string => $record->name.' - '.($record->partner?->name ?? 'Internal'))
                                     ->searchable()
                                     ->preload()
                                     ->unique()
@@ -78,7 +78,7 @@ class ProductionPlanForm
                                     ->action(function (Repeater $component) {
                                         $state = $component->getState() ?? [];
                                         $state[(string) Str::uuid()] = [
-                                            'job_order_task_id' => null,
+                                            'job_order_id' => null,
                                             'planned_quantity' => 0,
                                             'planned_plates' => 0,
                                             'planned_rounds' => 0,
@@ -100,7 +100,7 @@ class ProductionPlanForm
                                     'machine_id' => null,
                                     'items' => [
                                         (string) Str::uuid() => [
-                                            'job_order_task_id' => null,
+                                            'job_order_id' => null,
                                             'planned_quantity' => 0,
                                             'planned_plates' => 0,
                                             'planned_rounds' => 0,

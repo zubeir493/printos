@@ -60,7 +60,7 @@ class ProductionReportForm
                             ->schema([
                                 Placeholder::make('job_order_task')
                                     ->label('Task')
-                                    ->content(fn ($record): string => $record?->productionPlanItem?->jobOrderTask?->name ?? 'Task'),
+                                    ->content(fn ($record): string => $record?->productionPlanItem?->jobOrder?->name ?? 'Task'),
                                 TextInput::make('actual_quantity')
                                     ->label('Quantity')
                                     ->numeric()

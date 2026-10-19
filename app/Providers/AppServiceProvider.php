@@ -14,7 +14,6 @@ use App\Models\Employee;
 use App\Models\InventoryBalance;
 use App\Models\InventoryItem;
 use App\Models\Invoice;
-use App\Models\JobOrderTask;
 use App\Models\MaterialRequest;
 use App\Models\Payment;
 use App\Models\PayrollRunEmployee;
@@ -32,7 +31,6 @@ use App\Observers\EmployeeObserver;
 use App\Observers\InventoryBalanceObserver;
 use App\Observers\InventoryItemObserver;
 use App\Observers\InvoiceObserver;
-use App\Observers\JobOrderTaskObserver;
 use App\Observers\MaterialRequestObserver;
 use App\Observers\PaymentObserver;
 use App\Observers\PayrollRunEmployeeObserver;
@@ -166,7 +164,6 @@ class AppServiceProvider extends ServiceProvider
         StockMovement::observe(StockMovementObserver::class);
 
         // Totals Automation
-        JobOrderTask::observe(JobOrderTaskObserver::class);
         PurchaseOrderItem::observe(PurchaseOrderItemObserver::class);
 
         // Accounting Triggers

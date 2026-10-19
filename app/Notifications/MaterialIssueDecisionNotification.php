@@ -27,7 +27,7 @@ class MaterialIssueDecisionNotification extends Notification implements ShouldQu
     {
         $isApproved = $this->approval->status === 'approved';
         $materialRequest = $this->approval->materialRequest;
-        $jobOrderNumber = $materialRequest->jobOrderTask->jobOrder->job_order_number;
+        $jobOrderNumber = $materialRequest->jobOrder->job_order_number;
         $itemName = $materialRequest->inventoryItem->name;
 
         return $isApproved
@@ -38,7 +38,7 @@ class MaterialIssueDecisionNotification extends Notification implements ShouldQu
 
     protected function notificationUrl(object $notifiable): string
     {
-        return $this->resourceUrl($notifiable, 'job-order-tasks', 'view', ['record' => $this->approval->materialRequest->jobOrderTask]);
+        return $this->resourceUrl($notifiable, 'job-orders', 'view', ['record' => $this->approval->materialRequest->jobOrder]);
     }
 
     public function toDatabase(object $notifiable): array

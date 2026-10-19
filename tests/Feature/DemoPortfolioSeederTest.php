@@ -30,7 +30,7 @@ test('demo portfolio seeder creates connected data and can be rerun', function (
     ]);
 
     expect(DB::table('job_orders')->where('job_order_number', 'like', 'JO-PORT-%')->count())->toBe(3);
-    expect(DB::table('job_order_tasks')->where('name', 'like', '%booklet%')->exists())->toBeTrue();
+    expect(DB::table('job_orders')->where('name', 'like', '%booklet%')->exists())->toBeTrue();
     expect(DB::table('production_plan_items')->count())->toBeGreaterThanOrEqual(3);
     expect(DB::table('inventory_balances')->where('quantity_on_hand', '>', 0)->count())->toBeGreaterThanOrEqual(6);
     expect(DB::table('payments')->where('payment_number', 'like', 'PAY-%-PORT-%')->count())->toBe(2);

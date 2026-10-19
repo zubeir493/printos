@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Filament\Resources\JobOrderTasks\RelationManagers;
+namespace App\Filament\Resources\JobOrders\RelationManagers;
 
 use App\Filament\Support\MaterialRequestActionForms;
 use App\Models\MaterialRequest;
@@ -39,7 +39,7 @@ class MaterialRequestsRelationManager extends RelationManager
                     ->numeric()
                     ->required()
                     ->default(function () {
-                        // Auto-set from JobOrderTask quantity
+                        // Auto-set from JobOrder quantity
                         $owner = $this->getOwnerRecord();
 
                         return $owner ? $owner->quantity : 0;

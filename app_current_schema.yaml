@@ -12,6 +12,20 @@ models:
       hasMany: JobOrder, SalesInvoice, PurchaseOrder, PurchaseInvoice, Payment, SalesOrder
 
   JobOrder:
+    name: string
+    quantity: integer default:1
+    size: string nullable
+    paper: json nullable
+    deliverables: json nullable
+    instructions: text nullable
+    designer_id: id foreign:users nullable
+    typist_id: id foreign:users nullable
+    proforma_id: id foreign nullable
+    proforma_task_id: id foreign unique nullable
+    output_inventory_item_id: id foreign:inventory_items nullable
+    design_completed_at: timestamp nullable
+    production_completed_at: timestamp nullable
+    completed_at: timestamp nullable
     job_order_number: string unique
     partner_id: id foreign
     job_type: enum:books,packages
@@ -21,7 +35,9 @@ models:
     remarks: text nullable
     advance_paid: boolean default:false
     advance_amount: decimal:12,2
-    total_price: decimal:12,2
+    subtotal: decimal:12,2
+    tax_amount: decimal:12,2
+    total: decimal:12,2
     cost_calc_file: string
     production_started_at: timestamp nullable
     materials_fully_issued_at: timestamp nullable
@@ -29,18 +45,8 @@ models:
     timestamps: true
     relationships:
       belongsTo: Partner
-      hasMany: JobOrderTask, Dispatch, SalesInvoice, Artwork, JobOrderOutput, Payment
+      hasMany: Dispatch, DispatchItem, ProductionPlanItem, MaterialRequest, Artwork, TextFile, Dieline, SalesInvoice, Artwork, JobOrderOutput, Payment
 
-  JobOrderTask:
-    job_order_id: id foreign
-    name: string
-    quantity: integer
-    unit_cost: decimal:12,2
-    paper: json nullable
-    timestamps: true
-    relationships:
-      belongsTo: JobOrder
-      hasMany: DispatchItem
 
   Artwork:
     job_order_id: id foreign
@@ -62,11 +68,11 @@ models:
 
   DispatchItem:
     dispatch_id: id foreign
-    job_order_task_id: id foreign
+    job_order_id: id foreign
     quantity: integer
     timestamps: true
     relationships:
-      belongsTo: Dispatch, JobOrderTask
+      belongsTo: Dispatch
 
   # =========================
   # SALES

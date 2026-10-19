@@ -2,15 +2,27 @@
 
 use App\Models\Bank;
 use App\Models\BankTransfer;
-use App\Models\JobOrderTask;
+use App\Models\JobOrder;
 use App\Models\User;
 use App\Notifications\BankTransferStatusChangedNotification;
-use App\Notifications\JobOrderTaskCancelledNotification;
+use App\Notifications\JobOrderCancelledNotification;
 use App\UserRole;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTruncation;
+use Illuminate\Foundation\Testing\RefreshDatabaseState;
 use Illuminate\Support\Facades\Notification;
 
-uses(RefreshDatabase::class);
+uses(DatabaseTruncation::class);
+
+beforeEach(function (): void {
+    RefreshDatabaseState::$migrated = false;
+    $this->artisan('migrate:fresh');
+    RefreshDatabaseState::$migrated = true;
+});
+
+afterEach(function (): void {
+    RefreshDatabaseState::$migrated = false;
+    RefreshDatabaseState::$inMemoryConnections = [];
+});
 
 test('completed bank transfers notify finance operations and admin', function (): void {
     Notification::fake();
@@ -55,9 +67,9 @@ test('cancelled production tasks notify production users', function (): void {
     Notification::fake();
 
     $production = User::factory()->create(['role' => UserRole::Production]);
-    $task = JobOrderTask::factory()->create(['status' => 'design']);
+    $task = JobOrder::factory()->create(['status' => 'design']);
 
     $task->update(['status' => 'cancelled']);
 
-    Notification::assertSentTo($production, JobOrderTaskCancelledNotification::class);
+    Notification::assertSentTo($production, JobOrderCancelledNotification::class);
 });

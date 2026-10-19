@@ -4,7 +4,7 @@ namespace App\Providers\Filament;
 
 use App\Filament\AvatarProviders\PrimaryColorAvatarProvider;
 use App\Filament\Pages\Auth\EditProfile;
-use App\Filament\Resources\JobOrderTasks\JobOrderTaskResource;
+use App\Filament\Resources\JobOrders\JobOrderResource;
 use App\Filament\Resources\TextFiles\TextFileResource;
 use Filament\Enums\ThemeMode;
 use Filament\Http\Middleware\Authenticate;
@@ -45,7 +45,7 @@ class TypistPanelProvider extends PanelProvider
                 'primary' => Color::Indigo,
             ])
             ->resources([
-                JobOrderTaskResource::class,
+                JobOrderResource::class,
                 TextFileResource::class,
             ])
             ->pages([

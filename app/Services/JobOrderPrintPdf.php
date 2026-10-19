@@ -82,7 +82,7 @@ class JobOrderPrintPdf
     {
         $jobOrder->loadMissing([
             'partner',
-            'jobOrderTasks.materialRequests.inventoryItem',
+            'materialRequests.inventoryItem',
         ]);
 
         $inventoryItems = $this->inventoryItemsForPaper($jobOrder);
@@ -109,14 +109,13 @@ class JobOrderPrintPdf
             ],
             'remarks' => $jobOrder->remarks,
             'services' => $this->servicesFor($jobOrder),
-            'tasks' => $jobOrder->jobOrderTasks
-                ->map(fn ($task): array => [
-                    'name' => $task->name,
-                    'quantity' => $task->quantity,
-                    'size' => $task->size,
-                    'instructions' => $task->instructions,
-                    'materials' => $this->materialsFor($task, $inventoryItems),
-                ])
+            'tasks' => collect([$jobOrder])->map(fn ($task): array => [
+                'name' => $task->name,
+                'quantity' => $task->quantity,
+                'size' => $task->size,
+                'instructions' => $task->instructions,
+                'materials' => $this->materialsFor($task, $inventoryItems),
+            ])
                 ->values()
                 ->all(),
         ];
@@ -191,8 +190,7 @@ class JobOrderPrintPdf
 
     private function inventoryItemsForPaper(JobOrder $jobOrder): Collection
     {
-        $inventoryItemIds = $jobOrder->jobOrderTasks
-            ->flatMap(fn ($task) => collect($task->paper ?? [])->pluck('inventory_item_id'))
+        $inventoryItemIds = collect($jobOrder->paper ?? [])->pluck('inventory_item_id')
             ->filter()
             ->unique()
             ->values();

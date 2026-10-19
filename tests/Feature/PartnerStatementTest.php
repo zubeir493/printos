@@ -227,7 +227,7 @@ it('uses job orders and purchase orders as statement balance sources', function 
         'subtotal' => 500,
         'tax_amount' => 0,
         'total' => 500,
-        'status' => 'active',
+        'status' => 'design',
     ]);
 
     $purchaseOrder = PurchaseOrder::factory()->create([

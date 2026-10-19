@@ -2,7 +2,7 @@
 
 namespace App\Filament\Design\Widgets;
 
-use App\Models\JobOrderTask;
+use App\Models\JobOrder;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget as BaseWidget;
@@ -19,17 +19,17 @@ class AwaitingYourUploadTable extends BaseWidget
     {
         return $table
             ->query(
-                JobOrderTask::query()
-                    ->with(['jobOrder.partner'])
-                    ->whereDoesntHave('artworks')
+                JobOrder::query()
+                    ->with(['partner'])
+                    ->where('designer_id', auth()->id())->where('status', 'design')->whereDoesntHave('artworks')
                     ->latest()
             )
             ->searchable(false)
             ->columns([
-                Tables\Columns\TextColumn::make('jobOrder.job_order_number')
+                Tables\Columns\TextColumn::make('job_order_number')
                     ->label('Job Order')
                     ->searchable(),
-                Tables\Columns\TextColumn::make('jobOrder.partner.name')
+                Tables\Columns\TextColumn::make('partner.name')
                     ->label('Customer')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('name')

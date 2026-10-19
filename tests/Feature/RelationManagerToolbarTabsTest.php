@@ -1,9 +1,10 @@
 <?php
 
 use App\Filament\Resources\JobOrders\JobOrderResource;
-use App\Filament\Resources\JobOrders\RelationManagers\JobOrderArtworksRelationManager;
-use App\Filament\Resources\JobOrders\RelationManagers\MaterialsOverviewRelationManager;
+use App\Filament\Resources\JobOrders\RelationManagers\ArtworksRelationManager;
+use App\Filament\Resources\JobOrders\RelationManagers\MaterialRequestsRelationManager;
 use App\Filament\Resources\JobOrders\RelationManagers\PaymentsRelationManager;
+use App\Filament\Resources\JobOrders\RelationManagers\TextFilesRelationManager;
 use App\Filament\Support\RelationManagerToolbarTabs;
 use App\Models\User;
 use App\UserRole;
@@ -19,15 +20,16 @@ test('relation manager tabs render in the table toolbar with parent tab switchin
     $tabs = RelationManagerToolbarTabs::tabsForResource(JobOrderResource::class);
 
     expect($tabs)
-        ->toHaveCount(3)
+        ->toHaveCount(4)
         ->and(array_column($tabs, 'manager'))->toBe([
-            MaterialsOverviewRelationManager::class,
-            JobOrderArtworksRelationManager::class,
+            ArtworksRelationManager::class,
+            TextFilesRelationManager::class,
+            MaterialRequestsRelationManager::class,
             PaymentsRelationManager::class,
         ]);
 
     $html = view('filament.tables.relation-manager-toolbar-tabs', [
-        'activeManager' => JobOrderArtworksRelationManager::class,
+        'activeManager' => ArtworksRelationManager::class,
         'tabs' => $tabs,
     ])->render();
 

@@ -1,11 +1,10 @@
 <?php
 
-use App\Filament\Resources\JobOrderTasks\Pages\ListJobOrderTasks;
+use App\Filament\Resources\JobOrders\Pages\ListJobOrders;
 use App\Filament\Resources\MaterialRequests\Pages\ManageMaterialRequests;
 use App\Models\InventoryBalance;
 use App\Models\InventoryItem;
 use App\Models\JobOrder;
-use App\Models\JobOrderTask;
 use App\Models\MaterialRequest;
 use App\Models\Partner;
 use App\Models\User;
@@ -77,7 +76,7 @@ it('uses compact material action modals and shows units while requesting materia
 
     [, , , $task] = makeMaterialIssueScenario(stock: 10);
 
-    Livewire::test(ListJobOrderTasks::class)
+    Livewire::test(ListJobOrders::class)
         ->assertActionExists(
             TestAction::make('request_materials')->table($task),
             fn (Action $action): bool => $action->getModalWidth() === 'lg',
@@ -95,7 +94,7 @@ it('shows a validation error when the issue materials popup exceeds available st
 
     [$materialRequest, $warehouse, $item, $task] = makeMaterialIssueScenario(stock: 10);
 
-    Livewire::test(ListJobOrderTasks::class)
+    Livewire::test(ListJobOrders::class)
         ->assertActionExists(
             TestAction::make('issue_materials')->table($task),
             fn (Action $action): bool => $action->getModalWidth() === 'lg',
@@ -122,7 +121,7 @@ it('validates invalid request material rows instead of throwing', function (): v
 
     [, , , $task] = makeMaterialIssueScenario(stock: 10);
 
-    Livewire::test(ListJobOrderTasks::class)
+    Livewire::test(ListJobOrders::class)
         ->callAction(TestAction::make('request_materials')->table($task), data: [
             'items' => [[
                 'inventory_item_id' => 999999,
@@ -159,12 +158,12 @@ function makeMaterialIssueScenario(int|float $stock): array
 
     $jobOrder = JobOrder::factory()->create([
         'partner_id' => Partner::factory(),
-        'status' => 'active',
+        'status' => 'design',
         'production_mode' => 'make_to_order',
     ]);
 
-    $task = JobOrderTask::factory()->create([
-        'job_order_id' => $jobOrder->id,
+    $task = tap($jobOrder, fn (JobOrder $record) => $record->updateQuietly([
+
         'name' => 'Printing',
         'quantity' => 100,
         'status' => 'production',
@@ -172,10 +171,10 @@ function makeMaterialIssueScenario(int|float $stock): array
             'inventory_item_id' => $item->id,
             'required_quantity' => 25,
         ]],
-    ]);
+    ]));
 
     $materialRequest = MaterialRequest::create([
-        'job_order_task_id' => $task->id,
+        'job_order_id' => $task->id,
         'inventory_item_id' => $item->id,
         'required_quantity' => 25,
         'requested_quantity' => 25,

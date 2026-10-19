@@ -3,7 +3,7 @@
 namespace Database\Factories;
 
 use App\Models\Dispatch;
-use App\Models\JobOrderTask;
+use App\Models\JobOrder;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 class DispatchItemFactory extends Factory
@@ -15,8 +15,8 @@ class DispatchItemFactory extends Factory
     {
         return [
             'dispatch_id' => Dispatch::factory(),
-            'job_order_task_id' => JobOrderTask::factory(),
-            'quantity' => fake()->numberBetween(-10000, 10000),
+            'job_order_id' => JobOrder::factory(),
+            'quantity' => fake()->numberBetween(1, 100),
         ];
     }
 }

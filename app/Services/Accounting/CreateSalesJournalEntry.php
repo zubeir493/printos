@@ -12,6 +12,9 @@ class CreateSalesJournalEntry
 {
     public function handle(SalesOrder|JobOrder $sale): void
     {
+        if ($sale instanceof JobOrder && $sale->production_mode === 'make_to_stock') {
+            return;
+        }
         $sale = $sale instanceof SalesOrder
             ? ($sale->fresh(['salesOrderItems']) ?? $sale->load('salesOrderItems'))
             : ($sale->fresh() ?? $sale);
@@ -40,7 +43,7 @@ class CreateSalesJournalEntry
             return;
         }
 
-        $debitAccount = $sale instanceof SalesOrder && $sale->payment_mode === 'credit'
+        $debitAccount = $sale instanceof JobOrder || ($sale instanceof SalesOrder && $sale->payment_mode === 'credit')
             ? Account::getSystemAccount(Account::CODE_AR, 'Accounts Receivable', 'Asset')
             : $this->resolveImmediateSaleAccount($sale);
         $revenueAccount = Account::getSystemAccount('4000', 'Sales Revenue', 'Revenue');

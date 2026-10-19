@@ -48,16 +48,15 @@ it('creates one linked job order from an approved proforma', function (): void {
         'deliverables' => [['label' => 'Dieline', 'type' => 'artwork']],
     ]);
 
-    $jobOrder = app(ProformaWorkflowService::class)->createJobOrder($proforma);
+    $jobOrder = app(ProformaWorkflowService::class)->createJobOrders($proforma)->first();
 
     expect($jobOrder->cost_calc_file)->toContain('proforma-'.$proforma->id)
         ->and($jobOrder->partner_id)->toBe($customer->id)
-        ->and($jobOrder->jobOrderTasks)->toHaveCount(1)
-        ->and($jobOrder->jobOrderTasks->first()->deliverables[0]['label'])->toBe('Dieline')
+        ->and(collect([$jobOrder]))->toHaveCount(1)
+        ->and($jobOrder->deliverables[0]['label'])->toBe('Dieline')
         ->and($proforma->refresh()->status)->toBe('job_order_created');
 
-    expect(fn () => app(ProformaWorkflowService::class)->createJobOrder($proforma->refresh()))
-        ->toThrow(RuntimeException::class);
+    expect(app(ProformaWorkflowService::class)->createJobOrders($proforma->refresh())->first()->id)->toBe($jobOrder->id);
 });
 
 it('redirects to the job order edit page after creating one from a proforma action', function (): void {
@@ -87,7 +86,7 @@ it('redirects to the job order edit page after creating one from a proforma acti
 
     $jobOrder = JobOrder::query()->firstOrFail();
 
-    $component->assertRedirect(JobOrderResource::getUrl('edit', ['record' => $jobOrder]));
+    $component->assertRedirect(JobOrderResource::getUrl('index', ['filters' => ['proforma_id' => ['value' => $proforma->id]]]));
 });
 
 it('stores and emails a proforma pdf privately', function (): void {
@@ -374,7 +373,7 @@ it('restores the required cost calculation file and removes proforma id from job
     ]));
 
     expect(Schema::hasColumn('job_orders', 'cost_calc_file'))->toBeTrue()
-        ->and(Schema::hasColumn('job_orders', 'proforma_id'))->toBeFalse();
+        ->and(Schema::hasColumn('job_orders', 'proforma_id'))->toBeTrue();
 
     $customer = Partner::factory()->create(['is_customer' => true]);
     $paper = InventoryItem::factory()->create([
@@ -391,25 +390,7 @@ it('restores the required cost calculation file and removes proforma id from job
                 'job_type' => 'packages',
                 'submission_date' => now()->toDateString(),
                 'due_date' => now()->addDays(30)->toDateString(),
-                'jobOrderTasks' => [
-                    [
-                        'name' => 'Carton',
-                        'quantity' => 100,
-                        'task_cost' => 1000,
-                        'paper' => [
-                            [
-                                'inventory_item_id' => $paper->id,
-                                'required_quantity' => 20,
-                            ],
-                        ],
-                        'deliverables' => [
-                            [
-                                'label' => 'Dieline',
-                                'type' => 'artwork',
-                            ],
-                        ],
-                    ],
-                ],
+                'name' => 'Carton', 'quantity' => 100, 'subtotal' => 1000, 'paper' => [], 'deliverables' => [],
             ])
             ->call('create')
             ->assertHasFormErrors(['cost_calc_file' => 'required']);

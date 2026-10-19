@@ -17,7 +17,7 @@ test('date based filament tables default to latest records first', function (str
     ['app/Filament/Resources/BankTransfers/Tables/BankTransfersTable.php', 'transfer_date'],
     ['app/Filament/Finance/Pages/GeneralLedgerReport.php', 'entry_date'],
     ['app/Filament/Finance/Pages/AccountStatementReport.php', 'entry_date'],
-    ['app/Filament/Resources/JobOrderTasks/Tables/JobOrderTasksTable.php', 'jobOrder.submission_date'],
+    ['app/Filament/Resources/JobOrders/Tables/JobOrdersTable.php', 'submission_date'],
     ['app/Filament/Resources/ProductionPlans/Tables/ProductionPlansTable.php', 'due_date'],
     ['app/Filament/Resources/Payments/Tables/PaymentsTable.php', 'payment_date'],
     ['app/Filament/Resources/SalesOrders/Tables/SalesOrdersTable.php', 'order_date'],

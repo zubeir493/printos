@@ -12,7 +12,7 @@ class ProductionPlanItem extends Model
         'production_plan_id',
         'production_plan_machine_id',
         'machine_id',
-        'job_order_task_id',
+        'job_order_id',
         'planned_quantity',
         'planned_plates',
         'planned_rounds',
@@ -23,9 +23,9 @@ class ProductionPlanItem extends Model
         return $this->belongsTo(ProductionPlanMachine::class);
     }
 
-    public function jobOrderTask(): BelongsTo
+    public function jobOrder(): BelongsTo
     {
-        return $this->belongsTo(JobOrderTask::class);
+        return $this->belongsTo(JobOrder::class);
     }
 
     public function reportItems(): HasMany

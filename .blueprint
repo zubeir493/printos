@@ -1,7 +1,6 @@
 created:
     - database/factories/PartnerFactory.php
     - database/factories/JobOrderFactory.php
-    - database/factories/JobOrderTaskFactory.php
     - database/factories/DispatchFactory.php
     - database/factories/DispatchItemFactory.php
     - database/factories/SalesInvoiceFactory.php
@@ -45,7 +44,6 @@ created:
     - database/migrations/2026_02_18_112326_create_journal_items_table.php
     - app/Models/Partner.php
     - app/Models/JobOrder.php
-    - app/Models/JobOrderTask.php
     - app/Models/Dispatch.php
     - app/Models/DispatchItem.php
     - app/Models/SalesInvoice.php
@@ -67,10 +65,7 @@ created:
     - app/Models/JournalItem.php
 models:
     Partner: { name: string, phone: 'string nullable', address: 'text nullable', tin_number: 'string nullable', is_supplier: 'boolean default:false', is_customer: 'boolean default:false', timestamps: timestamps, relationships: { hasMany: 'JobOrder, SalesInvoice, PurchaseOrder, PurchaseInvoice, Payment' } }
-    JobOrder: { job_order_number: 'string unique', partner_id: 'id foreign', job_type: 'enum:books,packages', submission_date: date, remarks: 'text nullable', total_price: 'decimal:12,2', status: 'enum:draft,design,production,completed,cancelled', timestamps: timestamps, relationships: { belongsTo: Partner, hasMany: 'JobOrderTask, Dispatch, SalesInvoice' } }
-    JobOrderTask: { job_order_id: 'id foreign', name: string, quantity: integer, unit_cost: 'decimal:12,2', timestamps: timestamps, relationships: { belongsTo: JobOrder } }
     Dispatch: { job_order_id: 'id foreign', delivery_date: date, remarks: 'text nullable', timestamps: timestamps, relationships: { belongsTo: JobOrder, hasMany: DispatchItem } }
-    DispatchItem: { dispatch_id: 'id foreign', job_order_task_id: 'id foreign', quantity: integer, timestamps: timestamps, relationships: { belongsTo: 'Dispatch, JobOrderTask' } }
     SalesInvoice: { invoice_number: 'string unique', partner_id: 'id foreign', job_order_id: 'id foreign nullable', issue_date: date, due_date: date, subtotal: 'decimal:15,2', tax_amount: 'decimal:15,2 default:0', total_amount: 'decimal:15,2', status: 'enum:draft,issued,partially_paid,paid,void', timestamps: timestamps, relationships: { belongsTo: 'Partner, JobOrder', hasMany: 'SalesInvoiceItem, PaymentAllocation' } }
     SalesInvoiceItem: { sales_invoice_id: 'id foreign', description: string, quantity: 'decimal:12,2', unit_price: 'decimal:12,2', total: 'decimal:15,2', timestamps: timestamps, relationships: { belongsTo: SalesInvoice } }
     PurchaseOrder: { po_number: 'string unique', partner_id: 'id foreign', order_date: date, status: 'enum:draft,approved,received,cancelled', timestamps: timestamps, relationships: { belongsTo: Partner, hasMany: 'PurchaseOrderItem, PurchaseInvoice' } }

@@ -5,16 +5,14 @@ namespace App\Filament\Resources\JobOrders;
 use App\Filament\Resources\JobOrders\Pages\CreateJobOrder;
 use App\Filament\Resources\JobOrders\Pages\EditJobOrder;
 use App\Filament\Resources\JobOrders\Pages\ListJobOrders;
-use App\Filament\Resources\JobOrders\RelationManagers\JobOrderArtworksRelationManager;
-use App\Filament\Resources\JobOrders\RelationManagers\MaterialsOverviewRelationManager;
 use App\Filament\Resources\JobOrders\RelationManagers\PaymentsRelationManager;
 use App\Filament\Resources\JobOrders\Schemas\JobOrderForm;
 use App\Filament\Resources\JobOrders\Tables\JobOrdersTable;
 use App\Filament\Support\PanelAccess;
 use App\Models\JobOrder;
-use App\Models\JobOrderTask;
 use App\Support\Money;
 use BackedEnum;
+use Filament\Facades\Filament;
 use Filament\GlobalSearch\Actions\Action;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -52,13 +50,12 @@ class JobOrderResource extends Resource
 
     public static function canEdit($record): bool
     {
-        return PanelAccess::canManageJobOrders();
+        return PanelAccess::canManageJobOrders() && (string) $record->status === 'draft' && blank($record->proforma_task_id);
     }
 
     public static function getNavigationBadge(): ?string
     {
-        // Count active jobOrderTasks (not completed or cancelled)
-        $count = JobOrderTask::whereNotIn('status', ['completed', 'cancelled', 'pending'])->count();
+        $count = JobOrder::query()->inProgress()->count();
 
         return $count > 0 ? (string) $count : null;
     }
@@ -77,9 +74,12 @@ class JobOrderResource extends Resource
     public static function getRelations(): array
     {
         $relations = [
-            MaterialsOverviewRelationManager::class,
-            JobOrderArtworksRelationManager::class,
+            RelationManagers\ArtworksRelationManager::class,
+            RelationManagers\TextFilesRelationManager::class,
         ];
+        if (! in_array(Filament::getCurrentPanel()?->getId(), ['design', 'typist'], true)) {
+            $relations[] = RelationManagers\MaterialRequestsRelationManager::class;
+        }
 
         if (PanelAccess::canAccessFinanceSection()) {
             $relations[] = PaymentsRelationManager::class;
@@ -100,7 +100,7 @@ class JobOrderResource extends Resource
 
     public static function getGloballySearchableAttributes(): array
     {
-        return ['job_order_number', 'partner.name'];
+        return ['job_order_number', 'name', 'partner.name'];
     }
 
     public static function getGlobalSearchResultTitle($record): string
@@ -119,12 +119,17 @@ class JobOrderResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()
-            ->with(['partner'])
-            ->withCount([
-                'jobOrderTasks',
-                'jobOrderTasks as completed_job_order_tasks_count' => fn (Builder $query) => $query->where('status', 'completed'),
-            ]);
+        $query = parent::getEloquentQuery()->with(['partner', 'designer', 'typist', 'proforma'])->withSum('productionMovements', 'quantity');
+        $panel = Filament::getCurrentPanel()?->getId();
+        if ($panel === 'design') {
+            $query->where('designer_id', auth()->id())->whereNotIn('status', ['draft', 'cancelled']);
+        } elseif ($panel === 'typist') {
+            $query->where('typist_id', auth()->id())->where('status', '!=', 'cancelled');
+        } elseif ($panel === 'production') {
+            $query->where('status', 'production')->whereNull('production_completed_at');
+        }
+
+        return $query;
     }
 
     public static function getGlobalSearchEloquentQuery(): Builder

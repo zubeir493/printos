@@ -5,7 +5,6 @@ use App\Models\GoodsReceiptItem;
 use App\Models\InventoryItem;
 use App\Models\Invoice;
 use App\Models\JobOrder;
-use App\Models\JobOrderTask;
 use App\Models\Partner;
 use App\Models\Payment;
 use App\Models\PurchaseOrder;
@@ -15,6 +14,7 @@ use App\Models\User;
 use App\Models\Warehouse;
 use App\Notifications\GoodsReceiptPostedNotification;
 use App\Services\InvoiceGeneratorService;
+use App\Services\JobOrders\LogJobOrderProduction;
 use App\UserRole;
 use Filament\Panel;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -288,20 +288,21 @@ test('job order completes when final payment is recorded after all tasks are com
 
     $jo = JobOrder::factory()->create([
         'partner_id' => $partner->id,
-        'status' => 'active',
+        'status' => 'design',
         'subtotal' => 1000.00,
         'tax_amount' => 0.00,
         'total' => 1000.00,
     ]);
 
-    JobOrderTask::create([
-        'job_order_id' => $jo->id,
+    tap($jo, fn (JobOrder $record) => $record->updateQuietly([
+
         'name' => 'Print',
         'quantity' => 100,
-        'task_cost' => 1000.00,
-        'status' => 'completed',
-    ]);
+        'subtotal' => 1000.00,
+        'status' => 'production',
+    ]));
 
+    app(LogJobOrderProduction::class)->handle($jo, Warehouse::factory()->create()->id, 100);
     $jo->refresh();
 
     Payment::create([
@@ -323,19 +324,19 @@ test('job order completes when final task is completed after payment is fully re
 
     $jo = JobOrder::factory()->create([
         'partner_id' => $partner->id,
-        'status' => 'active',
+        'status' => 'design',
         'subtotal' => 1000.00,
         'tax_amount' => 0.00,
         'total' => 1000.00,
     ]);
 
-    $task = JobOrderTask::create([
-        'job_order_id' => $jo->id,
+    $task = tap($jo, fn (JobOrder $record) => $record->updateQuietly([
+
         'name' => 'Bind',
         'quantity' => 100,
-        'task_cost' => 1000.00,
+        'subtotal' => 1000.00,
         'status' => 'production',
-    ]);
+    ]));
 
     $jo->refresh();
 
@@ -350,9 +351,9 @@ test('job order completes when final task is completed after payment is fully re
         'payable_id' => $jo->id,
     ]);
 
-    expect((string) $jo->fresh()->status)->toBe('active');
+    expect((string) $jo->fresh()->status)->toBe('production');
 
-    $task->update(['status' => 'completed']);
+    app(LogJobOrderProduction::class)->handle($jo, Warehouse::factory()->create()->id, 100);
 
     expect((string) $jo->fresh()->status)->toBe('completed');
 });

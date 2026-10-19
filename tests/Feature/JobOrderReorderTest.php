@@ -1,7 +1,6 @@
 <?php
 
 use App\Models\JobOrder;
-use App\Models\JobOrderTask;
 use App\Models\Partner;
 use App\Models\User;
 use App\Services\JobOrders\DuplicateJobOrder;
@@ -31,22 +30,22 @@ it('duplicates a job order with tasks as a fresh draft reorder', function (): vo
         'notified_late_at' => now()->subDay(),
     ]);
 
-    JobOrderTask::factory()->create([
-        'job_order_id' => $jobOrder->id,
-        'designer_id' => User::factory(),
-        'typist_id' => User::factory(),
+    tap($jobOrder, fn (JobOrder $record) => $record->updateQuietly([
+
+        'designer_id' => User::factory()->create()->id,
+        'typist_id' => User::factory()->create()->id,
         'name' => 'Carton',
         'quantity' => 100,
-        'task_cost' => 1000,
+        'subtotal' => 1000,
         'paper' => [['inventory_item_id' => 5, 'required_quantity' => 20]],
         'deliverables' => [['label' => 'Dieline', 'type' => 'artwork']],
         'status' => 'completed',
         'size' => 'A4',
         'instructions' => 'Repeat exactly',
-    ]);
+    ]));
 
-    $jobOrder->setAttribute('job_order_tasks_count', 1);
-    $jobOrder->setAttribute('completed_job_order_tasks_count', 1);
+    $jobOrder->setAttribute('job_orders_count', 1);
+    $jobOrder->setAttribute('completed_job_orders_count', 1);
 
     $duplicate = app(DuplicateJobOrder::class)->handle($jobOrder);
 
@@ -61,19 +60,19 @@ it('duplicates a job order with tasks as a fresh draft reorder', function (): vo
         ->and($duplicate->materials_fully_issued_at)->toBeNull()
         ->and($duplicate->notified_late_at)->toBeNull()
         ->and($duplicate->cost_calc_file)->toBe($jobOrder->cost_calc_file)
-        ->and($duplicate->jobOrderTasks)->toHaveCount(1);
+        ->and(collect([$duplicate]))->toHaveCount(1);
 
-    $duplicateTask = $duplicate->jobOrderTasks->first();
+    $duplicateTask = collect([$duplicate])->first();
 
-    expect($duplicateTask->job_order_id)->toBe($duplicate->id)
+    expect($duplicateTask->id)->toBe($duplicate->id)
         ->and($duplicateTask->name)->toBe('Carton')
         ->and((float) $duplicateTask->quantity)->toBe(100.0)
-        ->and((float) $duplicateTask->task_cost)->toBe(1000.0)
+        ->and((float) $duplicateTask->subtotal)->toBe(1000.0)
         ->and($duplicateTask->paper)->toBe([['inventory_item_id' => 5, 'required_quantity' => 20]])
         ->and($duplicateTask->deliverables)->toBe([['label' => 'Dieline', 'type' => 'artwork']])
         ->and($duplicateTask->designer_id)->toBeNull()
         ->and($duplicateTask->typist_id)->toBeNull()
-        ->and($duplicateTask->status)->toBe('draft')
+        ->and((string) $duplicateTask->status)->toBe('draft')
         ->and($duplicateTask->instructions)->toBe('Repeat exactly');
 });
 

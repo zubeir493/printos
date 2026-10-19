@@ -4,7 +4,7 @@ namespace App\Filament\Resources\Dielines\Pages;
 
 use App\Filament\Resources\Dielines\DielineResource;
 use App\Models\Dieline;
-use App\Models\JobOrderTask;
+use App\Models\JobOrder;
 use App\Services\Dielines\DielineGeometryService;
 use App\Services\Dielines\DielineTemplateRegistry;
 use Filament\Actions\Action;
@@ -38,14 +38,14 @@ class ListDielines extends ListRecords
                                 ->default('reverse-tuck-flap-box')
                                 ->required()
                                 ->searchable(),
-                            Select::make('job_order_task_id')
+                            Select::make('job_order_id')
                                 ->label('Job task')
-                                ->options(fn (): array => JobOrderTask::query()
+                                ->options(fn (): array => JobOrder::query()
                                     ->with('jobOrder')
                                     ->latest('id')
                                     ->limit(100)
                                     ->get()
-                                    ->mapWithKeys(fn (JobOrderTask $task): array => [
+                                    ->mapWithKeys(fn (JobOrder $task): array => [
                                         $task->id => "{$task->name} ({$task->jobOrder?->job_order_number})",
                                     ])
                                     ->all())
@@ -62,7 +62,7 @@ class ListDielines extends ListRecords
                     $dieline = Dieline::query()->create([
                         'name' => $data['name'],
                         'template_key' => $templateKey,
-                        'job_order_task_id' => $data['job_order_task_id'] ?? null,
+                        'job_order_id' => $data['job_order_id'] ?? null,
                         'created_by' => auth()->id(),
                         'dimensions' => $dimensions,
                         'geometry' => $geometry,

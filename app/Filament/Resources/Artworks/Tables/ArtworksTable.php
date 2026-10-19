@@ -5,7 +5,7 @@ namespace App\Filament\Resources\Artworks\Tables;
 use App\Filament\Tables\Filters\DateRangeFilter;
 use App\Mail\ShareArtwork;
 use App\Models\EmailLog;
-use App\Models\JobOrderTask;
+use App\Models\JobOrder;
 use App\Support\PrivateStorage;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -29,7 +29,7 @@ class ArtworksTable
     {
         return $table
             ->columns([
-                TextColumn::make('jobOrderTask.name')
+                TextColumn::make('jobOrder.name')
                     ->label('Task')
                     ->description(fn ($record) => $record->jobOrder?->job_order_number)
                     ->searchable()
@@ -57,13 +57,13 @@ class ArtworksTable
             ->filters([
                 DateRangeFilter::make('uploaded_date_range', 'created_at', 'Uploaded date'),
 
-                SelectFilter::make('job_order_task_id')
+                SelectFilter::make('job_order_id')
                     ->label('Task')
-                    ->options(fn () => JobOrderTask::query()
-                        ->with('jobOrder')
+                    ->options(fn () => JobOrder::query()
+                        ->with('partner')
                         ->get()
                         ->mapWithKeys(fn ($task) => [
-                            $task->id => "{$task->name} (#{$task->jobOrder->job_order_number})",
+                            $task->id => "{$task->name} (#{$task->job_order_number})",
                         ])
                     )
                     ->searchable()

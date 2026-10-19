@@ -79,7 +79,7 @@ class JobOrdersRelationManager extends RelationManager
                 TextColumn::make('status')
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
-                        'active' => 'primary',
+                        'design' => 'primary', 'production' => 'info',
                         'completed' => 'success',
                         'cancelled' => 'danger',
                         default => 'gray',

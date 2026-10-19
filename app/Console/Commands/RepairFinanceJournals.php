@@ -68,7 +68,7 @@ class RepairFinanceJournals extends Command
                     }
                 });
 
-            JobOrder::query()
+            JobOrder::query()->where('production_mode', 'make_to_order')
                 ->where('status', 'completed')
                 ->whereNotExists($this->journalExistsSubquery(JobOrder::class, 'job_orders.id'))
                 ->orderBy('id')

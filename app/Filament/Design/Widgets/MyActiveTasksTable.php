@@ -2,7 +2,7 @@
 
 namespace App\Filament\Design\Widgets;
 
-use App\Models\JobOrderTask;
+use App\Models\JobOrder;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget as BaseWidget;
@@ -19,18 +19,18 @@ class MyActiveTasksTable extends BaseWidget
     {
         return $table
             ->query(
-                JobOrderTask::query()
-                    ->with(['jobOrder.partner'])
+                JobOrder::query()
+                    ->with(['partner'])
                     ->where('designer_id', auth()->id())
                     ->where('status', 'design')
                     ->orderBy('created_at')
             )
             ->searchable(false)
             ->columns([
-                Tables\Columns\TextColumn::make('jobOrder.job_order_number')
+                Tables\Columns\TextColumn::make('job_order_number')
                     ->label('Job Order')
                     ->weight('bold')
-                    ->description(fn (JobOrderTask $record) => $record->jobOrder->partner?->name)
+                    ->description(fn (JobOrder $record) => $record->partner?->name)
                     ->searchable(),
                 Tables\Columns\TextColumn::make('name')
                     ->label('Task')

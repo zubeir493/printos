@@ -12,7 +12,6 @@ use App\Filament\Resources\Artworks\ArtworkResource;
 use App\Filament\Resources\Dielines\DielineResource;
 use App\Filament\Resources\EmailLogs\EmailLogResource;
 use App\Filament\Resources\JobOrders\JobOrderResource;
-use App\Filament\Resources\JobOrderTasks\JobOrderTaskResource;
 use App\Filament\Resources\Partners\PartnerResource;
 use Filament\Enums\ThemeMode;
 use Filament\Http\Middleware\Authenticate;
@@ -56,7 +55,6 @@ class DesignPanelProvider extends PanelProvider
                 ArtworkResource::class,
                 DielineResource::class,
                 JobOrderResource::class,
-                JobOrderTaskResource::class,
                 EmailLogResource::class,
                 PartnerResource::class,
             ])

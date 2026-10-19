@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\InventoryBalance;
 use App\Models\InventoryItem;
+use App\Models\JobOrder;
 use App\Models\StockMovement;
 use App\Models\Warehouse;
 
@@ -29,6 +30,12 @@ class InventoryService
             $referenceType,
             $referenceId
         );
+    }
+
+    public function returnJobMaterials(int $itemId, int $warehouseId, float $quantity, float $unitCost, int $jobOrderId): StockMovement
+    {
+        return $this->createMovement(InventoryItem::findOrFail($itemId), Warehouse::findOrFail($warehouseId),
+            'material_return', $quantity, $unitCost, JobOrder::class, $jobOrderId);
     }
 
     public function receiveStockInPurchaseUnit(

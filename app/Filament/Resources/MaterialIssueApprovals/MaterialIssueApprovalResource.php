@@ -55,7 +55,7 @@ class MaterialIssueApprovalResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()->with([
-            'materialRequest.jobOrderTask.jobOrder',
+            'materialRequest.jobOrder',
             'materialRequest.inventoryItem',
             'requester',
         ]);

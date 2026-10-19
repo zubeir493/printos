@@ -2,7 +2,7 @@
 
 namespace App\Notifications;
 
-use App\Models\JobOrderTask;
+use App\Models\JobOrder;
 use App\Notifications\Concerns\SendsWebPushNotifications;
 use Filament\Notifications\Notification as FilamentNotification;
 use Illuminate\Bus\Queueable;
@@ -14,7 +14,7 @@ class DesignerAssignedToTask extends Notification implements ShouldQueueAfterCom
     use Queueable;
     use SendsWebPushNotifications;
 
-    public function __construct(protected JobOrderTask $task) {}
+    public function __construct(protected JobOrder $task) {}
 
     protected function webPushTitle(): string
     {
@@ -23,7 +23,7 @@ class DesignerAssignedToTask extends Notification implements ShouldQueueAfterCom
 
     protected function webPushBody(): string
     {
-        $body = "You have been assigned to task '{$this->task->name}' for job {$this->task->jobOrder->job_order_number}.\n";
+        $body = "You have been assigned to task '{$this->task->name}' for job {$this->task->job_order_number}.\n";
 
         if (filled($this->task->instructions)) {
             $body .= "\n\nBrief: {$this->task->instructions}";
@@ -34,7 +34,7 @@ class DesignerAssignedToTask extends Notification implements ShouldQueueAfterCom
 
     protected function notificationUrl(object $notifiable): string
     {
-        return $this->resourceUrl($notifiable, 'job-order-tasks', 'view', ['record' => $this->task]);
+        return $this->resourceUrl($notifiable, 'job-orders', 'view', ['record' => $this->task]);
     }
 
     public function toDatabase(object $notifiable): array

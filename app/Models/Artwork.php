@@ -6,7 +6,6 @@ use App\Support\PrivateStorage;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasOneThrough;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 
@@ -18,13 +17,13 @@ class Artwork extends Model
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly(['job_order_task_id', 'filename', 'is_approved', 'uploaded_by'])
+            ->logOnly(['job_order_id', 'filename', 'is_approved', 'uploaded_by'])
             ->logOnlyDirty()
             ->useLogName('artwork');
     }
 
     protected $fillable = [
-        'job_order_task_id',
+        'job_order_id',
         'filename',
         'deliverable',
         'is_approved',
@@ -38,21 +37,9 @@ class Artwork extends Model
         ];
     }
 
-    public function jobOrderTask(): BelongsTo
+    public function jobOrder(): BelongsTo
     {
-        return $this->belongsTo(JobOrderTask::class);
-    }
-
-    public function jobOrder(): HasOneThrough
-    {
-        return $this->hasOneThrough(
-            JobOrder::class,
-            JobOrderTask::class,
-            'id', // Foreign key on job_order_tasks table
-            'id', // Foreign key on job_orders table
-            'job_order_task_id', // Local key on artworks table
-            'job_order_id' // Local key on job_order_tasks table
-        );
+        return $this->belongsTo(JobOrder::class);
     }
 
     public function uploader(): BelongsTo

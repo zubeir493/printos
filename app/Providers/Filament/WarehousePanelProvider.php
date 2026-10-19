@@ -8,6 +8,7 @@ use App\Filament\Pages\StockOverview;
 use App\Filament\Resources\Dispatches\DispatchResource;
 use App\Filament\Resources\GoodsReceipts\GoodsReceiptResource;
 use App\Filament\Resources\InventoryItems\InventoryItemResource;
+use App\Filament\Resources\JobOrders\JobOrderResource;
 use App\Filament\Resources\MaterialRequests\MaterialRequestResource;
 use App\Filament\Resources\StockAdjustments\StockAdjustmentResource;
 use App\Filament\Resources\StockMovements\StockMovementResource;
@@ -57,6 +58,7 @@ class WarehousePanelProvider extends PanelProvider
                 'primary' => Color::Indigo,
             ])
             ->resources([
+                JobOrderResource::class,
                 InventoryItemResource::class,
                 WarehouseResource::class,
                 GoodsReceiptResource::class,

@@ -21,7 +21,7 @@ class MaterialRequest extends Model
     }
 
     protected $fillable = [
-        'job_order_task_id',
+        'job_order_id',
         'inventory_item_id',
         'required_quantity',
         'requested_quantity',
@@ -47,7 +47,7 @@ class MaterialRequest extends Model
     protected function casts(): array
     {
         return [
-            'job_order_task_id' => 'integer',
+            'job_order_id' => 'integer',
             'inventory_item_id' => 'integer',
             'required_quantity' => 'decimal:2',
             'requested_quantity' => 'decimal:2',
@@ -55,9 +55,9 @@ class MaterialRequest extends Model
         ];
     }
 
-    public function jobOrderTask(): BelongsTo
+    public function jobOrder(): BelongsTo
     {
-        return $this->belongsTo(JobOrderTask::class);
+        return $this->belongsTo(JobOrder::class);
     }
 
     public function inventoryItem(): BelongsTo

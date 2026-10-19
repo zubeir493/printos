@@ -19,10 +19,10 @@ class MaterialIssueApprovalsTable
         return $table
             ->defaultSort('created_at', 'desc')
             ->columns([
-                TextColumn::make('materialRequest.jobOrderTask.name')
+                TextColumn::make('materialRequest.jobOrder.name')
                     ->label('Task')
                     ->weight('bold')
-                    ->description(fn ($record) => $record->materialRequest->jobOrderTask->jobOrder->job_order_number)
+                    ->description(fn ($record) => $record->materialRequest->jobOrder->job_order_number)
                     ->searchable(),
                 TextColumn::make('requester.name')
                     ->label('Requested')

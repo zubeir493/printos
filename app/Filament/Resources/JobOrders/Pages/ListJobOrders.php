@@ -24,9 +24,9 @@ class ListJobOrders extends ListRecords
                 ->visible(fn () => PanelAccess::canManageJobOrders()),
             ActionGroup::make([
                 ImportAction::make()
-                    ->importer(JobOrderImporter::class),
+                    ->importer(JobOrderImporter::class)->visible(fn (): bool => PanelAccess::canManageJobOrders()),
                 ExportAction::make()
-                    ->exporter(JobOrderExporter::class),
+                    ->exporter(JobOrderExporter::class)->visible(fn (): bool => PanelAccess::canSeeMoneyValues()),
             ]),
         ];
     }

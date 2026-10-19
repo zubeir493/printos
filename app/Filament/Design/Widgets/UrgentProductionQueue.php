@@ -2,6 +2,7 @@
 
 namespace App\Filament\Design\Widgets;
 
+use App\Filament\Resources\JobOrders\JobOrderResource;
 use App\Models\JobOrder;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -22,7 +23,7 @@ class UrgentProductionQueue extends BaseWidget
         return $table
             ->query(
                 JobOrder::query()
-                    ->where('status', 'active')
+                    ->with('partner')->where('designer_id', auth()->id())->inProgress()->whereBetween('due_date', [today(), today()->addDays(2)])
                     ->latest()
                     ->limit(10)
             )
@@ -41,7 +42,7 @@ class UrgentProductionQueue extends BaseWidget
             ->actions([
                 ActionGroup::make([
                     Action::make('View')
-                        ->url(fn (JobOrder $record): string => '/admin/job-orders/'.$record->id)
+                        ->url(fn (JobOrder $record): string => JobOrderResource::getUrl('view', ['record' => $record], panel: 'design'))
                         ->icon('heroicon-m-eye'),
                 ]),
             ]);

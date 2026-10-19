@@ -23,7 +23,7 @@ class MaterialIssueApprovalRequestedNotification extends Notification implements
 
     protected function webPushBody(): string
     {
-        $this->approval->loadMissing(['materialRequest.inventoryItem', 'materialRequest.jobOrderTask.jobOrder', 'warehouse', 'requester']);
+        $this->approval->loadMissing(['materialRequest.inventoryItem', 'materialRequest.jobOrder', 'warehouse', 'requester']);
 
         return sprintf(
             '%s requested %.2f of %s from %s for %s.',
@@ -31,7 +31,7 @@ class MaterialIssueApprovalRequestedNotification extends Notification implements
             (float) $this->approval->quantity,
             $this->approval->materialRequest->inventoryItem->name,
             $this->approval->warehouse->name,
-            $this->approval->materialRequest->jobOrderTask->jobOrder->job_order_number
+            $this->approval->materialRequest->jobOrder->job_order_number
         );
     }
 

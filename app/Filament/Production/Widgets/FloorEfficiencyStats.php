@@ -2,7 +2,7 @@
 
 namespace App\Filament\Production\Widgets;
 
-use App\Models\JobOrderTask;
+use App\Models\JobOrder;
 use App\Models\MaterialRequest;
 use App\Models\ProductionPlanItem;
 use App\Models\ProductionReportItem;
@@ -36,7 +36,7 @@ class FloorEfficiencyStats extends BaseWidget
             ->count();
 
         // 3. Job Tasks in Queue
-        $pendingTasks = JobOrderTask::whereIn('status', ['pending', 'production'])->count();
+        $pendingTasks = JobOrder::where('status', 'production')->whereNull('production_completed_at')->count();
         $openMaterialRequests = MaterialRequest::query()
             ->whereColumn('issued_quantity', '<', 'requested_quantity')
             ->count();

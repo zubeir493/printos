@@ -7,11 +7,11 @@ it('uses placeholder summary rows on order form sidebars', function (string $pat
         ->toContain("Placeholder::make('summary_subtotal')")
         ->toContain("Placeholder::make('summary_tax_amount')")
         ->toContain("Placeholder::make('summary_total')")
-        ->toContain("Hidden::make('subtotal')")
+        ->toContain(($path === 'app/Filament/Resources/JobOrders/Schemas/JobOrderForm.php' ? 'TextInput' : 'Hidden')."::make('subtotal')")
         ->toContain("Hidden::make('tax_amount')")
         ->toContain("Hidden::make('total')")
         ->toContain('orderSummary')
-        ->not->toContain("TextInput::make('subtotal')");
+        ->not->toContain("Repeater::make('jobOrderTasks')");
 })->with([
     'job order form' => ['app/Filament/Resources/JobOrders/Schemas/JobOrderForm.php'],
     'proforma form' => ['app/Filament/Resources/Proformas/Schemas/ProformaForm.php'],

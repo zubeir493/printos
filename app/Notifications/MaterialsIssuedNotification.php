@@ -26,15 +26,15 @@ class MaterialsIssuedNotification extends Notification implements ShouldQueueAft
 
     protected function webPushBody(): string
     {
-        $task = $this->materialRequest->jobOrderTask;
+        $task = $this->materialRequest->jobOrder;
 
         return number_format($this->quantity, 2)
-            ." of {$this->materialRequest->inventoryItem->name} was issued for task '{$task->name}' on job {$task->jobOrder->job_order_number}.";
+            ." of {$this->materialRequest->inventoryItem->name} was issued for task '{$task->name}' on job {$task->job_order_number}.";
     }
 
     protected function notificationUrl(object $notifiable): string
     {
-        return $this->resourceUrl($notifiable, 'job-order-tasks', 'view', ['record' => $this->materialRequest->jobOrderTask]);
+        return $this->resourceUrl($notifiable, 'job-orders', 'view', ['record' => $this->materialRequest->jobOrder]);
     }
 
     public function toDatabase(object $notifiable): array

@@ -23,12 +23,12 @@ class ArtworkApprovedNotification extends Notification implements ShouldQueueAft
 
     protected function webPushBody(): string
     {
-        return "Your artwork for task '{$this->artwork->jobOrderTask->name}' on job {$this->artwork->jobOrder->job_order_number} has been approved.";
+        return "Your artwork for task '{$this->artwork->jobOrder->name}' on job {$this->artwork->jobOrder->job_order_number} has been approved.";
     }
 
     protected function notificationUrl(object $notifiable): string
     {
-        return $this->resourceUrl($notifiable, 'job-order-tasks', 'view', ['record' => $this->artwork->jobOrderTask]);
+        return $this->resourceUrl($notifiable, 'job-orders', 'view', ['record' => $this->artwork->jobOrder]);
     }
 
     public function toDatabase(object $notifiable): array

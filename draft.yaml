@@ -12,6 +12,20 @@ models:
       hasMany: JobOrder, SalesInvoice, PurchaseOrder, PurchaseInvoice, Payment
 
   JobOrder:
+    name: string
+    quantity: integer default:1
+    size: string nullable
+    paper: json nullable
+    deliverables: json nullable
+    instructions: text nullable
+    designer_id: id foreign:users nullable
+    typist_id: id foreign:users nullable
+    proforma_id: id foreign nullable
+    proforma_task_id: id foreign unique nullable
+    output_inventory_item_id: id foreign:inventory_items nullable
+    design_completed_at: timestamp nullable
+    production_completed_at: timestamp nullable
+    completed_at: timestamp nullable
     job_order_number: string unique
     partner_id: integer foreign
     job_type: enum:books,packages
@@ -23,40 +37,25 @@ models:
     advance_paid: boolean default:false
     cost_calc_file: string
     advance_amount: decimal:12,2
-    total_price: decimal:12,2
+    subtotal: decimal:12,2
+    tax_amount: decimal:12,2
+    total: decimal:12,2
     status: enum:draft,design,production,completed,cancelled
     timestamps: true
     relationships:
       belongsTo: Partner
-      hasMany: JobOrderTask, Dispatch, SalesInvoice
+      hasMany: Dispatch, DispatchItem, ProductionPlanItem, MaterialRequest, Artwork, TextFile, Dieline, SalesInvoice
       morphMany: StockMovement (reference), PaymentAllocation (allocatable)
-      hasManyThrough: MaterialRequest (JobOrderTask)
-      hasManyThrough: Artwork (JobOrderTask)
 
-  JobOrderTask:
-    job_order_id: integer foreign
-    designer_id: integer foreign nullable
-    name: string
-    quantity: integer
-    task_cost: decimal:12,2
-    unit_cost: decimal:12,2
-    paper: json nullable
-    status: string nullable
-    size: string nullable
-    timestamps: true
-    relationships:
-      belongsTo: JobOrder, User (designer_id), Size (size)
-      hasMany: DispatchItem, MaterialRequest, Artwork, ProductionPlanItem
 
   Artwork:
-    job_order_id: integer foreign
-    job_order_task_id: integer foreign nullable
+    job_order_id: integer foreign nullable
     filename: string
     is_approved: boolean default:false
     uploaded_by: integer foreign nullable
     timestamps: true
     relationships:
-      belongsTo: JobOrderTask, JobOrder, User (uploaded_by)
+      belongsTo: JobOrder, User (uploaded_by)
 
   Dispatch:
     job_order_id: integer foreign
@@ -70,11 +69,11 @@ models:
 
   DispatchItem:
     dispatch_id: integer foreign
-    job_order_task_id: integer foreign
+    job_order_id: integer foreign
     quantity: integer
     timestamps: true
     relationships:
-      belongsTo: Dispatch, JobOrderTask
+      belongsTo: Dispatch
 
   Employee:
     employee_id: string
@@ -192,7 +191,7 @@ models:
       hasMany: ProductionPlanItem
 
   MaterialRequest:
-    job_order_task_id: integer foreign
+    job_order_id: integer foreign
     inventory_item_id: integer foreign
     required_quantity: decimal:10,2 default:0
     requested_quantity: decimal:10,2 default:0
@@ -200,7 +199,7 @@ models:
     reason: text nullable
     timestamps: true
     relationships:
-      belongsTo: JobOrderTask, InventoryItem
+      belongsTo: InventoryItem
       hasMany: MaterialIssueApproval
 
   MaterialIssueApproval:
@@ -259,13 +258,13 @@ models:
 
   ProductionPlanItem:
     production_plan_machine_id: integer foreign
-    job_order_task_id: integer foreign
+    job_order_id: integer foreign
     planned_quantity: decimal:15,2
     planned_plates: integer default:0
     planned_rounds: integer default:0
     timestamps: true
     relationships:
-      belongsTo: ProductionPlanMachine, JobOrderTask
+      belongsTo: ProductionPlanMachine
       hasMany: ProductionReportItem
 
   ProductionPlanMachine:
@@ -428,7 +427,7 @@ models:
     email_verified_at: datetime nullable
     timestamps: true
     relationships:
-      hasMany: JobOrderTask (designer_id), Artwork (uploaded_by), MaterialIssueApproval (requested_by), MaterialIssueApproval (processed_by), StockAdjustment (created_by), BankTransfer (created_by), BankTransfer (completed_by), Import, Export
+      hasMany: JobOrder (designer_id), Artwork (uploaded_by), MaterialIssueApproval (requested_by), MaterialIssueApproval (processed_by), StockAdjustment (created_by), BankTransfer (created_by), BankTransfer (completed_by), Import, Export
       belongsToMany: Warehouse
 
   Size:

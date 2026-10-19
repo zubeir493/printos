@@ -3,7 +3,7 @@
 namespace App\Filament\Resources\TextFiles\Tables;
 
 use App\Filament\Tables\Filters\DateRangeFilter;
-use App\Models\JobOrderTask;
+use App\Models\JobOrder;
 use App\Support\PrivateStorage;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -19,9 +19,9 @@ class TextFilesTable
     {
         return $table
             ->columns([
-                TextColumn::make('jobOrderTask.name')
+                TextColumn::make('jobOrder.name')
                     ->label('Task')
-                    ->description(fn ($record) => $record->jobOrderTask?->jobOrder?->job_order_number)
+                    ->description(fn ($record) => $record->jobOrder?->job_order_number)
                     ->weight('bold')
                     ->searchable(),
                 TextColumn::make('original_name')
@@ -41,13 +41,13 @@ class TextFilesTable
             ->filters([
                 DateRangeFilter::make('uploaded_date_range', 'created_at', 'Uploaded date'),
 
-                SelectFilter::make('job_order_task_id')
+                SelectFilter::make('job_order_id')
                     ->label('Task')
-                    ->options(fn () => JobOrderTask::query()
-                        ->with('jobOrder')
+                    ->options(fn () => JobOrder::query()
+                        ->with('partner')
                         ->get()
                         ->mapWithKeys(fn ($task) => [
-                            $task->id => "{$task->name} (#{$task->jobOrder->job_order_number})",
+                            $task->id => "{$task->name} (#{$task->job_order_number})",
                         ])
                     )
                     ->searchable()

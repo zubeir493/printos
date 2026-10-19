@@ -17,8 +17,8 @@ class LateJobOrdersTest extends TestCase
 
         $partner = Partner::factory()->create();
 
-        $lateJob = $this->makeJobOrder($partner->id, 'JO-LATE-001', now()->subDay()->toDateString(), 'active');
-        $this->makeJobOrder($partner->id, 'JO-ONTIME-001', today()->toDateString(), 'active');
+        $lateJob = $this->makeJobOrder($partner->id, 'JO-LATE-001', now()->subDay()->toDateString(), 'design');
+        $this->makeJobOrder($partner->id, 'JO-ONTIME-001', today()->toDateString(), 'design');
         $this->makeJobOrder($partner->id, 'JO-DONE-001', now()->subDays(3)->toDateString(), 'completed');
         $this->makeJobOrder($partner->id, 'JO-CANCELLED-001', now()->subDays(2)->toDateString(), 'cancelled');
 
@@ -31,6 +31,7 @@ class LateJobOrdersTest extends TestCase
     protected function makeJobOrder(int $partnerId, string $number, string $submissionDate, string $status): JobOrder
     {
         return JobOrder::create([
+            'name' => 'Printing', 'quantity' => 100,
             'cost_calc_file' => 'job-order-cost-calculations/late.csv',
             'job_order_number' => $number,
             'partner_id' => $partnerId,

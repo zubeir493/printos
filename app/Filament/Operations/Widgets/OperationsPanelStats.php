@@ -4,7 +4,6 @@ namespace App\Filament\Operations\Widgets;
 
 use App\Models\Dispatch;
 use App\Models\JobOrder;
-use App\Models\JobOrderTask;
 use App\Models\PurchaseOrder;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
@@ -19,7 +18,7 @@ class OperationsPanelStats extends StatsOverviewWidget
             ->whereNotIn('status', ['completed', 'cancelled'])
             ->count();
 
-        $unplannedTasks = JobOrderTask::query()
+        $unplannedTasks = JobOrder::query()
             ->whereDoesntHave('productionPlanItems')
             ->count();
         $pendingPurchases = PurchaseOrder::query()

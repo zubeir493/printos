@@ -2,8 +2,9 @@
 
 namespace App\Filament\Resources\TextFiles\Schemas;
 
-use App\Models\JobOrderTask;
+use App\Models\JobOrder;
 use App\Support\PrivateStorage;
+use App\UserRole;
 use Filament\Forms\Components\BaseFileUpload;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
@@ -22,10 +23,10 @@ class TextFileForm
             ->components([
                 Grid::make(1)
                     ->schema([
-                        Select::make('job_order_task_id')
-                            ->label('Task / Job Order')
-                            ->relationship('jobOrderTask', 'name', fn ($query) => $query->with('jobOrder'))
-                            ->getOptionLabelFromRecordUsing(fn ($record) => "{$record->name} ({$record->jobOrder->job_order_number})")
+                        Select::make('job_order_id')
+                            ->label('Job Order')
+                            ->relationship('jobOrder', 'name', fn ($query) => $query->with('partner')->when(auth()->user()?->role === UserRole::Typist, fn ($jobs) => $jobs->where('typist_id', auth()->id())))
+                            ->getOptionLabelFromRecordUsing(fn ($record) => "{$record->name} ({$record->job_order_number})")
                             ->required()
                             ->searchable()
                             ->preload()
@@ -33,9 +34,9 @@ class TextFileForm
                             ->columnSpan(1),
                         Select::make('deliverable')
                             ->label('Deliverable')
-                            ->options(fn (UtilitiesGet $get): array => self::textFileDeliverableOptions((int) $get('job_order_task_id')))
-                            ->visible(fn (UtilitiesGet $get): bool => filled(self::textFileDeliverableOptions((int) $get('job_order_task_id'))))
-                            ->required(fn (UtilitiesGet $get): bool => filled(self::textFileDeliverableOptions((int) $get('job_order_task_id'))))
+                            ->options(fn (UtilitiesGet $get): array => self::textFileDeliverableOptions((int) $get('job_order_id')))
+                            ->visible(fn (UtilitiesGet $get): bool => filled(self::textFileDeliverableOptions((int) $get('job_order_id'))))
+                            ->required(fn (UtilitiesGet $get): bool => filled(self::textFileDeliverableOptions((int) $get('job_order_id'))))
                             ->searchable()
                             ->preload()
                             ->placeholder('Select a text file deliverable'),
@@ -64,15 +65,16 @@ class TextFileForm
                             ->live()
                             ->columnSpanFull(),
                     ])->columnSpanFull(),
-                Toggle::make('is_approved')
+                Toggle::make('is_approved')->disabled(fn (): bool => ! in_array(auth()->user()?->role, [UserRole::Admin, UserRole::Operations], true))
+                    ->dehydrated(fn (): bool => in_array(auth()->user()?->role, [UserRole::Admin, UserRole::Operations], true))
                     ->label('Approved for Production')
                     ->default(false)
                     ->onColor('success')
                     ->offColor('danger')
                     ->live()
                     ->afterStateUpdated(function ($state, $record) {
-                        if ($record && $record->jobOrderTask) {
-                            $record->jobOrderTask->updateStatus();
+                        if ($record && $record->jobOrder) {
+                            $record->jobOrder->updateStatus();
                         }
                     }),
                 Hidden::make('original_name'),
@@ -87,7 +89,7 @@ class TextFileForm
             return [];
         }
 
-        $task = JobOrderTask::find($taskId);
+        $task = JobOrder::find($taskId);
 
         if (! $task) {
             return [];

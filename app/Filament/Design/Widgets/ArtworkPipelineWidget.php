@@ -3,7 +3,7 @@
 namespace App\Filament\Design\Widgets;
 
 use App\Models\Artwork;
-use App\Models\JobOrderTask;
+use App\Models\JobOrder;
 use LaravelDaily\FilaWidgets\Data\BreakdownItemData;
 use LaravelDaily\FilaWidgets\Data\BreakdownWidgetData;
 use LaravelDaily\FilaWidgets\Widgets\BreakdownWidget;
@@ -23,7 +23,7 @@ class ArtworkPipelineWidget extends BreakdownWidget
     protected function getData(): BreakdownWidgetData
     {
         return new BreakdownWidgetData([
-            new BreakdownItemData('Waiting upload', (float) JobOrderTask::query()->whereNotIn('status', ['completed', 'cancelled'])->whereDoesntHave('artworks')->count(), color: 'warning'),
+            new BreakdownItemData('Waiting upload', (float) JobOrder::query()->whereNotIn('status', ['completed', 'cancelled'])->whereDoesntHave('artworks')->count(), color: 'warning'),
             new BreakdownItemData('Awaiting approval', (float) Artwork::query()->where('is_approved', false)->count(), color: 'primary'),
             new BreakdownItemData('Approved', (float) Artwork::query()->where('is_approved', true)->count(), color: 'success'),
         ]);

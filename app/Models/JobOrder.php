@@ -3,14 +3,15 @@
 namespace App\Models;
 
 use App\Observers\JobOrderObserver;
+use App\Services\JobOrders\JobOrderWorkflow;
 use App\States\JobOrder\JobOrderState;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Collection;
@@ -40,6 +41,9 @@ class JobOrder extends Model
      * @var array
      */
     protected $fillable = [
+        'name', 'quantity', 'size', 'paper', 'deliverables', 'instructions',
+        'designer_id', 'typist_id', 'proforma_id', 'proforma_task_id', 'output_inventory_item_id',
+        'design_completed_at', 'production_completed_at', 'completed_at',
         'job_order_number',
         'cost_calc_file',
         'partner_id',
@@ -61,6 +65,9 @@ class JobOrder extends Model
     protected function casts(): array
     {
         return [
+            'quantity' => 'integer', 'paper' => 'array', 'deliverables' => 'array',
+            'design_completed_at' => 'datetime', 'production_completed_at' => 'datetime', 'completed_at' => 'datetime',
+            'designer_id' => 'integer', 'typist_id' => 'integer', 'proforma_id' => 'integer', 'proforma_task_id' => 'integer', 'output_inventory_item_id' => 'integer',
             'id' => 'integer',
             'partner_id' => 'integer',
             'submission_date' => 'date',
@@ -81,9 +88,64 @@ class JobOrder extends Model
         return $this->belongsTo(Partner::class);
     }
 
-    public function jobOrderTasks(): HasMany
+    public function proforma(): BelongsTo
     {
-        return $this->hasMany(JobOrderTask::class);
+        return $this->belongsTo(Proforma::class);
+    }
+
+    public function proformaTask(): BelongsTo
+    {
+        return $this->belongsTo(ProformaTask::class);
+    }
+
+    public function designer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'designer_id');
+    }
+
+    public function typist(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'typist_id');
+    }
+
+    public function outputInventoryItem(): BelongsTo
+    {
+        return $this->belongsTo(InventoryItem::class, 'output_inventory_item_id');
+    }
+
+    public function dispatchItems(): HasMany
+    {
+        return $this->hasMany(DispatchItem::class);
+    }
+
+    public function productionPlanItems(): HasMany
+    {
+        return $this->hasMany(ProductionPlanItem::class);
+    }
+
+    public function textFiles(): HasMany
+    {
+        return $this->hasMany(TextFile::class);
+    }
+
+    public function dielines(): HasMany
+    {
+        return $this->hasMany(Dieline::class);
+    }
+
+    public function productionMovements(): MorphMany
+    {
+        return $this->morphMany(StockMovement::class, 'reference')->where('type', 'production_output');
+    }
+
+    public function scopeInProgress(Builder $query): Builder
+    {
+        return $query->whereIn('status', ['design', 'production']);
+    }
+
+    public function scopeClientReceivables(Builder $query): Builder
+    {
+        return $query->where('production_mode', 'make_to_order')->whereIn('status', ['design', 'production', 'completed']);
     }
 
     public function dispatches(): HasMany
@@ -101,14 +163,14 @@ class JobOrder extends Model
         return $this->morphMany(StockMovement::class, 'reference');
     }
 
-    public function materialRequests(): HasManyThrough
+    public function materialRequests(): HasMany
     {
-        return $this->hasManyThrough(MaterialRequest::class, JobOrderTask::class);
+        return $this->hasMany(MaterialRequest::class);
     }
 
-    public function artworks(): HasManyThrough
+    public function artworks(): HasMany
     {
-        return $this->hasManyThrough(Artwork::class, JobOrderTask::class);
+        return $this->hasMany(Artwork::class);
     }
 
     public function payments(): MorphMany
@@ -153,9 +215,9 @@ class JobOrder extends Model
 
     public function recalculateTotals(): void
     {
-        $subtotal = (float) $this->jobOrderTasks()->sum('task_cost');
+        $subtotal = (float) $this->subtotal;
         $taxRate = $this->getTaxRate();
-        $taxAmount = round($subtotal * $taxRate, 2);
+        $taxAmount = ($this->proforma_task_id || (string) $this->status !== 'draft') ? (float) $this->tax_amount : round($subtotal * $taxRate, 2);
 
         $this->updateQuietly([
             'subtotal' => $subtotal,
@@ -177,6 +239,7 @@ class JobOrder extends Model
             $query->where('type', 'consumption')
                 ->orWhere('type', 'material_return');
         })
+            ->where('reference_type', self::class)
             ->where('reference_id', $this->id)
             ->where('inventory_item_id', $itemId)
             ->sum('quantity');
@@ -190,6 +253,7 @@ class JobOrder extends Model
             $query->where('type', 'consumption')
                 ->orWhere('type', 'material_return');
         })
+            ->where('reference_type', self::class)
             ->where('reference_id', $this->id)
             ->select('warehouse_id', 'inventory_item_id')
             ->selectRaw('SUM(quantity) as net_quantity')
@@ -202,11 +266,9 @@ class JobOrder extends Model
     {
         $required = collect();
 
-        foreach ($this->jobOrderTasks as $task) {
-            foreach ($task->paper ?? [] as $material) {
-                if ($material['inventory_item_id'] == $itemId) {
-                    $required->push(($material['required_quantity'] ?? 0) + ($material['reserve_quantity'] ?? 0));
-                }
+        foreach ($this->paper ?? [] as $material) {
+            if ($material['inventory_item_id'] == $itemId) {
+                $required->push(($material['required_quantity'] ?? 0) + ($material['reserve_quantity'] ?? 0));
             }
         }
 
@@ -235,17 +297,12 @@ class JobOrder extends Model
 
     public function syncCompletionStatus(): bool
     {
-        if (in_array((string) $this->status, ['completed', 'cancelled'], true)) {
-            return false;
-        }
+        return app(JobOrderWorkflow::class)->sync($this);
+    }
 
-        if (! $this->isFullyPaid() || ! $this->allTasksCompleted()) {
-            return false;
-        }
-
-        $this->updateQuietly(['status' => 'completed']);
-
-        return true;
+    public function updateStatus(): void
+    {
+        $this->syncCompletionStatus();
     }
 
     public function isFullyPaid(): bool
@@ -253,21 +310,83 @@ class JobOrder extends Model
         return $this->balance <= 0.001;
     }
 
-    public function allTasksCompleted(): bool
+    public function productionIsComplete(): bool
     {
-        return $this->jobOrderTasks()->exists()
-            && ! $this->jobOrderTasks()
-                ->where('status', '!=', 'completed')
-                ->exists();
+        return $this->quantity > 0 && $this->produced_quantity >= $this->quantity
+            && (empty($this->deliverables) || $this->isReadyForProduction());
+    }
+
+    public function canComplete(): bool
+    {
+        return $this->productionIsComplete() && ($this->production_mode === 'make_to_stock' || $this->isFullyPaid());
+    }
+
+    public function getProducedQuantityAttribute(): float
+    {
+        if ($this->relationLoaded('productionMovements')) {
+            return (float) $this->productionMovements->sum('quantity');
+        }
+
+        if (array_key_exists('production_movements_sum_quantity', $this->getAttributes())) {
+            return (float) $this->getAttribute('production_movements_sum_quantity');
+        }
+
+        return (float) $this->productionMovements()->sum('quantity');
+    }
+
+    public function getRemainingProductionQuantityAttribute(): float
+    {
+        return max(0, (float) $this->quantity - $this->produced_quantity);
+    }
+
+    public function getRemainingQuantityAttribute(): float
+    {
+        return max(0, $this->produced_quantity - (float) $this->dispatchItems()->sum('quantity'));
+    }
+
+    /** @return array<string, string> */
+    public function deliverableOptionsForType(string $type): array
+    {
+        return collect($this->deliverables ?? [])->filter(fn ($item): bool => is_array($item)
+            && ($item['type'] ?? null) === $type && filled($item['label'] ?? null))
+            ->mapWithKeys(fn (array $item): array => [$item['label'] => $item['label']])->all();
+    }
+
+    public function isReadyForProduction(): bool
+    {
+        if (empty($this->deliverables)) {
+            return $this->artworks()->where('is_approved', true)->exists()
+                || $this->textFiles()->where('is_approved', true)->exists();
+        }
+
+        foreach ($this->deliverables as $deliverable) {
+            $type = $deliverable['type'] ?? null;
+            $label = trim((string) ($deliverable['label'] ?? ''));
+            if (! in_array($type, ['artwork', 'text_file'], true) || $label === '') {
+                return false;
+            }
+            $files = $type === 'artwork' ? $this->artworks() : $this->textFiles();
+            if (! $files->where('is_approved', true)->where('deliverable', $label)->exists()) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    public function canStartProduction(): bool
+    {
+        return (string) $this->status === 'design' && $this->isReadyForProduction();
+    }
+
+    public function cancel(): void
+    {
+        app(JobOrderWorkflow::class)->transition($this, 'cancelled');
     }
 
     public function getMaterialsSummaryAttribute(): array
     {
-        if (! $this->relationLoaded('jobOrderTasks')) {
-            $this->load('jobOrderTasks');
-        }
-
-        $allPaper = $this->jobOrderTasks->flatMap->paper;
+        $allPaper = collect($this->paper ?? []);
         $uniqueMaterialIds = $allPaper->pluck('inventory_item_id')->unique()->filter()->toArray();
 
         if (empty($uniqueMaterialIds)) {
@@ -282,6 +401,7 @@ class JobOrder extends Model
             $query->where('type', 'consumption')
                 ->orWhere('type', 'material_return');
         })
+            ->where('reference_type', self::class)
             ->where('reference_id', $this->id)
             ->whereIn('inventory_item_id', $uniqueMaterialIds)
             ->get()

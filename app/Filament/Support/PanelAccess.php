@@ -41,11 +41,6 @@ class PanelAccess
         return in_array(self::panelId(), ['admin', 'operations'], true);
     }
 
-    public static function canManageJobOrderTasks(): bool
-    {
-        return in_array(self::panelId(), ['admin', 'operations'], true);
-    }
-
     public static function canManagePartners(): bool
     {
         return in_array(self::panelId(), ['admin', 'operations'], true);

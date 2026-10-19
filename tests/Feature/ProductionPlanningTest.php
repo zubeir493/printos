@@ -5,7 +5,6 @@ namespace Tests\Feature;
 use App\Filament\Resources\ProductionPlans\ProductionPlanResource;
 use App\Filament\Resources\ProductionReports\ProductionReportResource;
 use App\Models\JobOrder;
-use App\Models\JobOrderTask;
 use App\Models\Machine;
 use App\Models\Partner;
 use App\Models\ProductionPlan;
@@ -34,6 +33,7 @@ class ProductionPlanningTest extends TestCase
         ]);
 
         $jobOrder = JobOrder::create([
+            'name' => 'Printing', 'quantity' => 100,
             'cost_calc_file' => 'job-order-cost-calculations/production.csv',
             'job_order_number' => 'JO-001',
             'partner_id' => $partner->id,
@@ -45,12 +45,12 @@ class ProductionPlanningTest extends TestCase
         ]);
 
         // Since I don't have factories for all, I'll use create manually
-        $task = JobOrderTask::create([
-            'job_order_id' => $jobOrder->id,
+        $task = tap($jobOrder, fn (JobOrder $record) => $record->updateQuietly([
+
             'name' => 'Task 1',
             'quantity' => 1000,
-            'task_cost' => 500.00,
-        ]);
+            'subtotal' => 500.00,
+        ]));
 
         $plan = ProductionPlan::create([
             'week_start' => now()->startOfWeek(),
@@ -67,7 +67,7 @@ class ProductionPlanningTest extends TestCase
             'production_plan_id' => $plan->id,
             'production_plan_machine_id' => $planMachine->id,
             'machine_id' => $machine->id,
-            'job_order_task_id' => $task->id,
+            'job_order_id' => $task->id,
             'planned_quantity' => 1000,
             'planned_plates' => 2,
             'planned_rounds' => 5,

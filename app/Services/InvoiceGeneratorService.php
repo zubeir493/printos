@@ -274,17 +274,17 @@ class InvoiceGeneratorService
         }
 
         $invoiceNumber = $this->generateInvoiceNumber('SERVICE');
-        $jobOrderItems = $order->jobOrderTasks()->get();
+        $jobOrderItems = collect([$order]);
         $settings = Setting::getSettings();
 
         $items = $jobOrderItems->map(function ($task) use ($order) {
-            $taskCost = $task->task_cost ?: 0;
+            $taskCost = $task->subtotal ?: 0;
 
             return [
                 'job_order_number' => $order->job_order_number,
                 'service_name' => $task->name,
                 'quantity' => $task->quantity ?: 1,
-                'unit_price' => (float) $taskCost,
+                'unit_price' => (float) $taskCost / max(1, (int) $task->quantity),
                 'total' => (float) $taskCost, // task_cost is already the total, not unit price
             ];
         })->all();
@@ -508,7 +508,7 @@ class InvoiceGeneratorService
     private function calculateServiceTaxes($order): array
     {
         // Similar to calculateTaxes but for service-specific tax rules
-        return $this->calculateTaxes($order->jobOrderTasks()->get());
+        return $this->calculateTaxes(collect([$order]));
     }
 
     /**
@@ -728,13 +728,13 @@ class InvoiceGeneratorService
         if ($invoice->order_type === 'sales_order') {
             $items = $order->salesOrderItems;
         } elseif ($invoice->order_type === 'job_order') {
-            $items = $order->jobOrderTasks->map(function ($task) use ($order) {
+            $items = collect([$order])->map(function ($task) use ($order) {
                 return [
                     'job_order_number' => $order->job_order_number,
                     'service_name' => $task->name,
                     'quantity' => $task->quantity ?: 1,
-                    'unit_price' => (float) $task->task_cost,
-                    'total' => (float) $task->task_cost,
+                    'unit_price' => (float) $task->subtotal / max(1, (int) $task->quantity),
+                    'total' => (float) $task->subtotal,
                 ];
             });
         }

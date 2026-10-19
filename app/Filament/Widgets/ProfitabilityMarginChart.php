@@ -29,7 +29,7 @@ class ProfitabilityMarginChart extends ChartWidget
 
             // Potential Revenue - Job Orders In Pipeline
             $potential[$dateLabel] = JobOrder::whereDate('created_at', $date)
-                ->where('status', 'active')
+                ->inProgress()
                 ->sum('total');
         }
 

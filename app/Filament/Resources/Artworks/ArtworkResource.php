@@ -6,6 +6,7 @@ use App\Filament\Resources\Artworks\Pages\ListArtworks;
 use App\Filament\Resources\Artworks\Schemas\ArtworkForm;
 use App\Filament\Resources\Artworks\Tables\ArtworksTable;
 use App\Models\Artwork;
+use App\UserRole;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -33,7 +34,8 @@ class ArtworkResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()->with(['jobOrder', 'jobOrderTask', 'uploader']);
+        return parent::getEloquentQuery()->with(['jobOrder', 'uploader'])
+            ->when(auth()->user()?->role === UserRole::Design, fn (Builder $query) => $query->whereHas('jobOrder', fn (Builder $jobs) => $jobs->where('designer_id', auth()->id())));
     }
 
     public static function getRelations(): array

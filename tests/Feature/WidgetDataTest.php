@@ -11,7 +11,6 @@ use App\Filament\Widgets\OperationalBottlenecksWidget;
 use App\Models\Artwork;
 use App\Models\Bank;
 use App\Models\JobOrder;
-use App\Models\JobOrderTask;
 use App\Models\Partner;
 use App\Models\Payment;
 use App\Models\PurchaseOrder;
@@ -35,24 +34,24 @@ function widgetStatsByLabel(object $widget): array
 }
 
 test('design stats use design task queue data instead of active job orders', function () {
-    $activeJobOrder = JobOrder::factory()->create(['status' => 'active']);
-    JobOrder::factory()->create(['status' => 'active']);
+    $activeJobOrder = JobOrder::factory()->create(['status' => 'design']);
+    JobOrder::factory()->create(['status' => 'draft']);
 
-    JobOrderTask::create([
-        'job_order_id' => $activeJobOrder->id,
+    tap($activeJobOrder, fn (JobOrder $record) => $record->updateQuietly([
+
         'name' => 'Needs artwork',
         'quantity' => 1,
-        'task_cost' => 100,
+        'subtotal' => 100,
         'status' => 'design',
-    ]);
+    ]));
 
-    JobOrderTask::create([
-        'job_order_id' => $activeJobOrder->id,
+    JobOrder::factory()->create(array_merge($activeJobOrder->only(['cost_calc_file', 'partner_id', 'job_type', 'production_mode', 'services', 'submission_date', 'due_date', 'remarks']), [
+
         'name' => 'Already complete',
         'quantity' => 1,
-        'task_cost' => 100,
+        'subtotal' => 100,
         'status' => 'completed',
-    ]);
+    ]));
 
     $stats = widgetStatsByLabel(new DesignSLAStats);
 
@@ -62,40 +61,40 @@ test('design stats use design task queue data instead of active job orders', fun
 });
 
 test('artwork pipeline separates missing uploads from approval stages', function () {
-    $jobOrder = JobOrder::factory()->create(['status' => 'active']);
+    $jobOrder = JobOrder::factory()->create(['status' => 'design']);
 
-    JobOrderTask::create([
-        'job_order_id' => $jobOrder->id,
+    tap($jobOrder, fn (JobOrder $record) => $record->updateQuietly([
+
         'name' => 'Waiting upload',
         'quantity' => 1,
-        'task_cost' => 100,
+        'subtotal' => 100,
         'status' => 'design',
-    ]);
+    ]));
 
-    $pendingTask = JobOrderTask::create([
-        'job_order_id' => $jobOrder->id,
+    $pendingTask = JobOrder::factory()->create(array_merge($jobOrder->only(['cost_calc_file', 'partner_id', 'job_type', 'production_mode', 'services', 'submission_date', 'due_date', 'remarks']), [
+
         'name' => 'Pending approval',
         'quantity' => 1,
-        'task_cost' => 100,
+        'subtotal' => 100,
         'status' => 'design',
-    ]);
+    ]));
 
-    $approvedTask = JobOrderTask::create([
-        'job_order_id' => $jobOrder->id,
+    $approvedTask = JobOrder::factory()->create(array_merge($jobOrder->only(['cost_calc_file', 'partner_id', 'job_type', 'production_mode', 'services', 'submission_date', 'due_date', 'remarks']), [
+
         'name' => 'Approved artwork',
         'quantity' => 1,
-        'task_cost' => 100,
+        'subtotal' => 100,
         'status' => 'production',
-    ]);
+    ]));
 
     Artwork::create([
-        'job_order_task_id' => $pendingTask->id,
+        'job_order_id' => $pendingTask->id,
         'filename' => 'pending.pdf',
         'is_approved' => false,
     ]);
 
     Artwork::create([
-        'job_order_task_id' => $approvedTask->id,
+        'job_order_id' => $approvedTask->id,
         'filename' => 'approved.pdf',
         'is_approved' => true,
     ]);
@@ -153,35 +152,35 @@ test('bank balance mix widget reports active bank balances and is registered on 
 });
 
 test('production queue stat counts task statuses that actually represent production queue work', function () {
-    $jobOrder = JobOrder::factory()->create(['status' => 'active']);
+    $jobOrder = JobOrder::factory()->create(['status' => 'design']);
 
-    JobOrderTask::create([
-        'job_order_id' => $jobOrder->id,
+    tap($jobOrder, fn (JobOrder $record) => $record->updateQuietly([
+
         'name' => 'Ready',
         'quantity' => 1,
-        'task_cost' => 100,
+        'subtotal' => 100,
         'status' => 'production',
-    ]);
+    ]));
 
-    JobOrderTask::create([
-        'job_order_id' => $jobOrder->id,
+    JobOrder::factory()->create(array_merge($jobOrder->only(['cost_calc_file', 'partner_id', 'job_type', 'production_mode', 'services', 'submission_date', 'due_date', 'remarks']), [
+
         'name' => 'Legacy pending',
         'quantity' => 1,
-        'task_cost' => 100,
-        'status' => 'pending',
-    ]);
+        'subtotal' => 100,
+        'status' => 'draft',
+    ]));
 
-    JobOrderTask::create([
-        'job_order_id' => $jobOrder->id,
+    JobOrder::factory()->create(array_merge($jobOrder->only(['cost_calc_file', 'partner_id', 'job_type', 'production_mode', 'services', 'submission_date', 'due_date', 'remarks']), [
+
         'name' => 'Done',
         'quantity' => 1,
-        'task_cost' => 100,
+        'subtotal' => 100,
         'status' => 'completed',
-    ]);
+    ]));
 
     $stats = widgetStatsByLabel(new FloorEfficiencyStats);
 
-    expect($stats['Tasks in Queue']->getValue())->toBe(2);
+    expect($stats['Tasks in Queue']->getValue())->toBe(1);
 });
 
 test('admin and retail stats do not display synthetic or duplicated sparkline charts', function () {

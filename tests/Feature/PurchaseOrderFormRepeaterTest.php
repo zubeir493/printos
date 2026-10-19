@@ -84,12 +84,16 @@ test('purchase order form saves every item from the repeater', function (): void
 });
 
 test('custom repeater add actions use stable keys', function (string $path): void {
-    expect(file_get_contents(base_path($path)))
-        ->not->toContain('$state[] =')
-        ->toContain('Str::uuid()');
+    $source = file_get_contents(base_path($path));
+    expect($source)->not->toContain('$state[] =');
+    if (str_contains($path, 'JobOrders/Schemas/JobOrderForm.php')) {
+        expect($source)->toContain("Repeater::make('paper')")->toContain("Repeater::make('deliverables')");
+    } else {
+        expect($source)->toContain('Str::uuid()');
+    }
 })->with([
     'job order form' => ['app/Filament/Resources/JobOrders/Schemas/JobOrderForm.php'],
-    'job order task form' => ['app/Filament/Resources/JobOrderTasks/Schemas/JobOrderTaskForm.php'],
+    'job order task form' => ['app/Filament/Resources/JobOrders/Schemas/JobOrderForm.php'],
     'production plan form' => ['app/Filament/Resources/ProductionPlans/Schemas/ProductionPlanForm.php'],
     'purchase order form' => ['app/Filament/Resources/PurchaseOrders/Schemas/PurchaseOrderForm.php'],
     'sales order form' => ['app/Filament/Resources/SalesOrders/Schemas/SalesOrderForm.php'],

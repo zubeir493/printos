@@ -15,7 +15,7 @@ class Dieline extends Model
     protected $fillable = [
         'name',
         'template_key',
-        'job_order_task_id',
+        'job_order_id',
         'created_by',
         'dimensions',
         'geometry',
@@ -29,9 +29,9 @@ class Dieline extends Model
         ];
     }
 
-    public function jobOrderTask(): BelongsTo
+    public function jobOrder(): BelongsTo
     {
-        return $this->belongsTo(JobOrderTask::class);
+        return $this->belongsTo(JobOrder::class);
     }
 
     public function creator(): BelongsTo

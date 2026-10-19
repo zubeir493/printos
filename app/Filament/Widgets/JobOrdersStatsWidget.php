@@ -12,10 +12,10 @@ class JobOrdersStatsWidget extends BaseWidget
     {
         $totalJobs = JobOrder::count();
         $totalValue = JobOrder::sum('total');
-        $activeJobs = JobOrder::where('status', 'active')->count();
+        $activeJobs = JobOrder::inProgress()->count();
         $lateJobs = JobOrder::late()->count();
         $completedToday = JobOrder::where('status', 'completed')
-            ->whereDate('updated_at', today())
+            ->whereDate('completed_at', today())
             ->count();
 
         // Sample chart data

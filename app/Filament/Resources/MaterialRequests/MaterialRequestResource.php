@@ -44,7 +44,7 @@ class MaterialRequestResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
-            ->with(['inventoryItem', 'jobOrderTask.jobOrder']);
+            ->with(['inventoryItem', 'jobOrder']);
     }
 
     // public static function canViewAny(): bool
@@ -58,14 +58,14 @@ class MaterialRequestResource extends Resource
             ->components([
                 Grid::make(2)
                     ->schema([
-                        Select::make('job_order_task_id')
+                        Select::make('job_order_id')
                             ->label('Production Task')
                             ->relationship(
-                                'jobOrderTask',
+                                'jobOrder',
                                 'name',
-                                modifyQueryUsing: fn (Builder $query): Builder => $query->with('jobOrder'),
+                                modifyQueryUsing: fn (Builder $query): Builder => $query->with('partner'),
                             )
-                            ->getOptionLabelFromRecordUsing(fn ($record) => "{$record->name} ({$record->jobOrder->job_order_number})")
+                            ->getOptionLabelFromRecordUsing(fn ($record) => "{$record->name} ({$record->job_order_number})")
                             ->required()
                             ->searchable()
                             ->preload(),
@@ -105,9 +105,9 @@ class MaterialRequestResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('jobOrderTask.name')
+                TextColumn::make('jobOrder.name')
                     ->label('Task')
-                    ->description(fn ($record) => $record->jobOrderTask->jobOrder->job_order_number)
+                    ->description(fn ($record) => $record->jobOrder->job_order_number)
                     ->weight('bold')
                     ->color('primary')
                     ->searchable(),
@@ -159,7 +159,7 @@ class MaterialRequestResource extends Resource
                     ->searchable()
                     ->query(function ($query, array $data) {
                         if ($data['value']) {
-                            $query->whereHas('jobOrderTask', fn ($q) => $q->where('job_order_id', $data['value']));
+                            $query->where('job_order_id', $data['value']);
                         }
                     }),
                 SelectFilter::make('status')

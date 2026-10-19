@@ -45,7 +45,7 @@ class DielineForm
                                     ->live()
                                     ->afterStateUpdated(fn (Set $set, ?string $state): mixed => self::applyTemplateDefaults($set, $state))
                                     ->columnSpanFull(),
-                                Hidden::make('job_order_task_id'),
+                                Hidden::make('job_order_id'),
                                 ...self::baseDimensionFields(),
                                 ...self::advancedDimensionFields(),
                                 Hidden::make('geometry'),

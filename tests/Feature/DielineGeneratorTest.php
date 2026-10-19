@@ -54,7 +54,7 @@ it('creates dieline drafts from a setup modal then saves dimensions and geometry
         ->setActionData([
             'name' => 'Pharma carton',
             'template_key' => 'reverse-tuck-flap-box',
-            'job_order_task_id' => null,
+            'job_order_id' => null,
         ])
         ->callMountedAction()
         ->assertHasNoActionErrors();

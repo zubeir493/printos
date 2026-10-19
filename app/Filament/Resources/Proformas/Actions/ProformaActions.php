@@ -23,6 +23,9 @@ class ProformaActions
             self::email(),
             self::approve(),
             self::createJobOrder(),
+            Action::make('view_job_orders')->label('Job Orders')->icon('heroicon-o-briefcase')
+                ->visible(fn (Proforma $record): bool => $record->jobOrders()->exists())
+                ->url(fn (Proforma $record): string => JobOrderResource::getUrl('index', ['filters' => ['proforma_id' => ['value' => $record->id]]])),
             self::edit(),
             $includeDelete ? self::delete() : null,
         ]));
@@ -87,20 +90,20 @@ class ProformaActions
     public static function createJobOrder(): Action
     {
         return Action::make('create_job_order')
-            ->label('Create Job Order')
+            ->label('Create Job Orders')
             ->icon('heroicon-o-briefcase')
             ->color('gray')
             ->visible(fn (Proforma $record): bool => $record->canCreateJobOrder())
             ->action(function (Proforma $record) {
-                $jobOrder = app(ProformaWorkflowService::class)->createJobOrder($record);
+                $jobOrders = app(ProformaWorkflowService::class)->createJobOrders($record);
 
                 Notification::make()
                     ->title('Job order created')
-                    ->body($jobOrder->job_order_number.' was created from '.$record->proforma_number.'.')
+                    ->body($jobOrders->count().' job orders were created from '.$record->proforma_number.'.')
                     ->success()
                     ->send();
 
-                return redirect(JobOrderResource::getUrl('edit', ['record' => $jobOrder]));
+                return redirect(JobOrderResource::getUrl('index', ['filters' => ['proforma_id' => ['value' => $record->id]]]));
             });
     }
 

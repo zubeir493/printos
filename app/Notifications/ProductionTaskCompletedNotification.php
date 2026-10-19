@@ -2,7 +2,7 @@
 
 namespace App\Notifications;
 
-use App\Models\JobOrderTask;
+use App\Models\JobOrder;
 use App\Notifications\Concerns\SendsWebPushNotifications;
 use Filament\Notifications\Notification as FilamentNotification;
 use Illuminate\Bus\Queueable;
@@ -14,7 +14,7 @@ class ProductionTaskCompletedNotification extends Notification implements Should
     use Queueable;
     use SendsWebPushNotifications;
 
-    public function __construct(protected JobOrderTask $task) {}
+    public function __construct(protected JobOrder $task) {}
 
     protected function webPushTitle(): string
     {
@@ -23,12 +23,12 @@ class ProductionTaskCompletedNotification extends Notification implements Should
 
     protected function webPushBody(): string
     {
-        return "Task '{$this->task->name}' on job {$this->task->jobOrder->job_order_number} has been completed.";
+        return "Task '{$this->task->name}' on job {$this->task->job_order_number} has been completed.";
     }
 
     protected function notificationUrl(object $notifiable): string
     {
-        return $this->resourceUrl($notifiable, 'job-order-tasks', 'view', ['record' => $this->task]);
+        return $this->resourceUrl($notifiable, 'job-orders', 'view', ['record' => $this->task]);
     }
 
     public function toDatabase(object $notifiable): array

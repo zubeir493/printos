@@ -13,7 +13,7 @@ class OperationsJobStatusChart extends ChartWidget
 
     protected function getData(): array
     {
-        $statuses = ['draft', 'active', 'completed', 'cancelled'];
+        $statuses = ['draft', 'design', 'production', 'completed', 'cancelled'];
         $counts = [];
 
         foreach ($statuses as $status) {

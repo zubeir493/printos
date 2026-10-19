@@ -5,7 +5,6 @@ namespace App\Models;
 use App\Enums\ExpenseTrackingType;
 use App\Enums\PaymentTransactionType;
 use App\Notifications\InvoiceStatusChangedNotification;
-use App\Notifications\JobOrderCompletedNotification;
 use App\Support\NotificationRecipients;
 use App\Support\SequentialNumber;
 use App\UserRole;
@@ -186,13 +185,7 @@ class Payment extends Model
                 'advance_paid' => $jobOrder->paid_amount > 0,
                 'advance_amount' => $jobOrder->paid_amount,
             ]);
-            if ($jobOrder->syncCompletionStatus()) {
-                $recipients = NotificationRecipients::roles(UserRole::Sales, UserRole::Finance, UserRole::Operations);
-
-                if ($recipients->isNotEmpty()) {
-                    Notification::send($recipients, new JobOrderCompletedNotification($jobOrder->refresh()));
-                }
-            }
+            $jobOrder->syncCompletionStatus();
             $this->syncInvoicesForDocument($jobOrder);
         }
 

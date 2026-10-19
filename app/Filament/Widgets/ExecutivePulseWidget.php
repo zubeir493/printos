@@ -22,7 +22,7 @@ class ExecutivePulseWidget extends SparklineTableWidget
     {
         $periods = $this->comparisonPeriods();
         $revenue = SalesOrder::query()->where('status', SalesOrder::STATUS_COMPLETED);
-        $pipeline = JobOrder::query()->where('status', 'active');
+        $pipeline = JobOrder::query()->inProgress();
         $purchases = PurchaseOrder::query()->whereIn('status', ['draft', 'approved']);
 
         return SparklineTableWidgetData::fromRows(

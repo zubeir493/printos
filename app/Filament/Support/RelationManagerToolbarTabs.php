@@ -9,13 +9,10 @@ use App\Filament\Resources\CostEstimates\RelationManagers\CostEstimateLinesRelat
 use App\Filament\Resources\Employees\EmployeeResource;
 use App\Filament\Resources\Employees\RelationManagers\AttendanceSegmentsRelationManager;
 use App\Filament\Resources\JobOrders\JobOrderResource;
-use App\Filament\Resources\JobOrders\RelationManagers\JobOrderArtworksRelationManager;
-use App\Filament\Resources\JobOrders\RelationManagers\MaterialsOverviewRelationManager;
+use App\Filament\Resources\JobOrders\RelationManagers\ArtworksRelationManager;
+use App\Filament\Resources\JobOrders\RelationManagers\MaterialRequestsRelationManager;
 use App\Filament\Resources\JobOrders\RelationManagers\PaymentsRelationManager;
-use App\Filament\Resources\JobOrderTasks\JobOrderTaskResource;
-use App\Filament\Resources\JobOrderTasks\RelationManagers\ArtworksRelationManager;
-use App\Filament\Resources\JobOrderTasks\RelationManagers\MaterialRequestsRelationManager;
-use App\Filament\Resources\JobOrderTasks\RelationManagers\TextFilesRelationManager;
+use App\Filament\Resources\JobOrders\RelationManagers\TextFilesRelationManager;
 use App\Filament\Resources\Partners\PartnerResource;
 use App\Filament\Resources\Partners\RelationManagers\JobOrdersRelationManager;
 use App\Filament\Resources\PayrollRuns\PayrollRunResource;
@@ -44,14 +41,10 @@ class RelationManagerToolbarTabs
             AttendanceSegmentsRelationManager::class,
         ],
         JobOrderResource::class => [
-            MaterialsOverviewRelationManager::class,
-            JobOrderArtworksRelationManager::class,
-            PaymentsRelationManager::class,
-        ],
-        JobOrderTaskResource::class => [
             ArtworksRelationManager::class,
             TextFilesRelationManager::class,
             MaterialRequestsRelationManager::class,
+            PaymentsRelationManager::class,
         ],
         PartnerResource::class => [
             JobOrdersRelationManager::class,

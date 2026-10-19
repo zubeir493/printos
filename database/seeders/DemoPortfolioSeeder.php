@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\Dispatch;
 use App\Models\JobOrder;
 use App\Models\SalesOrder;
 use Carbon\CarbonImmutable;
@@ -225,7 +226,7 @@ class DemoPortfolioSeeder extends Seeder
                 'job_type' => 'posters',
                 'quantity' => 8500,
                 'status' => 'completed',
-                'task_status' => 'completed',
+                'task_status' => 'production',
                 'task' => 'A3 campaign poster',
                 'cost' => 214000,
                 'material' => 'PAPER-A4-120G',
@@ -277,6 +278,7 @@ class DemoPortfolioSeeder extends Seeder
             ]);
 
             $jobId = $this->updateOrCreate('job_orders', ['job_order_number' => $definition['job']], [
+                'name' => $definition['task'], 'quantity' => $definition['quantity'],
                 'proforma_id' => $proformaId,
                 'partner_id' => $partners[$definition['partner']],
                 'job_type' => $definition['job_type'],
@@ -293,14 +295,10 @@ class DemoPortfolioSeeder extends Seeder
                 'status' => $definition['status'],
             ]);
 
-            $taskId = $this->updateOrCreate('job_order_tasks', [
-                'job_order_id' => $jobId,
-                'name' => $definition['task'],
-            ], [
+            DB::table('job_orders')->where('id', $jobId)->update([
                 'designer_id' => $users['design'],
                 'typist_id' => $users['typist'] ?? null,
                 'quantity' => $definition['quantity'],
-                'task_cost' => $subtotal,
                 'paper' => json_encode([[
                     'inventory_item_id' => $items[$definition['material']]->id,
                     'required_quantity' => $definition['required'],
@@ -314,9 +312,10 @@ class DemoPortfolioSeeder extends Seeder
                 'size' => $index === 1 ? 'A4 sticker sheet' : 'A4',
                 'instructions' => 'Portfolio demo task with approved deliverables and material demand.',
             ]);
+            $taskId = $jobId;
 
             $this->updateOrCreate('material_requests', [
-                'job_order_task_id' => $taskId,
+                'job_order_id' => $taskId,
                 'inventory_item_id' => $items[$definition['material']]->id,
             ], [
                 'required_quantity' => $definition['required'],
@@ -327,14 +326,13 @@ class DemoPortfolioSeeder extends Seeder
 
             $this->updateOrCreate('artworks', ['filename' => $definition['job'].'-artwork.pdf'], [
                 'job_order_id' => $jobId,
-                'job_order_task_id' => $taskId,
                 'deliverable' => 'Print-ready artwork',
                 'is_approved' => $index !== 1,
                 'uploaded_by' => $users['design'],
             ]);
 
             $this->updateOrCreate('text_files', ['filename' => $definition['job'].'-copy.docx'], [
-                'job_order_task_id' => $taskId,
+                'job_order_id' => $taskId,
                 'uploaded_by' => $users['typist'] ?? $users['design'],
                 'deliverable' => 'Copy deck',
                 'original_name' => $definition['description'].'.docx',
@@ -355,6 +353,20 @@ class DemoPortfolioSeeder extends Seeder
             ]);
 
             if ($index === 2) {
+                $outputId = $this->updateOrCreate('inventory_items', ['sku' => 'JOB-'.$jobId], [
+                    'name' => $definition['task'].' ('.$definition['job'].')', 'type' => 'wip',
+                    'unit' => 'pcs', 'is_sellable' => false, 'price' => 0,
+                ]);
+                DB::table('job_orders')->where('id', $jobId)->update([
+                    'output_inventory_item_id' => $outputId,
+                    'production_started_at' => $issueDate->addDays(3),
+                    'production_completed_at' => $issueDate->addDays(8),
+                    'design_completed_at' => $issueDate->addDays(3),
+                ]);
+                $this->updateOrCreate('stock_movements', [
+                    'reference_type' => JobOrder::class, 'reference_id' => $jobId,
+                    'type' => 'production_output', 'inventory_item_id' => $outputId, 'warehouse_id' => $warehouses['MAIN'],
+                ], ['quantity' => $definition['quantity'], 'movement_date' => $issueDate->addDays(8)]);
                 $dispatchId = $this->updateOrCreate('dispatches', ['job_order_id' => $jobId], [
                     'warehouse_id' => $warehouses['MAIN'],
                     'delivery_date' => $issueDate->addDays(9)->toDateString(),
@@ -364,10 +376,18 @@ class DemoPortfolioSeeder extends Seeder
 
                 $this->updateOrCreate('dispatch_items', [
                     'dispatch_id' => $dispatchId,
-                    'job_order_task_id' => $taskId,
+                    'job_order_id' => $taskId,
                 ], [
                     'quantity' => $definition['quantity'],
                 ]);
+            }
+
+            if ($index === 2) {
+                $this->updateOrCreate('stock_movements', [
+                    'reference_type' => Dispatch::class, 'reference_id' => $dispatchId,
+                    'type' => 'dispatch', 'inventory_item_id' => $outputId, 'warehouse_id' => $warehouses['MAIN'],
+                ], ['quantity' => -$definition['quantity'], 'movement_date' => $issueDate->addDays(9)]);
+                $this->updateOrCreate('inventory_balances', ['inventory_item_id' => $outputId, 'warehouse_id' => $warehouses['MAIN']], ['quantity_on_hand' => 0]);
             }
 
             $jobs[$definition['job']] = $jobId;
@@ -384,15 +404,15 @@ class DemoPortfolioSeeder extends Seeder
         ], []);
 
         foreach ($jobs as $jobId) {
-            $taskId = DB::table('job_order_tasks')->where('job_order_id', $jobId)->value('id');
+            $taskId = $jobId;
 
             $this->updateOrCreate('production_plan_items', [
                 'production_plan_id' => $planId,
-                'job_order_task_id' => $taskId,
+                'job_order_id' => $taskId,
             ], [
                 'production_plan_machine_id' => $planMachineId,
                 'machine_id' => $machines['PRESS-SM74'],
-                'planned_quantity' => DB::table('job_order_tasks')->where('id', $taskId)->value('quantity'),
+                'planned_quantity' => DB::table('job_orders')->where('id', $taskId)->value('quantity'),
                 'planned_plates' => 4,
                 'planned_rounds' => 18,
             ]);

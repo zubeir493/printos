@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Filament\Resources\JobOrderTasks\RelationManagers;
+namespace App\Filament\Resources\JobOrders\RelationManagers;
 
+use App\Filament\Support\PanelAccess;
 use App\Filament\Tables\Filters\DateRangeFilter;
 use App\Support\PrivateStorage;
 use Filament\Actions\Action;
@@ -62,12 +63,12 @@ class TextFilesRelationManager extends RelationManager
                         }
                     })
                     ->live(),
-                Toggle::make('is_approved')
+                Toggle::make('is_approved')->disabled(fn (): bool => ! PanelAccess::canManageJobOrders())->dehydrated(fn (): bool => PanelAccess::canManageJobOrders())
                     ->label('Approved for Production')
                     ->default(false)
                     ->onColor('success')
                     ->offColor('danger'),
-                Hidden::make('job_order_task_id')
+                Hidden::make('job_order_id')
                     ->default(fn () => $this->getOwnerRecord()?->id),
                 Hidden::make('uploaded_by')
                     ->default(fn () => Auth::id()),

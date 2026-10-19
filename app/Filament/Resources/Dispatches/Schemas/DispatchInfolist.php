@@ -47,7 +47,7 @@ class DispatchInfolist
                         RepeatableEntry::make('dispatchItems')
                             ->label('')
                             ->schema([
-                                TextEntry::make('jobOrderTask.name')
+                                TextEntry::make('jobOrder.name')
                                     ->label('Task')
                                     ->weight('medium'),
                                 TextEntry::make('quantity')

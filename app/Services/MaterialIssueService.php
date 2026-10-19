@@ -25,7 +25,7 @@ class MaterialIssueService
     {
         return DB::transaction(function () use ($materialRequest, $warehouseId, $quantity, $actor) {
             $materialRequest = MaterialRequest::query()
-                ->with(['inventoryItem', 'jobOrderTask.jobOrder'])
+                ->with(['inventoryItem', 'jobOrder'])
                 ->lockForUpdate()
                 ->findOrFail($materialRequest->id);
 
@@ -76,11 +76,11 @@ class MaterialIssueService
                 $warehouseId,
                 $quantity,
                 JobOrder::class,
-                $materialRequest->jobOrderTask->job_order_id
+                $materialRequest->job_order_id
             );
 
             $materialRequest->increment('issued_quantity', $quantity);
-            $this->notifyMaterialsIssued($materialRequest->fresh(['inventoryItem', 'jobOrderTask.jobOrder']), $quantity);
+            $this->notifyMaterialsIssued($materialRequest->fresh(['inventoryItem', 'jobOrder']), $quantity);
 
             return ['status' => 'issued'];
         });
@@ -90,7 +90,7 @@ class MaterialIssueService
     {
         DB::transaction(function () use ($approval, $actor, $notes) {
             $approval = MaterialIssueApproval::query()
-                ->with(['materialRequest.inventoryItem', 'materialRequest.jobOrderTask.jobOrder', 'requester'])
+                ->with(['materialRequest.inventoryItem', 'materialRequest.jobOrder', 'requester'])
                 ->lockForUpdate()
                 ->findOrFail($approval->id);
 
@@ -120,7 +120,7 @@ class MaterialIssueService
                 $approval->warehouse_id,
                 (float) $approval->quantity,
                 JobOrder::class,
-                $materialRequest->jobOrderTask->job_order_id
+                $materialRequest->job_order_id
             );
 
             $materialRequest->increment('issued_quantity', $approval->quantity);
@@ -133,7 +133,7 @@ class MaterialIssueService
                 'rejected_at' => null,
             ]);
 
-            $this->notifyMaterialsIssued($materialRequest->fresh(['inventoryItem', 'jobOrderTask.jobOrder']), (float) $approval->quantity);
+            $this->notifyMaterialsIssued($materialRequest->fresh(['inventoryItem', 'jobOrder']), (float) $approval->quantity);
             // Notify the requester of the decision
             if ($approval->requested_by) {
                 $approval->requester?->notify(new MaterialIssueDecisionNotification($approval));
@@ -145,7 +145,7 @@ class MaterialIssueService
     {
         DB::transaction(function () use ($approval, $actor, $notes) {
             $approval = MaterialIssueApproval::query()
-                ->with(['materialRequest.inventoryItem', 'materialRequest.jobOrderTask.jobOrder', 'requester'])
+                ->with(['materialRequest.inventoryItem', 'materialRequest.jobOrder', 'requester'])
                 ->lockForUpdate()
                 ->findOrFail($approval->id);
 
@@ -170,7 +170,7 @@ class MaterialIssueService
 
     protected function notifyApprovers(MaterialIssueApproval $approval): void
     {
-        $approval->loadMissing(['materialRequest.inventoryItem', 'materialRequest.jobOrderTask.jobOrder', 'warehouse']);
+        $approval->loadMissing(['materialRequest.inventoryItem', 'materialRequest.jobOrder', 'warehouse']);
 
         $users = NotificationRecipients::roles(UserRole::Admin, UserRole::Operations);
 

@@ -21,7 +21,7 @@ class DielinesTable
                 TextColumn::make('name')
                     ->searchable()
                     ->weight('bold')
-                    ->description(fn (Dieline $record): string => $record->jobOrderTask?->jobOrder?->job_order_number ?? 'Instant-ready dieline'),
+                    ->description(fn (Dieline $record): string => $record->jobOrder?->job_order_number ?? 'Instant-ready dieline'),
                 TextColumn::make('template.name')
                     ->label('Type')
                     ->badge()

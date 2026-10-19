@@ -283,7 +283,7 @@ test('date only deadline columns do not use time based relative formatting', fun
         ->not->toContain('->since()')
         ->not->toContain('isPast()');
 
-    expect(file_get_contents(app_path('Filament/Resources/JobOrderTasks/Tables/JobOrderTasksTable.php')))
+    expect(file_get_contents(app_path('Filament/Resources/JobOrders/Tables/JobOrdersTable.php')))
         ->not->toContain('->since()')
         ->not->toContain('isPast()');
 

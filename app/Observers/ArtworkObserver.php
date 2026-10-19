@@ -29,14 +29,22 @@ class ArtworkObserver
 
         // If artwork was created as approved, update the task status
         if ($artwork->is_approved) {
-            $artwork->jobOrderTask?->updateStatus();
+            $artwork->jobOrder?->updateStatus();
         }
+    }
+
+    public function deleted(Artwork $artwork): void
+    {
+        $artwork->jobOrder?->updateStatus();
     }
 
     public function updated(Artwork $artwork): void
     {
+        if ($artwork->wasChanged(['is_approved', 'deliverable'])) {
+            $artwork->jobOrder?->updateStatus();
+        }
         if ($artwork->wasChanged('is_approved') && $artwork->is_approved) {
-            $artwork->jobOrderTask?->updateStatus();
+            $artwork->jobOrder?->updateStatus();
 
             // Notify the designer who uploaded the artwork
             $uploader = $artwork->uploader;

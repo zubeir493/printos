@@ -1,22 +1,34 @@
 <?php
 
 use App\Models\AccountingExport;
-use App\Models\JobOrderTask;
+use App\Models\JobOrder;
 use App\Models\User;
 use App\Notifications\AccountingExportFailed;
 use App\Notifications\DesignerAssignedToTask;
 use App\Notifications\TaskSentToProductionNotification;
 use App\UserRole;
 use Illuminate\Contracts\Queue\ShouldQueueAfterCommit;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTruncation;
+use Illuminate\Foundation\Testing\RefreshDatabaseState;
 use Illuminate\Support\Facades\Notification;
 use NotificationChannels\WebPush\WebPushChannel;
 
-uses(RefreshDatabase::class);
+uses(DatabaseTruncation::class);
+
+beforeEach(function (): void {
+    RefreshDatabaseState::$migrated = false;
+    $this->artisan('migrate:fresh');
+    RefreshDatabaseState::$migrated = true;
+});
+
+afterEach(function (): void {
+    RefreshDatabaseState::$migrated = false;
+    RefreshDatabaseState::$inMemoryConnections = [];
+});
 
 test('database notifications also include the web push channel', function () {
     $designer = User::factory()->create();
-    $task = JobOrderTask::factory()->create();
+    $task = JobOrder::factory()->create();
     $notification = new DesignerAssignedToTask($task);
 
     expect($notification)
@@ -65,7 +77,7 @@ test('web push notification payload contains a title body and target url', funct
     $designer = User::factory()->create([
         'role' => UserRole::Design,
     ]);
-    $task = JobOrderTask::factory()->create([
+    $task = JobOrder::factory()->create([
         'designer_id' => $designer->id,
         'name' => 'Plate layout',
     ]);
@@ -75,9 +87,9 @@ test('web push notification payload contains a title body and target url', funct
     expect($message->toArray())
         ->toMatchArray([
             'title' => 'Design Task Assigned',
-            'body' => "You have been assigned to task 'Plate layout' for job {$task->jobOrder->job_order_number}.\n",
+            'body' => "You have been assigned to task 'Plate layout' for job {$task->job_order_number}.\n",
             'data' => [
-                'url' => route('filament.design.resources.job-order-tasks.view', ['record' => $task]),
+                'url' => route('filament.design.resources.job-orders.view', ['record' => $task]),
             ],
         ]);
 });
@@ -91,7 +103,7 @@ test('production users are notified when a task is sent to production', function
     $operationsUser = User::factory()->create([
         'role' => UserRole::Operations,
     ]);
-    $task = JobOrderTask::factory()->create([
+    $task = JobOrder::factory()->create([
         'status' => 'design',
         'name' => 'Cover print',
     ]);
@@ -103,7 +115,7 @@ test('production users are notified when a task is sent to production', function
         TaskSentToProductionNotification::class,
         fn (TaskSentToProductionNotification $notification): bool => $notification
             ->toWebPush($productionUser, new stdClass)
-            ->toArray()['data']['url'] === route('filament.production.resources.job-order-tasks.view', ['record' => $task])
+            ->toArray()['data']['url'] === route('filament.production.resources.job-orders.view', ['record' => $task])
     );
     Notification::assertNotSentTo($operationsUser, TaskSentToProductionNotification::class);
 });

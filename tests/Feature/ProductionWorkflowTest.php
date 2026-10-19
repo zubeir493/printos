@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Models\JobOrder;
-use App\Models\JobOrderTask;
 use App\Models\Machine;
 use App\Models\Partner;
 use App\Models\ProductionPlan;
@@ -27,6 +26,7 @@ class ProductionWorkflowTest extends TestCase
         ]);
 
         $jobOrder = JobOrder::create([
+            'name' => 'Printing', 'quantity' => 100,
             'cost_calc_file' => 'job-order-cost-calculations/production.csv',
             'partner_id' => $partner->id,
             'job_order_number' => 'JO-PROD-001',
@@ -38,9 +38,9 @@ class ProductionWorkflowTest extends TestCase
             'advance_amount' => 20000,
         ]);
 
-        $jobOrder->update(['status' => 'active']);
+        $jobOrder->update(['status' => 'production']);
 
-        $this->assertEquals('active', (string) $jobOrder->fresh()->status);
+        $this->assertEquals('production', (string) $jobOrder->fresh()->status);
         $this->assertNotNull($jobOrder->fresh()->production_started_at);
     }
 
@@ -52,6 +52,7 @@ class ProductionWorkflowTest extends TestCase
         ]);
 
         $jobOrder = JobOrder::create([
+            'name' => 'Printing', 'quantity' => 100,
             'cost_calc_file' => 'job-order-cost-calculations/production.csv',
             'partner_id' => $partner->id,
             'job_order_number' => 'JO-PROD-002',
@@ -63,10 +64,10 @@ class ProductionWorkflowTest extends TestCase
             'advance_amount' => 15000,
         ]);
 
-        $jobOrder->update(['status' => 'active']);
+        $jobOrder->update(['status' => 'production']);
 
         $this->assertNotNull($jobOrder->fresh()->production_started_at);
-        $this->assertEquals('active', $jobOrder->status);
+        $this->assertEquals('production', (string) $jobOrder->status);
 
         $machine = Machine::create([
             'name' => 'Offset Press 2',
@@ -84,18 +85,18 @@ class ProductionWorkflowTest extends TestCase
             'machine_id' => $machine->id,
         ]);
 
-        $task = JobOrderTask::create([
-            'job_order_id' => $jobOrder->id,
+        $task = tap($jobOrder, fn (JobOrder $record) => $record->updateQuietly([
+
             'name' => 'Produce Packaging',
             'quantity' => 5000,
-            'task_cost' => 50000,
-        ]);
+            'subtotal' => 50000,
+        ]));
 
         $planItem = ProductionPlanItem::create([
             'production_plan_id' => $plan->id,
             'production_plan_machine_id' => $planMachine->id,
             'machine_id' => $machine->id,
-            'job_order_task_id' => $task->id,
+            'job_order_id' => $task->id,
             'planned_quantity' => 5000,
             'planned_plates' => 1,
             'planned_rounds' => 2,

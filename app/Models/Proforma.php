@@ -86,6 +86,11 @@ class Proforma extends Model
         return $this->belongsTo(User::class, 'approved_by');
     }
 
+    public function jobOrders(): HasMany
+    {
+        return $this->hasMany(JobOrder::class);
+    }
+
     public function tasks(): HasMany
     {
         return $this->hasMany(ProformaTask::class);

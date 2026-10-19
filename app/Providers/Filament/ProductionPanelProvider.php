@@ -9,7 +9,6 @@ use App\Filament\Production\Widgets\MachineLoadMixWidget;
 use App\Filament\Production\Widgets\MachineOutputPaceWidget;
 use App\Filament\Production\Widgets\ProductionCompletionWidget;
 use App\Filament\Resources\JobOrders\JobOrderResource;
-use App\Filament\Resources\JobOrderTasks\JobOrderTaskResource;
 use App\Filament\Resources\Machines\MachineResource;
 use App\Filament\Resources\MaterialRequests\MaterialRequestResource;
 use App\Filament\Resources\ProductionPlans\ProductionPlanResource;
@@ -53,12 +52,11 @@ class ProductionPanelProvider extends PanelProvider
                 'primary' => Color::Indigo,
             ])
             ->resources([
-                JobOrderTaskResource::class,
+                JobOrderResource::class,
                 ProductionPlanResource::class,
                 ProductionReportResource::class,
                 MachineResource::class,
                 MaterialRequestResource::class,
-                JobOrderResource::class,
             ])
             ->discoverPages(in: app_path('Filament/Production/Pages'), for: 'App\Filament\Production\Pages')
             ->pages([

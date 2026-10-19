@@ -142,7 +142,7 @@ class Partner extends Model
             ->sum(fn (SalesOrder $salesOrder): float => $this->statementDocumentBalance($salesOrder));
 
         $jobOrderBalance = $this->jobOrders()
-            ->whereIn('status', ['active', 'completed'])
+            ->clientReceivables()
             ->with(['payments' => fn ($query) => $query->whereNull('voided_at')])
             ->get()
             ->sum(fn (JobOrder $jobOrder): float => $this->statementDocumentBalance($jobOrder));
@@ -212,7 +212,7 @@ class Partner extends Model
             ));
 
         $jobOrderRows = $this->jobOrders()
-            ->whereIn('status', ['active', 'completed'])
+            ->clientReceivables()
             ->with(['payments' => fn ($query) => $query->whereNull('voided_at')])
             ->latest('submission_date')
             ->get()

@@ -2,7 +2,6 @@
 
 use App\Models\InventoryItem;
 use App\Models\JobOrder;
-use App\Models\JobOrderTask;
 use App\Models\MaterialRequest;
 use App\Models\Partner;
 use App\Models\User;
@@ -34,7 +33,7 @@ it('builds job order print data without money or status fields', function () {
         'subtotal' => 2500,
         'tax_amount' => 375,
         'total' => 2875,
-        'status' => 'active',
+        'status' => 'design',
     ]);
 
     $inventoryItem = InventoryItem::factory()->create([
@@ -44,16 +43,16 @@ it('builds job order print data without money or status fields', function () {
         'type' => 'raw_material',
     ]);
 
-    $task = JobOrderTask::factory()->create([
-        'job_order_id' => $jobOrder->id,
+    $task = tap($jobOrder, fn (JobOrder $record) => $record->updateQuietly([
+
         'name' => 'Cover Printing',
         'quantity' => 500,
         'size' => 'A4',
         'instructions' => 'Full color',
-    ]);
+    ]));
 
     MaterialRequest::create([
-        'job_order_task_id' => $task->id,
+        'job_order_id' => $task->id,
         'inventory_item_id' => $inventoryItem->id,
         'required_quantity' => 750,
         'requested_quantity' => 800,

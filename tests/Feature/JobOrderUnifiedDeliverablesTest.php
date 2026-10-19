@@ -3,25 +3,36 @@
 use App\Models\Artwork;
 use App\Models\InventoryItem;
 use App\Models\JobOrder;
-use App\Models\JobOrderTask;
 use App\Models\StockMovement;
 use App\Models\TextFile;
 use App\Models\User;
 use App\Models\Warehouse;
 use App\Notifications\TypistAssignedToTask;
 use App\UserRole;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTruncation;
+use Illuminate\Foundation\Testing\RefreshDatabaseState;
 use Illuminate\Support\Facades\DB;
 
-uses(RefreshDatabase::class);
+uses(DatabaseTruncation::class);
+
+beforeEach(function (): void {
+    RefreshDatabaseState::$migrated = false;
+    $this->artisan('migrate:fresh');
+    RefreshDatabaseState::$migrated = true;
+});
+
+afterEach(function (): void {
+    RefreshDatabaseState::$migrated = false;
+    RefreshDatabaseState::$inMemoryConnections = [];
+});
 
 it('does not start production for books until required deliverables are ready', function () {
     $jobOrder = JobOrder::factory()->create([
         'job_type' => 'books',
     ]);
 
-    $task = JobOrderTask::factory()->create([
-        'job_order_id' => $jobOrder->id,
+    $task = tap($jobOrder, fn (JobOrder $record) => $record->updateQuietly([
+
         'quantity' => 1,
         'status' => 'design',
         'deliverables' => [
@@ -38,10 +49,10 @@ it('does not start production for books until required deliverables are ready', 
                 'min_count' => 1,
             ],
         ],
-    ]);
+    ]));
 
     Artwork::create([
-        'job_order_task_id' => $task->id,
+        'job_order_id' => $task->id,
         'filename' => 'cover.pdf',
         'deliverable' => 'Cover Artwork',
         'is_approved' => true,
@@ -51,7 +62,7 @@ it('does not start production for books until required deliverables are ready', 
 
     $task->updateStatus();
 
-    expect($task->fresh()->status)->toBe('draft');
+    expect((string) $task->fresh()->status)->toBe('design');
 });
 
 it('completes a book task only when deliverables are ready and quantity is produced', function () {
@@ -59,8 +70,8 @@ it('completes a book task only when deliverables are ready and quantity is produ
         'job_type' => 'books',
     ]);
 
-    $task = JobOrderTask::factory()->create([
-        'job_order_id' => $jobOrder->id,
+    $task = tap($jobOrder, fn (JobOrder $record) => $record->updateQuietly([
+
         'quantity' => 1,
         'status' => 'design',
         'deliverables' => [
@@ -77,17 +88,17 @@ it('completes a book task only when deliverables are ready and quantity is produ
                 'min_count' => 1,
             ],
         ],
-    ]);
+    ]));
 
     Artwork::create([
-        'job_order_task_id' => $task->id,
+        'job_order_id' => $task->id,
         'filename' => 'cover.pdf',
         'deliverable' => 'Cover Artwork',
         'is_approved' => true,
     ]);
 
     TextFile::create([
-        'job_order_task_id' => $task->id,
+        'job_order_id' => $task->id,
         'filename' => 'text.pdf',
         'original_name' => 'text.pdf',
         'deliverable' => 'Text File',
@@ -98,7 +109,7 @@ it('completes a book task only when deliverables are ready and quantity is produ
         'inventory_item_id' => InventoryItem::factory()->create()->id,
         'warehouse_id' => Warehouse::factory()->create()->id,
         'type' => 'production_output',
-        'reference_type' => JobOrderTask::class,
+        'reference_type' => JobOrder::class,
         'reference_id' => $task->id,
         'quantity' => 1,
         'unit_cost' => 0,
@@ -110,7 +121,8 @@ it('completes a book task only when deliverables are ready and quantity is produ
 
     $task->updateStatus();
 
-    expect($task->fresh()->status)->toBe('completed');
+    expect((string) $task->fresh()->status)->toBe('production');
+    expect($task->fresh()->production_completed_at)->not->toBeNull();
 });
 
 it('keeps the existing production behavior for non-book tasks without deliverables', function () {
@@ -118,33 +130,33 @@ it('keeps the existing production behavior for non-book tasks without deliverabl
         'job_type' => 'packages',
     ]);
 
-    $task = JobOrderTask::factory()->create([
-        'job_order_id' => $jobOrder->id,
+    $task = tap($jobOrder, fn (JobOrder $record) => $record->updateQuietly([
+
         'quantity' => 1,
         'status' => 'design',
-    ]);
+    ]));
 
     Artwork::create([
-        'job_order_task_id' => $task->id,
+        'job_order_id' => $task->id,
         'filename' => 'package.pdf',
         'is_approved' => true,
     ]);
 
     $task->updateStatus();
 
-    expect($task->fresh()->status)->toBe('production');
+    expect((string) $task->fresh()->status)->toBe('production');
 });
 
-it('keeps a task in draft when only a typist is assigned', function () {
+it('starts design when only a typist is assigned', function () {
     $jobOrder = JobOrder::factory()->create([
         'job_type' => 'books',
     ]);
 
-    $task = JobOrderTask::factory()->create([
-        'job_order_id' => $jobOrder->id,
+    $task = tap($jobOrder, fn (JobOrder $record) => $record->updateQuietly([
+
         'quantity' => 1,
         'status' => 'draft',
-    ]);
+    ]));
 
     $typist = User::factory()->create([
         'role' => UserRole::Typist,
@@ -153,7 +165,7 @@ it('keeps a task in draft when only a typist is assigned', function () {
     $task->update(['typist_id' => $typist->id]);
     $task->updateStatus();
 
-    expect($task->fresh()->status)->toBe('draft');
+    expect((string) $task->fresh()->status)->toBe('design');
 });
 
 it('creates a database notification when a typist is assigned', function () {
@@ -161,17 +173,18 @@ it('creates a database notification when a typist is assigned', function () {
         'job_type' => 'books',
     ]);
 
-    $task = JobOrderTask::factory()->create([
-        'job_order_id' => $jobOrder->id,
+    $task = tap($jobOrder, fn (JobOrder $record) => $record->update([
+
         'quantity' => 1,
         'status' => 'draft',
-    ]);
+    ]));
 
     $typist = User::factory()->create([
         'role' => UserRole::Typist,
     ]);
 
     $task->update(['typist_id' => $typist->id]);
+    $this->artisan('queue:work', ['connection' => 'database', '--once' => true, '--queue' => 'default']);
 
     expect($task->fresh()->typist_id)->toBe($typist->id);
     expect(

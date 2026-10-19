@@ -4,11 +4,10 @@ namespace App\Filament\Finance\Pages;
 
 use App\Filament\Exports\GeneralLedgerExporter;
 use App\Models\Account;
-use App\Models\JournalItem;
+use App\Services\Accounting\FinancialReportService;
 use App\Support\FiscalCalendar;
 use App\Support\Money;
 use BackedEnum;
-use Carbon\Carbon;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\ExportAction;
 use Filament\Forms;
@@ -126,7 +125,7 @@ class GeneralLedgerReport extends Page implements HasForms, HasTable
                 SelectFilter::make('account_type')
                     ->label('Account Type')
                     ->options($this->accountTypeOptions())
-                    ->query(fn (Builder $query, array $data) => $query->where('accounts.type', $data['value'])),
+                    ->query(fn (Builder $query, array $data) => $query->when($data['value'] ?? null, fn ($query, $type) => $query->where('account_type', $type))),
             ])
             ->defaultSort('entry_date', 'desc');
     }
@@ -143,25 +142,7 @@ class GeneralLedgerReport extends Page implements HasForms, HasTable
 
     protected function ledgerQuery(): Builder
     {
-        return JournalItem::query()
-            ->join('journal_entries', 'journal_entries.id', '=', 'journal_items.journal_entry_id')
-            ->join('accounts', 'accounts.id', '=', 'journal_items.account_id')
-            ->where('journal_entries.status', 'posted')
-            ->when($this->accountId, fn ($query) => $query->where('journal_items.account_id', $this->accountId))
-            ->when($this->startDate, fn ($query) => $query->whereDate('journal_entries.date', '>=', Carbon::parse($this->startDate)->toDateString()))
-            ->when($this->endDate, fn ($query) => $query->whereDate('journal_entries.date', '<=', Carbon::parse($this->endDate)->toDateString()))
-            ->select('journal_items.*')
-            ->selectRaw('journal_entries.date as entry_date')
-            ->selectRaw('journal_entries.reference as entry_reference')
-            ->selectRaw('journal_entries.narration as entry_narration')
-            ->selectRaw('accounts.code as account_code')
-            ->selectRaw('accounts.name as account_name')
-            ->selectRaw('accounts.type as account_type')
-            ->selectRaw(
-                'SUM(journal_items.debit - journal_items.credit) OVER (PARTITION BY journal_items.account_id ORDER BY journal_entries.date, journal_entries.id, journal_items.id ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) as running_balance',
-            )
-            ->orderBy('journal_entries.date')
-            ->orderBy('journal_entries.id')
-            ->orderBy('journal_items.id');
+        return app(FinancialReportService::class)
+            ->generalLedgerQuery($this->startDate, $this->endDate, $this->accountId);
     }
 }

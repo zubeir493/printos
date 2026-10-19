@@ -22,6 +22,10 @@ class RepayEmployeeLoan
         }
 
         return DB::transaction(function () use ($loan, $method, $bankId, $amount): Payment {
+            $loan = EmployeeLoan::query()->lockForUpdate()->findOrFail($loan->id);
+            if ($loan->status === 'cancelled') {
+                throw new RuntimeException('Cancelled loans cannot be repaid.');
+            }
             $installments = $loan->installments()
                 ->where('status', 'pending')
                 ->orderBy('due_date')
@@ -64,6 +68,8 @@ class RepayEmployeeLoan
                 }
 
                 $appliedAmount = min($installmentRemaining, $remainingAmount);
+
+                $payment->loanInstallments()->attach($installment->id, ['amount' => $appliedAmount]);
 
                 $installment->update([
                     'paid_amount' => round($currentPaid + $appliedAmount, 2),

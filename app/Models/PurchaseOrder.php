@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Support\Facades\DB;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 
@@ -112,6 +113,21 @@ class PurchaseOrder extends Model
         $settings = Setting::getSettings();
 
         return $settings->vat_enabled ? (float) $settings->vat_rate / 100 : 0.0;
+    }
+
+    public function save(array $options = []): bool
+    {
+        return DB::transaction(function () use ($options): bool {
+            if ($this->exists) {
+                $current = self::query()->lockForUpdate()->findOrFail($this->id);
+                if (($current->status === 'received' || $current->goodsReceipts()->whereNotNull('posted_at')->exists())
+                    && $this->isDirty(['partner_id', 'order_date', 'subtotal', 'tax_amount', 'total'])) {
+                    throw new \RuntimeException('Received purchase orders cannot be edited.');
+                }
+            }
+
+            return parent::save($options);
+        });
     }
 
     protected static function booted()

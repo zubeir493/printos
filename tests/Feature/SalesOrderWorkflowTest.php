@@ -11,6 +11,7 @@ use App\Models\Payment;
 use App\Models\SalesOrder;
 use App\Models\SalesOrderItem;
 use App\Models\Warehouse;
+use App\Services\VoidSalesOrder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -410,10 +411,9 @@ class SalesOrderWorkflowTest extends TestCase
             'type' => 'sale',
         ]);
 
-        $this->assertStringContainsString(
-            'baseQuantityForStockMovement()',
-            file_get_contents(base_path('app/Filament/Resources/SalesOrders/Tables/SalesOrdersTable.php')),
-        );
+        app(VoidSalesOrder::class)->handle($salesOrder);
+        $this->assertDatabaseHas('inventory_balances', ['inventory_item_id' => $item->id, 'warehouse_id' => $warehouse->id, 'quantity_on_hand' => 1000]);
+        $this->assertDatabaseHas('stock_movements', ['reference_type' => SalesOrder::class, 'reference_id' => $salesOrder->id, 'type' => 'sale_return', 'quantity' => 500]);
     }
 
     public function test_purchase_unit_sales_conversion_tolerates_legacy_unit_label_casing(): void

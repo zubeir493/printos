@@ -2,10 +2,14 @@
 
 namespace App\Services\Accounting;
 
+use App\Models\EmployeeLoan;
+use App\Models\EmployeeLoanInstallment;
 use App\Models\JobOrder;
 use App\Models\JournalEntry;
 use App\Models\JournalItem;
 use App\Models\Payment;
+use App\Models\PayrollRun;
+use App\Models\PayrollRunEmployee;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
@@ -14,21 +18,22 @@ class VoidPaymentJournalEntry
 {
     public function handle(Payment $payment, string $reason, ?User $user = null): JournalEntry
     {
-        if ($payment->voided_at) {
-            throw new RuntimeException('This payment has already been voided.');
-        }
+        return DB::transaction(function () use ($payment, $reason, $user): JournalEntry {
+            $payment = Payment::query()->lockForUpdate()->findOrFail($payment->id);
+            if ($payment->voided_at) {
+                throw new RuntimeException('This payment has already been voided.');
+            }
 
-        $originalJournal = $payment->journalEntries()
-            ->whereNull('reversal_of_journal_entry_id')
-            ->where('status', 'posted')
-            ->orderBy('id')
-            ->first();
+            $originalJournal = $payment->journalEntries()
+                ->whereNull('reversal_of_journal_entry_id')
+                ->where('status', 'posted')
+                ->orderBy('id')
+                ->first();
 
-        if (! $originalJournal) {
-            throw new RuntimeException('No posted journal entry was found for this payment.');
-        }
+            if (! $originalJournal) {
+                throw new RuntimeException('No posted journal entry was found for this payment.');
+            }
 
-        return DB::transaction(function () use ($payment, $reason, $user, $originalJournal) {
             $timestamp = now();
 
             $originalJournal->update([
@@ -64,6 +69,7 @@ class VoidPaymentJournalEntry
             ]);
 
             $payment->refresh()->syncRelatedDocumentPaymentState();
+            $this->restoreRelatedDocuments($payment);
 
             if ($payment->payable instanceof JobOrder) {
                 $jobOrder = $payment->payable->refresh();
@@ -86,5 +92,30 @@ class VoidPaymentJournalEntry
 
             return $reversalJournal;
         });
+    }
+
+    private function restoreRelatedDocuments(Payment $payment): void
+    {
+        if ($payment->payable instanceof EmployeeLoan) {
+            $loan = EmployeeLoan::query()->lockForUpdate()->findOrFail($payment->payable_id);
+            foreach ($payment->loanInstallments()->get() as $allocation) {
+                $installment = EmployeeLoanInstallment::query()->lockForUpdate()->findOrFail($allocation->id);
+                $paid = max(0, round((float) $installment->paid_amount - (float) $allocation->pivot->amount, 2));
+                $installment->update([
+                    'paid_amount' => $paid,
+                    'status' => $paid >= (float) $installment->amount ? 'paid' : 'pending',
+                    'payment_id' => $installment->payment_id === $payment->id ? null : $installment->payment_id,
+                    'paid_at' => $paid > 0 ? $installment->paid_at : null,
+                ]);
+            }
+            $loan->syncStatusFromInstallments();
+        }
+
+        $runIds = PayrollRunEmployee::query()->where('payment_id', $payment->id)->pluck('payroll_run_id')->unique();
+        foreach ($runIds as $runId) {
+            $run = PayrollRun::query()->lockForUpdate()->findOrFail($runId);
+            $run->employees()->where('payment_id', $payment->id)->update(['payment_id' => null]);
+            $run->update(['status' => 'approved', 'paid_at' => null]);
+        }
     }
 }

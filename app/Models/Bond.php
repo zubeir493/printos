@@ -111,6 +111,11 @@ class Bond extends Model
         $this->guardBankBackedPayment($method, $bankId);
 
         return DB::transaction(function () use ($paymentDate, $method, $bankId, $reference, $cpoBankName): Payment {
+            $this->setRawAttributes(self::query()->lockForUpdate()->findOrFail($this->id)->getAttributes(), true);
+            $this->unsetRelations();
+            if ($this->issue_payment_id) {
+                throw new RuntimeException('This bond has already been issued.');
+            }
             $payment = Payment::create([
                 'partner_id' => $this->issuing_partner_id,
                 'bank_id' => $method === 'cpo' ? null : $bankId,
@@ -148,6 +153,14 @@ class Bond extends Model
         $this->guardBankBackedPayment($method, $bankId);
 
         return DB::transaction(function () use ($paymentDate, $method, $bankId, $reference, $cpoBankName): Payment {
+            $this->setRawAttributes(self::query()->lockForUpdate()->findOrFail($this->id)->getAttributes(), true);
+            $this->unsetRelations();
+            if ($this->recovery_payment_id) {
+                throw new RuntimeException('This bond has already been recovered.');
+            }
+            if (! $this->issue_payment_id || $this->status !== self::STATUS_ACTIVE) {
+                throw new RuntimeException('Only active, issued bonds can be recovered.');
+            }
             $payment = Payment::create([
                 'partner_id' => $this->issuing_partner_id,
                 'bank_id' => $method === 'cpo' ? null : $bankId,

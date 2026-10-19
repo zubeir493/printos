@@ -10,6 +10,7 @@ use App\Filament\Resources\GoodsReceipts\GoodsReceiptResource;
 use App\Filament\Resources\InventoryItems\InventoryItemResource;
 use App\Filament\Resources\JobOrders\JobOrderResource;
 use App\Filament\Resources\MaterialRequests\MaterialRequestResource;
+use App\Filament\Resources\PurchaseOrders\PurchaseOrderResource;
 use App\Filament\Resources\StockAdjustments\StockAdjustmentResource;
 use App\Filament\Resources\StockMovements\StockMovementResource;
 use App\Filament\Resources\StockTransfers\StockTransferResource;
@@ -61,6 +62,7 @@ class WarehousePanelProvider extends PanelProvider
                 JobOrderResource::class,
                 InventoryItemResource::class,
                 WarehouseResource::class,
+                PurchaseOrderResource::class,
                 GoodsReceiptResource::class,
                 DispatchResource::class,
                 StockMovementResource::class,

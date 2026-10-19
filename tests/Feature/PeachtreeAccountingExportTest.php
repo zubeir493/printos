@@ -245,9 +245,7 @@ test('only admin and finance users can download completed exports', function ():
     Livewire::test(ListAccountingExports::class)
         ->assertTableActionHasUrl('download', route('accounting-exports.download', $export), $export);
 
-    expect(file_get_contents(app_path('Filament/Resources/AccountingExports/Tables/AccountingExportsTable.php')))
-        ->toContain("Action::make('download')")
-        ->toContain('->openUrlInNewTab()');
+    Livewire::test(ListAccountingExports::class)->assertTableActionVisible('download', $export);
 
     $this->actingAs($sales)->get(route('accounting-exports.download', $export))->assertRedirect();
 });

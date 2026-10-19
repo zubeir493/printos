@@ -26,7 +26,11 @@ class GeneratePayrollPayments
         }
 
         DB::transaction(function () use ($payrollRun, $method, $bankId): void {
-            $payrollRun->loadMissing('employees.employee');
+            $payrollRun = PayrollRun::query()->lockForUpdate()->findOrFail($payrollRun->id);
+            if ($payrollRun->status !== 'approved') {
+                throw new RuntimeException('Payroll payments can only be generated after approval.');
+            }
+            $payrollRun->setRelation('employees', $payrollRun->employees()->lockForUpdate()->with('employee')->get());
             $payablePayrollEmployees = $payrollRun->employees
                 ->whereNull('payment_id')
                 ->filter(fn ($payrollEmployee): bool => (float) $payrollEmployee->net_pay > 0);
@@ -37,7 +41,7 @@ class GeneratePayrollPayments
             }
 
             if ($method === 'bank') {
-                $bank = Bank::query()->find($bankId);
+                $bank = Bank::query()->lockForUpdate()->find($bankId);
 
                 if (! $bank || (float) $bank->current_balance < $requiredAmount) {
                     throw new RuntimeException('The selected bank account does not have enough balance for this payroll.');
@@ -53,6 +57,8 @@ class GeneratePayrollPayments
                 'reference' => $this->reference($payrollRun),
                 'transaction_type' => PaymentTransactionType::PAYROLL_PAYMENT->value,
                 'payment_type' => 'payroll',
+                'payable_type' => PayrollRun::class,
+                'payable_id' => $payrollRun->id,
             ]);
 
             $payrollRun->employees()

@@ -58,7 +58,7 @@ class PurchaseOrderItemsTable
             ])
             ->bulkActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                    DeleteBulkAction::make()->authorizeIndividualRecords(),
                     ExportBulkAction::make()
                         ->exporter(PurchaseOrderItemExporter::class),
                 ]),

@@ -7,6 +7,7 @@ use App\Filament\Resources\BankTransfers\Pages\EditBankTransfer;
 use App\Filament\Resources\BankTransfers\Pages\ListBankTransfers;
 use App\Filament\Resources\BankTransfers\Schemas\BankTransferForm;
 use App\Filament\Resources\BankTransfers\Tables\BankTransfersTable;
+use App\Filament\Support\PanelAccess;
 use App\Models\BankTransfer;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -22,6 +23,21 @@ class BankTransferResource extends Resource
     protected static ?string $navigationLabel = 'Transfers';
 
     protected static ?int $navigationSort = 260;
+
+    public static function canEdit($record): bool
+    {
+        return PanelAccess::canAccessFinanceSection() && $record->status === 'pending';
+    }
+
+    public static function canDelete($record): bool
+    {
+        return static::canEdit($record);
+    }
+
+    public static function canDeleteAny(): bool
+    {
+        return PanelAccess::canAccessFinanceSection();
+    }
 
     public static function form(Schema $schema): Schema
     {

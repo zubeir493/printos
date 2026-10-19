@@ -14,21 +14,17 @@ class PostPayrollRun
 {
     public function handle(PayrollRun $payrollRun): JournalEntry
     {
-        $existingJournalEntry = JournalEntry::query()
-            ->where('source_type', PayrollRun::class)
-            ->where('source_id', $payrollRun->id)
-            ->whereNull('reversal_of_journal_entry_id')
-            ->first();
-
-        if ($existingJournalEntry) {
-            return $existingJournalEntry;
-        }
-
-        if ($payrollRun->status !== 'draft') {
-            throw new RuntimeException('Only draft payroll runs can be approved.');
-        }
-
-        return DB::transaction(function () use ($payrollRun): JournalEntry {
+        $journalEntry = DB::transaction(function () use ($payrollRun): JournalEntry {
+            $payrollRun = PayrollRun::query()->lockForUpdate()->findOrFail($payrollRun->id);
+            $existingJournalEntry = JournalEntry::query()
+                ->where('source_type', PayrollRun::class)->where('source_id', $payrollRun->id)
+                ->whereNull('reversal_of_journal_entry_id')->first();
+            if ($existingJournalEntry) {
+                return $existingJournalEntry;
+            }
+            if ($payrollRun->status !== 'draft') {
+                throw new RuntimeException('Only draft payroll runs can be approved.');
+            }
             $payrollRun->loadMissing('employees');
             $this->removeZeroNetEmployees($payrollRun);
             $payrollRun->load('employees');
@@ -47,9 +43,14 @@ class PostPayrollRun
             $pension = (float) $payrollRun->employees->sum('pension_contribution');
             $loan = (float) $payrollRun->employees->sum('loan');
             $workersUnion = (float) $payrollRun->employees->sum('workers_union');
+            $manualDeductions = $payrollRun->employees->sum(fn ($row): float => (float) collect($row->calculation_snapshot['manual_deductions'] ?? [])->sum(fn (array $item): float => max(0, (float) ($item['amount'] ?? 0))));
 
             $totalDebit = round($salaryExpense + $overtime + $employerPension, 2);
-            $totalCredit = round($netPay + $incomeTax + $penalty + $pension + $loan + $workersUnion, 2);
+            $totalCredit = round($netPay + $incomeTax + $penalty + $pension + $loan + $workersUnion + $manualDeductions, 2);
+
+            if ($totalDebit !== $totalCredit) {
+                throw new RuntimeException('Payroll journal must balance before posting.');
+            }
 
             $journalEntry = JournalEntry::create([
                 'date' => $payrollRun->pay_date ?? $payrollRun->period_end,
@@ -73,6 +74,7 @@ class PostPayrollRun
             $this->item($journalEntry, '1230', 'Employee Loans Receivable', 'Asset', 0, $loan);
             $this->item($journalEntry, '2190', 'Workers Union Payable', 'Liability', 0, $workersUnion);
 
+            $this->item($journalEntry, '2195', 'Payroll Deductions Clearing', 'Liability', 0, $manualDeductions);
             $this->markLoanInstallmentsPaid($payrollRun);
 
             $payrollRun->update([
@@ -83,6 +85,9 @@ class PostPayrollRun
 
             return $journalEntry;
         });
+        $payrollRun->refresh();
+
+        return $journalEntry;
     }
 
     private function removeZeroNetEmployees(PayrollRun $payrollRun): void
@@ -126,20 +131,35 @@ class PostPayrollRun
                 return;
             }
 
-            EmployeeLoanInstallment::query()
+            $remaining = round((float) $employeePayroll->loan, 2);
+            if ($remaining <= 0) {
+                return;
+            }
+            $installments = EmployeeLoanInstallment::query()
                 ->whereIn('id', $installmentIds)
-                ->where('status', 'pending')
-                ->get()
-                ->each(function (EmployeeLoanInstallment $installment) use ($employeePayroll): void {
-                    $installment->update([
-                        'paid_amount' => $installment->amount,
-                        'status' => 'paid',
-                        'payroll_run_employee_id' => $employeePayroll->id,
-                        'paid_at' => now(),
-                    ]);
-
-                    $installment->loan->syncStatusFromInstallments();
-                });
+                ->whereHas('loan', fn ($query) => $query->where('employee_id', $employeePayroll->employee_id)->where('status', '!=', 'cancelled'))
+                ->where('status', 'pending')->orderBy('due_date')->orderBy('id')->lockForUpdate()->get();
+            foreach ($installments as $installment) {
+                $applied = min($remaining, max(0, (float) $installment->amount - (float) $installment->paid_amount));
+                if ($applied <= 0) {
+                    continue;
+                }
+                $paid = round((float) $installment->paid_amount + $applied, 2);
+                $installment->update([
+                    'paid_amount' => $paid,
+                    'status' => $paid >= (float) $installment->amount ? 'paid' : 'pending',
+                    'payroll_run_employee_id' => $employeePayroll->id,
+                    'paid_at' => now(),
+                ]);
+                $installment->loan->syncStatusFromInstallments();
+                $remaining = round($remaining - $applied, 2);
+                if ($remaining <= 0) {
+                    break;
+                }
+            }
+            if ($remaining > 0) {
+                throw new RuntimeException('Loan deduction exceeds the selected outstanding installments. Recalculate payroll.');
+            }
         });
     }
 }

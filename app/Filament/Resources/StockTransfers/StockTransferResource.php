@@ -31,6 +31,21 @@ class StockTransferResource extends Resource
         return $count > 0 ? (string) $count : null;
     }
 
+    public static function canEdit($record): bool
+    {
+        return PanelAccess::canAccessWarehouseSection() && $record->status === 'draft';
+    }
+
+    public static function canDelete($record): bool
+    {
+        return static::canEdit($record);
+    }
+
+    public static function canDeleteAny(): bool
+    {
+        return PanelAccess::canAccessWarehouseSection();
+    }
+
     public static function form(Schema $schema): Schema
     {
         return StockTransferForm::configure($schema);

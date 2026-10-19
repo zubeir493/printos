@@ -60,6 +60,32 @@ class StockTransfer extends Model
         return $this->hasMany(StockTransferItem::class);
     }
 
+    public function save(array $options = []): bool
+    {
+        return DB::transaction(function () use ($options): bool {
+            if ($this->exists) {
+                $current = self::query()->lockForUpdate()->findOrFail($this->id);
+                if ($current->status === 'completed' && $this->isDirty()) {
+                    throw new \RuntimeException('Completed stock transfers cannot be edited.');
+                }
+            }
+
+            return parent::save($options);
+        });
+    }
+
+    public function delete(): ?bool
+    {
+        return DB::transaction(function (): ?bool {
+            $current = self::query()->lockForUpdate()->findOrFail($this->id);
+            if ($current->status === 'completed') {
+                throw new \RuntimeException('Completed stock transfers cannot be deleted.');
+            }
+
+            return parent::delete();
+        });
+    }
+
     protected static function booted()
     {
         static::creating(function ($transfer) {
@@ -88,6 +114,8 @@ class StockTransfer extends Model
     public function post(): void
     {
         $posted = DB::transaction(function (): bool {
+            $this->setRawAttributes(self::query()->lockForUpdate()->findOrFail($this->id)->getAttributes(), true);
+            $this->load('items.inventoryItem');
             $alreadyPosted = StockMovement::where('reference_type', self::class)
                 ->where('reference_id', $this->id)
                 ->whereIn('type', ['transfer_out', 'transfer_in'])
@@ -103,7 +131,7 @@ class StockTransfer extends Model
                 $balance = InventoryBalance::where([
                     'inventory_item_id' => $item->inventory_item_id,
                     'warehouse_id' => $this->from_warehouse_id,
-                ])->first();
+                ])->lockForUpdate()->first();
 
                 $available = $balance ? (float) $balance->quantity_on_hand : 0.0;
                 $requested = (float) $item->quantity;

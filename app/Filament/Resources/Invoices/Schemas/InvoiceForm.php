@@ -72,16 +72,17 @@ class InvoiceForm
                                     ->minValue(0)
                                     ->live(onBlur: true)
                                     ->afterStateUpdated(function ($state, Set $set) {
-                                        $vatRate = (float) (Setting::getSettings()->vat_rate ?? 0) / 100;
-                                        $tax = $state * $vatRate;
-                                        $total = $state + $tax;
+                                        $settings = Setting::getSettings();
+                                        $vatRate = $settings->vat_enabled ? (float) $settings->vat_rate / 100 : 0.0;
+                                        $tax = round((float) $state * $vatRate, 2);
+                                        $total = round((float) $state + $tax, 2);
                                         $set('tax_amount', $tax);
                                         $set('total_amount', $total);
                                         $set('balance_due', $total);
                                     }),
 
                                 TextInput::make('tax_amount')
-                                    ->label(fn () => 'Tax ('.(Setting::getSettings()->vat_rate ?? 0).'%)')
+                                    ->label(fn () => 'Tax ('.(Setting::getSettings()->vat_enabled ? Setting::getSettings()->vat_rate : 0).'%)')
                                     ->suffix(fn (): string => Money::suffix())
                                     ->numeric()
                                     ->step(0.01)

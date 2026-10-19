@@ -79,25 +79,27 @@ class StockAdjustment extends Model
         });
     }
 
-    public function post()
+    public function save(array $options = []): bool
     {
-        // If it's already posted, don't do it again
-        if (! is_null($this->posted_at)) {
-            return;
-        }
+        return DB::transaction(fn (): bool => parent::save($options));
+    }
 
-        if ($this->items()->count() === 0) {
-            throw new \Exception('Cannot post an adjustment with no items.');
-        }
-
-        $this->validateNonNegativeAdjustment();
-
-        DB::transaction(function () {
+    public function post(): void
+    {
+        DB::transaction(function (): void {
+            $this->setRawAttributes(self::query()->lockForUpdate()->findOrFail($this->id)->getAttributes(), true);
+            $this->load('items.inventoryItem');
+            if ($this->posted_at !== null) {
+                return;
+            }
+            if ($this->items->isEmpty()) {
+                throw new \RuntimeException('Cannot post an adjustment with no items.');
+            }
+            $this->validateNonNegativeAdjustment();
             foreach ($this->items as $item) {
                 if ((float) $item->adjustment_quantity === 0.0) {
                     continue;
                 }
-
                 StockMovement::create([
                     'inventory_item_id' => $item->inventory_item_id,
                     'warehouse_id' => $this->warehouse_id,
@@ -105,14 +107,10 @@ class StockAdjustment extends Model
                     'quantity' => $item->adjustment_quantity,
                     'reference_type' => self::class,
                     'reference_id' => $this->id,
-                    'movement_date' => now(), // today
+                    'movement_date' => now(),
                 ]);
             }
-
-            $this->updateQuietly([
-                'status' => 'posted',
-                'posted_at' => now(),
-            ]);
+            $this->updateQuietly(['status' => 'posted', 'posted_at' => now()]);
         });
     }
 
@@ -122,6 +120,7 @@ class StockAdjustment extends Model
 
         $balances = InventoryBalance::whereIn('inventory_item_id', $itemIds)
             ->where('warehouse_id', $this->warehouse_id)
+            ->lockForUpdate()
             ->get()
             ->keyBy('inventory_item_id');
 
@@ -134,6 +133,10 @@ class StockAdjustment extends Model
 
             $startingQty = $balance ? (float) $balance->quantity_on_hand : 0.0;
             $resultingQty = $startingQty + (float) $item->adjustment_quantity;
+
+            if ($balance) {
+                $balance->quantity_on_hand = $resultingQty;
+            }
 
             if ($resultingQty < -0.00001) {
                 throw new \Exception(sprintf(

@@ -75,6 +75,9 @@ class BankTransfer extends Model
     public function complete(?User $user = null): void
     {
         DB::transaction(function () use ($user) {
+            $this->setRawAttributes(self::query()->lockForUpdate()->findOrFail($this->id)->getAttributes(), true);
+            $this->unsetRelations();
+
             if ($this->status !== 'pending') {
                 throw new \Exception('Only pending transfers can be completed');
             }
@@ -89,15 +92,39 @@ class BankTransfer extends Model
 
     public function cancel(?User $user = null): void
     {
-        if ($this->status === 'completed') {
-            throw new \Exception('Cannot cancel a completed transfer');
-        }
+        DB::transaction(function () use ($user): void {
+            $this->setRawAttributes(self::query()->lockForUpdate()->findOrFail($this->id)->getAttributes(), true);
+            if ($this->status !== 'pending') {
+                throw new \RuntimeException('Only pending transfers can be cancelled.');
+            }
+            $this->update(['status' => 'cancelled', 'completed_by' => $user?->id, 'completed_at' => now()]);
+        });
+    }
 
-        $this->update([
-            'status' => 'cancelled',
-            'completed_by' => $user?->id,
-            'completed_at' => now(),
-        ]);
+    public function save(array $options = []): bool
+    {
+        return DB::transaction(function () use ($options): bool {
+            if ($this->exists) {
+                $current = self::query()->lockForUpdate()->findOrFail($this->id);
+                if ($current->status !== 'pending' && $this->isDirty()) {
+                    throw new \RuntimeException('Completed or cancelled transfers cannot be edited.');
+                }
+            }
+
+            return parent::save($options);
+        });
+    }
+
+    public function delete(): ?bool
+    {
+        return DB::transaction(function (): ?bool {
+            $current = self::query()->lockForUpdate()->findOrFail($this->id);
+            if ($current->status === 'completed') {
+                throw new \RuntimeException('Completed transfers cannot be deleted.');
+            }
+
+            return parent::delete();
+        });
     }
 
     public static function boot()

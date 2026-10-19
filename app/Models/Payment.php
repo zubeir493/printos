@@ -11,6 +11,7 @@ use App\UserRole;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -134,6 +135,11 @@ class Payment extends Model
         return $this->morphMany(JournalEntry::class, 'source');
     }
 
+    public function loanInstallments(): BelongsToMany
+    {
+        return $this->belongsToMany(EmployeeLoanInstallment::class)->withPivot('amount');
+    }
+
     public function payable(): MorphTo
     {
         return $this->morphTo();
@@ -197,6 +203,8 @@ class Payment extends Model
                 $salesOrder->isPaidInFull()
             ) {
                 $salesOrder->updateQuietly(['status' => SalesOrder::STATUS_COMPLETED]);
+            } elseif ($salesOrder->status === SalesOrder::STATUS_COMPLETED && ! $salesOrder->isPaidInFull()) {
+                $salesOrder->updateQuietly(['status' => SalesOrder::STATUS_SUBMITTED]);
             } elseif (
                 $salesOrder->payment_mode === 'credit' &&
                 in_array($salesOrder->status, [SalesOrder::STATUS_DRAFT, SalesOrder::STATUS_DEPOSIT_RECEIVED], true)

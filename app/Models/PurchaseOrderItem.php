@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\DB;
 
 #[ObservedBy(PurchaseOrderItemObserver::class)]
 class PurchaseOrderItem extends Model
@@ -44,6 +45,32 @@ class PurchaseOrderItem extends Model
             'unit_price' => 'decimal:2',
             'total' => 'decimal:2',
         ];
+    }
+
+    public function save(array $options = []): bool
+    {
+        return DB::transaction(function () use ($options): bool {
+            $purchaseOrderId = $this->getRawOriginal('purchase_order_id') ?? $this->purchase_order_id;
+            $purchaseOrder = PurchaseOrder::query()->lockForUpdate()->findOrFail($purchaseOrderId);
+            $locked = $purchaseOrder->status === 'received' || $purchaseOrder->goodsReceipts()->whereNotNull('posted_at')->exists();
+            if ($locked && (! $this->exists || $this->isDirty(['purchase_order_id', 'inventory_item_id', 'quantity', 'unit_price', 'total']))) {
+                throw new \RuntimeException('Received purchase order items cannot be edited.');
+            }
+
+            return parent::save($options);
+        });
+    }
+
+    public function delete(): ?bool
+    {
+        return DB::transaction(function (): ?bool {
+            $purchaseOrder = PurchaseOrder::query()->lockForUpdate()->findOrFail($this->purchase_order_id);
+            if ($purchaseOrder->status === 'received' || $purchaseOrder->goodsReceipts()->whereNotNull('posted_at')->exists()) {
+                throw new \RuntimeException('Received purchase order items cannot be deleted.');
+            }
+
+            return parent::delete();
+        });
     }
 
     public function purchaseOrder(): BelongsTo

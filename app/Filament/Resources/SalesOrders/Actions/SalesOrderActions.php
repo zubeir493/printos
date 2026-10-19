@@ -7,9 +7,8 @@ use App\Filament\Support\PanelAccess;
 use App\Models\Bank;
 use App\Models\Payment;
 use App\Models\SalesOrder;
-use App\Models\StockMovement;
-use App\Services\Accounting\VoidPaymentJournalEntry;
 use App\Services\InvoiceGeneratorService;
+use App\Services\VoidSalesOrder;
 use App\Support\Money;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -276,53 +275,7 @@ class SalesOrderActions
             ->modalSubmitActionLabel('Void Order')
             ->action(function (SalesOrder $record): void {
                 try {
-                    DB::transaction(function () use ($record): void {
-                        $record->load(['payments', 'salesOrderItems.inventoryItem']);
-
-                        foreach ($record->payments as $payment) {
-                            if ($payment->voided_at) {
-                                continue;
-                            }
-
-                            try {
-                                app(VoidPaymentJournalEntry::class)->handle($payment, 'Sales order voided');
-                            } catch (\Exception $e) {
-                                if (! str_contains($e->getMessage(), 'No posted journal entry was found')) {
-                                    throw $e;
-                                }
-
-                                $payment->update([
-                                    'voided_at' => now(),
-                                    'voided_by' => auth()->id(),
-                                    'void_reason' => 'Sales order voided',
-                                ]);
-                            }
-                        }
-
-                        foreach ($record->salesOrderItems as $item) {
-                            $exists = StockMovement::where('reference_type', get_class($record))
-                                ->where('reference_id', $record->id)
-                                ->where('inventory_item_id', $item->inventory_item_id)
-                                ->where('type', 'sale')
-                                ->exists();
-
-                            if (! $exists) {
-                                continue;
-                            }
-
-                            StockMovement::create([
-                                'inventory_item_id' => $item->inventory_item_id,
-                                'warehouse_id' => $record->warehouse_id,
-                                'type' => 'sale_return',
-                                'reference_type' => get_class($record),
-                                'reference_id' => $record->id,
-                                'quantity' => abs($item->baseQuantityForStockMovement()),
-                                'movement_date' => now(),
-                            ]);
-                        }
-
-                        $record->update(['status' => SalesOrder::STATUS_VOID]);
-                    });
+                    app(VoidSalesOrder::class)->handle($record);
 
                     Notification::make()
                         ->title('Sales Order Voided')

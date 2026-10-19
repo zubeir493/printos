@@ -5,6 +5,7 @@ namespace App\Services\Accounting;
 use App\Models\Account;
 use App\Models\JournalItem;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
 class FinancialReportService
@@ -84,14 +85,13 @@ class FinancialReportService
         ];
     }
 
-    public function generalLedger(?string $startDate, ?string $endDate, ?int $accountId = null): array
+    public function generalLedgerQuery(?string $startDate, ?string $endDate, ?int $accountId = null): Builder
     {
         $query = JournalItem::query()
             ->join('journal_entries', 'journal_entries.id', '=', 'journal_items.journal_entry_id')
             ->join('accounts', 'accounts.id', '=', 'journal_items.account_id')
             ->where('journal_entries.status', 'posted')
             ->when($accountId, fn ($query) => $query->where('journal_items.account_id', $accountId))
-            ->when($startDate, fn ($query) => $query->whereDate('journal_entries.date', '>=', Carbon::parse($startDate)->toDateString()))
             ->when($endDate, fn ($query) => $query->whereDate('journal_entries.date', '<=', Carbon::parse($endDate)->toDateString()))
             ->select('journal_items.*')
             ->selectRaw('journal_entries.date as entry_date')
@@ -107,7 +107,15 @@ class FinancialReportService
             ->orderBy('journal_entries.id')
             ->orderBy('journal_items.id');
 
-        $rows = $query->get();
+        return JournalItem::query()->fromSub($query->toBase(), 'journal_items')
+            ->select('journal_items.*')
+            ->when($startDate, fn ($query) => $query->whereDate('entry_date', '>=', Carbon::parse($startDate)->toDateString()))
+            ->orderBy('entry_date')->orderBy('id');
+    }
+
+    public function generalLedger(?string $startDate, ?string $endDate, ?int $accountId = null): array
+    {
+        $rows = $this->generalLedgerQuery($startDate, $endDate, $accountId)->get();
 
         return [
             'rows' => $rows,

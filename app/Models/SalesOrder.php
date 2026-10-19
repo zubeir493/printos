@@ -167,6 +167,21 @@ class SalesOrder extends Model
         return $total - $paid;
     }
 
+    public function save(array $options = []): bool
+    {
+        return DB::transaction(function () use ($options): bool {
+            if ($this->exists) {
+                $changes = $this->getDirty();
+                $current = self::query()->lockForUpdate()->findOrFail($this->id);
+                $this->setRawAttributes($current->getAttributes(), true);
+                $this->setRawAttributes(array_replace($this->getAttributes(), $changes));
+                $this->unsetRelations();
+            }
+
+            return parent::save($options);
+        });
+    }
+
     protected static function booted()
     {
         static::creating(function ($salesOrder): void {
@@ -197,31 +212,18 @@ class SalesOrder extends Model
                     throw new \Exception('Credit sales can only be completed after full payment is received.');
                 }
 
-                // Validate sufficient stock — quantities may be in purchase units, convert to base
-                foreach ($salesOrder->salesOrderItems as $item) {
-                    $inventoryItem = $item->inventoryItem;
-                    $requiredBase = $item->quantity;
-
-                    if (
-                        $inventoryItem
-                        && $inventoryItem->hasPurchaseUnit()
-                        && $item->usesPurchaseUnit()
-                    ) {
-                        $requiredBase = $inventoryItem->toBaseUnits((float) $item->quantity);
-                    }
-
-                    $balance = InventoryBalance::where('inventory_item_id', $item->inventory_item_id)
-                        ->where('warehouse_id', $salesOrder->warehouse_id)
-                        ->lockForUpdate()
-                        ->first();
-                    $qty = $balance ? (float) $balance->quantity_on_hand : 0;
-
-                    if ($qty < $requiredBase) {
-                        $itemName = $inventoryItem ? $inventoryItem->name : 'Unknown Item';
-                        $availableDisplay = $inventoryItem && $item->usesPurchaseUnit()
-                            ? round($inventoryItem->toPurchaseUnits($qty), 4).' '.$inventoryItem->purchase_unit
-                            : $qty.' '.($inventoryItem?->unit ?? 'units');
-                        throw new \Exception("Insufficient stock for item {$itemName}. Available: {$availableDisplay}, Required: {$item->quantity} {$item->unit_label}.");
+                if (in_array($salesOrder->getOriginal('status'), [self::STATUS_SUBMITTED, self::STATUS_COMPLETED], true)) {
+                    return;
+                }
+                $salesOrder->load('salesOrderItems.inventoryItem');
+                $requirements = $salesOrder->salesOrderItems->groupBy('inventory_item_id');
+                foreach ($requirements as $inventoryItemId => $items) {
+                    $requiredBase = $items->sum(fn (SalesOrderItem $item): float => $item->baseQuantityForStockMovement());
+                    $balance = InventoryBalance::where('inventory_item_id', $inventoryItemId)
+                        ->where('warehouse_id', $salesOrder->warehouse_id)->lockForUpdate()->first();
+                    $available = $balance ? (float) $balance->quantity_on_hand : 0;
+                    if ($requiredBase <= 0 || $available < $requiredBase) {
+                        throw new \RuntimeException('Insufficient stock for item '.($items->first()->inventoryItem?->name ?? $inventoryItemId).'. Available: '.$available.', Required: '.$requiredBase.'.');
                     }
                 }
             }
@@ -240,15 +242,13 @@ class SalesOrder extends Model
                         ->pluck('inventory_item_id')
                         ->toArray();
 
-                    foreach ($salesOrder->salesOrderItems as $item) {
-                        if (in_array($item->inventory_item_id, $existingItemIds, true)) {
+                    foreach ($salesOrder->salesOrderItems->groupBy('inventory_item_id') as $inventoryItemId => $items) {
+                        if (in_array((int) $inventoryItemId, $existingItemIds, true)) {
                             continue;
                         }
-
-                        $baseQty = $item->baseQuantityForStockMovement();
-
+                        $baseQty = $items->sum(fn (SalesOrderItem $item): float => $item->baseQuantityForStockMovement());
                         StockMovement::create([
-                            'inventory_item_id' => $item->inventory_item_id,
+                            'inventory_item_id' => $inventoryItemId,
                             'warehouse_id' => $salesOrder->warehouse_id,
                             'type' => 'sale',
                             'reference_type' => self::class,
@@ -256,8 +256,6 @@ class SalesOrder extends Model
                             'quantity' => -abs($baseQty),
                             'movement_date' => now(),
                         ]);
-
-                        $existingItemIds[] = $item->inventory_item_id;
                     }
                 });
             }

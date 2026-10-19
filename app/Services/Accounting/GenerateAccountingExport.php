@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use RuntimeException;
 use Throwable;
 
@@ -73,7 +74,7 @@ class GenerateAccountingExport
 
             $mappings = $this->validatedMappings($integration, $journalEntries);
             $fileName = 'peachtree-general-journal-'.$cutoff->format('Y-m-d-His').'.xlsx';
-            $filePath = "accounting-exports/{$integration->provider}/{$fileName}";
+            $filePath = "accounting-exports/{$integration->provider}/{$export->id}/".Str::uuid()."/{$fileName}";
             $rowCount = $this->providerFor($integration)->write($journalEntries, $mappings, $temporaryPath);
             $contents = file_get_contents($temporaryPath);
 

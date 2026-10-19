@@ -102,6 +102,7 @@ class PurchaseOrderActions
                             ->content(fn ($get) => PurchaseOrderItem::find($get('purchase_order_item_id'))
                                 ?->received_quantity ?? '0'),
                         TextInput::make('quantity_received')
+                            ->maxValue(fn ($get): float => max(0, (float) PurchaseOrderItem::find($get('purchase_order_item_id'))?->quantity - (float) PurchaseOrderItem::find($get('purchase_order_item_id'))?->received_quantity))
                             ->numeric()
                             ->minValue(0)
                             ->required(),

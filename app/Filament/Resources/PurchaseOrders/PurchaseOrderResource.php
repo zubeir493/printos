@@ -34,6 +34,16 @@ class PurchaseOrderResource extends Resource
 
     public static function canEdit($record): bool
     {
+        return PanelAccess::canManagePurchaseOrders() && $record->status === 'draft';
+    }
+
+    public static function canDelete($record): bool
+    {
+        return PanelAccess::canManagePurchaseOrders() && $record->status === 'draft';
+    }
+
+    public static function canDeleteAny(): bool
+    {
         return PanelAccess::canManagePurchaseOrders();
     }
 

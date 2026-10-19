@@ -47,9 +47,10 @@ test('trial balance keeps zero balance accounts when date filters are applied', 
 
     $rows = financialReportQuery($page, 'accountQuery')->get();
 
-    expect($rows)->toHaveCount(1);
+    expect($rows)->toHaveCount(Account::count());
 
-    $row = $rows->first();
+    $row = $rows->firstWhere('id', $cash->id);
+    expect($row)->not->toBeNull();
 
     expect((float) $row->debit_total)->toBe(0.0)
         ->and((float) $row->credit_total)->toBe(0.0)
@@ -81,7 +82,8 @@ test('profit and loss report only includes revenue and expense accounts', functi
 
     $rows = financialReportQuery($page, 'accountQuery')->get();
 
-    expect($rows->pluck('type')->all())->toBe(['Revenue', 'Expense']);
+    expect($rows->pluck('type')->unique()->values()->all())->toBe(['Revenue', 'Expense'])
+        ->and($rows->pluck('code')->all())->toContain('4000', '5000');
 });
 
 test('payables aging uses tax inclusive purchase order totals', function (): void {

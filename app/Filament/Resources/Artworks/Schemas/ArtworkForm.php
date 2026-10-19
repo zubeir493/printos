@@ -51,7 +51,6 @@ class ArtworkForm
                             ->getOpenableFileUrlUsing(fn (string $file): ?string => PrivateStorage::url($file))
                             ->getDownloadableFileUrlUsing(fn (string $file): ?string => PrivateStorage::downloadUrl($file))
                             ->directory('artworks')
-                            ->preserveFilenames()
                             ->acceptedFileTypes(['application/pdf', 'image/jpeg', 'image/png', 'image/tiff', 'image/webp'])
                             ->maxSize(102400)
                             ->previewable(false)

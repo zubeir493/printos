@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\DB;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 
@@ -49,6 +50,16 @@ class Dispatch extends Model
             'delivery_date' => 'date',
             'status' => 'string',
         ];
+    }
+
+    public function save(array $options = []): bool
+    {
+        return DB::transaction(fn (): bool => parent::save($options));
+    }
+
+    public function delete(): ?bool
+    {
+        return DB::transaction(fn (): ?bool => parent::delete());
     }
 
     public function warehouse(): BelongsTo

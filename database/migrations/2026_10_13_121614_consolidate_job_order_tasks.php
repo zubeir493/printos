@@ -10,7 +10,7 @@ return new class extends Migration
     public function up(): void
     {
         if (DB::table('job_orders')->exists() || DB::table('job_order_tasks')->exists()) {
-            throw new RuntimeException('This testing-only consolidation requires a clean database. Run migrate:fresh --seed.');
+            throw new RuntimeException('Job-order consolidation requires an empty database. Back up any needed data before rebuilding with migrate:fresh --seed.');
         }
         Schema::table('job_orders', function (Blueprint $table): void {
             $table->string('name');
@@ -60,6 +60,6 @@ return new class extends Migration
 
     public function down(): void
     {
-        throw new RuntimeException('The consolidation reset is irreversible. Restore the previous checkout and rebuild its disposable database.');
+        throw new RuntimeException('Job-order consolidation cannot be rolled back automatically. Restore a database backup with the previous application version.');
     }
 };

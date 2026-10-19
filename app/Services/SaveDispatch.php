@@ -19,6 +19,9 @@ class SaveDispatch
             if ($quantity < 0 || $quantity != floor($quantity)) {
                 throw ValidationException::withMessages(['data.quantity' => 'Dispatch quantity must be a nonnegative whole number.']);
             }
+            if ($lockedDispatch->status === 'cancelled' && $quantity > 0) {
+                throw ValidationException::withMessages(['data.quantity' => 'A cancelled dispatch cannot issue stock.']);
+            }
             $item = app(DispatchStockService::class)->inventoryItemForJobOrder($job);
             $originalMovements = $lockedDispatch->stockMovements()->get();
             foreach ($originalMovements as $movement) {

@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Payments\Tables;
 
 use App\Enums\PaymentTransactionType;
 use App\Filament\Exports\PaymentExporter;
+use App\Filament\Resources\Payments\Actions\VoidPaymentAction;
 use App\Filament\Tables\Filters\DateRangeFilter;
 use App\Support\Money;
 use Filament\Actions\BulkActionGroup;
@@ -68,7 +69,7 @@ class PaymentsTable
                     ),
             ])
             ->defaultSort('payment_date', 'desc')
-            ->actions([])
+            ->recordActions([VoidPaymentAction::make()])
             ->bulkActions([
                 BulkActionGroup::make([
                     ExportBulkAction::make()

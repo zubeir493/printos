@@ -14,6 +14,23 @@ use Illuminate\Support\Facades\Notification;
 
 class StockMovementObserver
 {
+    public function saving(StockMovement $movement): void
+    {
+        $this->lockProductionJob($movement);
+    }
+
+    public function deleting(StockMovement $movement): void
+    {
+        $this->lockProductionJob($movement);
+    }
+
+    private function lockProductionJob(StockMovement $movement): void
+    {
+        if ($movement->reference_type === JobOrder::class && $movement->type === 'production_output') {
+            JobOrder::query()->whereKey($movement->reference_id)->lockForUpdate()->firstOrFail();
+        }
+    }
+
     /**
      * Handle the StockMovement "created" event.
      */
@@ -33,6 +50,7 @@ class StockMovementObserver
         ]);
 
         $this->notifyProductionOutput($stockMovement);
+        $this->syncProduction($stockMovement);
     }
 
     public function updated(StockMovement $stockMovement): void
@@ -58,6 +76,11 @@ class StockMovementObserver
         // Apply the new change
         $this->applyBalanceChange($newItemId, $newWarehouseId, $newQuantity);
 
+        $this->syncProduction($stockMovement);
+        if ($stockMovement->wasChanged(['reference_type', 'reference_id', 'type'])) {
+            $this->syncProduction($stockMovement, true);
+        }
+
         Log::info('StockMovement updated balance changes applied', [
             'id' => $stockMovement->id,
             'old' => ['item' => $oldItemId, 'warehouse' => $oldWarehouseId, 'qty' => $oldQuantity],
@@ -70,6 +93,17 @@ class StockMovementObserver
         $quantityChange = -(float) $stockMovement->quantity;
         $this->validateBalanceChange($stockMovement->inventory_item_id, $stockMovement->warehouse_id, $quantityChange);
         $this->applyBalanceChange($stockMovement->inventory_item_id, $stockMovement->warehouse_id, $quantityChange);
+        $this->syncProduction($stockMovement);
+    }
+
+    private function syncProduction(StockMovement $movement, bool $original = false): void
+    {
+        $type = $original ? $movement->getRawOriginal('type') : $movement->type;
+        $referenceType = $original ? $movement->getRawOriginal('reference_type') : $movement->reference_type;
+        $referenceId = $original ? $movement->getRawOriginal('reference_id') : $movement->reference_id;
+        if ($type === 'production_output' && $referenceType === JobOrder::class) {
+            JobOrder::find($referenceId)?->syncCompletionStatus();
+        }
     }
 
     private function applyBalanceChange(int $inventoryItemId, int $warehouseId, float $delta): void
@@ -98,10 +132,8 @@ class StockMovementObserver
 
     private function validateBalanceChange(int $inventoryItemId, int $warehouseId, float $delta): void
     {
-        $balance = InventoryBalance::firstWhere([
-            'inventory_item_id' => $inventoryItemId,
-            'warehouse_id' => $warehouseId,
-        ]);
+        $balance = InventoryBalance::query()->where('inventory_item_id', $inventoryItemId)
+            ->where('warehouse_id', $warehouseId)->lockForUpdate()->first();
 
         $currentQty = $balance ? (float) $balance->quantity_on_hand : 0.0;
         $resultingQty = $currentQty + $delta;

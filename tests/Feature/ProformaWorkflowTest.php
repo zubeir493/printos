@@ -390,7 +390,7 @@ it('restores the required cost calculation file and removes proforma id from job
                 'job_type' => 'packages',
                 'submission_date' => now()->toDateString(),
                 'due_date' => now()->addDays(30)->toDateString(),
-                'name' => 'Carton', 'quantity' => 100, 'subtotal' => 1000, 'paper' => [], 'deliverables' => [],
+                'name' => 'Carton', 'quantity' => 100, 'unit_price' => 10, 'paper' => [], 'deliverables' => [],
             ])
             ->call('create')
             ->assertHasFormErrors(['cost_calc_file' => 'required']);

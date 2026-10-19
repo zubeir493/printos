@@ -27,7 +27,8 @@ class VoidPaymentAction
                     ->maxLength(500)
                     ->rows(4),
             ])
-            ->visible(fn(Payment $record): bool => Gate::allows('void', $record))
+            ->authorize(fn (Payment $record): bool => Gate::allows('void', $record))
+            ->visible(fn (Payment $record): bool => Gate::allows('void', $record))
             ->action(function (array $data, Payment $record): void {
                 app(VoidPaymentJournalEntry::class)->handle($record, $data['reason'], auth()->user());
 

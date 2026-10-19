@@ -4,6 +4,7 @@ namespace App\Filament\Resources\JobOrders\RelationManagers;
 
 use App\Filament\Support\PanelAccess;
 use App\Filament\Tables\Filters\DateRangeFilter;
+use App\Models\Artwork;
 use App\Support\PrivateStorage;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -26,11 +27,18 @@ use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 
 class ArtworksRelationManager extends RelationManager
 {
     protected static string $relationship = 'artworks';
+
+    public function isReadOnly(): bool
+    {
+        return false;
+    }
 
     public function form(Schema $schema): Schema
     {
@@ -51,7 +59,6 @@ class ArtworksRelationManager extends RelationManager
                             ->getOpenableFileUrlUsing(fn (string $file): ?string => PrivateStorage::url($file))
                             ->getDownloadableFileUrlUsing(fn (string $file): ?string => PrivateStorage::downloadUrl($file))
                             ->directory('artworks')
-                            ->preserveFilenames()
                             ->acceptedFileTypes(['application/pdf', 'image/jpeg', 'image/png', 'image/tiff', 'image/webp'])
                             ->maxSize(102400)
                             ->previewable(false)
@@ -74,6 +81,7 @@ class ArtworksRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with(['jobOrder', 'uploader']))
             ->recordTitleAttribute('filename')
             ->columns([
                 IconColumn::make('type')
@@ -120,13 +128,14 @@ class ArtworksRelationManager extends RelationManager
             ])
             ->headerActions([
                 CreateAction::make()
+                    ->authorize(fn (): bool => Gate::allows('uploadToJob', [Artwork::class, $this->getOwnerRecord()]))
                     ->label('Add Artwork')
                     ->icon('heroicon-m-plus'),
             ])
             ->recordActions([
                 ActionGroup::make([
                     EditAction::make(),
-                    Action::make('approve')->authorize(fn (): bool => PanelAccess::canManageJobOrders())->visible(fn (): bool => PanelAccess::canManageJobOrders())
+                    Action::make('approve')->authorize(fn ($record): bool => Gate::allows('approve', $record))->visible(fn (): bool => PanelAccess::canManageJobOrders())
                         ->label('Approve')
                         ->icon('heroicon-m-check-badge')
                         ->color('gray')

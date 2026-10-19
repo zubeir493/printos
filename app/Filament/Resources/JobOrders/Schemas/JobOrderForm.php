@@ -2,11 +2,13 @@
 
 namespace App\Filament\Resources\JobOrders\Schemas;
 
-use App\Filament\Support\Calculations;
 use App\Filament\Support\PanelAccess;
 use App\Models\InventoryItem;
+use App\Models\JobOrder;
+use App\Models\Setting;
 use App\Support\Money;
 use App\Support\PrivateStorage;
+use Filament\Actions\Action;
 use Filament\Forms\Components\BaseFileUpload;
 use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\CheckboxList;
@@ -15,6 +17,7 @@ use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\Repeater\TableColumn;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -26,6 +29,7 @@ use Filament\Schemas\Components\Utilities\Set as UtilitiesSet;
 use Filament\Schemas\Schema;
 use Illuminate\Support\HtmlString;
 use Illuminate\Support\Number;
+use Illuminate\Support\Str;
 
 class JobOrderForm
 {
@@ -89,7 +93,6 @@ class JobOrderForm
                                     ->getOpenableFileUrlUsing(fn (string $file): ?string => PrivateStorage::url($file))
                                     ->getDownloadableFileUrlUsing(fn (string $file): ?string => PrivateStorage::downloadUrl($file))
                                     ->directory('job-order-cost-calculations')
-                                    ->preserveFilenames()
                                     ->downloadable()
                                     ->acceptedFileTypes([
                                         'text/csv',
@@ -111,26 +114,70 @@ class JobOrderForm
                             ->columns(3),
                         Section::make('Job Specifications')->schema([
                             TextInput::make('name')->label('Work Item')->required()->maxLength(255),
-                            TextInput::make('quantity')->integer()->minValue(1)->required()->default(1),
+                            TextInput::make('quantity')->integer()->minValue(1)->required()->default(1)
+                                ->live(onBlur: true)
+                                ->afterStateUpdated(fn (UtilitiesGet $get, UtilitiesSet $set) => self::updatePricing($get, $set)),
                             TextInput::make('size')->maxLength(255),
-                            TextInput::make('subtotal')->label('Job Price')->numeric()->minValue(0)->required()
-                                ->suffix(fn (): string => Money::suffix())->default(0)->live(onBlur: true)
+                            TextInput::make('unit_price')->label('Unit Price')->numeric()->minValue(0)->required()
+                                ->suffix(fn (): string => Money::suffix())
+                                ->formatStateUsing(fn ($state, ?JobOrder $record): float => $state === null
+                                    ? (float) ($record?->subtotal ?? 0) / max(1, (int) ($record?->quantity ?? 1))
+                                    : (float) $state)
+                                ->live(onBlur: true)
+                                ->dehydrated(false)
                                 ->disabled(fn ($record): bool => filled($record?->proforma_task_id))
-                                ->afterStateUpdated(fn (UtilitiesGet $get, UtilitiesSet $set) => Calculations::updateTaxedTotal($get, $set, 'subtotal', 'tax_amount', 'total'))
-                                ->hidden(fn () => ! PanelAccess::canSeeMoneyValues()),
+                                ->afterStateUpdated(fn (UtilitiesGet $get, UtilitiesSet $set) => self::updatePricing($get, $set))
+                                ->hidden(fn (): bool => ! PanelAccess::canSeeMoneyValues()),
                             Textarea::make('instructions')->label('Brief / Instructions')->rows(3)->columnSpanFull(),
-                            Repeater::make('paper')->label('Materials')->schema([
-                                Select::make('inventory_item_id')->label('Material')
-                                    ->options(fn (): array => InventoryItem::query()->rawMaterials()->pluck('name', 'id')->all())
-                                    ->searchable()->preload()->required(),
-                                TextInput::make('required_quantity')->numeric()->minValue(0)->required()->default(0),
-                                TextInput::make('reserve_quantity')->numeric()->minValue(0)->default(0),
-                            ])->columns(3)->defaultItems(0)->columnSpanFull()->addActionLabel('Add Material'),
-                            Repeater::make('deliverables')->label('Required Files')->schema([
-                                TextInput::make('label')->label('Deliverable')->required(),
-                                Select::make('type')->options(['artwork' => 'Artwork', 'text_file' => 'Text File'])->required(),
-                            ])->columns(2)->defaultItems(0)->columnSpanFull()->addActionLabel('Add Deliverable'),
-                        ])->columns(3)->columnSpanFull(),
+                            Repeater::make('paper')->label('Materials')
+                                ->table([
+                                    TableColumn::make('Material')->alignLeft(),
+                                    TableColumn::make('Required quantity')->alignLeft(),
+                                    TableColumn::make('Reserve quantity')->alignLeft(),
+                                ])
+                                ->compact()
+                                ->schema([
+                                    Select::make('inventory_item_id')->label('Material')
+                                        ->options(fn (): array => InventoryItem::query()->rawMaterials()->orderBy('name')->pluck('name', 'id')->all())
+                                        ->searchable()->preload()->required(),
+                                    TextInput::make('required_quantity')->numeric()->minValue(0)->required()->default(0),
+                                    TextInput::make('reserve_quantity')->numeric()->minValue(0)->default(0),
+                                ])
+                                ->defaultItems(1)->columnSpanFull()->reorderable(false)
+                                ->addable(fn (Repeater $component): bool => empty($component->getState()))
+                                ->addActionLabel('Add Material')
+                                ->extraItemActions([
+                                    Action::make('add_paper')->label('Add Material')->icon('heroicon-o-plus')
+                                        ->action(function (Repeater $component): void {
+                                            $state = $component->getState() ?? [];
+                                            $state[(string) Str::uuid()] = [
+                                                'inventory_item_id' => null, 'required_quantity' => 0, 'reserve_quantity' => 0,
+                                            ];
+                                            $component->state($state);
+                                        }),
+                                ]),
+                            Repeater::make('deliverables')->label('Required Files')
+                                ->table([
+                                    TableColumn::make('Deliverable')->alignLeft(),
+                                    TableColumn::make('File Type')->alignLeft(),
+                                ])
+                                ->compact()
+                                ->schema([
+                                    TextInput::make('label')->label('Deliverable')->required(),
+                                    Select::make('type')->options(['artwork' => 'Artwork', 'text_file' => 'Text File'])->default('artwork')->required(),
+                                ])
+                                ->defaultItems(1)->columnSpanFull()->reorderable(false)
+                                ->addable(fn (Repeater $component): bool => empty($component->getState()))
+                                ->addActionLabel('Add Deliverable')
+                                ->extraItemActions([
+                                    Action::make('add_deliverable')->label('Add Deliverable')->icon('heroicon-o-plus')
+                                        ->action(function (Repeater $component): void {
+                                            $state = $component->getState() ?? [];
+                                            $state[(string) Str::uuid()] = ['label' => '', 'type' => 'artwork'];
+                                            $component->state($state);
+                                        }),
+                                ]),
+                        ])->columns(['default' => 1, 'sm' => 2, 'xl' => 4])->columnSpanFull(),
                         Grid::make(2)
                             ->schema([
                                 Section::make('Additional Services')
@@ -271,12 +318,15 @@ class JobOrderForm
                     Section::make()
                         ->schema([
                             Hidden::make('status')->default('draft'),
+                            Hidden::make('subtotal')
+                                ->default(0)
+                                ->dehydrateStateUsing(fn (UtilitiesGet $get): float => self::subtotalFromUnitPrice($get)),
                             Hidden::make('tax_amount')
                                 ->default(0)
-                                ->dehydrated(),
+                                ->dehydrateStateUsing(fn (UtilitiesGet $get): float => self::pricing($get)['tax_amount']),
                             Hidden::make('total')
                                 ->default(0)
-                                ->dehydrated(),
+                                ->dehydrateStateUsing(fn (UtilitiesGet $get): float => self::pricing($get)['total']),
                             Placeholder::make('summary_subtotal')
                                 ->label('Subtotal')
                                 ->content(fn (UtilitiesGet $get): HtmlString => self::summaryValue($get('subtotal')))
@@ -296,6 +346,28 @@ class JobOrderForm
                     Textarea::make('remarks'),
                 ]),
             ])->columns(4);
+    }
+
+    private static function subtotalFromUnitPrice(UtilitiesGet $get): float
+    {
+        return round((float) $get('quantity') * (float) $get('unit_price'), 2);
+    }
+
+    /** @return array{subtotal: float, tax_amount: float, total: float} */
+    private static function pricing(UtilitiesGet $get): array
+    {
+        $subtotal = self::subtotalFromUnitPrice($get);
+        $settings = Setting::getSettings();
+        $tax = round($subtotal * ($settings->vat_enabled ? (float) $settings->vat_rate / 100 : 0), 2);
+
+        return ['subtotal' => $subtotal, 'tax_amount' => $tax, 'total' => round($subtotal + $tax, 2)];
+    }
+
+    private static function updatePricing(UtilitiesGet $get, UtilitiesSet $set): void
+    {
+        foreach (self::pricing($get) as $field => $value) {
+            $set($field, $value);
+        }
     }
 
     private static function summaryValue(mixed $amount, bool $isPrimary = false): HtmlString

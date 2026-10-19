@@ -13,7 +13,9 @@ use App\Notifications\MaterialsIssuedNotification;
 use App\Support\NotificationRecipients;
 use App\UserRole;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Validation\ValidationException;
 
 class MaterialIssueService
 {
@@ -24,6 +26,7 @@ class MaterialIssueService
     public function issue(MaterialRequest $materialRequest, int $warehouseId, float $quantity, ?User $actor = null): array
     {
         return DB::transaction(function () use ($materialRequest, $warehouseId, $quantity, $actor) {
+            $job = $this->lockActiveJob($materialRequest->job_order_id, $actor);
             $materialRequest = MaterialRequest::query()
                 ->with(['inventoryItem', 'jobOrder'])
                 ->lockForUpdate()
@@ -48,13 +51,17 @@ class MaterialIssueService
             $stock = (float) (InventoryBalance::query()
                 ->where('warehouse_id', $warehouseId)
                 ->where('inventory_item_id', $materialRequest->inventory_item_id)
-                ->value('quantity_on_hand') ?? 0);
+                ->lockForUpdate()->first()?->quantity_on_hand ?? 0);
 
             if ($stock < $quantity) {
                 throw new \Exception("Insufficient stock for {$materialRequest->inventoryItem->name} in the selected warehouse.");
             }
 
-            if (($materialRequest->issued_quantity + $quantity) > $materialRequest->required_quantity) {
+            $materials = collect($job->paper ?? [])->where('inventory_item_id', $materialRequest->inventory_item_id);
+            $required = $materials->isNotEmpty()
+                ? (float) $materials->sum('required_quantity')
+                : (float) $job->materialRequests()->where('inventory_item_id', $materialRequest->inventory_item_id)->max('required_quantity');
+            if ($job->issuedQuantityFor($materialRequest->inventory_item_id) + $quantity > $required) {
                 $approval = $materialRequest->issueApprovals()->create([
                     'warehouse_id' => $warehouseId,
                     'requested_by' => $actor?->id,
@@ -88,7 +95,12 @@ class MaterialIssueService
 
     public function approve(MaterialIssueApproval $approval, ?User $actor = null, ?string $notes = null): void
     {
+        $actor ??= auth()->user();
         DB::transaction(function () use ($approval, $actor, $notes) {
+            $this->lockActiveJob($approval->materialRequest->job_order_id, $actor);
+            if ($actor && ! in_array($actor->role, [UserRole::Admin, UserRole::Operations], true)) {
+                abort(403);
+            }
             $approval = MaterialIssueApproval::query()
                 ->with(['materialRequest.inventoryItem', 'materialRequest.jobOrder', 'requester'])
                 ->lockForUpdate()
@@ -98,12 +110,12 @@ class MaterialIssueService
                 throw new \Exception('This over-issue request has already been processed.');
             }
 
-            $materialRequest = $approval->materialRequest;
+            $materialRequest = MaterialRequest::query()->lockForUpdate()->findOrFail($approval->material_request_id);
 
             $stock = (float) (InventoryBalance::query()
                 ->where('warehouse_id', $approval->warehouse_id)
                 ->where('inventory_item_id', $materialRequest->inventory_item_id)
-                ->value('quantity_on_hand') ?? 0);
+                ->lockForUpdate()->first()?->quantity_on_hand ?? 0);
 
             if ($stock < $approval->quantity) {
                 throw new \Exception("Insufficient stock for {$materialRequest->inventoryItem->name} in the selected warehouse.");
@@ -143,6 +155,10 @@ class MaterialIssueService
 
     public function reject(MaterialIssueApproval $approval, ?User $actor = null, ?string $notes = null): void
     {
+        $actor ??= auth()->user();
+        if ($actor && ! in_array($actor->role, [UserRole::Admin, UserRole::Operations], true)) {
+            abort(403);
+        }
         DB::transaction(function () use ($approval, $actor, $notes) {
             $approval = MaterialIssueApproval::query()
                 ->with(['materialRequest.inventoryItem', 'materialRequest.jobOrder', 'requester'])
@@ -166,6 +182,20 @@ class MaterialIssueService
                 $approval->requester?->notify(new MaterialIssueDecisionNotification($approval));
             }
         });
+    }
+
+    private function lockActiveJob(int $jobOrderId, ?User $actor): JobOrder
+    {
+        $job = JobOrder::query()->lockForUpdate()->findOrFail($jobOrderId);
+        if (! in_array((string) $job->status, ['design', 'production'], true) || $job->production_completed_at) {
+            throw ValidationException::withMessages(['quantity' => 'Materials can only be issued to jobs awaiting production.']);
+        }
+        $actor ??= auth()->user();
+        if ($actor) {
+            Gate::forUser($actor)->authorize('manageMaterials', $job);
+        }
+
+        return $job;
     }
 
     protected function notifyApprovers(MaterialIssueApproval $approval): void

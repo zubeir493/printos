@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\DB;
 
 class StockMovement extends Model
 {
@@ -44,6 +45,16 @@ class StockMovement extends Model
             'total_cost' => 'decimal:2',
             'movement_date' => 'datetime',
         ];
+    }
+
+    public function save(array $options = []): bool
+    {
+        return DB::transaction(fn (): bool => parent::save($options));
+    }
+
+    public function delete(): ?bool
+    {
+        return DB::transaction(fn (): ?bool => parent::delete());
     }
 
     public function inventoryItem(): BelongsTo

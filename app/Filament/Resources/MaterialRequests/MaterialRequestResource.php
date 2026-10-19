@@ -25,6 +25,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Gate;
 
 class MaterialRequestResource extends Resource
 {
@@ -185,6 +186,7 @@ class MaterialRequestResource extends Resource
             ->recordActions([
                 ActionGroup::make([
                     Action::make('issue')
+                        ->authorize(fn ($record): bool => Gate::allows('manageMaterials', $record->jobOrder) && ! $record->jobOrder->production_completed_at)
                         ->label('Issue')
                         ->icon('heroicon-m-archive-box-arrow-down')
                         ->color('gray')

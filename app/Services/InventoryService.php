@@ -102,7 +102,7 @@ class InventoryService
         $balance = InventoryBalance::where([
             'inventory_item_id' => $itemId,
             'warehouse_id' => $warehouseId,
-        ])->first();
+        ])->lockForUpdate()->first();
 
         if (! $balance || $balance->quantity_on_hand < $quantity) {
             throw new \Exception("Insufficient stock for {$item->name} in the selected warehouse.");

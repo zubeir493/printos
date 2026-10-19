@@ -20,6 +20,8 @@ use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Gate;
 
 class MaterialRequestsRelationManager extends RelationManager
 {
@@ -68,6 +70,7 @@ class MaterialRequestsRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with(['jobOrder', 'inventoryItem']))
             ->recordTitleAttribute('id')
             ->columns([
                 Tables\Columns\TextColumn::make('inventoryItem.name')->label('Material'),
@@ -99,6 +102,7 @@ class MaterialRequestsRelationManager extends RelationManager
                     EditAction::make(),
                     DeleteAction::make(),
                     Action::make('issue')
+                        ->authorize(fn ($record): bool => Gate::allows('manageMaterials', $record->jobOrder) && ! $record->jobOrder->production_completed_at)
                         ->label('Issue')
                         ->icon('heroicon-o-archive-box-arrow-down')
                         ->color('gray')

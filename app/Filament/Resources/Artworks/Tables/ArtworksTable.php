@@ -11,6 +11,7 @@ use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -21,6 +22,7 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Mail;
 
 class ArtworksTable
@@ -73,7 +75,9 @@ class ArtworksTable
             ])
             ->recordActions([
                 ActionGroup::make([
+                    EditAction::make(),
                     Action::make('approve')
+                        ->authorize(fn ($record): bool => Gate::allows('approve', $record))
                         ->label('Approve')
                         ->icon('heroicon-m-check-badge')
                         ->color('gray')

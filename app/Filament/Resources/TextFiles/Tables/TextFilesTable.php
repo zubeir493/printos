@@ -9,9 +9,11 @@ use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Gate;
 
 class TextFilesTable
 {
@@ -55,6 +57,12 @@ class TextFilesTable
             ])
             ->recordActions([
                 ActionGroup::make([
+                    EditAction::make(),
+                    Action::make('approve')
+                        ->label('Approve')->icon('heroicon-m-check-badge')
+                        ->authorize(fn ($record): bool => Gate::allows('approve', $record))
+                        ->hidden(fn ($record): bool => $record->is_approved)
+                        ->action(fn ($record) => $record->update(['is_approved' => true])),
                     Action::make('download')
                         ->label('Download')
                         ->icon('heroicon-m-arrow-down-tray')

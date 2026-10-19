@@ -146,14 +146,14 @@ class MaterialRequestActionForms
         foreach ($data['items'] ?? [] as $item) {
             $quantity = (float) ($item['requested_quantity'] ?? 0);
 
-            if ($quantity <= 0) {
+            if (! is_finite($quantity) || $quantity <= 0) {
                 continue;
             }
 
             $paperIndex = (int) ($item['paper_index'] ?? -1);
             $paperRow = $record->paper[$paperIndex] ?? null;
 
-            if (! is_array($paperRow) || blank($item['inventory_item_id'] ?? null)) {
+            if (! is_array($paperRow) || (int) ($paperRow['inventory_item_id'] ?? 0) !== (int) ($item['inventory_item_id'] ?? 0)) {
                 continue;
             }
 

@@ -34,6 +34,9 @@ class JobOrderWorkflow
                 return false;
             }
             $status = (string) $locked->status;
+            if (! $locked->productionIsComplete() && $locked->production_completed_at) {
+                $locked->updateQuietly(['production_completed_at' => null]);
+            }
             if ($status === 'completed') {
                 if (! $locked->canComplete()) {
                     $locked->status->transitionTo('production');

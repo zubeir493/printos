@@ -13,13 +13,12 @@ use App\Models\JobOrder;
 use App\Models\Partner;
 use App\Models\Payment;
 use App\Models\PurchaseOrder;
-use App\Models\StockMovement;
 use App\Models\Warehouse;
-use App\Services\InventoryService;
 use App\Services\InvoiceGeneratorService;
 use App\Services\JobOrders\DuplicateJobOrder;
 use App\Services\JobOrders\JobOrderWorkflow;
 use App\Services\MaterialIssueService;
+use App\Services\ReturnJobMaterials;
 use App\Support\Money;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -392,97 +391,28 @@ class JobOrderActions
 
     public static function returnMaterials(): Action
     {
-        return Action::make('return_materials')->authorize(fn ($record): bool => Gate::allows('manageMaterials', $record))
-            ->label('Return Materials')
-            ->icon('heroicon-o-arrow-path')
-            ->color('gray')
-            ->visible(
-                fn ($record = null): bool => is_object($record) &&
-                    in_array(Filament::getCurrentPanel()?->getId(), ['admin', 'operations', 'warehouse'], true) &&
-                    in_array((string) $record->status, ['design', 'production'], true) &&
-                    $record->materialRequests()
-                        ->where('issued_quantity', '>', 0)
-                        ->exists()
-            )
-            ->form(fn ($record): array => [
-                Repeater::make('items')
-                    ->addable(false)
-                    ->deletable(false)
-                    ->reorderable(false)
+        return Action::make('return_materials')
+            ->authorize(fn ($record): bool => Gate::allows('returnMaterials', $record))
+            ->label('Return Materials')->icon('heroicon-o-arrow-path')->color('gray')
+            ->visible(fn ($record): bool => Gate::allows('returnMaterials', $record)
+                && $record->materialRequests()->where('issued_quantity', '>', 0)->exists())
+            ->schema([
+                Repeater::make('items')->addable(false)->deletable(false)->reorderable(false)
                     ->schema([
                         Hidden::make('material_request_id'),
-                        Hidden::make('original_warehouse_id'),
-                        Select::make('inventory_item_id')
-                            ->label('Material')
-                            ->options(fn (): array => InventoryItem::query()->orderBy('name')->pluck('name', 'id')->all())
-                            ->disabled()
-                            ->dehydrated(),
-                        TextInput::make('quantity')
-                            ->numeric()
-                            ->required()
-                            ->label('Quantity to Return')
-                            ->hint(fn ($get) => 'Issued: '.$record->materialRequests->find($get('material_request_id'))?->issued_quantity)
-                            ->maxValue(fn ($get) => $record->materialRequests->find($get('material_request_id'))?->issued_quantity),
-                    ])->columns(2)
-                    ->default(fn (): array => $record->materialRequests()
-                        ->where('issued_quantity', '>', 0)
-                        ->get()
-                        ->map(function ($materialRequest) use ($record): array {
-                            $originalWarehouse = StockMovement::where('type', 'consumption')
-                                ->where('reference_type', JobOrder::class)->where('reference_id', $record->id)
-                                ->where('inventory_item_id', $materialRequest->inventory_item_id)
-                                ->orderByDesc('movement_date')
-                                ->value('warehouse_id');
-
-                            return [
-                                'material_request_id' => $materialRequest->id,
-                                'inventory_item_id' => $materialRequest->inventory_item_id,
-                                'original_warehouse_id' => $originalWarehouse,
-                                'quantity' => 0,
-                            ];
-                        })->toArray()),
+                        Hidden::make('returnable_quantity'),
+                        Select::make('inventory_item_id')->label('Material')
+                            ->options(fn () => InventoryItem::pluck('name', 'id'))->disabled()->dehydrated(),
+                        Select::make('warehouse_id')->label('Source Warehouse')
+                            ->options(fn () => Warehouse::pluck('name', 'id'))->disabled()->dehydrated()->required(),
+                        TextInput::make('quantity')->label('Quantity to Return')->numeric()->minValue(0)->required()
+                            ->hint(fn (callable $get): string => 'Available to return: '.($get('returnable_quantity') ?? 0)),
+                    ])->columns(3)
+                    ->default(fn ($record): array => app(ReturnJobMaterials::class)->rowsFor($record)),
             ])
             ->action(function ($record, array $data): void {
-                try {
-                    DB::transaction(function () use ($record, $data): void {
-                        $inventoryService = app(InventoryService::class);
-                        $defaultWarehouseId = Warehouse::where('is_default', true)->value('id');
-
-                        foreach ($data['items'] as $item) {
-                            if ($item['quantity'] <= 0) {
-                                continue;
-                            }
-
-                            $materialRequest = $record->materialRequests()->findOrFail($item['material_request_id']);
-
-                            if ($item['quantity'] > $materialRequest->issued_quantity) {
-                                throw new \Exception("Cannot return more than what was issued for {$materialRequest->inventoryItem->name}.");
-                            }
-
-                            $inventoryService->returnJobMaterials(
-                                $materialRequest->inventory_item_id,
-                                $item['original_warehouse_id'] ?? $defaultWarehouseId,
-                                $item['quantity'],
-                                $materialRequest->inventoryItem->price,
-                                $record->id
-                            );
-
-                            $materialRequest->decrement('issued_quantity', $item['quantity']);
-                        }
-                    });
-
-                    Notification::make()
-                        ->title('Materials Returned Successfully')
-                        ->success()
-                        ->send();
-                } catch (\Exception $e) {
-                    Notification::make()
-                        ->title('Error Returning Materials')
-                        ->body($e->getMessage())
-                        ->danger()
-                        ->persistent()
-                        ->send();
-                }
+                app(ReturnJobMaterials::class)->handle($record, $data['items']);
+                Notification::make()->title('Materials Returned Successfully')->success()->send();
             });
     }
 

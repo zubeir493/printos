@@ -15,7 +15,7 @@ class OperationsHealthStats extends BaseWidget
 
     protected function getStats(): array
     {
-        $activeJobOrders = JobOrder::whereIn('status', ['planned', 'in_production'])->count();
+        $activeJobOrders = JobOrder::inProgress()->count();
         $pendingPurchases = PurchaseOrder::whereIn('status', ['draft', 'approved'])->count();
         $dispatchesToday = Dispatch::whereDate('created_at', Carbon::today())->count();
 

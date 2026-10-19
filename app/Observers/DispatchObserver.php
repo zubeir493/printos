@@ -5,6 +5,7 @@ namespace App\Observers;
 use App\Models\Dispatch;
 use App\Notifications\DispatchCreatedNotification;
 use App\Notifications\DispatchStatusChangedNotification;
+use App\Services\SaveDispatch;
 use App\Support\NotificationRecipients;
 use App\UserRole;
 use Illuminate\Support\Facades\Notification;
@@ -30,6 +31,10 @@ class DispatchObserver
 
     public function updated(Dispatch $dispatch): void
     {
+        if ($dispatch->wasChanged('status') && $dispatch->status === 'cancelled') {
+            app(SaveDispatch::class)->handle($dispatch, 0);
+        }
+
         if (! $dispatch->wasChanged('status') || ! in_array($dispatch->status, ['completed', 'delivered', 'cancelled'], true)) {
             return;
         }

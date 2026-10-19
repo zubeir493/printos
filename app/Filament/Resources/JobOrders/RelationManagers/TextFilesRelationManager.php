@@ -4,6 +4,7 @@ namespace App\Filament\Resources\JobOrders\RelationManagers;
 
 use App\Filament\Support\PanelAccess;
 use App\Filament\Tables\Filters\DateRangeFilter;
+use App\Models\TextFile;
 use App\Support\PrivateStorage;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -20,11 +21,18 @@ use Filament\Schemas\Schema;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 
 class TextFilesRelationManager extends RelationManager
 {
     protected static string $relationship = 'textFiles';
+
+    public function isReadOnly(): bool
+    {
+        return false;
+    }
 
     public function form(Schema $schema): Schema
     {
@@ -79,6 +87,7 @@ class TextFilesRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with(['jobOrder', 'uploader']))
             ->recordTitleAttribute('original_name')
             ->columns([
                 TextColumn::make('original_name')
@@ -104,11 +113,17 @@ class TextFilesRelationManager extends RelationManager
             ])
             ->headerActions([
                 CreateAction::make()
+                    ->authorize(fn (): bool => Gate::allows('uploadToJob', [TextFile::class, $this->getOwnerRecord()]))
                     ->label('Add Text File'),
             ])
             ->recordActions([
                 ActionGroup::make([
                     EditAction::make(),
+                    Action::make('approve')
+                        ->label('Approve')->icon('heroicon-m-check-badge')
+                        ->authorize(fn ($record): bool => Gate::allows('approve', $record))
+                        ->hidden(fn ($record): bool => $record->is_approved)
+                        ->action(fn ($record) => $record->update(['is_approved' => true])),
                     Action::make('download')
                         ->label('Download')
                         ->icon('heroicon-m-arrow-down-tray')

@@ -58,6 +58,11 @@ class JobOrderPolicy
             && in_array((string) $jobOrder->status, ['design', 'production'], true);
     }
 
+    public function returnMaterials(User $user, JobOrder $jobOrder): bool
+    {
+        return in_array($user->role, [UserRole::Admin, UserRole::Operations, UserRole::Warehouse], true);
+    }
+
     public function delete(User $user, JobOrder $jobOrder): bool
     {
         return $this->create($user) && (string) $jobOrder->status === 'draft' && blank($jobOrder->proforma_task_id) && ! $jobOrder->payments()->exists()

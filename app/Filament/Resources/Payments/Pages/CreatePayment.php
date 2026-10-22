@@ -17,7 +17,7 @@ class CreatePayment extends CreateRecord
             return parent::handleRecordCreation($data);
         } catch (\RuntimeException $exception) {
             throw ValidationException::withMessages([
-                'data.bank_id' => $exception->getMessage(),
+                str_contains($exception->getMessage(), 'Withholding') ? 'data.withholding_amount' : 'data.bank_id' => $exception->getMessage(),
             ]);
         }
     }

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\PaymentTransactionType;
+use App\Support\PaymentMethod;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -118,7 +119,7 @@ class Bond extends Model
             }
             $payment = Payment::create([
                 'partner_id' => $this->issuing_partner_id,
-                'bank_id' => $method === 'cpo' ? null : $bankId,
+                'bank_id' => $bankId,
                 'payment_date' => $paymentDate,
                 'amount' => $this->amount,
                 'transaction_type' => $this->issueTransactionType()->value,
@@ -129,7 +130,7 @@ class Bond extends Model
             ]);
 
             $this->update([
-                'bank_id' => $method === 'cpo' ? null : $bankId,
+                'bank_id' => $bankId,
                 'cpo_bank_name' => $method === 'cpo' ? $cpoBankName : null,
                 'issue_date' => $paymentDate,
                 'issue_payment_id' => $payment->id,
@@ -163,7 +164,7 @@ class Bond extends Model
             }
             $payment = Payment::create([
                 'partner_id' => $this->issuing_partner_id,
-                'bank_id' => $method === 'cpo' ? null : $bankId,
+                'bank_id' => $bankId,
                 'payment_date' => $paymentDate,
                 'amount' => $this->amount,
                 'transaction_type' => $this->recoveryTransactionType()->value,
@@ -174,7 +175,7 @@ class Bond extends Model
             ]);
 
             $this->update([
-                'bank_id' => $method === 'cpo' ? null : $bankId,
+                'bank_id' => $bankId,
                 'cpo_bank_name' => $method === 'cpo' ? ($cpoBankName ?: $this->cpo_bank_name) : $this->cpo_bank_name,
                 'recovery_date' => $paymentDate,
                 'recovery_payment_id' => $payment->id,
@@ -233,7 +234,7 @@ class Bond extends Model
 
     private function guardBankBackedPayment(string $method, ?int $bankId): void
     {
-        if (in_array($method, ['bank', 'bank_transfer', 'cheque', 'check'], true) && ! $bankId) {
+        if (PaymentMethod::requiresBank($method) && ! $bankId) {
             throw new RuntimeException('Select a bank account for this payment method.');
         }
     }

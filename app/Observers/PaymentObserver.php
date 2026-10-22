@@ -12,13 +12,21 @@ use App\Notifications\PaymentVoidedNotification;
 use App\Services\Accounting\CreatePaymentJournalEntry;
 use App\Support\Money;
 use App\Support\NotificationRecipients;
+use App\Support\PaymentMethod;
 use App\UserRole;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Validation\ValidationException;
 
 class PaymentObserver
 {
     public function creating(Payment $payment): void
     {
+        if ($payment->method === 'check') {
+            $payment->method = 'cheque';
+        }
+        if (! is_finite((float) $payment->amount) || round((float) $payment->amount, 2) <= 0) {
+            throw ValidationException::withMessages(['data.amount' => 'Payment amount must be greater than zero.']);
+        }
         $transactionType = $payment->transaction_type
             ?? $this->legacyTransactionType($payment->payment_type, $payment->direction);
 
@@ -46,10 +54,14 @@ class PaymentObserver
             throw new \RuntimeException('Withholding cannot be greater than the settled payment amount.');
         }
 
-        if ($this->isBankPayment($payment) && $payment->direction === 'outbound') {
-            $bank = Bank::query()->find($payment->bank_id);
+        if (PaymentMethod::requiresBank($payment->method)) {
+            $bank = Bank::query()->lockForUpdate()->find($payment->bank_id);
 
-            if (! $bank || (float) $bank->current_balance < $this->cashAmount($payment)) {
+            if (! $bank) {
+                throw new \RuntimeException('A valid bank account is required for this payment method.');
+            }
+
+            if ($payment->direction === 'outbound' && (float) $bank->current_balance < $this->cashAmount($payment)) {
                 throw new \RuntimeException(sprintf(
                     'Insufficient balance in %s. Available: %s.',
                     $bank?->name ?? 'the selected bank',
@@ -122,7 +134,7 @@ class PaymentObserver
 
     private function isBankPayment(Payment $payment): bool
     {
-        return $payment->bank_id && in_array($payment->method, ['bank', 'bank_transfer', 'cheque', 'check'], true);
+        return $payment->bank_id && PaymentMethod::requiresBank($payment->method);
     }
 
     private function cashAmount(Payment $payment): float

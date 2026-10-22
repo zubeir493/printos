@@ -3,7 +3,6 @@
 namespace App\Support;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class SequentialNumber
@@ -21,30 +20,32 @@ class SequentialNumber
         ?string $likePattern = null,
         ?callable $numberResolver = null,
     ): string {
-        return Cache::lock("sequence:{$lockName}", 10)->block(5, function () use ($modelClass, $column, $prefix, $padding, $likePattern, $numberResolver): string {
-            return DB::transaction(function () use ($modelClass, $column, $prefix, $padding, $likePattern, $numberResolver): string {
-                $query = $modelClass::query()
+        return DB::transaction(function () use ($lockName, $modelClass, $column, $prefix, $padding, $likePattern, $numberResolver): string {
+            DB::table('document_sequences')->insertOrIgnore([
+                'name' => $lockName, 'last_number' => 0, 'initialized' => false,
+            ]);
+            $sequence = DB::table('document_sequences')->where('name', $lockName)->lockForUpdate()->firstOrFail();
+            $lastNumber = (int) $sequence->last_number;
+
+            if (! $sequence->initialized) {
+                $query = DB::table((new $modelClass)->getTable())
                     ->when($likePattern, fn ($query) => $query->where($column, 'like', $likePattern))
-                    ->whereNotNull($column)
-                    ->lockForUpdate()
-                    ->orderByDesc('id');
+                    ->whereNotNull($column);
 
-                $lastNumber = 0;
-
-                foreach ($query->limit(25)->pluck($column) as $value) {
-                    $resolved = $numberResolver
-                        ? $numberResolver((string) $value)
-                        : self::trailingNumber((string) $value);
-
-                    if ($resolved !== null) {
-                        $lastNumber = $resolved;
-                        break;
-                    }
+                foreach ($query->select($column)->cursor() as $record) {
+                    $value = (string) $record->{$column};
+                    $resolved = $numberResolver ? $numberResolver($value) : self::trailingNumber($value);
+                    $lastNumber = max($lastNumber, $resolved ?? 0);
                 }
+            }
 
-                return $prefix.str_pad((string) ($lastNumber + 1), $padding, '0', STR_PAD_LEFT);
-            });
-        });
+            $nextNumber = $lastNumber + 1;
+            DB::table('document_sequences')->where('name', $lockName)->update([
+                'last_number' => $nextNumber, 'initialized' => true,
+            ]);
+
+            return $prefix.str_pad((string) $nextNumber, $padding, '0', STR_PAD_LEFT);
+        }, 3);
     }
 
     public static function trailingNumber(string $value): ?int

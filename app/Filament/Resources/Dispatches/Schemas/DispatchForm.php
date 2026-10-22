@@ -15,6 +15,7 @@ class DispatchForm
     {
         return $schema->components([
             Select::make('job_order_id')->label('Job Order')
+                ->default(fn (): ?int => JobOrder::query()->whereKey(request()->integer('job_order_id'))->where('production_mode', 'make_to_order')->whereIn('status', ['production', 'completed'])->value('id'))
                 ->relationship('jobOrder', 'job_order_number', modifyQueryUsing: fn ($query) => $query
                     ->where('production_mode', 'make_to_order')->whereIn('status', ['production', 'completed'])->with('partner'))
                 ->getOptionLabelFromRecordUsing(fn (JobOrder $record): string => $record->job_order_number.' — '.$record->name)

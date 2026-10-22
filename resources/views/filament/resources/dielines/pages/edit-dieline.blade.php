@@ -40,6 +40,11 @@
                         </label>
                     @endforeach
                 </div>
+                <div class="dieline-preview-legend" aria-label="Dieline line types">
+                    <span><strong>Cut</strong><em>Solid black</em></span>
+                    <span><strong>Fold</strong><em>Blue dashed fold</em></span>
+                    <span><strong>Bleed</strong><em>Amber dashed margin</em></span>
+                </div>
             </div>
 
             <div class="dieline-editor-actions" x-data="{ open: false }" x-on:click.outside="open = false">

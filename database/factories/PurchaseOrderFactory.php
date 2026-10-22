@@ -13,7 +13,7 @@ class PurchaseOrderFactory extends Factory
     public function definition(): array
     {
         return [
-            'po_number' => fake()->word(),
+            'po_number' => 'PO-TEST-'.fake()->unique()->numerify('########'),
             'partner_id' => Partner::factory(),
             'order_date' => fake()->date(),
             'status' => fake()->randomElement(['draft', 'approved', 'received', 'cancelled']),

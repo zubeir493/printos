@@ -39,28 +39,24 @@ class StockOverviewStats extends BaseWidget
                 )
             '));
 
-        $lowStockCount = (clone $query)->where('quantity_on_hand', '<', 10)->count();
+        $lowStockCount = (clone $query)->where('quantity_on_hand', '>', 0)
+            ->whereHas('inventoryItem', fn ($items) => $items->where('low_stock_threshold', '>', 0)
+                ->whereColumn('inventory_balances.quantity_on_hand', '<=', 'inventory_items.low_stock_threshold'))->count();
         $outOfStockCount = (clone $query)->where('quantity_on_hand', '=', 0)->count();
 
         $warehouseName = $this->warehouse_id ? Warehouse::find($this->warehouse_id)?->name : 'All Warehouses';
-
-        // Sample chart data
-        $itemsChart = [100, 120, 110, 130, 125, 140, $totalItems];
-        $valueChart = [50000, 55000, 52000, 60000, 58000, 62000, $totalValue];
 
         return [
             Stat::make('Total SKU count ('.$warehouseName.')', $totalItems)
                 ->description('Active items with stock')
                 ->descriptionIcon('heroicon-m-cube')
-                ->color('info')
-                ->chart($itemsChart),
+                ->color('info'),
             Stat::make('Warehouse Valuation', Money::abbreviate($totalValue, precision: 2))
                 ->description('Total value of stock on hand')
                 ->descriptionIcon('heroicon-m-banknotes')
-                ->color('success')
-                ->chart($valueChart),
+                ->color('success'),
             Stat::make('Low Stock Items', $lowStockCount)
-                ->description('Items below 10 units')
+                ->description('Items at or below their minimum stock level')
                 ->descriptionIcon('heroicon-m-exclamation-triangle')
                 ->color($lowStockCount > 0 ? 'warning' : 'success'),
             Stat::make('Out of Stock', $outOfStockCount)

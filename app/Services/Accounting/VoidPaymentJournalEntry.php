@@ -11,6 +11,7 @@ use App\Models\Payment;
 use App\Models\PayrollRun;
 use App\Models\PayrollRunEmployee;
 use App\Models\User;
+use App\Support\PaymentMethod;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -80,7 +81,7 @@ class VoidPaymentJournalEntry
                 $jobOrder->syncCompletionStatus();
             }
 
-            if ($payment->bank_id && in_array($payment->method, ['bank', 'bank_transfer', 'cheque', 'check'], true)) {
+            if ($payment->bank_id && PaymentMethod::requiresBank($payment->method)) {
                 $cashAmount = max(0, round((float) $payment->amount - (float) $payment->withholding_amount, 2));
 
                 if ($payment->direction === 'outbound') {

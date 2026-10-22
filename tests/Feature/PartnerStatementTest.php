@@ -1,6 +1,7 @@
 <?php
 
 use App\Filament\Resources\Partners\Pages\PartnerStatement;
+use App\Models\Bank;
 use App\Models\Invoice;
 use App\Models\JobOrder;
 use App\Models\Partner;
@@ -45,6 +46,7 @@ it('summarizes a customer only partner statement', function (): void {
         'amount' => 400,
         'direction' => 'inbound',
         'method' => 'bank',
+        'bank_id' => Bank::factory()->create()->id,
     ]);
 
     Payment::factory()->create([
@@ -146,6 +148,7 @@ it('uses sales order payment status as the receivable source of truth', function
         'amount' => 1000,
         'direction' => 'inbound',
         'method' => 'bank',
+        'bank_id' => Bank::factory()->create()->id,
     ]);
 
     $summary = $partner->statementSummary();
@@ -203,6 +206,7 @@ it('syncs related invoices when document payments are created and voided', funct
         'amount' => 1000,
         'direction' => 'inbound',
         'method' => 'bank',
+        'bank_id' => Bank::factory()->create()->id,
     ]);
 
     expect($invoice->refresh()->balance_due)->toBe('0.00')
@@ -295,6 +299,7 @@ it('summarizes a supplier only partner statement', function (): void {
         'amount' => 300,
         'direction' => 'outbound',
         'method' => 'cheque',
+        'bank_id' => Bank::factory()->create()->id,
     ]);
 
     $summary = $partner->statementSummary();
@@ -420,6 +425,7 @@ it('shows document balances by default and payment history only when requested',
         'amount' => 250,
         'direction' => 'inbound',
         'method' => 'bank',
+        'bank_id' => Bank::factory()->create()->id,
     ]);
 
     Livewire::test(PartnerStatement::class, ['record' => $partner->id])

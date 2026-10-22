@@ -20,6 +20,7 @@ use App\Services\JobOrders\JobOrderWorkflow;
 use App\Services\MaterialIssueService;
 use App\Services\ReturnJobMaterials;
 use App\Support\Money;
+use App\Support\PaymentMethod;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
@@ -256,8 +257,8 @@ class JobOrderActions
                         ->options(fn (): array => Bank::query()->orderBy('name')->pluck('name', 'id')->all())
                         ->searchable()
                         ->preload()
-                        ->visible(fn (callable $get): bool => in_array($get('method'), ['bank', 'bank_transfer', 'cheque', 'check'], true))
-                        ->required(fn (callable $get): bool => in_array($get('method'), ['bank', 'bank_transfer', 'cheque', 'check'], true)),
+                        ->visible(fn (callable $get): bool => PaymentMethod::requiresBank($get('method')))
+                        ->required(fn (callable $get): bool => PaymentMethod::requiresBank($get('method'))),
                     DatePicker::make('payment_date')
                         ->label('Payment Date')
                         ->default(now())

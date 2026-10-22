@@ -3,8 +3,7 @@
 namespace App\Filament\Finance\Pages;
 
 use App\Filament\Exports\ReceivablesAgingExporter;
-use App\Models\JobOrder;
-use App\Models\SalesOrder;
+use App\Services\Accounting\ReceivablesQuery;
 use App\Support\Money;
 use BackedEnum;
 use Carbon\Carbon;
@@ -110,54 +109,7 @@ class ReceivablesAgingReport extends Page implements HasForms, HasTable
 
     protected function agingQuery(): Builder
     {
-        $jobOrderQuery = JobOrder::query()
-            ->selectRaw('job_orders.id as id')
-            ->selectRaw('job_orders.job_order_number as order_number')
-            ->selectRaw('NULL as warehouse_id')
-            ->selectRaw('job_orders.partner_id as partner_id')
-            ->selectRaw('job_orders.submission_date as order_date')
-            ->selectRaw('job_orders.due_date as due_date')
-            ->selectRaw('NULL as payment_mode')
-            ->selectRaw('NULL as payment_method')
-            ->selectRaw('NULL as payment_reference')
-            ->selectRaw('job_orders.subtotal as subtotal')
-            ->selectRaw('job_orders.tax_amount as tax_amount')
-            ->selectRaw('job_orders.total as total')
-            ->selectRaw('job_orders.status as status')
-            ->selectRaw('job_orders.created_at as created_at')
-            ->selectRaw('job_orders.updated_at as updated_at')
-            ->selectRaw('(job_orders.total - COALESCE((SELECT SUM(payments.amount) FROM payments WHERE payments.payable_type = ? AND payments.payable_id = job_orders.id AND payments.payment_date <= ? AND payments.voided_at IS NULL), 0)) as balance', [JobOrder::class, $this->asOfDate])
-            ->where('job_orders.production_mode', 'make_to_order')->whereIn('job_orders.status', ['design', 'production', 'completed'])
-            ->whereRaw('(job_orders.total - COALESCE((SELECT SUM(payments.amount) FROM payments WHERE payments.payable_type = ? AND payments.payable_id = job_orders.id AND payments.payment_date <= ? AND payments.voided_at IS NULL), 0)) > 0', [JobOrder::class, $this->asOfDate])
-            ->when($this->asOfDate, fn ($query) => $query->whereDate('job_orders.submission_date', '<=', Carbon::parse($this->asOfDate)->toDateString()));
-
-        return SalesOrder::query()
-            ->with('partner')
-            ->selectRaw('sales_orders.id as id')
-            ->selectRaw('sales_orders.order_number as order_number')
-            ->selectRaw('sales_orders.warehouse_id as warehouse_id')
-            ->selectRaw('sales_orders.partner_id as partner_id')
-            ->selectRaw('sales_orders.order_date as order_date')
-            ->selectRaw('sales_orders.due_date as due_date')
-            ->selectRaw('sales_orders.payment_mode as payment_mode')
-            ->selectRaw('sales_orders.payment_method as payment_method')
-            ->selectRaw('sales_orders.payment_reference as payment_reference')
-            ->selectRaw('sales_orders.subtotal as subtotal')
-            ->selectRaw('sales_orders.tax_amount as tax_amount')
-            ->selectRaw('sales_orders.total as total')
-            ->selectRaw('sales_orders.status as status')
-            ->selectRaw('sales_orders.created_at as created_at')
-            ->selectRaw('sales_orders.updated_at as updated_at')
-            ->selectRaw('(sales_orders.total - COALESCE((SELECT SUM(payments.amount) FROM payments WHERE payments.payable_type = ? AND payments.payable_id = sales_orders.id AND payments.payment_date <= ? AND payments.voided_at IS NULL), 0)) as balance', [SalesOrder::class, $this->asOfDate])
-            ->whereIn('sales_orders.status', [
-                SalesOrder::STATUS_DEPOSIT_RECEIVED,
-                SalesOrder::STATUS_SUBMITTED,
-                SalesOrder::STATUS_COMPLETED,
-            ])
-            ->whereRaw('(sales_orders.total - COALESCE((SELECT SUM(payments.amount) FROM payments WHERE payments.payable_type = ? AND payments.payable_id = sales_orders.id AND payments.payment_date <= ? AND payments.voided_at IS NULL), 0)) > 0', [SalesOrder::class, $this->asOfDate])
-            ->when($this->asOfDate, fn ($query) => $query->whereDate('sales_orders.order_date', '<=', Carbon::parse($this->asOfDate)->toDateString()))
-            ->unionAll($jobOrderQuery)
-            ->orderByDesc('order_date');
+        return app(ReceivablesQuery::class)->documents($this->asOfDate);
     }
 
     public function ageDays($record): int

@@ -8,6 +8,7 @@ use App\Models\Bank;
 use App\Models\Bid;
 use App\Models\Bond;
 use App\Support\Money;
+use App\Support\PaymentMethod;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
@@ -253,9 +254,9 @@ trait InteractsWithBidActions
                 ->options(fn (): array => Bank::query()->pluck('name', 'id')->all())
                 ->searchable()
                 ->preload()
-                ->visible(fn (callable $get): bool => in_array($get('method'), ['bank', 'bank_transfer', 'cheque', 'check'], true))
-                ->required(fn (callable $get): bool => in_array($get('method'), ['bank', 'bank_transfer', 'cheque', 'check'], true))
-                ->dehydrated(fn (callable $get): bool => in_array($get('method'), ['bank', 'bank_transfer', 'cheque', 'check'], true)),
+                ->visible(fn (callable $get): bool => PaymentMethod::requiresBank($get('method')))
+                ->required(fn (callable $get): bool => PaymentMethod::requiresBank($get('method')))
+                ->dehydrated(fn (callable $get): bool => PaymentMethod::requiresBank($get('method'))),
             TextInput::make('cpo_bank_name')
                 ->label('CPO Bank')
                 ->maxLength(255)
@@ -281,6 +282,10 @@ trait InteractsWithBidActions
         $fields = [
             Hidden::make('method')->default('cpo'),
             Hidden::make('cpo_bank_name')->default($bond->cpo_bank_name),
+            Select::make('bank_id')->label('Bank Account')
+                ->getSearchResultsUsing(fn (string $search): array => Bank::query()->where('name', 'like', "%{$search}%")->orderBy('name')->limit(50)->pluck('name', 'id')->all())
+                ->getOptionLabelUsing(fn ($value): ?string => Bank::find($value)?->name)
+                ->default($bond->bank_id)->searchable()->required(),
             DatePicker::make('payment_date')
                 ->default(now())
                 ->required(),

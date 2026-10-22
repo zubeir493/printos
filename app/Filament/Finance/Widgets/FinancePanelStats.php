@@ -3,10 +3,11 @@
 namespace App\Filament\Finance\Widgets;
 
 use App\Models\Payment;
-use App\Models\SalesInvoice;
+use App\Services\Accounting\ReceivablesQuery;
 use App\Support\Money;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
+use Illuminate\Support\Facades\DB;
 
 class FinancePanelStats extends StatsOverviewWidget
 {
@@ -17,20 +18,16 @@ class FinancePanelStats extends StatsOverviewWidget
         $windowStart = now()->subDays(30)->startOfDay();
 
         $incoming = (float) Payment::query()
-            ->where('direction', 'inbound')
+            ->where('direction', 'inbound')->whereNull('voided_at')
             ->whereDate('payment_date', '>=', $windowStart)
-            ->sum('amount');
+            ->whereDate('payment_date', '<=', today())->sum(DB::raw('amount - COALESCE(withholding_amount, 0)'));
 
         $outgoing = (float) Payment::query()
-            ->where('direction', 'outbound')
+            ->where('direction', 'outbound')->whereNull('voided_at')
             ->whereDate('payment_date', '>=', $windowStart)
-            ->sum('amount');
+            ->whereDate('payment_date', '<=', today())->sum(DB::raw('amount - COALESCE(withholding_amount, 0)'));
 
-        $receivables = (float) SalesInvoice::query()->sum('total_amount');
-        $paidInvoices = (float) Payment::query()
-            ->where('payable_type', SalesInvoice::class)
-            ->whereNull('voided_at')
-            ->sum('amount');
+        $receivables = app(ReceivablesQuery::class)->total();
         $unlinkedPayments = (float) Payment::query()
             ->whereNull('payable_type')
             ->whereNull('voided_at')
@@ -41,8 +38,8 @@ class FinancePanelStats extends StatsOverviewWidget
                 ->description('Inbound less outbound, last 30 days')
                 ->descriptionIcon('heroicon-m-banknotes')
                 ->color(($incoming - $outgoing) >= 0 ? 'success' : 'danger'),
-            Stat::make('Outstanding Receivables', Money::abbreviate(max(0, $receivables - $paidInvoices), precision: 2))
-                ->description('Sales invoices less direct payments')
+            Stat::make('Outstanding Receivables', Money::abbreviate($receivables, precision: 2))
+                ->description('Unpaid client jobs and sales orders')
                 ->descriptionIcon('heroicon-m-credit-card')
                 ->color('warning'),
             Stat::make('Unlinked Payments', Money::abbreviate($unlinkedPayments, precision: 2))

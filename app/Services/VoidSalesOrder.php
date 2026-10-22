@@ -8,6 +8,7 @@ use App\Models\JournalItem;
 use App\Models\SalesOrder;
 use App\Models\StockMovement;
 use App\Services\Accounting\VoidPaymentJournalEntry;
+use App\Support\PaymentMethod;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -30,7 +31,7 @@ class VoidSalesOrder
                     continue;
                 }
                 $payment->update(['voided_at' => now(), 'voided_by' => auth()->id(), 'void_reason' => 'Sales order voided']);
-                if ($payment->bank_id && in_array($payment->method, ['bank', 'bank_transfer', 'cheque', 'check'], true)) {
+                if ($payment->bank_id && PaymentMethod::requiresBank($payment->method)) {
                     $payment->bank()->decrement('current_balance', (float) $payment->amount - (float) $payment->withholding_amount);
                 }
             }

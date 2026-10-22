@@ -16,10 +16,6 @@ class PaymentsStatsWidget extends BaseWidget
         $paymentsToday = Payment::whereDate('payment_date', today())->count();
         $amountToday = Payment::whereDate('payment_date', today())->sum('amount');
 
-        // Sample chart data
-        $paymentsChart = [5, 8, 6, 10, 7, 9, $paymentsToday];
-        $amountChart = [1000, 1200, 800, 1500, 1100, 1300, $amountToday];
-
         return [
             Stat::make('Total Payments', $totalPayments)
                 ->description('All time payments')
@@ -32,13 +28,11 @@ class PaymentsStatsWidget extends BaseWidget
             Stat::make('Payments Today', $paymentsToday)
                 ->description('Transactions today')
                 ->descriptionIcon('heroicon-m-calendar-days')
-                ->color('primary')
-                ->chart($paymentsChart),
+                ->color('primary'),
             Stat::make('Amount Today', Money::abbreviate($amountToday, precision: 2))
                 ->description('Value processed today')
                 ->descriptionIcon('heroicon-m-chart-bar')
-                ->color('success')
-                ->chart($amountChart),
+                ->color('success'),
         ];
     }
 }

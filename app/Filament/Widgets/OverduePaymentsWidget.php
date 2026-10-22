@@ -32,8 +32,7 @@ class OverduePaymentsWidget extends BaseWidget
             Stat::make('Overdue Invoices', $overdueCount)
                 ->description('Total overdue invoices')
                 ->color('danger')
-                ->icon('heroicon-o-exclamation-triangle')
-                ->chart([7, 2, 10, 3, 15, 4, 17]),
+                ->icon('heroicon-o-exclamation-triangle'),
 
             Stat::make('Overdue Amount', $totalOverdue)
                 ->description('Total amount overdue')

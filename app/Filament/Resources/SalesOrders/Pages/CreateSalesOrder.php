@@ -7,6 +7,7 @@ use App\Filament\Resources\SalesOrders\SalesOrderResource;
 use App\Filament\Support\PanelAccess;
 use App\Models\SalesOrder;
 use App\Services\SalesOrderPaymentService;
+use App\Support\PaymentMethod;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\DB;
 
@@ -37,7 +38,7 @@ class CreateSalesOrder extends CreateRecord
         $this->initialPaymentData = [
             'amount' => $hasInitialPayment ? (float) ($data['initial_payment_amount'] ?? 0) : 0.0,
             'method' => $initialPaymentMethod,
-            'bank_id' => $hasInitialPayment && in_array($initialPaymentMethod, ['bank', 'bank_transfer', 'cheque', 'check'], true)
+            'bank_id' => $hasInitialPayment && PaymentMethod::requiresBank($initialPaymentMethod)
                 ? ($data['initial_payment_bank_id'] ?? null)
                 : null,
             'reference' => $hasInitialPayment ? ($data['initial_payment_reference'] ?? null) : null,

@@ -8,6 +8,7 @@ use App\Models\JournalEntry;
 use App\Models\User;
 use App\Notifications\AccountingExportFailed;
 use App\Services\Accounting\Contracts\AccountingExportProvider;
+use App\Support\RequiredStorage;
 use App\UserRole;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Collection;
@@ -82,7 +83,7 @@ class GenerateAccountingExport
                 throw new RuntimeException('The generated workbook could not be read.');
             }
 
-            Storage::disk($this->disk())->put($filePath, $contents, ['visibility' => 'private']);
+            RequiredStorage::putFile($this->disk(), $filePath, $temporaryPath);
 
             DB::transaction(function () use ($export, $integration, $journalEntries, $fileName, $filePath, $rowCount, $contents): void {
                 $export->update([

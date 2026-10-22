@@ -13,7 +13,7 @@ class WarehouseFactory extends Factory
     {
         return [
             'name' => fake()->name(),
-            'code' => fake()->word(),
+            'code' => 'WH-'.fake()->unique()->numerify('########'),
             'location' => fake()->word(),
         ];
     }

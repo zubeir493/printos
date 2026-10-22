@@ -7,6 +7,7 @@ use App\Models\JobOrder;
 use App\Models\JournalEntry;
 use App\Models\JournalItem;
 use App\Models\SalesOrder;
+use App\Support\PaymentMethod;
 
 class CreateSalesJournalEntry
 {
@@ -90,7 +91,7 @@ class CreateSalesJournalEntry
 
     private function resolveImmediateSaleAccount(SalesOrder|JobOrder $sale): Account
     {
-        if ($sale instanceof SalesOrder && in_array($sale->payment_method, ['bank', 'bank_transfer', 'cheque', 'check'], true)) {
+        if ($sale instanceof SalesOrder && PaymentMethod::requiresBank($sale->payment_method)) {
             return Account::getSystemAccount(Account::CODE_BANK, 'Bank Current Account', 'Asset');
         }
 

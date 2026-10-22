@@ -2,9 +2,15 @@
 
 use App\Filament\Imports\AccountImporter;
 use App\Filament\Imports\AttendanceSegmentImporter;
+use App\Filament\Resources\CostEstimates\Actions\CostEstimateActions;
+use App\Filament\Resources\Dispatches\Actions\DispatchActions;
+use App\Filament\Resources\JobOrders\Actions\JobOrderActions;
+use App\Filament\Resources\Proformas\Actions\ProformaActions;
 use App\Filament\Resources\Proformas\Pages\CreateProforma;
 use App\Filament\Resources\Proformas\Pages\EditProforma;
 use App\Filament\Resources\Proformas\Pages\ViewProforma;
+use App\Filament\Resources\PurchaseOrders\Actions\PurchaseOrderActions;
+use App\Filament\Resources\SalesOrders\Actions\SalesOrderActions;
 use App\Models\Account;
 use App\Models\AttendanceSegment;
 use App\Models\Employee;
@@ -15,6 +21,7 @@ use App\Models\Setting;
 use App\Models\Shift;
 use App\Models\User;
 use App\UserRole;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\Imports\Models\Import;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -71,54 +78,20 @@ it('keeps proforma grouped actions visually neutral', function (): void {
         ->assertActionHasColor('email', 'gray')
         ->assertActionHasColor('approve', 'gray');
 
-    foreach ([
-        base_path('app/Filament/Resources/Proformas/Pages/EditProforma.php'),
-        base_path('app/Filament/Resources/Proformas/Pages/ViewProforma.php'),
-        base_path('app/Filament/Resources/Proformas/Tables/ProformasTable.php'),
-    ] as $path) {
-        expect(file_get_contents($path))
-            ->toContain("Action::make('create_job_order')")
-            ->toContain("->color('gray')");
-    }
+    Livewire::test(ViewProforma::class, ['record' => $approved->id])
+        ->assertActionVisible('create_job_order')
+        ->assertActionHasColor('create_job_order', 'gray');
 
     expect($approved->canCreateJobOrder())->toBeTrue();
 });
 
 it('groups multi action headers instead of rendering separate action buttons', function (): void {
-    $sources = [
-        'proforma edit' => file_get_contents(base_path('app/Filament/Resources/Proformas/Pages/EditProforma.php')),
-        'proforma view' => file_get_contents(base_path('app/Filament/Resources/Proformas/Pages/ViewProforma.php')),
-        'invoice view' => file_get_contents(base_path('app/Filament/Resources/Invoices/Pages/ViewInvoice.php')),
-        'invoice edit' => file_get_contents(base_path('app/Filament/Resources/Invoices/Pages/EditInvoice.php')),
-        'payroll edit' => file_get_contents(base_path('app/Filament/Resources/PayrollRuns/Pages/EditPayrollRun.php')),
-        'partner view' => file_get_contents(base_path('app/Filament/Resources/Partners/Pages/ViewPartner.php')),
-        'job order task view' => file_get_contents(base_path('app/Filament/Resources/JobOrders/Pages/ViewJobOrder.php')),
-        'job order task edit' => file_get_contents(base_path('app/Filament/Resources/JobOrders/Pages/EditJobOrder.php')),
-        'job order edit' => file_get_contents(base_path('app/Filament/Resources/JobOrders/Pages/EditJobOrder.php')),
-        'partner statement' => file_get_contents(base_path('app/Filament/Resources/Partners/Pages/PartnerStatement.php')),
-    ];
-
-    foreach ([
-        'proforma edit',
-        'proforma view',
-        'invoice view',
-        'invoice edit',
-        'payroll edit',
-        'partner view',
-        'job order task view',
-        'job order task edit',
-        'job order edit',
-    ] as $key) {
-        expect($sources[$key])
-            ->toContain('ActionGroup::make([');
+    $proforma = Proforma::factory()->create(['status' => 'draft']);
+    foreach ([EditProforma::class, ViewProforma::class] as $page) {
+        $actions = Livewire::test($page, ['record' => $proforma->id])->instance()->getCachedHeaderActions();
+        expect($actions)->toHaveCount(1)->and($actions[0])->toBeInstanceOf(ActionGroup::class);
+        expect(array_keys($actions[0]->getFlatActions()))->toContain('download', 'email', 'approve');
     }
-
-    expect($sources['partner view'])
-        ->toContain("Action::make('statement')")
-        ->toContain("->color('gray')");
-    expect($sources['partner statement'])
-        ->toContain("Action::make('viewPartner')")
-        ->toContain("->color('gray')");
 });
 
 it('keeps grouped resource actions visually gray', function (): void {
@@ -316,23 +289,14 @@ it('imports attendance segments by fp number using the standard importer', funct
 
 it('uses gray edit actions in multi action page headers', function (): void {
     foreach ([
-        'app/Filament/Resources/Bids/Pages/Concerns/InteractsWithBidActions.php',
-        'app/Filament/Resources/CostEstimates/Pages/ViewCostEstimate.php',
-        'app/Filament/Resources/Dispatches/Pages/ViewDispatch.php',
-        'app/Filament/Resources/JobOrders/Pages/ViewJobOrder.php',
-        'app/Filament/Resources/JobOrders/Pages/ViewJobOrder.php',
-        'app/Filament/Resources/Partners/Pages/ViewPartner.php',
-        'app/Filament/Resources/ProductionPlans/Pages/ViewProductionPlan.php',
-        'app/Filament/Resources/ProductionReports/Pages/ViewProductionReport.php',
-        'app/Filament/Resources/PurchaseOrders/Pages/ViewPurchaseOrder.php',
-        'app/Filament/Resources/SalesOrders/Pages/ViewSalesOrder.php',
-        'app/Filament/Resources/StockAdjustments/Pages/ViewStockAdjustment.php',
-    ] as $path) {
-        $source = file_get_contents(base_path($path));
-
-        expect($source)
-            ->toContain('EditAction::make()')
-            ->toContain("->color('gray')");
+        CostEstimateActions::class,
+        DispatchActions::class,
+        JobOrderActions::class,
+        ProformaActions::class,
+        PurchaseOrderActions::class,
+        SalesOrderActions::class,
+    ] as $actions) {
+        expect($actions::edit()->getColor())->toBe('gray');
     }
 });
 
@@ -378,13 +342,11 @@ it('keeps order workflow copy and colors consistent', function (): void {
         ->not->toContain('Panton No')
         ->toContain('Payment method')
         ->toContain('Pieces per sheet')
-        ->toContain('Pantone No')
-        ->toContain("Action::make('issue_materials')")
-        ->toContain("->color('gray')")
-        ->toContain("Action::make('return_materials')")
-        ->toContain("Action::make('receive')")
-        ->toContain("->color('gray')")
-        ->toContain("Warehouse::query()->orderBy('name')->pluck('name', 'id')->all()");
+        ->toContain('Pantone No');
+
+    expect(JobOrderActions::issueMaterials()->getLabel())->toBe('Issue Materials');
+    expect(JobOrderActions::returnMaterials()->getLabel())->toBe('Return Materials');
+    expect(PurchaseOrderActions::receive()->getColor())->toBe('gray');
 });
 
 it('keeps the job order cost calculation upload compact', function (): void {

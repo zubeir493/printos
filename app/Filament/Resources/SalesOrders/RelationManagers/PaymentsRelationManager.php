@@ -8,6 +8,7 @@ use App\Filament\Tables\Filters\DateRangeFilter;
 use App\Models\Bank;
 use App\Models\SalesOrder;
 use App\Support\Money;
+use App\Support\PaymentMethod;
 use Filament\Actions\CreateAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
@@ -58,8 +59,8 @@ class PaymentsRelationManager extends RelationManager
                 ->options(fn (): array => Bank::query()->pluck('name', 'id')->all())
                 ->searchable()
                 ->preload()
-                ->visible(fn (callable $get): bool => in_array($get('method'), ['bank', 'bank_transfer', 'cheque', 'check'], true))
-                ->required(fn (callable $get): bool => in_array($get('method'), ['bank', 'bank_transfer', 'cheque', 'check'], true)),
+                ->visible(fn (callable $get): bool => PaymentMethod::requiresBank($get('method')))
+                ->required(fn (callable $get): bool => PaymentMethod::requiresBank($get('method'))),
             TextInput::make('reference')
                 ->label('Memo / Reference')
                 ->maxLength(255),

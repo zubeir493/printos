@@ -115,7 +115,7 @@ test('expenses table filters by tracking item and expense account', function ():
         ->assertCanNotSeeTableRecords([$departmentExpense]);
 });
 
-test('expenses table uses a wide four column filter modal', function (): void {
+test('expenses table uses a three column filter modal', function (): void {
     Filament::setCurrentPanel(Filament::getPanel('finance'));
 
     $this->actingAs(User::factory()->create([
@@ -126,8 +126,8 @@ test('expenses table uses a wide four column filter modal', function (): void {
     $table = $component->instance()->getTable();
 
     expect($table->getFiltersLayout())->toBe(FiltersLayout::Modal)
-        ->and($table->getFiltersFormColumns())->toBe(4)
-        ->and($table->getFiltersFormWidth())->toBe(Width::SevenExtraLarge)
+        ->and($table->getFiltersFormColumns())->toBe(3)
+        ->and($table->getFiltersFormWidth())->toBe(Width::FourExtraLarge)
         ->and($table->getFiltersTriggerAction()->hasModalCloseButton())->toBeTrue()
         ->and($table->getFiltersTriggerAction()->getModalCancelAction())->toBeNull();
 });

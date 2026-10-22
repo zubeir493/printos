@@ -18,27 +18,19 @@ class JobOrdersStatsWidget extends BaseWidget
             ->whereDate('completed_at', today())
             ->count();
 
-        // Sample chart data
-        $activeChart = [10, 12, 8, 15, 11, 9, $activeJobs];
-        $lateChart = [1, 2, 1, 3, 2, 4, $lateJobs];
-        $completedChart = [2, 3, 1, 4, 2, 3, $completedToday];
-
         return [
             Stat::make('Active Jobs', $activeJobs)
                 ->description('Open workflow')
                 ->descriptionIcon('heroicon-m-cog')
-                ->color($activeJobs > 20 ? 'warning' : 'primary')
-                ->chart($activeChart),
+                ->color($activeJobs > 20 ? 'warning' : 'primary'),
             Stat::make('Late Job Orders', $lateJobs)
                 ->description('Submission date is before today')
                 ->descriptionIcon('heroicon-m-exclamation-triangle')
-                ->color($lateJobs > 0 ? 'danger' : 'success')
-                ->chart($lateChart),
+                ->color($lateJobs > 0 ? 'danger' : 'success'),
             Stat::make('Completed Today', $completedToday)
                 ->description('Finished orders')
                 ->descriptionIcon('heroicon-m-check-circle')
-                ->color('success')
-                ->chart($completedChart),
+                ->color('success'),
         ];
     }
 }

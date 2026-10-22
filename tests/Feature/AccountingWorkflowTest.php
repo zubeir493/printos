@@ -110,6 +110,7 @@ class AccountingWorkflowTest extends TestCase
             'amount' => 2500.00,
             'direction' => 'inbound',
             'method' => 'bank_transfer',
+            'bank_id' => Bank::factory()->create()->id,
             'reference' => 'Customer Payment',
         ]);
 

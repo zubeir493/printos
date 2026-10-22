@@ -6,30 +6,27 @@ use App\Enums\PaymentTransactionType;
 use App\Models\Payment;
 use App\Models\SalesOrder;
 use App\Support\Money;
+use App\Support\PaymentMethod;
 use Illuminate\Support\Facades\DB;
 
 class SalesOrderPaymentService
 {
     public function createImmediatePaymentForCashSale(SalesOrder $salesOrder): ?Payment
     {
-        $salesOrder->loadMissing('payments', 'salesOrderItems');
+        return DB::transaction(function () use ($salesOrder): ?Payment {
+            $salesOrder = SalesOrder::query()->lockForUpdate()->findOrFail($salesOrder->id);
+            if (! $salesOrder->isCashSale()) {
+                return null;
+            }
 
-        if (! $salesOrder->isCashSale()) {
-            return null;
-        }
+            $amount = (float) $salesOrder->total;
+            if ($this->requiresBank($salesOrder->payment_method) && ! $salesOrder->bank_id) {
+                throw new \RuntimeException('A bank account is required for this sale.');
+            }
+            if ($amount <= 0 || $salesOrder->payments()->whereNull('voided_at')->exists()) {
+                return null;
+            }
 
-        $salesOrder = $salesOrder->fresh() ?? $salesOrder;
-        $amount = (float) $salesOrder->total;
-
-        if ($this->requiresBank($salesOrder->payment_method) && ! $salesOrder->bank_id) {
-            throw new \RuntimeException('A bank account is required for bank transfer and cheque sales.');
-        }
-
-        if ($amount <= 0 || $salesOrder->payments()->whereNull('voided_at')->exists()) {
-            return null;
-        }
-
-        return DB::transaction(function () use ($salesOrder, $amount) {
             $payment = Payment::create([
                 'partner_id' => $salesOrder->partner_id,
                 'amount' => $amount,
@@ -104,6 +101,6 @@ class SalesOrderPaymentService
 
     private function requiresBank(?string $method): bool
     {
-        return in_array($method, ['bank', 'bank_transfer', 'cheque', 'check'], true);
+        return PaymentMethod::requiresBank($method);
     }
 }

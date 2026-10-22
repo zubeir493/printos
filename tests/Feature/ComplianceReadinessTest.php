@@ -3,11 +3,18 @@
 use App\Filament\Resources\Invoices\Pages\EditInvoice;
 use App\Filament\Resources\Invoices\Pages\ListInvoices;
 use App\Filament\Resources\Invoices\Pages\ViewInvoice;
+use App\Filament\Resources\JobOrders\Actions\JobOrderActions;
 use App\Filament\Resources\Payments\Pages\ListPayments;
+use App\Filament\Resources\PurchaseOrders\Actions\PurchaseOrderActions;
+use App\Filament\Resources\SalesOrders\Actions\SalesOrderActions;
 use App\Models\Invoice;
+use App\Models\JobOrder;
 use App\Models\Partner;
 use App\Models\Payment;
+use App\Models\PurchaseOrder;
+use App\Models\SalesOrder;
 use App\Models\User;
+use App\Models\Warehouse;
 use App\UserRole;
 use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
@@ -112,13 +119,29 @@ test('attendance imports declare csv file validation limits', function (): void 
         ->toContain("File::types(['csv', 'txt'])->max(10240)");
 });
 
-test('order payment actions lock payable rows before checking balances', function (string $path): void {
-    expect(file_get_contents(base_path($path)))
-        ->toContain('lockForUpdate()')
-        ->toContain('Cannot pay more than the remaining balance');
-})->with([
-    'job order table payments' => ['app/Filament/Resources/JobOrders/Tables/JobOrdersTable.php'],
-    'sales order table payments' => ['app/Filament/Resources/SalesOrders/Tables/SalesOrdersTable.php'],
-    'sales order view payments' => ['app/Filament/Resources/SalesOrders/Pages/ViewSalesOrder.php'],
-    'purchase order table payments' => ['app/Filament/Resources/PurchaseOrders/Tables/PurchaseOrdersTable.php'],
-]);
+test('order payment actions reject payments above the current balance even with a stale record', function (string $kind): void {
+    Filament::setCurrentPanel(Filament::getPanel('admin'));
+    $this->actingAs(User::factory()->create(['role' => UserRole::Admin]));
+    $partner = Partner::factory()->create(['is_customer' => true, 'is_supplier' => true]);
+    if ($kind === 'job') {
+        $record = JobOrder::factory()->create(['partner_id' => $partner->id, 'status' => 'design', 'subtotal' => 100, 'total' => 100]);
+        $action = JobOrderActions::pay();
+    } elseif ($kind === 'purchase') {
+        $record = PurchaseOrder::withoutEvents(fn () => PurchaseOrder::create([
+            'po_number' => 'PO-STALE', 'partner_id' => $partner->id, 'order_date' => today(), 'subtotal' => 100, 'total' => 100, 'status' => 'approved',
+        ]));
+        $action = PurchaseOrderActions::pay();
+    } else {
+        $record = SalesOrder::withoutEvents(fn () => SalesOrder::create([
+            'order_number' => 'SO-STALE', 'partner_id' => $partner->id, 'warehouse_id' => Warehouse::factory()->create()->id,
+            'order_date' => today(), 'subtotal' => 100, 'total' => 100, 'status' => 'submitted', 'payment_mode' => 'credit',
+        ]));
+        $action = SalesOrderActions::pay();
+    }
+    Payment::factory()->create(['payable_type' => $record::class, 'payable_id' => $record->id, 'amount' => 80,
+        'direction' => $kind === 'purchase' ? 'outbound' : 'inbound', 'method' => 'cash']);
+    $record->setAttribute('payments_sum_amount', 0);
+    ($action->getActionFunction())($record, ['amount' => 30, 'method' => 'cash', 'payment_date' => today()->toDateString()]);
+    expect(Payment::query()->where('payable_type', $record::class)->where('payable_id', $record->id)->count())->toBe(1);
+    expect((float) $record->fresh()->balance)->toBe(20.0);
+})->with(['job order table payments' => 'job', 'sales order table payments' => 'sale', 'sales order view payments' => 'sale-view', 'purchase order table payments' => 'purchase']);

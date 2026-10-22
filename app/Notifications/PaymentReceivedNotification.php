@@ -31,7 +31,7 @@ class PaymentReceivedNotification extends Notification implements ShouldQueueAft
 
     protected function webPushBody(): string
     {
-        return 'Payment '.$this->payment->payment_number.' of '.number_format($this->payment->amount, 2).' Birr received.';
+        return 'Payment '.$this->payment->payment_number.' of '.Money::format($this->payment->amount, 2).' received.';
     }
 
     public function toMail($notifiable): MailMessage
@@ -49,7 +49,7 @@ class PaymentReceivedNotification extends Notification implements ShouldQueueAft
     {
         return FilamentNotification::make()
             ->title('Payment Received')
-            ->body('Payment '.$this->payment->payment_number.' of '.number_format($this->payment->amount, 2).' Birr received.')
+            ->body('Payment '.$this->payment->payment_number.' of '.Money::format($this->payment->amount, 2).' received.')
             ->icon('heroicon-o-banknotes')
             ->iconColor('success')
             ->actions($this->databaseActions($notifiable, 'Open payment'))
@@ -63,7 +63,7 @@ class PaymentReceivedNotification extends Notification implements ShouldQueueAft
             'payment_number' => $this->payment->payment_number,
             'amount' => $this->payment->amount,
             'customer_name' => $this->payment->partner?->name,
-            'message' => 'Payment '.$this->payment->payment_number.' of '.number_format($this->payment->amount, 2).' Birr received.',
+            'message' => 'Payment '.$this->payment->payment_number.' of '.Money::format($this->payment->amount, 2).' received.',
             'url' => $this->notificationUrl($notifiable),
         ];
     }

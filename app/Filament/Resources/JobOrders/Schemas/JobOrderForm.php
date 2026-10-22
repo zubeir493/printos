@@ -21,6 +21,8 @@ use Filament\Forms\Components\Repeater\TableColumn;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Infolists\Components\RepeatableEntry;
+use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Section;
@@ -37,6 +39,37 @@ class JobOrderForm
     {
         return $schema
             ->components([
+                Section::make('Workflow readiness')
+                    ->visible(fn (string $operation): bool => $operation === 'view')
+                    ->schema([
+                        Placeholder::make('production_readiness')->label('Production')
+                            ->content(fn (?JobOrder $record): string => $record?->productionIsComplete() ? 'Production complete' : (empty($record?->deliverables) ? 'No required files configured' : ($record?->isReadyForProduction() ? 'Required files approved' : 'Required file approval pending'))),
+                        Placeholder::make('payment_readiness')->label('Payment')
+                            ->visible(fn (): bool => PanelAccess::canSeeMoneyValues())
+                            ->content(fn (?JobOrder $record): string => $record?->production_mode === 'make_to_stock' ? 'Internal job — no customer payment' : ($record?->balance > 0 ? 'Remaining payment: '.Money::format($record->balance, 2) : 'Paid in full')),
+                        Placeholder::make('next_step')->label('Next step')
+                            ->content(fn (?JobOrder $record): string => match (true) {
+                                $record === null => '',
+                                (string) $record->status === 'cancelled' => 'This job is cancelled. Reorder to create a new draft.',
+                                (string) $record->status === 'draft' => 'Confirm the specifications, then start the job.',
+                                (string) $record->status === 'design' && filled($record->deliverables) && ! $record->isReadyForProduction() => 'Upload and approve every required file in the file tabs below.',
+                                (string) $record->status === 'design' => 'Required files are ready. Send this job to production.',
+                                ! $record->productionIsComplete() => 'Issue required materials and log production output.',
+                                $record->production_mode !== 'make_to_stock' && $record->balance > 0 => 'Production is complete. Finance must settle the remaining payment; available output can be dispatched.',
+                                default => 'Production and payment requirements are complete. Dispatch any remaining output.',
+                            })->columnSpanFull(),
+                        RepeatableEntry::make('material_readiness')
+                            ->label('Material quantities (base units)')
+                            ->state(fn (?JobOrder $record): array => $record?->materials_summary ?? [])
+                            ->schema([
+                                TextEntry::make('material_name')->label('Material'),
+                                TextEntry::make('unit')->label('Unit'),
+                                TextEntry::make('planned')->label('Required')->numeric(),
+                                TextEntry::make('reserved')->label('Reserve allowance')->numeric(),
+                                TextEntry::make('issued')->label('Issued')->numeric(),
+                                TextEntry::make('remaining')->label('Remaining incl. reserve')->numeric(),
+                            ])->columns(3)->columnSpanFull(),
+                    ])->columns(2)->columnSpanFull(),
                 Group::make()
                     ->schema([
                         Grid::make()
@@ -138,8 +171,10 @@ class JobOrderForm
                                 ->compact()
                                 ->schema([
                                     Select::make('inventory_item_id')->label('Material')
-                                        ->options(fn (): array => InventoryItem::query()->rawMaterials()->orderBy('name')->pluck('name', 'id')->all())
-                                        ->searchable()->preload()->required(),
+                                        ->searchable()
+                                        ->getSearchResultsUsing(fn (string $search): array => InventoryItem::query()->rawMaterials()->where('name', 'like', "%{$search}%")->orderBy('name')->limit(50)->pluck('name', 'id')->all())
+                                        ->getOptionLabelUsing(fn ($value): ?string => InventoryItem::query()->rawMaterials()->find($value)?->name)
+                                        ->required(),
                                     TextInput::make('required_quantity')->numeric()->minValue(0)->required()->default(0),
                                     TextInput::make('reserve_quantity')->numeric()->minValue(0)->default(0),
                                 ])

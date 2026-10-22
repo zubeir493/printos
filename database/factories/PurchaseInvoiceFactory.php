@@ -14,7 +14,7 @@ class PurchaseInvoiceFactory extends Factory
     public function definition(): array
     {
         return [
-            'invoice_number' => fake()->word(),
+            'invoice_number' => 'PI-TEST-'.fake()->unique()->numerify('########'),
             'partner_id' => Partner::factory(),
             'purchase_order_id' => PurchaseOrder::factory(),
             'issue_date' => fake()->date(),

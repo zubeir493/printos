@@ -186,6 +186,10 @@ class JobOrder extends Model
 
     public function getPaidAmountAttribute(): float
     {
+        if (array_key_exists('payments_sum_amount', $this->getAttributes())) {
+            return (float) $this->getAttribute('payments_sum_amount');
+        }
+
         return (float) $this->payments()->whereNull('voided_at')->sum('amount');
     }
 
@@ -428,6 +432,9 @@ class JobOrder extends Model
 
             $summary[] = [
                 'material_name' => $item->name,
+                'unit' => $item->unit,
+                'planned' => (float) $allPaper->where('inventory_item_id', $itemId)->sum('required_quantity'),
+                'reserved' => (float) $allPaper->where('inventory_item_id', $itemId)->sum('reserve_quantity'),
                 'required' => $required,
                 'issued' => $issued,
                 'remaining' => $remaining,

@@ -20,7 +20,7 @@ class CashflowActivityWidget extends HeatmapCalendarWidget
         return new HeatmapCalendarWidgetData(
             entries: $this->heatmap(
                 Payment::query()->whereNull('voided_at'),
-                'SUM(amount)',
+                'SUM(amount - COALESCE(withholding_amount, 0))',
                 'payment_date',
             ),
             description: 'Daily inbound and outbound payment activity',

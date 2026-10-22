@@ -9,6 +9,7 @@ use App\Models\EmployeeLoan;
 use App\Services\Hr\RepayEmployeeLoan;
 use App\Support\FiscalCalendar;
 use App\Support\Money;
+use App\Support\PaymentMethod;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -166,8 +167,8 @@ class EmployeeLoanResource extends Resource
                                     ->pluck('name', 'id')
                                     ->all())
                                 ->searchable()
-                                ->visible(fn ($get): bool => in_array($get('method'), ['bank', 'bank_transfer', 'cheque', 'check'], true))
-                                ->required(fn ($get): bool => in_array($get('method'), ['bank', 'bank_transfer', 'cheque', 'check'], true)),
+                                ->visible(fn ($get): bool => PaymentMethod::requiresBank($get('method')))
+                                ->required(fn ($get): bool => PaymentMethod::requiresBank($get('method'))),
                         ])
                         ->action(fn (EmployeeLoan $record, array $data) => app(RepayEmployeeLoan::class)->handle(
                             $record,

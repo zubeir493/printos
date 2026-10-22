@@ -12,6 +12,7 @@ use App\Models\SalesOrder;
 use App\Models\Setting;
 use App\Support\Money;
 use App\Support\PrivateStorage;
+use App\Support\RequiredStorage;
 use App\Support\SequentialNumber;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
@@ -87,7 +88,7 @@ class InvoiceGeneratorService
         $filename = "invoice-{$invoiceNumber}.pdf";
         $path = "invoices/{$filename}";
 
-        Storage::disk(PrivateStorage::diskName())->put($path, $pdf->output());
+        RequiredStorage::put(PrivateStorage::diskName(), $path, $pdf->output());
 
         // Save invoice to database
         $invoice = Invoice::create([
@@ -147,7 +148,7 @@ class InvoiceGeneratorService
         $filename = "receipt-{$receiptNumber}.pdf";
         $path = "receipts/{$filename}";
 
-        Storage::disk(PrivateStorage::diskName())->put($path, $pdf->output());
+        RequiredStorage::put(PrivateStorage::diskName(), $path, $pdf->output());
 
         return [
             'filename' => $filename,
@@ -222,7 +223,7 @@ class InvoiceGeneratorService
         $filename = "purchase-invoice-{$invoiceNumber}.pdf";
         $path = "invoices/{$filename}";
 
-        Storage::disk(PrivateStorage::diskName())->put($path, $pdf->output());
+        RequiredStorage::put(PrivateStorage::diskName(), $path, $pdf->output());
 
         // Save invoice to database
         $invoice = Invoice::create([
@@ -338,7 +339,7 @@ class InvoiceGeneratorService
         $filename = "service-invoice-{$invoiceNumber}.pdf";
         $path = "invoices/{$filename}";
 
-        Storage::disk(PrivateStorage::diskName())->put($path, $pdf->output());
+        RequiredStorage::put(PrivateStorage::diskName(), $path, $pdf->output());
 
         // Save invoice to database
         $invoice = Invoice::create([
@@ -423,7 +424,7 @@ class InvoiceGeneratorService
         $filename = "batch-invoice-{$invoiceNumber}.pdf";
         $path = "invoices/{$filename}";
 
-        Storage::disk(PrivateStorage::diskName())->put($path, $pdf->output());
+        RequiredStorage::put(PrivateStorage::diskName(), $path, $pdf->output());
 
         return [
             'filename' => $filename,
@@ -693,7 +694,7 @@ class InvoiceGeneratorService
 
         $path = $invoice->file_path ?: "invoices/{$invoice->filename}";
 
-        return Storage::disk(PrivateStorage::diskName())->put($path, $pdf->output());
+        return RequiredStorage::put(PrivateStorage::diskName(), $path, $pdf->output());
     }
 
     /**
@@ -716,7 +717,7 @@ class InvoiceGeneratorService
             ->setOption('fontCache', public_path('fonts'))
             ->setOption('isRemoteEnabled', true);
 
-        return Storage::disk(PrivateStorage::diskName())->put($invoice->file_path, $pdf->output());
+        return RequiredStorage::put(PrivateStorage::diskName(), $invoice->file_path, $pdf->output());
     }
 
     /**

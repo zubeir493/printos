@@ -119,7 +119,7 @@ class JobOrderResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        $query = parent::getEloquentQuery()->with(['partner', 'designer', 'typist', 'proforma'])->withSum('productionMovements', 'quantity');
+        $query = parent::getEloquentQuery()->with(['partner', 'designer', 'typist', 'proforma'])->withSum('productionMovements', 'quantity')->withSum(['payments' => fn ($query) => $query->whereNull('voided_at')], 'amount');
         $panel = Filament::getCurrentPanel()?->getId();
         if ($panel === 'design') {
             $query->where('designer_id', auth()->id())->whereNotIn('status', ['draft', 'cancelled']);

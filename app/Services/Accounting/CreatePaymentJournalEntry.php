@@ -7,6 +7,7 @@ use App\Models\Account;
 use App\Models\JournalEntry;
 use App\Models\JournalItem;
 use App\Models\Payment;
+use App\Support\PaymentMethod;
 
 class CreatePaymentJournalEntry
 {
@@ -100,7 +101,7 @@ class CreatePaymentJournalEntry
             return $this->resolvePettyCashAccountId($payment);
         }
 
-        return in_array($payment->method, ['bank', 'bank_transfer', 'cheque', 'check'], true)
+        return PaymentMethod::requiresBank($payment->method)
             ? $bankAccount->id
             : $cashAccount->id;
     }

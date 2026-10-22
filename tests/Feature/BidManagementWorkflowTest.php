@@ -263,25 +263,25 @@ test('bid bond recovery posts receivable accounting and increases bank balance',
     ]);
 });
 
-test('cpo bond issue and recovery store cpo bank without moving internal bank balance', function (): void {
+test('cpo bond issue and recovery move the selected internal bank balance', function (): void {
     $bank = createBidManagementBank(10000);
     $bond = Bond::factory()->bid()->create([
         'amount' => 3000,
     ]);
 
-    $issuePayment = $bond->issue('2026-06-02', 'cpo', cpoBankName: 'Awash Bank');
+    $issuePayment = $bond->issue('2026-06-02', 'cpo', $bank->id, cpoBankName: 'Awash Bank');
 
     expect($issuePayment->method)->toBe('cpo')
         ->and($issuePayment->payable_type)->toBe(Bond::class)
-        ->and($issuePayment->bank_id)->toBeNull()
+        ->and($issuePayment->bank_id)->toBe($bank->id)
         ->and($bond->fresh()->cpo_bank_name)->toBe('Awash Bank')
-        ->and((float) $bank->fresh()->current_balance)->toBe(10000.0);
+        ->and((float) $bank->fresh()->current_balance)->toBe(7000.0);
 
-    $recoveryPayment = $bond->fresh()->recover('2026-06-10', 'cpo', cpoBankName: 'Awash Bank');
+    $recoveryPayment = $bond->fresh()->recover('2026-06-10', 'cpo', $bank->id, cpoBankName: 'Awash Bank');
 
     expect($recoveryPayment->method)->toBe('cpo')
         ->and($recoveryPayment->payable_type)->toBe(Bond::class)
-        ->and($recoveryPayment->bank_id)->toBeNull()
+        ->and($recoveryPayment->bank_id)->toBe($bank->id)
         ->and((float) $bank->fresh()->current_balance)->toBe(10000.0);
 });
 
@@ -320,6 +320,7 @@ test('awarded bid can send and return performance bond from bid actions', functi
         ->callAction('send_performance_bond', [
             'amount' => 2500,
             'method' => 'cpo',
+            'bank_id' => $bank->id,
             'cpo_bank_name' => 'CBE',
             'payment_date' => '2026-06-12',
             'notes' => 'Performance bond note',
@@ -341,8 +342,8 @@ test('awarded bid can send and return performance bond from bid actions', functi
         ->and($bond->cpo_bank_name)->toBe('CBE')
         ->and($payment->transaction_type)->toBe(PaymentTransactionType::PERFORMANCE_BOND_ISSUE->value)
         ->and($payment->method)->toBe('cpo')
-        ->and($payment->bank_id)->toBeNull()
-        ->and((float) $bank->fresh()->current_balance)->toBe(10000.0);
+        ->and($payment->bank_id)->toBe($bank->id)
+        ->and((float) $bank->fresh()->current_balance)->toBe(7500.0);
 
     $this->assertDatabaseHas('journal_items', [
         'journal_entry_id' => $journalEntry->id,
@@ -383,6 +384,7 @@ test('bid resource can send and return bid bond from bid actions', function (): 
     Livewire::test(EditBid::class, ['record' => $bid->id])
         ->callAction('send_bond', [
             'method' => 'cpo',
+            'bank_id' => $bank->id,
             'cpo_bank_name' => 'CBE',
             'payment_date' => '2026-06-02',
             'reference' => 'Sent from bid page',
@@ -397,7 +399,7 @@ test('bid resource can send and return bid bond from bid actions', function (): 
         ->and($bond->issuing_partner_id)->toBe($entity->id)
         ->and($bond->status)->toBe(Bond::STATUS_ACTIVE)
         ->and($bond->cpo_bank_name)->toBe('CBE')
-        ->and((float) $bank->fresh()->current_balance)->toBe(10000.0);
+        ->and((float) $bank->fresh()->current_balance)->toBe(8000.0);
 
     Livewire::test(ViewBid::class, ['record' => $bid->id])
         ->callAction('return_bond', [
@@ -590,7 +592,7 @@ test('bond tracker lists bonds and returns active bonds', function (): void {
         'amount' => 2000,
     ]);
 
-    $performanceBond->issue('2026-06-12', 'cpo', cpoBankName: 'CBE');
+    $performanceBond->issue('2026-06-12', 'cpo', $bank->id, cpoBankName: 'CBE');
 
     Livewire::test(ListBonds::class)
         ->assertCanSeeTableRecords([$bidBond, $performanceBond])

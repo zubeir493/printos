@@ -14,7 +14,7 @@ class StockTransferFactory extends Factory
     public function definition(): array
     {
         return [
-            'transfer_number' => fake()->word(),
+            'transfer_number' => 'ST-TEST-'.fake()->unique()->numerify('########'),
             'from_warehouse_id' => FromWarehouse::factory(),
             'to_warehouse_id' => ToWarehouse::factory(),
             'transfer_date' => fake()->date(),

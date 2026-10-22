@@ -10,6 +10,7 @@ use App\Models\Setting;
 use App\Models\Warehouse;
 use App\Services\SalesOrderItemImportService;
 use App\Support\Money;
+use App\Support\PaymentMethod;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
@@ -107,11 +108,11 @@ class SalesOrderForm
                                     ->searchable()
                                     ->preload()
                                     ->visible(fn (Get $get): bool => $get('payment_mode') === 'cash'
-                                        && in_array($get('payment_method'), ['bank', 'bank_transfer', 'cheque', 'check'], true))
+                                        && PaymentMethod::requiresBank($get('payment_method')))
                                     ->required(fn (Get $get): bool => $get('payment_mode') === 'cash'
-                                        && in_array($get('payment_method'), ['bank', 'bank_transfer', 'cheque', 'check'], true))
+                                        && PaymentMethod::requiresBank($get('payment_method')))
                                     ->dehydrated(fn (Get $get): bool => $get('payment_mode') === 'cash'
-                                        && in_array($get('payment_method'), ['bank', 'bank_transfer', 'cheque', 'check'], true)),
+                                        && PaymentMethod::requiresBank($get('payment_method'))),
                                 TextInput::make('payment_reference')
                                     ->label('Payment Reference')
                                     ->placeholder('Transfer reference, cheque number, or short note')
@@ -251,21 +252,21 @@ class SalesOrderForm
                                     ->searchable()
                                     ->preload()
                                     ->visible(fn (Get $get): bool => (bool) $get('has_initial_payment')
-                                        && in_array($get('initial_payment_method'), ['bank', 'bank_transfer', 'cheque', 'check'], true))
+                                        && PaymentMethod::requiresBank($get('initial_payment_method')))
                                     ->required(fn (Get $get): bool => (bool) $get('has_initial_payment')
                                         && (float) ($get('initial_payment_amount') ?? 0) > 0
-                                        && in_array($get('initial_payment_method'), ['bank', 'bank_transfer', 'cheque', 'check'], true))
+                                        && PaymentMethod::requiresBank($get('initial_payment_method')))
                                     ->dehydrated(fn (Get $get): bool => (bool) $get('has_initial_payment')
                                         && (float) ($get('initial_payment_amount') ?? 0) > 0
-                                        && in_array($get('initial_payment_method'), ['bank', 'bank_transfer', 'cheque', 'check'], true)),
+                                        && PaymentMethod::requiresBank($get('initial_payment_method'))),
                                 TextInput::make('initial_payment_reference')
                                     ->label('Payment Reference')
                                     ->placeholder('Receipt number, transfer reference, or short note')
                                     ->maxLength(255)
                                     ->visible(fn (Get $get): bool => (bool) $get('has_initial_payment')
-                                        && in_array($get('initial_payment_method'), ['bank', 'bank_transfer', 'cheque', 'check'], true))
+                                        && PaymentMethod::requiresBank($get('initial_payment_method')))
                                     ->dehydrated(fn (Get $get): bool => (bool) $get('has_initial_payment')
-                                        && in_array($get('initial_payment_method'), ['bank', 'bank_transfer', 'cheque', 'check'], true)),
+                                        && PaymentMethod::requiresBank($get('initial_payment_method'))),
                             ])
                             ->columns(2)
                             ->columnSpanFull(),

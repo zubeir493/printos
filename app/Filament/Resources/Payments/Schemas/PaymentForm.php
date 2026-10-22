@@ -9,6 +9,7 @@ use App\Models\Bid;
 use App\Models\Employee;
 use App\Models\ExpenseTrackingItem;
 use App\Support\Money;
+use App\Support\PaymentMethod;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
@@ -94,6 +95,7 @@ class PaymentForm
                         TextInput::make('amount')
                             ->required()
                             ->numeric()
+                            ->minValue(0.01)
                             ->live(onBlur: true)
                             ->suffix(fn (): string => Money::suffix()),
                         TextInput::make('withholding_amount')
@@ -186,25 +188,25 @@ class PaymentForm
                             ->dehydrated(fn (Get $get): bool => self::isExpenseTransaction($get('transaction_type'))),
                         Select::make('expense_tracking_item_id')
                             ->label(fn (Get $get): string => ExpenseTrackingType::tryFrom((string) $get('expense_tracking_type'))?->label() ?? 'Tracking Item')
-                            ->options(fn (Get $get): array => self::trackingItemOptions($get('expense_tracking_type')))
                             ->searchable()
-                            ->preload()
+                            ->getSearchResultsUsing(fn (Get $get, string $search): array => self::trackingItemOptions($get('expense_tracking_type'), $search))
+                            ->getOptionLabelUsing(fn (Get $get, $value): ?string => ExpenseTrackingItem::query()->active()->where('type', $get('expense_tracking_type'))->find($value)?->display_name)
                             ->visible(fn (Get $get): bool => ExpenseTrackingType::tryFrom((string) $get('expense_tracking_type'))?->usesTrackingItem() ?? false)
                             ->required(fn (Get $get): bool => ExpenseTrackingType::tryFrom((string) $get('expense_tracking_type'))?->usesTrackingItem() ?? false)
                             ->dehydrated(fn (Get $get): bool => self::isExpenseTransaction($get('transaction_type'))),
                         Select::make('expense_tracking_employee_id')
                             ->label('Employee')
-                            ->options(fn (): array => self::employeeOptions())
                             ->searchable()
-                            ->preload()
+                            ->getSearchResultsUsing(fn (string $search): array => self::employeeOptions($search))
+                            ->getOptionLabelUsing(fn ($value): ?string => Employee::find($value)?->full_name)
                             ->visible(fn (Get $get): bool => $get('expense_tracking_type') === ExpenseTrackingType::EMPLOYEE->value)
                             ->required(fn (Get $get): bool => $get('expense_tracking_type') === ExpenseTrackingType::EMPLOYEE->value)
                             ->dehydrated(fn (Get $get): bool => self::isExpenseTransaction($get('transaction_type'))),
                         Select::make('expense_tracking_bid_id')
                             ->label('Bid')
-                            ->options(fn (): array => self::bidOptions())
                             ->searchable()
-                            ->preload()
+                            ->getSearchResultsUsing(fn (string $search): array => self::bidOptions($search))
+                            ->getOptionLabelUsing(fn ($value): ?string => ($bid = Bid::find($value)) ? (filled($bid->title) ? "{$bid->bid_number} - {$bid->title}" : $bid->bid_number) : null)
                             ->visible(fn (Get $get): bool => $get('expense_tracking_type') === ExpenseTrackingType::BID->value)
                             ->required(fn (Get $get): bool => $get('expense_tracking_type') === ExpenseTrackingType::BID->value)
                             ->dehydrated(fn (Get $get): bool => self::isExpenseTransaction($get('transaction_type'))),
@@ -251,7 +253,7 @@ class PaymentForm
 
     private static function requiresBankAccount(?string $method): bool
     {
-        return in_array($method, ['bank', 'cheque', 'check'], true);
+        return PaymentMethod::requiresBank($method);
     }
 
     private static function clearExpenseTrackingFields(Set $set): void
@@ -280,11 +282,13 @@ class PaymentForm
     /**
      * @return array<int, string>
      */
-    private static function trackingItemOptions(?string $trackingType): array
+    private static function trackingItemOptions(?string $trackingType, string $search): array
     {
         return ExpenseTrackingItem::query()
             ->active()
             ->where('type', $trackingType)
+            ->where(fn ($query) => $query->where('code', 'like', "%{$search}%")->orWhere('name', 'like', "%{$search}%"))
+            ->limit(50)
             ->orderBy('code')
             ->orderBy('name')
             ->get()
@@ -295,9 +299,11 @@ class PaymentForm
     /**
      * @return array<int, string>
      */
-    private static function employeeOptions(): array
+    private static function employeeOptions(string $search): array
     {
         return Employee::query()
+            ->where(fn ($query) => $query->where('first_name', 'like', "%{$search}%")->orWhere('last_name', 'like', "%{$search}%"))
+            ->limit(50)
             ->orderBy('first_name')
             ->orderBy('last_name')
             ->get()
@@ -308,9 +314,11 @@ class PaymentForm
     /**
      * @return array<int, string>
      */
-    private static function bidOptions(): array
+    private static function bidOptions(string $search): array
     {
         return Bid::query()
+            ->where(fn ($query) => $query->where('bid_number', 'like', "%{$search}%")->orWhere('title', 'like', "%{$search}%"))
+            ->limit(50)
             ->orderByDesc('id')
             ->get()
             ->mapWithKeys(fn (Bid $bid): array => [

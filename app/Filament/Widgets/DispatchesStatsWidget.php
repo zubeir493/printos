@@ -17,11 +17,6 @@ class DispatchesStatsWidget extends BaseWidget
             ->where('created_at', '<', now()->subDays(3))
             ->count();
 
-        // Sample chart data
-        $pendingChart = [10, 12, 8, 15, 11, 9, $pendingDispatches];
-        $deliveredChart = [5, 7, 6, 8, 9, 10, $deliveredToday];
-        $lateChart = [2, 1, 3, 0, 1, 2, $lateDispatches];
-
         return [
             Stat::make('Total Dispatches', $totalDispatches)
                 ->description('All time dispatches')
@@ -30,18 +25,15 @@ class DispatchesStatsWidget extends BaseWidget
             Stat::make('Pending Dispatches', $pendingDispatches)
                 ->description('Awaiting delivery')
                 ->descriptionIcon('heroicon-m-clock')
-                ->color($pendingDispatches > 10 ? 'warning' : 'success')
-                ->chart($pendingChart),
+                ->color($pendingDispatches > 10 ? 'warning' : 'success'),
             Stat::make('Delivered Today', $deliveredToday)
                 ->description('Completed deliveries')
                 ->descriptionIcon('heroicon-m-check-circle')
-                ->color('success')
-                ->chart($deliveredChart),
+                ->color('success'),
             Stat::make('Late Dispatches', $lateDispatches)
                 ->description('Over 3 days old')
                 ->descriptionIcon('heroicon-m-exclamation-triangle')
-                ->color($lateDispatches > 0 ? 'danger' : 'success')
-                ->chart($lateChart),
+                ->color($lateDispatches > 0 ? 'danger' : 'success'),
         ];
     }
 }

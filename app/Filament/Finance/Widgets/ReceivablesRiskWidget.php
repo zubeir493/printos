@@ -3,8 +3,7 @@
 namespace App\Filament\Finance\Widgets;
 
 use App\Models\Partner;
-use App\Models\Payment;
-use App\Models\SalesOrder;
+use App\Services\Accounting\ReceivablesQuery;
 use App\Support\Money;
 use LaravelDaily\FilaWidgets\Data\BreakdownWidgetData;
 use LaravelDaily\FilaWidgets\Widgets\BreakdownWidget;
@@ -21,18 +20,7 @@ class ReceivablesRiskWidget extends BreakdownWidget
 
     protected function getData(): BreakdownWidgetData
     {
-        $paymentsByOrder = Payment::query()
-            ->select('payable_id')
-            ->selectRaw('SUM(amount) as paid_amount')
-            ->where('payable_type', SalesOrder::class)
-            ->whereNull('voided_at')
-            ->groupBy('payable_id');
-
-        $balancesByPartner = SalesOrder::query()
-            ->leftJoinSub($paymentsByOrder, 'order_payments', fn ($join) => $join->on('order_payments.payable_id', '=', 'sales_orders.id'))
-            ->select('sales_orders.partner_id')
-            ->selectRaw('SUM(sales_orders.total - COALESCE(order_payments.paid_amount, 0)) as total_balance')
-            ->groupBy('sales_orders.partner_id');
+        $balancesByPartner = app(ReceivablesQuery::class)->customerBalances();
 
         return BreakdownWidgetData::fromCollection(
             Partner::query()

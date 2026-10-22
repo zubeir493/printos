@@ -8,6 +8,7 @@ use App\Filament\Resources\Payments\Pages\ViewPayment;
 use App\Filament\Resources\Payments\PaymentResource;
 use App\Models\Account;
 use App\Models\Bank;
+use App\Models\Employee;
 use App\Models\ExpenseTrackingItem;
 use App\Models\JournalEntry;
 use App\Models\Partner;
@@ -403,3 +404,32 @@ function createPaymentFormBank(string $name, float $currentBalance): Bank
         'status' => 'active',
     ]);
 }
+
+test('employee search is bounded while selected labels remain available', function (): void {
+    Filament::setCurrentPanel(Filament::getPanel('finance'));
+    $this->actingAs(User::factory()->create(['role' => UserRole::Finance]));
+    $employees = Employee::factory()->count(60)->create(['first_name' => 'Audit']);
+    Livewire::test(CreatePayment::class)
+        ->set('data.expense_tracking_type', 'employee')
+        ->assertFormFieldExists('expense_tracking_employee_id', function (Select $field) use ($employees): bool {
+            expect($field->getSearchResults('Audit'))->toHaveCount(50);
+            $field->state($employees->last()->id);
+            expect($field->getOptionLabel())->toContain('Audit');
+
+            return true;
+        });
+});
+
+test('tracking searches and selected labels respect active status and type', function (): void {
+    Filament::setCurrentPanel(Filament::getPanel('finance'));
+    $this->actingAs(User::factory()->create(['role' => UserRole::Finance]));
+    $invalid = ExpenseTrackingItem::create(['type' => 'department', 'name' => 'Audit Wrong Type', 'status' => 'active']);
+    Livewire::test(CreatePayment::class)->set('data.expense_tracking_type', 'vehicle')
+        ->assertFormFieldExists('expense_tracking_item_id', function (Select $field) use ($invalid): bool {
+            expect($field->getSearchResults('Audit'))->toBe([]);
+            $field->state($invalid->id);
+            expect($field->getOptionLabel(false))->toBeNull();
+
+            return true;
+        });
+});

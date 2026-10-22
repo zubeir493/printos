@@ -10,6 +10,7 @@ use App\Models\SalesOrder;
 use App\Services\InvoiceGeneratorService;
 use App\Services\VoidSalesOrder;
 use App\Support\Money;
+use App\Support\PaymentMethod;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\EditAction;
@@ -151,8 +152,8 @@ class SalesOrderActions
                         ->options(fn (): array => Bank::query()->orderBy('name')->pluck('name', 'id')->all())
                         ->searchable()
                         ->preload()
-                        ->visible(fn (callable $get): bool => in_array($get('method'), ['bank', 'bank_transfer', 'cheque', 'check'], true))
-                        ->required(fn (callable $get): bool => in_array($get('method'), ['bank', 'bank_transfer', 'cheque', 'check'], true)),
+                        ->visible(fn (callable $get): bool => PaymentMethod::requiresBank($get('method')))
+                        ->required(fn (callable $get): bool => PaymentMethod::requiresBank($get('method'))),
                     TextInput::make('amount')
                         ->label('Payment Amount')
                         ->required()

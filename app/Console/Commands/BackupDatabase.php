@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Support\RequiredStorage;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Storage;
@@ -30,6 +31,9 @@ class BackupDatabase extends Command
     {
         $this->info('Starting database backup...');
 
+        $temporaryPath = null;
+        $stream = null;
+
         try {
             $database = config('database.connections.'.config('database.default').'.database');
             $filename = 'backups/database/'.$database.'_'.Carbon::now()->format('Y-m-d_H-i-s').'.sql';
@@ -45,7 +49,7 @@ class BackupDatabase extends Command
                     $port = config('database.connections.'.$connection.'.port');
                     $username = config('database.connections.'.$connection.'.username');
                     $password = config('database.connections.'.$connection.'.password');
-                    $dumpCommand = ['mariadb-dump', '-h', $host, '-P', (string) $port, '-u', $username, $database];
+                    $dumpCommand = ['mariadb-dump', '--single-transaction', '--quick', '--skip-lock-tables', '-h', $host, '-P', (string) $port, '-u', $username, $database];
                     $environment = ['MYSQL_PWD' => $password];
                     break;
                 case 'pgsql':
@@ -66,21 +70,30 @@ class BackupDatabase extends Command
                     return Command::FAILURE;
             }
 
-            // Execute the dump command.
-            $process = new Process($dumpCommand, base_path(), $environment ?? []);
-            $process->setTimeout(1800);
-            $process->run();
-
-            if (! $process->isSuccessful()) {
-                $this->error('Failed to generate database dump: '.$process->getErrorOutput());
-
-                return Command::FAILURE;
+            $temporaryPath = tempnam(sys_get_temp_dir(), 'erp-backup-');
+            if ($temporaryPath === false) {
+                throw new \RuntimeException('Could not create the backup temporary file.');
             }
-
-            $output = $process->getOutput();
-
-            // Store the backup
-            Storage::disk('s3')->put($filename, $output);
+            $stream = fopen($temporaryPath, 'wb');
+            if ($stream === false) {
+                throw new \RuntimeException('Could not open the backup temporary file.');
+            }
+            $process = $this->dumpProcess($dumpCommand, $environment);
+            $process->setTimeout(1800);
+            $process->run(function (string $type, string $buffer) use ($stream, $process): void {
+                if ($type === Process::OUT) {
+                    if (fwrite($stream, $buffer) !== strlen($buffer)) {
+                        throw new \RuntimeException('Could not write the database dump.');
+                    }
+                    $process->clearOutput();
+                }
+            });
+            fclose($stream);
+            $stream = null;
+            if (! $process->isSuccessful() || filesize($temporaryPath) === 0) {
+                throw new \RuntimeException('Failed to generate database dump: '.$process->getErrorOutput());
+            }
+            RequiredStorage::putFile('s3', $filename, $temporaryPath);
 
             $this->info('Database backup completed successfully: '.$filename);
 
@@ -88,11 +101,26 @@ class BackupDatabase extends Command
             $this->cleanupOldBackups();
 
             return Command::SUCCESS;
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             $this->error('Backup failed: '.$e->getMessage());
 
             return Command::FAILURE;
+        } finally {
+            if (is_resource($stream)) {
+                fclose($stream);
+            }
+            if (is_string($temporaryPath) && is_file($temporaryPath)) {
+                unlink($temporaryPath);
+            }
         }
+    }
+
+    /** @param list<string> $command
+     * @param  array<string, string|null>  $environment
+     */
+    protected function dumpProcess(array $command, array $environment): Process
+    {
+        return new Process($command, base_path(), $environment);
     }
 
     /**

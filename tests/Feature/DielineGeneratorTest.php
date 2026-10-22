@@ -29,7 +29,7 @@ it('renders the dieline editor as a fullscreen canvas with a left settings sideb
 
     Livewire::test(EditDieline::class, ['record' => $dieline->getKey()])
         ->assertSuccessful()
-        ->assertSee('Settings')
+        ->assertSee('Dieline type')
         ->assertSeeHtml('dieline-canvas-shell')
         ->assertDontSeeHtml('x-on:pointerdown')
         ->assertSeeHtml('dieline-editor-sidebar')
@@ -238,7 +238,7 @@ it('scopes fullscreen chrome hiding and split save styling to the dieline editor
         ->toContain('inline-size: 100vw')
         ->toContain('.dieline-editor-sidebar')
         ->toContain('.dieline-editor-canvas')
-        ->toContain('max-block-size: calc(100dvh - 1.5rem)')
+        ->toContain('block-size: 100dvh')
         ->toContain('position: sticky')
         ->toContain('overflow: hidden')
         ->toContain('dieline-save-action')

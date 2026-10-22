@@ -116,11 +116,19 @@ class SalesOrder extends Model
 
     public function getPaidAmountAttribute(): float
     {
+        if (array_key_exists('payments_sum_amount', $this->getAttributes())) {
+            return (float) $this->getAttribute('payments_sum_amount');
+        }
+
         return (float) $this->payments()->whereNull('voided_at')->sum('amount');
     }
 
     public function getBalanceAttribute(): float
     {
+        if (array_key_exists('balance', $this->getAttributes())) {
+            return (float) $this->getRawOriginal('balance');
+        }
+
         return (float) ($this->total - $this->paid_amount);
     }
 

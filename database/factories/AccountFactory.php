@@ -13,7 +13,7 @@ class AccountFactory extends Factory
     {
         return [
             'name' => fake()->name(),
-            'code' => fake()->word(),
+            'code' => 'ACCT-'.fake()->unique()->numerify('########'),
             'type' => fake()->randomElement(['Asset', 'Liability', 'Equity', 'Revenue', 'Expense']),
         ];
     }

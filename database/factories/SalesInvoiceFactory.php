@@ -14,7 +14,7 @@ class SalesInvoiceFactory extends Factory
     public function definition(): array
     {
         return [
-            'invoice_number' => fake()->word(),
+            'invoice_number' => 'SI-TEST-'.fake()->unique()->numerify('########'),
             'partner_id' => Partner::factory(),
             'job_order_id' => JobOrder::factory(),
             'issue_date' => fake()->date(),

@@ -8,6 +8,7 @@ use App\Models\EmailLog;
 use App\Models\Proforma;
 use App\Models\Setting;
 use App\Support\Money;
+use App\Support\RequiredStorage;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
@@ -24,7 +25,7 @@ class ProformaPdfService
         $filename = $this->filenameFor($proforma);
         $path = "proformas/{$filename}";
 
-        Storage::disk('local')->put($path, $pdf->output());
+        RequiredStorage::put('local', $path, $pdf->output());
 
         $proforma->updateQuietly([
             'filename' => $filename,
@@ -62,7 +63,7 @@ class ProformaPdfService
     {
         $tempPath = 'proformas-temp/'.Str::uuid()->toString().'.pdf';
 
-        Storage::disk('local')->put($tempPath, $this->buildPdf($proforma)->output());
+        RequiredStorage::put('local', $tempPath, $this->buildPdf($proforma)->output());
 
         return response()->download(
             Storage::disk('local')->path($tempPath),

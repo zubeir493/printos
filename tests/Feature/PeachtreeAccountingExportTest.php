@@ -13,7 +13,9 @@ use App\Models\JournalItem;
 use App\Models\User;
 use App\Services\Accounting\GenerateAccountingExport;
 use App\UserRole;
+use Carbon\CarbonImmutable;
 use Filament\Facades\Filament;
+use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
@@ -33,8 +35,8 @@ function createMappedPeachtreeJournal(
     string $postedAt = '2026-07-10 16:00:00',
     bool $createMappings = true,
 ): JournalEntry {
-    $cash = Account::factory()->create(['name' => 'Cash at bank', 'code' => fake()->unique()->numerify('10##')]);
-    $receivable = Account::factory()->create(['name' => 'Accounts Receivable', 'code' => fake()->unique()->numerify('12##')]);
+    $cash = Account::factory()->create(['name' => 'Cash at bank', 'code' => fake()->unique()->bothify('TEST-CASH-########')]);
+    $receivable = Account::factory()->create(['name' => 'Accounts Receivable', 'code' => fake()->unique()->bothify('TEST-AR-########')]);
 
     if ($createMappings) {
         AccountingAccountMapping::factory()->create([
@@ -317,4 +319,22 @@ test('account override action follows active accounting integrations', function 
         ->mountTableAction('mapAccountingAccounts', $account)
         ->assertMountedActionModalSee('Xero Account Override')
         ->assertMountedActionModalSee('Peachtree Desktop Account Override');
+});
+
+test('a failed export upload remains retryable and does not mark journals exported', function (): void {
+    $integration = AccountingIntegration::factory()->create(['provider' => AccountingIntegration::PROVIDER_PEACHTREE_DESKTOP]);
+    $journal = createMappedPeachtreeJournal($integration);
+    $manager = Storage::getFacadeRoot();
+    $disk = Mockery::mock(FilesystemAdapter::class);
+    $disk->shouldReceive('put')->once()->andReturn(false);
+    $disk->shouldReceive('exists')->andReturn(false);
+    Storage::shouldReceive('disk')->with('local')->andReturn($disk);
+    $export = app(GenerateAccountingExport::class)->handle($integration, CarbonImmutable::parse('2026-07-11'));
+    expect($export->status)->toBe(AccountingExport::STATUS_FAILED)
+        ->and($journal->accountingExports()->count())->toBe(0);
+    Storage::swap($manager);
+    Storage::fake('local');
+    $retry = app(GenerateAccountingExport::class)->handle($integration, CarbonImmutable::parse('2026-07-11'), retry: $export);
+    expect($retry->status)->toBe(AccountingExport::STATUS_COMPLETED, $retry->error_message ?? '')
+        ->and($journal->accountingExports()->count())->toBe(1);
 });

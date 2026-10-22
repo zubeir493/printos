@@ -6,6 +6,7 @@ use App\Filament\Tables\Filters\DateRangeFilter;
 use App\Models\Bank;
 use App\Models\BidBond;
 use App\Support\Money;
+use App\Support\PaymentMethod;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\CreateAction;
@@ -161,8 +162,8 @@ class BidBondsRelationManager extends RelationManager
                 ->options(fn (): array => Bank::query()->pluck('name', 'id')->all())
                 ->searchable()
                 ->preload()
-                ->visible(fn (callable $get): bool => in_array($get('method'), ['bank', 'bank_transfer', 'cheque', 'check'], true))
-                ->required(fn (callable $get): bool => in_array($get('method'), ['bank', 'bank_transfer', 'cheque', 'check'], true)),
+                ->visible(fn (callable $get): bool => PaymentMethod::requiresBank($get('method')))
+                ->required(fn (callable $get): bool => PaymentMethod::requiresBank($get('method'))),
             DatePicker::make('payment_date')
                 ->default(now())
                 ->required(),

@@ -15,7 +15,10 @@ class RebuildAttendanceDailySummaries
     {
         $segments
             ->groupBy(fn (AttendanceSegment $segment): string => $segment->employee_id.'|'.$segment->date->toDateString())
-            ->each(fn (Collection $daySegments): mixed => $this->rebuildDay($daySegments));
+            ->each(function (Collection $daySegments): void {
+                $first = $daySegments->first();
+                $this->rebuildDay(AttendanceSegment::query()->where('employee_id', $first->employee_id)->whereDate('date', $first->date->toDateString())->get());
+            });
     }
 
     /**
@@ -52,12 +55,12 @@ class RebuildAttendanceDailySummaries
         $lateAndEarlyMinutes = (int) $segments->sum('late_minutes') + (int) $segments->sum('early_minutes');
         $isHolidayOrDayoff = $segments->contains(fn (AttendanceSegment $segment): bool => $this->isStatus($segment, 'Holiday') || $this->isStatus($segment, 'Dayoff'));
 
-        AttendanceDailySummary::updateOrCreate(
+        AttendanceDailySummary::query()->whereDate('date', $first->date->toDateString())->updateOrCreate(
             [
                 'employee_id' => $first->employee_id,
-                'date' => $first->date->toDateString(),
             ],
             [
+                'date' => $first->date->toDateString(),
                 'expected_minutes' => $expectedMinutes,
                 'worked_minutes' => $workedMinutes,
                 'regular_minutes' => min($workedMinutes, $expectedMinutes),

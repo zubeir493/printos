@@ -2,35 +2,66 @@
 
 namespace App\Services\Hr;
 
+use App\Exceptions\HrWorkflowException;
 use App\Models\Account;
+use App\Models\Employee;
 use App\Models\EmployeeLoanInstallment;
 use App\Models\JournalEntry;
 use App\Models\JournalItem;
 use App\Models\PayrollRun;
+use App\Models\Setting;
 use Illuminate\Support\Facades\DB;
-use RuntimeException;
+use Illuminate\Support\Facades\Gate;
 
 class PostPayrollRun
 {
     public function handle(PayrollRun $payrollRun): JournalEntry
     {
+        if (auth()->check()) {
+            Gate::authorize('approve', $payrollRun);
+        }
         $journalEntry = DB::transaction(function () use ($payrollRun): JournalEntry {
             $payrollRun = PayrollRun::query()->lockForUpdate()->findOrFail($payrollRun->id);
             $existingJournalEntry = JournalEntry::query()
                 ->where('source_type', PayrollRun::class)->where('source_id', $payrollRun->id)
-                ->whereNull('reversal_of_journal_entry_id')->first();
+                ->whereNull('reversal_of_journal_entry_id')->whereNull('voided_at')->first();
             if ($existingJournalEntry) {
                 return $existingJournalEntry;
             }
             if ($payrollRun->status !== 'draft') {
-                throw new RuntimeException('Only draft payroll runs can be approved.');
+                throw new HrWorkflowException('Only draft payroll runs can be approved.');
+            }
+            if (! $payrollRun->attendance_reviewed_at) {
+                throw new HrWorkflowException('Confirm attendance review before approving payroll.');
+            }
+            if ($payrollRun->overtimeEntries()->where('status', 'pending')->exists()) {
+                throw new HrWorkflowException('Approve or reject all overtime candidates before approving payroll.');
             }
             $payrollRun->loadMissing('employees');
-            $this->removeZeroNetEmployees($payrollRun);
-            $payrollRun->load('employees');
+            Employee::query()->whereIn('id', $payrollRun->employees->pluck('employee_id'))->orderBy('id')->lockForUpdate()->get();
+            $overlap = PayrollRun::query()->whereKeyNot($payrollRun->id)->whereIn('status', ['approved', 'paid'])
+                ->whereDate('period_start', '<=', $payrollRun->period_end)->whereDate('period_end', '>=', $payrollRun->period_start)
+                ->whereHas('employees', fn ($query) => $query->whereIn('employee_id', $payrollRun->employees->pluck('employee_id')))
+                ->lockForUpdate()->first();
+            if ($overlap) {
+                throw new HrWorkflowException('An approved payroll already covers an employee in this period. Use a correction instead.');
+            }
+            $payrollRun->load('employees.employee');
+            (new Employee)->newCollection($payrollRun->employees->pluck('employee')->all())->load(PayrollInputs::relations($payrollRun->period_start->toDateString(), $payrollRun->period_end->toDateString()));
+            $settings = Setting::getSettings();
+            foreach ($payrollRun->employees as $row) {
+                $snapshot = $row->calculation_snapshot ?? [];
+                if (isset($snapshot['input_signature']) && $snapshot['input_signature'] !== PayrollInputs::signature($row->employee, $payrollRun->period_start->toDateString(), $payrollRun->period_end->toDateString())) {
+                    throw new HrWorkflowException('Payroll inputs changed. Recalculate and review attendance before approval.');
+                }
+                $snapshot['currency_code'] = $settings->currency_code ?: 'ETB';
+                $snapshot['employer'] = ['company_name' => $settings->company_name, 'tax_id' => $settings->company_tax_id];
+                $snapshot['beneficiary'] = ['employee_id' => $row->employee?->employee_id, 'name' => $row->employee?->full_name, 'position' => $row->employee?->position, 'bank_name' => $row->employee?->bank_name, 'account_number' => $row->employee?->account_number];
+                $row->forceFill(['calculation_snapshot' => $snapshot])->saveQuietly();
+            }
 
-            if ($payrollRun->employees->isEmpty() || (float) $payrollRun->employees->sum('net_pay') <= 0) {
-                throw new RuntimeException('Payroll must have calculated employee net pay before posting.');
+            if ($payrollRun->employees->isEmpty() || (float) $payrollRun->employees->sum('gross_earning') <= 0) {
+                throw new HrWorkflowException('Payroll must have calculated employee net pay before posting.');
             }
 
             $grossEarning = (float) $payrollRun->employees->sum('gross_earning');
@@ -49,7 +80,7 @@ class PostPayrollRun
             $totalCredit = round($netPay + $incomeTax + $penalty + $pension + $loan + $workersUnion + $manualDeductions, 2);
 
             if ($totalDebit !== $totalCredit) {
-                throw new RuntimeException('Payroll journal must balance before posting.');
+                throw new HrWorkflowException('Payroll journal must balance before posting.');
             }
 
             $journalEntry = JournalEntry::create([
@@ -78,34 +109,17 @@ class PostPayrollRun
             $this->markLoanInstallmentsPaid($payrollRun);
 
             $payrollRun->update([
+                'approved_by' => auth()->id(),
                 'status' => 'approved',
                 'posted_at' => now(),
                 'journal_entry_id' => $journalEntry->id,
             ]);
 
             return $journalEntry;
-        });
+        }, 3);
         $payrollRun->refresh();
 
         return $journalEntry;
-    }
-
-    private function removeZeroNetEmployees(PayrollRun $payrollRun): void
-    {
-        $payrollRun->employees()
-            ->where('net_pay', '<=', 0)
-            ->delete();
-
-        if (is_array($payrollRun->selected_employee_ids)) {
-            $payrollRun->forceFill([
-                'selected_employee_ids' => $payrollRun
-                    ->employees()
-                    ->pluck('employee_id')
-                    ->map(fn ($id): int => (int) $id)
-                    ->values()
-                    ->all(),
-            ])->save();
-        }
     }
 
     private function item(JournalEntry $journalEntry, string $code, string $name, string $type, float $debit, float $credit): void
@@ -128,6 +142,10 @@ class PostPayrollRun
             $installmentIds = $employeePayroll->calculation_snapshot['loan_installment_ids'] ?? [];
 
             if (! is_array($installmentIds) || $installmentIds === []) {
+                if ((float) $employeePayroll->loan > 0) {
+                    throw new HrWorkflowException('Loan deductions must reference funded loan installments.');
+                }
+
                 return;
             }
 
@@ -137,13 +155,15 @@ class PostPayrollRun
             }
             $installments = EmployeeLoanInstallment::query()
                 ->whereIn('id', $installmentIds)
-                ->whereHas('loan', fn ($query) => $query->where('employee_id', $employeePayroll->employee_id)->where('status', '!=', 'cancelled'))
+                ->whereHas('loan', fn ($query) => $query->where('employee_id', $employeePayroll->employee_id)->whereIn('status', ['active', 'partially_paid'])->where(fn ($funding) => $funding->where('legacy_disbursement_confirmed', true)->orWhereHas('disbursementPayment', fn ($payment) => $payment->whereNull('voided_at'))))
                 ->where('status', 'pending')->orderBy('due_date')->orderBy('id')->lockForUpdate()->get();
+            $allocations = [];
             foreach ($installments as $installment) {
                 $applied = min($remaining, max(0, (float) $installment->amount - (float) $installment->paid_amount));
                 if ($applied <= 0) {
                     continue;
                 }
+                $allocations[$installment->id] = $applied;
                 $paid = round((float) $installment->paid_amount + $applied, 2);
                 $installment->update([
                     'paid_amount' => $paid,
@@ -157,8 +177,11 @@ class PostPayrollRun
                     break;
                 }
             }
+            $snapshot = $employeePayroll->calculation_snapshot;
+            $snapshot['posted_loan_allocations'] = $allocations;
+            $employeePayroll->forceFill(['calculation_snapshot' => $snapshot])->saveQuietly();
             if ($remaining > 0) {
-                throw new RuntimeException('Loan deduction exceeds the selected outstanding installments. Recalculate payroll.');
+                throw new HrWorkflowException('Loan deduction exceeds the selected outstanding installments. Recalculate payroll.');
             }
         });
     }

@@ -2,10 +2,12 @@
 
 namespace App\Services\Hr;
 
+use App\Exceptions\HrWorkflowException;
 use App\Models\Employee;
 use App\Models\PayrollRun;
 use App\Support\FiscalCalendar;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\DB;
 
 class PrepareMonthlyPayrollRun
 {
@@ -13,26 +15,32 @@ class PrepareMonthlyPayrollRun
 
     public function handle(PayrollRun $payrollRun): PayrollRun
     {
-        if ($payrollRun->period_type === 'monthly' && $payrollRun->payroll_month) {
-            $period = FiscalCalendar::payrollPeriodForMonth($payrollRun->payroll_month);
+        return DB::transaction(function () use ($payrollRun): PayrollRun {
+            $payrollRun = PayrollRun::query()->lockForUpdate()->findOrFail($payrollRun->id);
+            if ($payrollRun->status !== 'draft') {
+                throw new HrWorkflowException('Approved payroll settings are locked.');
+            }
+            if ($payrollRun->period_type === 'monthly' && $payrollRun->payroll_month) {
+                $period = FiscalCalendar::payrollPeriodForMonth($payrollRun->payroll_month);
 
-            $payrollRun->forceFill([
-                'name' => $this->nameFor($payrollRun, $period['start']->toDateString(), $period['end']->toDateString()),
-                'period_start' => $period['start']->toDateString(),
-                'period_end' => $period['end']->toDateString(),
-                'pay_date' => $payrollRun->pay_date?->toDateString() ?? $period['pay_date']->toDateString(),
-            ])->save();
-        } else {
-            $payrollRun->forceFill([
-                'name' => $this->nameFor($payrollRun, $payrollRun->period_start->toDateString(), $payrollRun->period_end->toDateString()),
-            ])->save();
-        }
+                $payrollRun->forceFill([
+                    'name' => $this->nameFor($payrollRun, $period['start']->toDateString(), $period['end']->toDateString()),
+                    'period_start' => $period['start']->toDateString(),
+                    'period_end' => $period['end']->toDateString(),
+                    'pay_date' => $payrollRun->pay_date?->toDateString() ?? $period['pay_date']->toDateString(),
+                ])->save();
+            } else {
+                $payrollRun->forceFill([
+                    'name' => $this->nameFor($payrollRun, $payrollRun->period_start->toDateString(), $payrollRun->period_end->toDateString()),
+                ])->save();
+            }
 
-        $this->calculator->handle($payrollRun->refresh(), $this->employeeIds($payrollRun));
+            $this->calculator->handle($payrollRun->refresh(), $this->employeeIds($payrollRun));
 
-        $payrollRun->forceFill(['prepared_at' => now()])->save();
+            $payrollRun->forceFill(['prepared_at' => now()])->save();
 
-        return $payrollRun->refresh();
+            return $payrollRun->refresh();
+        });
     }
 
     /**

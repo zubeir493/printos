@@ -6,6 +6,13 @@
     @endphp
 
     <div class="space-y-6">
+        <x-filament::section heading="Payroll review">
+            <p class="text-sm">Review attendance, overtime and employee adjustments before approval. Zero-net employees remain in the register and are excluded from payments.</p>
+            <p class="mt-2 text-sm">Attendance reviewed: {{ $this->record->attendance_reviewed_at?->format('Y-m-d H:i') ?? 'Not yet recorded' }}. Approved by: {{ $this->record->approved_by ?? 'Not approved' }}.</p>
+            @foreach ($this->record->paymentBatches()->latest('id')->limit(5)->get() as $batch)
+                <p class="mt-2 text-sm">Batch #{{ $batch->id }}: {{ $batch->status }} · {{ $this->money($batch->amount) }} · {{ $batch->reference }}</p>
+            @endforeach
+        </x-filament::section>
         <x-filament::section>
             <div class="grid gap-5 md:grid-cols-2 xl:grid-cols-[1.5fr_0.7fr_1.4fr]">
                 <div class="min-w-0 md:col-span-2 xl:col-span-1">
@@ -160,6 +167,7 @@
                         </tbody>
                     </table>
             </div>
+            {{ $rows->links() }}
         </x-filament::section>
     </div>
 
@@ -203,6 +211,9 @@
                 </div>
 
                 <div class="flex-1 space-y-6 overflow-y-auto px-5 py-4 text-sm pr-8">
+                    @if ($this->record->status !== 'draft')
+                        <x-filament::button wire:click="downloadPayslip({{ $detail->id }})">Download payslip</x-filament::button>
+                    @endif
                     <div>
                         <div class="flex items-center justify-between border-b border-t border-gray-200 py-2 dark:border-gray-800 mb-4">
                             <h3 class="text-xs font-semibold uppercase text-success-600 dark:text-success-400">(+) Earnings</h3>

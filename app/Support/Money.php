@@ -50,9 +50,11 @@ class Money
         }
     }
 
-    public static function suffix(): string
+    public static function suffix(?string $currency = null): string
     {
-        return self::currencies()[self::currencyCode()]['suffix'] ?? self::currencyCode();
+        $currency ??= self::currencyCode();
+
+        return self::currencies()[$currency]['suffix'] ?? $currency;
     }
 
     public static function label(): string
@@ -60,9 +62,9 @@ class Money
         return self::currencies()[self::currencyCode()]['name'] ?? self::currencyCode();
     }
 
-    public static function format(float|int|string|null $amount, int $precision = 0): string
+    public static function format(float|int|string|null $amount, int $precision = 0, ?string $currency = null): string
     {
-        return number_format((float) ($amount ?? 0), $precision).' '.self::suffix();
+        return number_format((float) ($amount ?? 0), $precision).' '.self::suffix($currency);
     }
 
     public static function abbreviate(float|int|string|null $amount, int $precision): string

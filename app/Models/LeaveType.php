@@ -11,6 +11,7 @@ class LeaveType extends Model
     use HasFactory;
 
     protected $fillable = [
+        'annual_allowance_days',
         'name',
         'is_paid',
     ];

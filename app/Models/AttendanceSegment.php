@@ -2,13 +2,32 @@
 
 namespace App\Models;
 
+use App\Services\Hr\RebuildAttendanceDailySummaries;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\DB;
 
 class AttendanceSegment extends Model
 {
     use HasFactory;
+
+    public function save(array $options = []): bool
+    {
+        return DB::transaction(fn (): bool => parent::save($options));
+    }
+
+    protected static function booted(): void
+    {
+        static::updated(function (self $segment): void {
+            $builder = app(RebuildAttendanceDailySummaries::class);
+            $originalDate = CarbonImmutable::parse($segment->getRawOriginal('date'))->toDateString();
+            $builder->forPeriod([(int) $segment->getRawOriginal('employee_id')], $originalDate, $originalDate);
+            $builder->forPeriod([(int) $segment->employee_id], $segment->date->toDateString(), $segment->date->toDateString());
+            PayrollRun::query()->where('status', 'draft')->whereDate('period_start', '<=', max($originalDate, $segment->date->toDateString()))->whereDate('period_end', '>=', min($originalDate, $segment->date->toDateString()))->update(['attendance_reviewed_at' => null, 'attendance_reviewed_by' => null]);
+        });
+    }
 
     protected $fillable = [
         'attendance_import_id',

@@ -29,6 +29,7 @@ use App\Services\Hr\ExportPayrollRegisterCsv;
 use App\Services\Hr\GeneratePayrollPayments;
 use App\Services\Hr\ImportAttendanceSegmentCsv;
 use App\Services\Hr\ImportAttendanceSummaryReport;
+use App\Services\Hr\ManagePayrollPaymentBatch;
 use App\Services\Hr\PostPayrollRun;
 use App\Services\Hr\PrepareMonthlyPayrollRun;
 use App\Services\Hr\RecordManualAttendanceLog;
@@ -143,6 +144,7 @@ it('imports one attendance csv as segments and builds daily summaries', function
 
     file_put_contents($path, attendanceSegmentCsv());
 
+    app(ImportAttendanceSegmentCsv::class)->handle($path);
     app(ImportAttendanceSegmentCsv::class)->handle($path);
 
     $summary = AttendanceDailySummary::query()
@@ -356,7 +358,7 @@ it('calculates batch payroll from merged attendance summaries and locks recalcul
         ->and((float) $payrollEmployee->income_tax)->toBeGreaterThan(0)
         ->and((float) $payrollEmployee->net_pay)->toBeGreaterThan(0);
 
-    app(PostPayrollRun::class)->handle($payrollRun);
+    app(PostPayrollRun::class)->handle(tap($payrollRun, fn ($run) => $run->update(['attendance_reviewed_at' => now()])));
 
     app(CalculatePayrollRun::class)->handle($payrollRun);
 })->throws(RuntimeException::class);
@@ -497,6 +499,10 @@ it('prepares a monthly payroll draft from filters and exports bank advice', func
     ]);
 
     app(PrepareMonthlyPayrollRun::class)->handle($payrollRun);
+    $this->actingAs(User::factory()->create(['role' => UserRole::Finance]));
+    $payrollRun->update(['attendance_reviewed_at' => now()]);
+    app(PostPayrollRun::class)->handle($payrollRun);
+    app(ManagePayrollPaymentBatch::class)->prepare($payrollRun->refresh(), $bank);
     $csv = app(ExportPayrollBankAdvice::class)->csv($payrollRun->refresh(), $bank);
 
     expect($payrollRun->employees()->count())->toBe(1)
@@ -725,15 +731,16 @@ it('updates payroll employee detail earnings and deductions from the workspace d
 
     expect((float) $row->overtime_amount)->toBe(125.5)
         ->and((float) $row->gross_earning)->toBe(10625.5)
-        ->and((float) $row->total_deduction)->toBe(100.0)
-        ->and((float) $row->net_pay)->toBe(10525.5)
+        ->and((float) $row->total_deduction)->toBe(2332.65)
+        ->and((float) $row->net_pay)->toBe(8292.85)
         ->and($row->lineItems()->where('code', 'commission')->exists())->toBeTrue()
         ->and($row->lineItems()->where('code', 'overtime_amount')->exists())->toBeTrue()
         ->and($row->lineItems()->where('code', 'advance')->exists())->toBeTrue()
         ->and($row->lineItems()->where('code', 'bonus')->exists())->toBeFalse();
 });
 
-it('keeps payroll nets non negative and hides zero net employees from the workspace', function () {
+it('keeps payroll nets non negative and retains zero net employees in the workspace', function () {
+    $this->seed(PayrollTaxRuleSeeder::class);
     Filament::setCurrentPanel(Filament::getPanel('finance'));
 
     $this->actingAs(User::factory()->create([
@@ -780,7 +787,7 @@ it('keeps payroll nets non negative and hides zero net employees from the worksp
         ->call('updatePayrollDetailLine');
 
     expect((float) $row->refresh()->net_pay)->toBe(0.0)
-        ->and($component->instance()->payrollRows())->toHaveCount(0);
+        ->and($component->instance()->payrollRows())->toHaveCount(1);
 });
 
 it('removes and adds payroll employees back from the workspace roster', function () {
@@ -930,8 +937,8 @@ it('counts only payable employees on payroll workspace and list table', function
 
     $workspace = Livewire::test(EditPayrollRun::class, ['record' => $payrollRun->id]);
 
-    expect($workspace->instance()->summary()['employee_count'])->toBe(2)
-        ->and($workspace->instance()->payrollRows())->toHaveCount(2);
+    expect($workspace->instance()->summary()['employee_count'])->toBe(3)
+        ->and($workspace->instance()->payrollRows())->toHaveCount(3);
 
     Livewire::test(ListPayrollRuns::class)
         ->assertCanSeeTableRecords([$payrollRun])
@@ -940,6 +947,7 @@ it('counts only payable employees on payroll workspace and list table', function
 });
 
 it('edits and removes payroll penalty from the detail drawer', function () {
+    $this->seed(PayrollTaxRuleSeeder::class);
     Filament::setCurrentPanel(Filament::getPanel('finance'));
 
     $this->actingAs(User::factory()->create([
@@ -1155,6 +1163,8 @@ it('generates overtime candidates and pays only approved entries', function () {
         ->and($component->instance()->approveModalDescription())->toContain('pending overtime candidates')
         ->and($component->instance()->pendingOvertimeApprovalCount())->toBe(4);
 
+    $payrollRun->overtimeEntries()->where('status', 'pending')->update(['status' => 'rejected']);
+    $payrollRun->update(['attendance_reviewed_at' => now()]);
     $journalEntry = app(PostPayrollRun::class)->handle($payrollRun->refresh());
 
     expect((float) $journalEntry->journalItems()->whereBelongsTo(Account::where('code', '5110')->firstOrFail())->firstOrFail()->debit)->toBe(150.0);
@@ -1271,6 +1281,7 @@ it('matches the finance payroll register formula and exports the register csv', 
     ]);
 
     $loan = $employee->loans()->create([
+        'legacy_disbursement_confirmed' => true,
         'loan_date' => '2026-05-03',
         'return_date' => '2026-05-31',
         'amount' => 3750,
@@ -1401,6 +1412,7 @@ it('deducts only due loan installments and closes them when payroll is posted', 
     ]);
 
     $loan = $employee->loans()->create([
+        'legacy_disbursement_confirmed' => true,
         'loan_date' => '2026-05-01',
         'return_date' => '2026-05-31',
         'amount' => 1200,
@@ -1433,7 +1445,7 @@ it('deducts only due loan installments and closes them when payroll is posted', 
         ->and((float) $payrollEmployee->loan)->toBe(400.0)
         ->and($payrollEmployee->calculation_snapshot['loan_installment_ids'])->toBe([$firstInstallment->id]);
 
-    app(PostPayrollRun::class)->handle($payrollRun);
+    app(PostPayrollRun::class)->handle(tap($payrollRun, fn ($run) => $run->update(['attendance_reviewed_at' => now()])));
 
     expect($firstInstallment->refresh()->status)->toBe('paid')
         ->and((float) $firstInstallment->paid_amount)->toBe(400.0)
@@ -1473,7 +1485,9 @@ it('posts payroll approval to salary overtime pension and deduction accounts', f
         'net_pay' => 1000,
     ]));
 
-    $entry = app(PostPayrollRun::class)->handle($payrollRun);
+    $loan = $employee->loans()->create(['loan_date' => '2026-05-01', 'return_date' => '2026-05-31', 'amount' => 20, 'status' => 'active', 'legacy_disbursement_confirmed' => true]);
+    $payrollEmployee->forceFill(['calculation_snapshot' => ['loan_installment_ids' => $loan->installments()->pluck('id')->all()]])->saveQuietly();
+    $entry = app(PostPayrollRun::class)->handle(tap($payrollRun, fn ($run) => $run->update(['attendance_reviewed_at' => now()])));
 
     expect((float) $entry->total_debit)->toBe(1310.0)
         ->and((float) $entry->total_credit)->toBe(1310.0)
@@ -1500,6 +1514,7 @@ it('records manual employee loan repayments through payments and journals', func
     ]);
 
     $loan = $employee->loans()->create([
+        'legacy_disbursement_confirmed' => true,
         'loan_date' => '2026-05-01',
         'return_date' => '2026-05-31',
         'amount' => 900,
@@ -1537,6 +1552,7 @@ it('supports partial manual employee loan repayments and keeps the remaining bal
     ]);
 
     $loan = $employee->loans()->create([
+        'legacy_disbursement_confirmed' => true,
         'loan_date' => '2026-05-01',
         'return_date' => '2026-05-31',
         'amount' => 900,
@@ -1576,7 +1592,7 @@ it('supports partial manual employee loan repayments and keeps the remaining bal
     expect((float) $payrollEmployee->loan)->toBe(200.0)
         ->and($loan->refresh()->status)->toBe('partially_paid');
 
-    app(PostPayrollRun::class)->handle($payrollRun);
+    app(PostPayrollRun::class)->handle(tap($payrollRun, fn ($run) => $run->update(['attendance_reviewed_at' => now()])));
 
     expect($firstInstallment->refresh()->status)->toBe('paid')
         ->and((float) $firstInstallment->paid_amount)->toBe(300.0)
@@ -1816,7 +1832,7 @@ it('posts payroll journals and generates outbound payroll payments', function ()
 
     app(CalculatePayrollRun::class)->handle($payrollRun);
 
-    $journalEntry = app(PostPayrollRun::class)->handle($payrollRun);
+    $journalEntry = app(PostPayrollRun::class)->handle(tap($payrollRun, fn ($run) => $run->update(['attendance_reviewed_at' => now()])));
     $netPayTotal = (float) $payrollRun->employees()->sum('net_pay');
     app(GeneratePayrollPayments::class)->handle($payrollRun, 'bank', $bank->id);
 
@@ -1842,7 +1858,7 @@ it('posts payroll journals and generates outbound payroll payments', function ()
         ->and($payrollRun->refresh()->status)->toBe('paid');
 });
 
-it('prunes zero net employees before approving payroll', function () {
+it('retains zero net employees when approving payroll', function () {
     $payableEmployee = Employee::create([
         'employee_id' => 'EMP-POST-PAYABLE',
         'attendance_device_id' => 'EMP-POST-PAYABLE',
@@ -1883,15 +1899,15 @@ it('prunes zero net employees before approving payroll', function () {
         'employee_id' => $zeroNetEmployee->id,
         'basic_salary' => 0,
         'gross_earning' => 0,
-        'loan' => 500,
-        'total_deduction' => 500,
+        'loan' => 0,
+        'total_deduction' => 0,
         'net_pay' => 0,
     ]));
 
-    $journalEntry = app(PostPayrollRun::class)->handle($payrollRun);
+    $journalEntry = app(PostPayrollRun::class)->handle(tap($payrollRun, fn ($run) => $run->update(['attendance_reviewed_at' => now()])));
 
-    expect($payrollRun->refresh()->employees()->pluck('employee_id')->all())->toBe([$payableEmployee->id])
-        ->and($payrollRun->selected_employee_ids)->toBe([$payableEmployee->id])
+    expect($payrollRun->refresh()->employees()->pluck('employee_id')->all())->toBe([$payableEmployee->id, $zeroNetEmployee->id])
+        ->and($payrollRun->selected_employee_ids)->toBe([$payableEmployee->id, $zeroNetEmployee->id])
         ->and((float) $journalEntry->total_debit)->toBe(1000.0)
         ->and((float) $journalEntry->total_credit)->toBe(1000.0)
         ->and($journalEntry->journalItems()->whereHas('account', fn ($query) => $query->where('code', '1230'))->exists())->toBeFalse();

@@ -73,11 +73,11 @@ class EmployeeForm
                                     ->default(true)
                                     ->required(),
                                 TextInput::make('basic_salary')
-                                    ->label('Monthly Rate')
+                                    ->label('Monthly Rate')->disabledOn('edit')->helperText('Use Revise salary to record an effective date and reason.')
                                     ->numeric()
                                     ->suffix(fn (): string => Money::suffix())
                                     ->default(0),
-                                TextInput::make('transport_allowance')
+                                TextInput::make('transport_allowance')->minValue(0)
                                     ->label('Transportation Allowance')
                                     ->numeric()
                                     ->suffix(fn (): string => Money::suffix())

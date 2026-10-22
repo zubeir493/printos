@@ -2,6 +2,7 @@
 
 namespace App\Services\Accounting;
 
+use App\Enums\PaymentTransactionType;
 use App\Models\EmployeeLoan;
 use App\Models\EmployeeLoanInstallment;
 use App\Models\JobOrder;
@@ -25,6 +26,9 @@ class VoidPaymentJournalEntry
                 throw new RuntimeException('This payment has already been voided.');
             }
 
+            if ($payment->transaction_type === PaymentTransactionType::EMPLOYEE_LOAN_DISBURSEMENT->value && EmployeeLoan::find($payment->payable_id)?->installments()->where('paid_amount', '>', 0)->exists()) {
+                throw new RuntimeException('Reverse loan recoveries before voiding its disbursement.');
+            }
             $originalJournal = $payment->journalEntries()
                 ->whereNull('reversal_of_journal_entry_id')
                 ->where('status', 'posted')
@@ -109,12 +113,17 @@ class VoidPaymentJournalEntry
                     'paid_at' => $paid > 0 ? $installment->paid_at : null,
                 ]);
             }
-            $loan->syncStatusFromInstallments();
+            if ($payment->transaction_type === PaymentTransactionType::EMPLOYEE_LOAN_DISBURSEMENT->value) {
+                $loan->update(['status' => 'approved', 'disbursement_payment_id' => null]);
+            } else {
+                $loan->syncStatusFromInstallments();
+            }
         }
 
         $runIds = PayrollRunEmployee::query()->where('payment_id', $payment->id)->pluck('payroll_run_id')->unique();
         foreach ($runIds as $runId) {
             $run = PayrollRun::query()->lockForUpdate()->findOrFail($runId);
+            $run->paymentBatches()->where('payment_id', $payment->id)->update(['status' => 'reversed']);
             $run->employees()->where('payment_id', $payment->id)->update(['payment_id' => null]);
             $run->update(['status' => 'approved', 'paid_at' => null]);
         }

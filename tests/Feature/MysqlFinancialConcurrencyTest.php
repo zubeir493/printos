@@ -1,10 +1,15 @@
 <?php
 
 use App\Models\Bank;
+use App\Models\Employee;
+use App\Models\JournalEntry;
 use App\Models\Partner;
 use App\Models\Payment;
+use App\Models\PayrollRun;
+use App\Models\PayrollRunEmployee;
 use App\Models\SalesOrder;
 use App\Models\Warehouse;
+use Database\Seeders\PayrollTaxRuleSeeder;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -18,7 +23,7 @@ beforeEach(function (): void {
 });
 
 /** @return list<array{status: string, result?: mixed}> */
-function runAuditWorkers(string $operation, int $recordId = 0): array
+function runAuditWorkers(string|array $operation, int|array $recordId = 0): array
 {
     $connection = config('database.connections.mysql');
     $environment = ['APP_ENV' => 'testing', 'DB_CONNECTION' => 'mysql', 'DB_DATABASE' => 'printos_audit_testing',
@@ -28,7 +33,7 @@ function runAuditWorkers(string $operation, int $recordId = 0): array
     $workers = [];
     try {
         foreach (range(1, 2) as $index) {
-            $worker = new Process([PHP_BINARY, base_path('tests/Support/financial-concurrency-worker.php'), $operation, (string) $recordId, $gate], base_path(), $environment);
+            $worker = new Process([PHP_BINARY, base_path('tests/Support/financial-concurrency-worker.php'), is_array($operation) ? $operation[$index - 1] : $operation, (string) (is_array($recordId) ? $recordId[$index - 1] : $recordId), $gate], base_path(), $environment);
             $worker->setTimeout(30)->start();
             $workers[] = $worker;
         }
@@ -45,7 +50,10 @@ function runAuditWorkers(string $operation, int $recordId = 0): array
             $worker->wait();
             expect($worker->isSuccessful())->toBeTrue($worker->getErrorOutput());
 
-            return json_decode($worker->getOutput(), true, flags: JSON_THROW_ON_ERROR);
+            $output = $worker->getOutput();
+            expect(json_validate($output))->toBeTrue($output);
+
+            return json_decode($output, true, flags: JSON_THROW_ON_ERROR);
         }, $workers);
     } finally {
         foreach ($workers as $worker) {
@@ -106,5 +114,33 @@ test('a real MySQL backup restores its records into an isolated database', funct
         }
         DB::purge('audit_restore');
         DB::statement('DROP DATABASE printos_audit_restore_testing');
+    }
+});
+
+test('overlapping payroll approvals post only one employee period', function (): void {
+    $employee = Employee::factory()->create();
+    $runs = collect(range(1, 2))->map(function () use ($employee) {
+        $run = PayrollRun::factory()->create(['attendance_reviewed_at' => now()]);
+        PayrollRunEmployee::withoutEvents(fn () => $run->employees()->create(['employee_id' => $employee->id, 'basic_salary' => 600, 'gross_earning' => 600, 'net_pay' => 600]));
+
+        return $run;
+    });
+    $results = runAuditWorkers('payroll', $runs->pluck('id')->all());
+    expect(collect($results)->pluck('status')->sort()->values()->all())->toBe(['posted', 'rejected'])
+        ->and(JournalEntry::where('source_type', PayrollRun::class)->count())->toBe(1);
+});
+
+test('approval racing recalculation cannot replace posted payroll rows', function (): void {
+    Artisan::call('db:seed', ['--class' => PayrollTaxRuleSeeder::class, '--force' => true]);
+    $employee = Employee::factory()->create();
+    $run = PayrollRun::factory()->create(['attendance_reviewed_at' => now()]);
+    PayrollRunEmployee::withoutEvents(fn () => $run->employees()->create(['employee_id' => $employee->id, 'basic_salary' => 600, 'gross_earning' => 600, 'net_pay' => 600]));
+    runAuditWorkers(['payroll', 'recalculate'], $run->id);
+    $run->refresh();
+    expect($run->employees()->count())->toBe(1);
+    if ($run->status === 'approved') {
+        expect((float) $run->employees()->value('gross_earning'))->toBe(600.0)->and($run->journal_entry_id)->not->toBeNull();
+    } else {
+        expect($run->status)->toBe('draft')->and($run->journal_entry_id)->toBeNull();
     }
 });

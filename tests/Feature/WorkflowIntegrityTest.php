@@ -40,6 +40,7 @@ use App\Services\Hr\PostPayrollRun;
 use App\Services\Hr\RepayEmployeeLoan;
 use App\Services\VoidSalesOrder;
 use App\UserRole;
+use Database\Seeders\PayrollTaxRuleSeeder;
 use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\Repeater;
@@ -50,6 +51,8 @@ use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 
 uses(RefreshDatabase::class);
+
+beforeEach(fn () => $this->seed(PayrollTaxRuleSeeder::class));
 beforeEach(function (): void {
     Notification::fake();
     $this->restoreRepeaterKeys = Repeater::fake();
@@ -191,7 +194,7 @@ it('a zero payroll loan deduction leaves the installment unpaid', function (): v
     $loan = workflowLoan();
     $run = PayrollRun::factory()->create();
     $run->employees()->create(['employee_id' => $loan->employee_id, 'basic_salary' => 1000, 'loan' => 0, 'calculation_snapshot' => ['pension_enabled' => false, 'tax' => ['rate' => 0, 'deduction' => 0], 'loan_installment_ids' => $loan->installments()->pluck('id')->all()]]);
-    app(PostPayrollRun::class)->handle($run);
+    app(PostPayrollRun::class)->handle(tap($run, fn ($record) => $record->update(['attendance_reviewed_at' => now()])));
     expect($loan->fresh()->remainingBalance())->toBe(100.0)
         ->and((float) $run->employees()->sum('loan'))->toBe(0.0);
 });
@@ -215,7 +218,7 @@ it('invoices do not charge VAT when disabled', function (): void {
 it('manual payroll deductions post a balanced journal', function (): void {
     $run = PayrollRun::factory()->create();
     $run->employees()->create(['employee_id' => Employee::factory()->create()->id, 'basic_salary' => 1000, 'calculation_snapshot' => ['pension_enabled' => false, 'union_enabled' => false, 'tax' => ['rate' => 0, 'deduction' => 0], 'manual_deductions' => [['amount' => 100]]]]);
-    $journal = app(PostPayrollRun::class)->handle($run);
+    $journal = app(PostPayrollRun::class)->handle(tap($run, fn ($record) => $record->update(['attendance_reviewed_at' => now()])));
     expect((float) $journal->total_debit)->toBe(1000.0)->and((float) $journal->total_credit)->toBe(1000.0);
 });
 
@@ -313,7 +316,7 @@ it('a reduced payroll deduction only pays that amount of the installment', funct
     $loan = workflowLoan();
     $run = PayrollRun::factory()->create();
     $run->employees()->create(['employee_id' => $loan->employee_id, 'basic_salary' => 1000, 'loan' => 40, 'calculation_snapshot' => ['pension_enabled' => false, 'union_enabled' => false, 'tax' => ['rate' => 0, 'deduction' => 0], 'loan_installment_ids' => $loan->installments()->pluck('id')->all()]]);
-    app(PostPayrollRun::class)->handle($run);
+    app(PostPayrollRun::class)->handle(tap($run, fn ($record) => $record->update(['attendance_reviewed_at' => now()])));
     expect($loan->fresh()->remainingBalance())->toBe(60.0)->and($loan->installments()->first()->status)->toBe('pending');
 });
 
@@ -440,14 +443,14 @@ function workflowPurchase(): array
 
 function workflowLoan(): EmployeeLoan
 {
-    return EmployeeLoan::create(['employee_id' => Employee::factory()->create()->id, 'loan_date' => today(), 'return_date' => today(), 'amount' => 100, 'installment_count' => 1, 'status' => 'active']);
+    return EmployeeLoan::create(['legacy_disbursement_confirmed' => true, 'employee_id' => Employee::factory()->create()->id, 'loan_date' => today(), 'return_date' => today(), 'amount' => 100, 'installment_count' => 1, 'status' => 'active']);
 }
 
 function workflowPayroll(): PayrollRun
 {
     $run = PayrollRun::factory()->create();
     $run->employees()->create(['employee_id' => Employee::factory()->create()->id, 'basic_salary' => 100, 'calculation_snapshot' => ['pension_enabled' => false, 'tax' => ['rate' => 0, 'deduction' => 0]]]);
-    app(PostPayrollRun::class)->handle($run);
+    app(PostPayrollRun::class)->handle(tap($run, fn ($record) => $record->update(['attendance_reviewed_at' => now()])));
 
     return $run;
 }

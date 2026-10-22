@@ -59,7 +59,13 @@ class ImportAttendanceSegmentCsv
                     $shift = $this->syncShift($normalized);
                     $normalized = $this->applyShiftDefaults($normalized, $shift);
 
-                    $segment = AttendanceSegment::create([
+                    $segment = AttendanceSegment::query()->whereDate('date', $normalized['date'])->updateOrCreate([
+                        'employee_id' => $employee->id,
+                        'fp_no' => $normalized['fp_no'],
+                        'schedule_name' => $normalized['schedule_name'],
+                        'clock_in' => $normalized['clock_in'],
+                        'clock_out' => $normalized['clock_out'],
+                    ], [
                         ...$normalized,
                         'attendance_import_id' => $import->id,
                         'attendance_import_row_id' => $importRow->id,
@@ -110,9 +116,9 @@ class ImportAttendanceSegmentCsv
     }
 
     /**
-     * @return array<int, array<string, string|null>>
+     * @return \Generator<int, array<string, string|null>>
      */
-    private function readAssocRows(string $path): array
+    private function readAssocRows(string $path): \Generator
     {
         $handle = fopen($path, 'r');
 
@@ -128,7 +134,7 @@ class ImportAttendanceSegmentCsv
             }
 
             $headers = array_map(fn ($header): string => $this->cleanHeader((string) $header), $headers);
-            $rows = [];
+            $rowNumber = 0;
 
             while (($row = fgetcsv($handle)) !== false) {
                 $assoc = [];
@@ -137,10 +143,9 @@ class ImportAttendanceSegmentCsv
                     $assoc[$header] = $row[$index] ?? null;
                 }
 
-                $rows[] = $assoc;
+                yield $rowNumber++ => $assoc;
             }
 
-            return $rows;
         } finally {
             fclose($handle);
         }

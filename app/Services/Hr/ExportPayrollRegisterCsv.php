@@ -3,6 +3,8 @@
 namespace App\Services\Hr;
 
 use App\Models\PayrollRun;
+use App\Models\Setting;
+use Illuminate\Support\Facades\Gate;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ExportPayrollRegisterCsv
@@ -20,12 +22,15 @@ class ExportPayrollRegisterCsv
 
     public function csv(PayrollRun $payrollRun): string
     {
+        if (auth()->check()) {
+            Gate::authorize('view', $payrollRun);
+        }
         $payrollRun->loadMissing('employees.employee');
 
         $handle = fopen('php://temp', 'r+');
 
-        fputcsv($handle, ['Nejashi Printing Press plc']);
-        fputcsv($handle, ['Production Department Payroll Register']);
+        fputcsv($handle, [$payrollRun->employees->first()?->calculation_snapshot['employer']['company_name'] ?? Setting::getSettings()->company_name]);
+        fputcsv($handle, [($payrollRun->department ? $payrollRun->department.' ' : '').'Payroll Register']);
         fputcsv($handle, ['For the Period of '.$payrollRun->period_start->format('Y-m-d').' - '.$payrollRun->period_end->format('Y-m-d')]);
         fputcsv($handle, [
             'No',
@@ -55,8 +60,8 @@ class ExportPayrollRegisterCsv
         foreach ($payrollRun->employees as $index => $employeePayroll) {
             fputcsv($handle, [
                 $index + 1,
-                $employeePayroll->employee?->full_name,
-                $employeePayroll->employee?->position,
+                $this->safe($employeePayroll->calculation_snapshot['beneficiary']['name'] ?? $employeePayroll->employee?->full_name),
+                $this->safe($employeePayroll->calculation_snapshot['beneficiary']['position'] ?? $employeePayroll->employee?->position),
                 $this->money($employeePayroll->basic_salary),
                 $this->hours($employeePayroll->time_on_duty),
                 $this->money($employeePayroll->pay_per_hour),
@@ -84,6 +89,11 @@ class ExportPayrollRegisterCsv
         fclose($handle);
 
         return (string) $csv;
+    }
+
+    private function safe(?string $value): string
+    {
+        return preg_match('/^[=+@\-]/', $value ?? '') ? "'".$value : (string) $value;
     }
 
     private function money(mixed $value): string

@@ -6,6 +6,7 @@ use App\Filament\Resources\EmployeeLoans\Pages\ManageEmployeeLoans;
 use App\Filament\Tables\Filters\DateRangeFilter;
 use App\Models\Bank;
 use App\Models\EmployeeLoan;
+use App\Services\Hr\DisburseEmployeeLoan;
 use App\Services\Hr\RepayEmployeeLoan;
 use App\Support\FiscalCalendar;
 use App\Support\Money;
@@ -14,6 +15,7 @@ use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -26,6 +28,8 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 
 class EmployeeLoanResource extends Resource
 {
@@ -59,22 +63,15 @@ class EmployeeLoanResource extends Resource
             TextInput::make('amount')
                 ->numeric()
                 ->suffix(fn (): string => Money::suffix())
+                ->minValue(0.01)
                 ->required(),
             TextInput::make('installment_count')
                 ->label('Installments')
                 ->numeric()
-                ->minValue(1)
+                ->minValue(1)->maxValue(120)->integer()
                 ->default(1)
                 ->required(),
-            Select::make('status')
-                ->options([
-                    'active' => 'Active',
-                    'partially_paid' => 'Partially Paid',
-                    'deducted' => 'Deducted',
-                    'cancelled' => 'Cancelled',
-                ])
-                ->default('active')
-                ->required(),
+            Hidden::make('status')->default('pending'),
             Textarea::make('reason')
                 ->columnSpanFull(),
         ]);
@@ -123,6 +120,8 @@ class EmployeeLoanResource extends Resource
                     ->preload(),
                 SelectFilter::make('status')
                     ->options([
+                        'pending' => 'Pending approval',
+                        'approved' => 'Approved, awaiting disbursement',
                         'active' => 'Active',
                         'partially_paid' => 'Partially Paid',
                         'deducted' => 'Deducted',
@@ -131,6 +130,19 @@ class EmployeeLoanResource extends Resource
             ])
             ->recordActions([
                 ActionGroup::make([
+                    Action::make('approve')->visible(fn (EmployeeLoan $record): bool => $record->status === 'pending')->requiresConfirmation()->action(function (EmployeeLoan $record): void {
+                        Gate::authorize('update', $record);
+                        DB::transaction(function () use ($record): void {
+                            $record = EmployeeLoan::query()->lockForUpdate()->findOrFail($record->id);
+                            abort_unless($record->status === 'pending', 422);
+                            $record->update(['status' => 'approved', 'approved_by' => auth()->id(), 'approved_at' => now()]);
+                        });
+                    }),
+                    Action::make('disburse')->visible(fn (EmployeeLoan $record): bool => $record->status === 'approved')->schema([Select::make('method')->options(['cash' => 'Cash', 'bank' => 'Bank', 'cheque' => 'Cheque'])->default('bank')->live()->required(), Select::make('bank_id')->getSearchResultsUsing(fn (string $search): array => Bank::query()->where('status', 'active')->where('name', 'like', '%'.$search.'%')->limit(50)->pluck('name', 'id')->all())->getOptionLabelUsing(fn ($value): ?string => Bank::find($value)?->name)->options(fn () => Bank::query()->where('status', 'active')->limit(50)->pluck('name', 'id'))->searchable()->required(fn ($get) => PaymentMethod::requiresBank($get('method')))])->action(fn (EmployeeLoan $record, array $data) => app(DisburseEmployeeLoan::class)->handle($record, $data['method'], $data['bank_id'] ?? null)),
+                    Action::make('confirmLegacyFunding')->label('Confirm historical disbursement')->visible(fn (EmployeeLoan $record): bool => in_array($record->status, ['active', 'partially_paid'], true) && ! $record->isFunded())->schema([Textarea::make('evidence')->required()->helperText('Reference the historical payment or opening loan balance evidence.')])->requiresConfirmation()->action(function (EmployeeLoan $record, array $data): void {
+                        Gate::authorize('update', $record);
+                        $record->update(['legacy_disbursement_confirmed' => true, 'reason' => $record->reason.'; Funding confirmed by '.auth()->id().': '.$data['evidence']]);
+                    }),
                     Action::make('repay')
                         ->label('Repay')
                         ->icon(Heroicon::OutlinedBanknotes)
@@ -159,11 +171,11 @@ class EmployeeLoanResource extends Resource
                                         ->maxValue(fn (EmployeeLoan $record): float => $record->remainingBalance())
                                         ->helperText('Leave the default to repay the full outstanding balance.'),
                                 ]),
-                            Select::make('bank_id')
+                            Select::make('bank_id')->getSearchResultsUsing(fn (string $search): array => Bank::query()->where('status', 'active')->where('name', 'like', '%'.$search.'%')->limit(50)->pluck('name', 'id')->all())->getOptionLabelUsing(fn ($value): ?string => Bank::find($value)?->name)
                                 ->label('Bank Account')
                                 ->options(fn (): array => Bank::query()
                                     ->where('status', 'active')
-                                    ->orderBy('name')
+                                    ->orderBy('name')->limit(50)
                                     ->pluck('name', 'id')
                                     ->all())
                                 ->searchable()

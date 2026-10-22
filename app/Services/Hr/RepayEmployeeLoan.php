@@ -3,28 +3,32 @@
 namespace App\Services\Hr;
 
 use App\Enums\PaymentTransactionType;
+use App\Exceptions\HrWorkflowException;
 use App\Models\EmployeeLoan;
 use App\Models\EmployeeLoanInstallment;
 use App\Models\Payment;
 use Illuminate\Support\Facades\DB;
-use RuntimeException;
+use Illuminate\Support\Facades\Gate;
 
 class RepayEmployeeLoan
 {
     public function handle(EmployeeLoan $loan, string $method, ?int $bankId = null, ?float $amount = null): Payment
     {
+        if (auth()->check()) {
+            Gate::authorize('update', $loan);
+        }
         if (! in_array($method, ['cash', 'bank', 'cheque'], true)) {
-            throw new RuntimeException('Unsupported repayment method.');
+            throw new HrWorkflowException('Unsupported repayment method.');
         }
 
         if ($method === 'bank' && ! $bankId) {
-            throw new RuntimeException('Select the bank account used for this repayment.');
+            throw new HrWorkflowException('Select the bank account used for this repayment.');
         }
 
         return DB::transaction(function () use ($loan, $method, $bankId, $amount): Payment {
             $loan = EmployeeLoan::query()->lockForUpdate()->findOrFail($loan->id);
-            if ($loan->status === 'cancelled') {
-                throw new RuntimeException('Cancelled loans cannot be repaid.');
+            if ($loan->status === 'cancelled' || ! $loan->isFunded()) {
+                throw new HrWorkflowException('Only disbursed loans can be repaid.');
             }
             $installments = $loan->installments()
                 ->where('status', 'pending')
@@ -38,11 +42,11 @@ class RepayEmployeeLoan
             $amount = round((float) $amount, 2);
 
             if ($amount <= 0) {
-                throw new RuntimeException('This loan has no pending installments to repay.');
+                throw new HrWorkflowException('This loan has no pending installments to repay.');
             }
 
             if ($amount > $remainingBalance) {
-                throw new RuntimeException('Repayment amount exceeds the outstanding balance.');
+                throw new HrWorkflowException('Repayment amount exceeds the outstanding balance.');
             }
 
             $payment = Payment::create([
@@ -86,7 +90,7 @@ class RepayEmployeeLoan
             }
 
             if ($remainingAmount > 0) {
-                throw new RuntimeException('Unable to apply the full repayment amount to the loan installments.');
+                throw new HrWorkflowException('Unable to apply the full repayment amount to the loan installments.');
             }
 
             $loan->syncStatusFromInstallments();

@@ -5,6 +5,7 @@ namespace App\Services\Hr;
 use App\Models\Bank;
 use App\Models\PayrollRun;
 use App\Support\Money;
+use Illuminate\Support\Facades\Gate;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ExportPayrollBankAdvice
@@ -18,43 +19,46 @@ class ExportPayrollBankAdvice
         );
     }
 
-    public function csv(PayrollRun $payrollRun, Bank $bank): string
+    public function csv(PayrollRun $payrollRun, Bank $bank, ?int $batchId = null): string
     {
-        $payrollRun->loadMissing('employees.employee');
+        if (auth()->check()) {
+            Gate::authorize('view', $payrollRun);
+        }
+        if (! in_array($payrollRun->status, ['approved', 'paid'], true)) {
+            throw new \RuntimeException('Approve payroll before exporting bank advice.');
+        }
+        $batch = $payrollRun->paymentBatches()->where('bank_id', $bank->id)->when($batchId, fn ($query) => $query->whereKey($batchId))->latest('id')->first();
+        if (! $batch) {
+            throw new \RuntimeException('Prepare a payment batch before downloading bank advice.');
+        }
         $profile = $this->profile($bank);
         $handle = fopen('php://temp', 'r+');
 
         fputcsv($handle, $profile['headers']);
 
-        foreach ($payrollRun->employees->whereNull('payment_id')->where('net_pay', '>', 0) as $row) {
-            $employee = $row->employee;
-
+        foreach ($batch->beneficiaries as $row) {
             fputcsv($handle, match ($profile['key']) {
-                'cbe' => [
-                    $employee?->account_number,
-                    $employee?->full_name,
-                    number_format((float) $row->net_pay, 2, '.', ''),
-                    'Payroll '.$payrollRun->period_end->format('Y-m-d'),
-                ],
-                default => [
-                    $employee?->employee_id,
-                    $employee?->full_name,
-                    $employee?->bank_name,
-                    $employee?->account_number,
-                    number_format((float) $row->net_pay, 2, '.', ''),
-                    Money::currencyCode(),
-                ],
+                'cbe' => [$this->safe($row['account_number']), $this->safe($row['name']), number_format($row['amount'], 2, '.', ''), 'Payroll '.$payrollRun->period_end->format('Y-m-d')],
+                default => [$this->safe($row['employee_id']), $this->safe($row['name']), $this->safe($row['bank_name']), $this->safe($row['account_number']), number_format($row['amount'], 2, '.', ''), $row['currency_code'] ?? Money::currencyCode()],
             });
         }
 
         rewind($handle);
 
-        return stream_get_contents($handle) ?: '';
+        $csv = stream_get_contents($handle) ?: '';
+        fclose($handle);
+
+        return $csv;
     }
 
     /**
      * @return array{key: string, headers: array<int, string>}
      */
+    private function safe(?string $value): string
+    {
+        return preg_match('/^[=+@\-]/', $value ?? '') ? "'".$value : (string) $value;
+    }
+
     private function profile(Bank $bank): array
     {
         $name = strtolower($bank->bank_name ?: $bank->name);

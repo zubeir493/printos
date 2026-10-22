@@ -6,12 +6,22 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Validation\ValidationException;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class EmployeeLoan extends Model
 {
     use HasFactory;
+    use LogsActivity;
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()->logAll()->logOnlyDirty()->useLogName('hr_payroll');
+    }
 
     protected $fillable = [
+        'approved_by', 'approved_at', 'disbursement_payment_id', 'legacy_disbursement_confirmed',
         'employee_id',
         'loan_date',
         'return_date',
@@ -21,14 +31,28 @@ class EmployeeLoan extends Model
         'status',
     ];
 
+    protected $attributes = ['status' => 'pending', 'installment_count' => 1];
+
+    public function isFunded(): bool
+    {
+        return $this->legacy_disbursement_confirmed || ($this->disbursement_payment_id && Payment::query()->whereKey($this->disbursement_payment_id)->whereNull('voided_at')->exists());
+    }
+
     protected function casts(): array
     {
         return [
+            'approved_at' => 'datetime',
+            'legacy_disbursement_confirmed' => 'boolean',
             'loan_date' => 'date',
             'return_date' => 'date',
             'amount' => 'decimal:2',
             'installment_count' => 'integer',
         ];
+    }
+
+    public function disbursementPayment(): BelongsTo
+    {
+        return $this->belongsTo(Payment::class, 'disbursement_payment_id');
     }
 
     public function employee(): BelongsTo
@@ -43,6 +67,11 @@ class EmployeeLoan extends Model
 
     protected static function booted(): void
     {
+        static::saving(function (self $loan): void {
+            if ((float) $loan->amount <= 0 || (int) $loan->installment_count < 1 || (int) $loan->installment_count > 120) {
+                throw ValidationException::withMessages(['amount' => 'A positive amount and 1 to 120 installments are required.']);
+            }
+        });
         static::created(function (self $loan): void {
             $loan->createInstallments();
         });
@@ -93,7 +122,7 @@ class EmployeeLoan extends Model
 
     public function remainingBalance(): float
     {
-        $paidAmount = (float) $this->installments()->sum('paid_amount');
+        $paidAmount = $this->relationLoaded('installments') ? (float) $this->installments->sum('paid_amount') : (float) $this->installments()->sum('paid_amount');
 
         return max(0.0, round((float) $this->amount - $paidAmount, 2));
     }

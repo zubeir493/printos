@@ -7,9 +7,11 @@ use App\Models\Bank;
 use App\Models\JournalEntry;
 use App\Models\Partner;
 use App\Models\Payment;
+use App\Models\PayrollRun;
 use App\Notifications\PaymentReceivedNotification;
 use App\Notifications\PaymentVoidedNotification;
 use App\Services\Accounting\CreatePaymentJournalEntry;
+use App\Services\Hr\RecordPayrollRemittance;
 use App\Support\Money;
 use App\Support\NotificationRecipients;
 use App\Support\PaymentMethod;
@@ -34,6 +36,12 @@ class PaymentObserver
         $payment->direction = PaymentTransactionType::tryFrom($transactionType)?->direction()
             ?? PaymentTransactionType::from($this->legacyTransactionType($payment->payment_type, $payment->direction))->direction();
 
+        if (array_key_exists($transactionType, RecordPayrollRemittance::COLUMNS)) {
+            $run = PayrollRun::query()->lockForUpdate()->findOrFail($payment->payable_id);
+            if ($payment->payable_type !== PayrollRun::class || ! in_array($run->status, ['approved', 'paid'], true) || (float) $payment->amount > app(RecordPayrollRemittance::class)->outstanding($run, $transactionType) || (float) $payment->withholding_amount > 0) {
+                throw new \RuntimeException('Payroll remittance exceeds the posted outstanding liability.');
+            }
+        }
         $resolvedType = PaymentTransactionType::tryFrom($payment->transaction_type);
 
         if ($resolvedType && ! $resolvedType->requiresPartner() && ! $payment->partner_id) {

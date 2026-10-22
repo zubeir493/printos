@@ -5,6 +5,7 @@ namespace App\Filament\Resources\LeaveTypes;
 use App\Filament\Resources\LeaveTypes\Pages\ManageLeaveTypes;
 use App\Models\LeaveType;
 use BackedEnum;
+use Filament\Actions\EditAction;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
@@ -13,7 +14,6 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
-use UnitEnum;
 
 class LeaveTypeResource extends Resource
 {
@@ -29,13 +29,14 @@ class LeaveTypeResource extends Resource
     {
         return $schema->components([
             TextInput::make('name')->required(),
+            TextInput::make('annual_allowance_days')->numeric()->minValue(0)->maxValue(366)->helperText('Calendar-year allowance in days. Leave blank for types without an annual limit.'),
             Toggle::make('is_paid')->default(true),
         ]);
     }
 
     public static function table(Table $table): Table
     {
-        return $table->columns([
+        return $table->recordActions([EditAction::make()])->columns([
             TextColumn::make('name')->searchable(),
             IconColumn::make('is_paid')->boolean(),
         ]);

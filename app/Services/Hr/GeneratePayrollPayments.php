@@ -3,32 +3,37 @@
 namespace App\Services\Hr;
 
 use App\Enums\PaymentTransactionType;
+use App\Exceptions\HrWorkflowException;
 use App\Models\Bank;
 use App\Models\Payment;
 use App\Models\PayrollRun;
+use App\Support\PaymentMethod;
 use Illuminate\Support\Facades\DB;
-use RuntimeException;
+use Illuminate\Support\Facades\Gate;
 
 class GeneratePayrollPayments
 {
-    public function handle(PayrollRun $payrollRun, string $method = 'bank', ?int $bankId = null): PayrollRun
+    public function handle(PayrollRun $payrollRun, string $method = 'bank', ?int $bankId = null, ?string $paymentDate = null): PayrollRun
     {
+        if (auth()->check()) {
+            Gate::authorize('update', $payrollRun);
+        }
         if ($payrollRun->status !== 'approved') {
-            throw new RuntimeException('Payroll payments can only be generated after approval.');
+            throw new HrWorkflowException('Payroll payments can only be generated after approval.');
         }
 
         if (! in_array($method, ['cash', 'bank', 'cheque'], true)) {
-            throw new RuntimeException('Unsupported payroll payment method.');
+            throw new HrWorkflowException('Unsupported payroll payment method.');
         }
 
-        if ($method === 'bank' && ! $bankId) {
-            throw new RuntimeException('Select the bank account used to pay payroll.');
+        if (PaymentMethod::requiresBank($method) && ! $bankId) {
+            throw new HrWorkflowException('Select the bank account used to pay payroll.');
         }
 
-        DB::transaction(function () use ($payrollRun, $method, $bankId): void {
+        DB::transaction(function () use ($payrollRun, $method, $bankId, $paymentDate): void {
             $payrollRun = PayrollRun::query()->lockForUpdate()->findOrFail($payrollRun->id);
             if ($payrollRun->status !== 'approved') {
-                throw new RuntimeException('Payroll payments can only be generated after approval.');
+                throw new HrWorkflowException('Payroll payments can only be generated after approval.');
             }
             $payrollRun->setRelation('employees', $payrollRun->employees()->lockForUpdate()->with('employee')->get());
             $payablePayrollEmployees = $payrollRun->employees
@@ -37,19 +42,19 @@ class GeneratePayrollPayments
             $requiredAmount = (float) $payablePayrollEmployees->sum('net_pay');
 
             if ($requiredAmount <= 0) {
-                throw new RuntimeException('No payroll payments were generated.');
+                throw new HrWorkflowException('No payroll payments were generated.');
             }
 
-            if ($method === 'bank') {
+            if (PaymentMethod::requiresBank($method)) {
                 $bank = Bank::query()->lockForUpdate()->find($bankId);
 
-                if (! $bank || (float) $bank->current_balance < $requiredAmount) {
-                    throw new RuntimeException('The selected bank account does not have enough balance for this payroll.');
+                if (! $bank || $bank->status !== 'active' || (float) $bank->current_balance < $requiredAmount) {
+                    throw new HrWorkflowException('The selected bank account does not have enough balance for this payroll.');
                 }
             }
 
             $payment = Payment::create([
-                'payment_date' => $payrollRun->pay_date ?? now(),
+                'payment_date' => $paymentDate ?? $payrollRun->pay_date ?? now(),
                 'amount' => $requiredAmount,
                 'direction' => 'outbound',
                 'method' => $method,

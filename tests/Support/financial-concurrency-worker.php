@@ -1,7 +1,10 @@
 <?php
 
 use App\Models\Payment;
+use App\Models\PayrollRun;
 use App\Models\SalesOrder;
+use App\Services\Hr\CalculatePayrollRun;
+use App\Services\Hr\PostPayrollRun;
 use App\Services\SalesOrderPaymentService;
 use App\Support\SequentialNumber;
 use Illuminate\Contracts\Console\Kernel;
@@ -30,6 +33,8 @@ while (! is_file($gate)) {
 
 try {
     $result = match ($operation) {
+        'payroll' => app(PostPayrollRun::class)->handle(PayrollRun::findOrFail($recordId))->id,
+        'recalculate' => app(CalculatePayrollRun::class)->handle(PayrollRun::findOrFail($recordId))->id,
         'bank' => Payment::factory()->create(['payment_number' => 'AUDIT-'.bin2hex(random_bytes(8)), 'amount' => 100,
             'method' => 'cpo', 'bank_id' => (int) $recordId, 'direction' => 'outbound'])->id,
         'sale' => app(SalesOrderPaymentService::class)->createImmediatePaymentForCashSale(SalesOrder::findOrFail($recordId))?->id,
@@ -37,7 +42,7 @@ try {
     };
     echo json_encode(['status' => $result === null ? 'existing' : 'posted', 'result' => $result]);
 } catch (RuntimeException $exception) {
-    if (! str_contains($exception->getMessage(), 'Insufficient balance')) {
+    if (! collect(['Insufficient balance', 'already covers', 'Only draft payroll', 'Confirm attendance review'])->contains(fn (string $message): bool => str_contains($exception->getMessage(), $message))) {
         throw $exception;
     }
     echo json_encode(['status' => 'rejected']);

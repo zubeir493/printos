@@ -6,10 +6,21 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\DB;
 
 class PayrollRunEmployee extends Model
 {
     use HasFactory;
+
+    public function save(array $options = []): bool
+    {
+        return DB::transaction(function () use ($options): bool {
+            $run = PayrollRun::query()->lockForUpdate()->findOrFail($this->payroll_run_id);
+            $this->setRelation('payrollRun', $run);
+
+            return parent::save($options);
+        }, 3);
+    }
 
     protected $fillable = [
         'payroll_run_id',

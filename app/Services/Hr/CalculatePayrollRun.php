@@ -2,6 +2,7 @@
 
 namespace App\Services\Hr;
 
+use App\Exceptions\HrWorkflowException;
 use App\Models\AttendanceDailySummary;
 use App\Models\AttendancePeriodSummary;
 use App\Models\AttendanceSegment;
@@ -13,7 +14,6 @@ use App\Models\Setting;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
-use RuntimeException;
 
 class CalculatePayrollRun
 {
@@ -29,14 +29,20 @@ class CalculatePayrollRun
     public function handle(PayrollRun $payrollRun, ?array $employeeIds = null): PayrollRun
     {
         if ($payrollRun->status !== 'draft') {
-            throw new RuntimeException('Only draft payroll runs can be recalculated.');
+            throw new HrWorkflowException('Only draft payroll runs can be recalculated.');
         }
 
         return DB::transaction(function () use ($payrollRun, $employeeIds): PayrollRun {
+            $payrollRun = PayrollRun::query()->lockForUpdate()->findOrFail($payrollRun->id);
+            if ($payrollRun->status !== 'draft') {
+                throw new HrWorkflowException('Only draft payroll runs can be recalculated.');
+            }
+            $previousRows = $payrollRun->employees()->with('lineItems')->get()->keyBy('employee_id');
             $periodStart = CarbonImmutable::parse($payrollRun->getRawOriginal('period_start'))->toDateString();
             $periodEnd = CarbonImmutable::parse($payrollRun->getRawOriginal('period_end'))->toDateString();
             $employees = $this->employees($periodStart, $periodEnd, $employeeIds);
 
+            $payrollRun->update(['attendance_reviewed_at' => null, 'attendance_reviewed_by' => null, 'attendance_review_note' => null]);
             if ($employees->isEmpty()) {
                 $payrollRun->employees()->delete();
 
@@ -45,10 +51,11 @@ class CalculatePayrollRun
 
             $this->rebuildSegmentSummaries($employees, $periodStart, $periodEnd);
 
+            $employees->load(PayrollInputs::relations($periodStart, $periodEnd));
             $payrollRun->employees()->delete();
 
             foreach ($employees as $employee) {
-                $this->calculateEmployee($payrollRun, $employee);
+                $this->calculateEmployee($payrollRun, $employee, $previousRows->get($employee->id));
             }
 
             return $payrollRun->refresh();
@@ -94,30 +101,24 @@ class CalculatePayrollRun
             ->get();
     }
 
-    private function calculateEmployee(PayrollRun $payrollRun, Employee $employee): PayrollRunEmployee
+    private function calculateEmployee(PayrollRun $payrollRun, Employee $employee, ?PayrollRunEmployee $previous = null): PayrollRunEmployee
     {
         $periodStart = CarbonImmutable::parse($payrollRun->getRawOriginal('period_start'))->toDateString();
         $periodEnd = CarbonImmutable::parse($payrollRun->getRawOriginal('period_end'))->toDateString();
         $fullBasicSalary = $this->salaryForPeriod($employee, $periodEnd);
         $employment = $this->employmentWindow($employee, $periodStart, $periodEnd);
-        $dailySummaries = AttendanceDailySummary::query()
-            ->where('employee_id', $employee->id)
-            ->whereDate('date', '>=', $periodStart)
-            ->whereDate('date', '<=', $periodEnd)
-            ->get();
-        $periodSummaries = AttendancePeriodSummary::query()
-            ->where('employee_id', $employee->id)
-            ->whereDate('period_start', $periodStart)
-            ->whereDate('period_end', $periodEnd)
-            ->get();
+        $dailySummaries = $employee->attendanceDailySummaries->filter(fn ($summary): bool => $summary->date->toDateString() >= $employment['start'] && $summary->date->toDateString() <= $employment['end']);
+        $periodSummaries = $employee->attendancePeriodSummaries;
         $attendance = $dailySummaries->isNotEmpty()
-            ? $this->attendanceFromDailySummaries($dailySummaries, $periodStart, $periodEnd, $employment['employed_days'])
+            ? $this->attendanceFromDailySummaries($dailySummaries, $periodStart, $periodEnd, $employment['period_days'])
             : $this->attendanceFromPeriodSummaries($periodSummaries, $periodStart, $periodEnd);
         $leave = $this->approvedLeaveMinutes($employee, $periodStart, $periodEnd);
-        $paidLeaveDays = round($leave['paid_minutes'] / 480, 2);
+        $overlappingPaidLeave = (int) $dailySummaries->filter(fn ($summary): bool => (int) $summary->worked_minutes > 0)->sum(fn ($summary): int => $leave['by_date'][$summary->date->toDateString()]['paid_minutes'] ?? 0);
+        $paidLeaveDays = round(max(0, $leave['paid_minutes'] - $overlappingPaidLeave) / 480, 2);
         $paidDays = $attendance['has_attendance_data']
             ? min($attendance['base_days'], round($attendance['attended_days'] + $paidLeaveDays, 2))
             : $paidLeaveDays;
+        $paidDays = min($paidDays, $employment['employed_days']);
         $payRatio = $attendance['base_days'] > 0 ? min(1, round($paidDays / $attendance['base_days'], 6)) : 0.0;
         $basicSalary = round($fullBasicSalary * $payRatio, 2);
         $absenceMinutes = (int) round($attendance['absent_days'] * 480);
@@ -173,6 +174,7 @@ class CalculatePayrollRun
             'total_deduction' => $totalDeduction,
             'net_pay' => $netPay,
             'calculation_snapshot' => [
+                'input_signature' => PayrollInputs::signature($employee, $periodStart, $periodEnd),
                 'daily_summary_ids' => $dailySummaries->pluck('id')->all(),
                 'period_summary_ids' => $periodSummaries->pluck('id')->all(),
                 'loan_installment_ids' => $loanInstallments->pluck('id')->all(),
@@ -214,6 +216,15 @@ class CalculatePayrollRun
             ],
         ]);
 
+        if ($previous) {
+            $snapshot = $payrollEmployee->calculation_snapshot;
+            foreach (['manual_earnings', 'manual_deductions'] as $key) {
+                $snapshot[$key] = $previous->calculation_snapshot[$key] ?? [];
+            }
+            $adjustments = $previous->calculation_snapshot['overrides'] ?? [];
+            $snapshot['overrides'] = $adjustments;
+            $payrollEmployee->fill([...$adjustments, 'bonus' => $previous->bonus, 'calculation_snapshot' => $snapshot])->save();
+        }
         $this->overtimeEntries->linkEntriesToPayrollRow($payrollEmployee);
         $this->createLineItems($payrollEmployee);
 
@@ -222,10 +233,7 @@ class CalculatePayrollRun
 
     private function salaryForPeriod(Employee $employee, string $periodEnd): float
     {
-        $history = $employee->salaryHistories()
-            ->whereDate('effective_date', '<=', $periodEnd)
-            ->latest('effective_date')
-            ->first();
+        $history = $employee->salaryHistories->first();
 
         return (float) ($history?->basic_salary ?? $employee->basic_salary);
     }
@@ -345,7 +353,8 @@ class CalculatePayrollRun
         return EmployeeLoanInstallment::query()
             ->whereHas('loan', fn ($query) => $query
                 ->where('employee_id', $employee->id)
-                ->whereIn('status', ['active', 'partially_paid']))
+                ->whereIn('status', ['active', 'partially_paid'])
+                ->where(fn ($funding) => $funding->where('legacy_disbursement_confirmed', true)->orWhereHas('disbursementPayment', fn ($payment) => $payment->whereNull('voided_at'))))
             ->dueForPeriod($periodStart, $periodEnd)
             ->get();
     }
@@ -359,12 +368,7 @@ class CalculatePayrollRun
         $unpaidMinutes = 0;
         $byDate = [];
 
-        $employee->leaveRequests()
-            ->with('leaveType')
-            ->where('status', 'approved')
-            ->whereDate('start_date', '<=', $periodEnd)
-            ->whereDate('end_date', '>=', $periodStart)
-            ->get()
+        $employee->leaveRequests
             ->each(function ($leaveRequest) use (&$paidMinutes, &$unpaidMinutes, &$byDate, $periodStart, $periodEnd): void {
                 $start = $leaveRequest->start_date->greaterThan(CarbonImmutable::parse($periodStart))
                     ? CarbonImmutable::parse($leaveRequest->start_date)->toDateString()
@@ -372,7 +376,7 @@ class CalculatePayrollRun
                 $end = $leaveRequest->end_date->lessThan(CarbonImmutable::parse($periodEnd))
                     ? CarbonImmutable::parse($leaveRequest->end_date)->toDateString()
                     : $periodEnd;
-                $days = max(1, CarbonImmutable::parse($start)->diffInDays(CarbonImmutable::parse($end)) + 1);
+                $days = max(1, $leaveRequest->start_date->diffInDays($leaveRequest->end_date) + 1);
                 $minutesPerDay = $leaveRequest->minutes
                     ? (int) round((int) $leaveRequest->minutes / $days)
                     : 480;

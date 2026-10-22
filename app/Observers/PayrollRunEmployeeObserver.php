@@ -19,6 +19,20 @@ class PayrollRunEmployeeObserver
         app(RecalculatePayrollRegisterRow::class)->forModel($payrollRunEmployee, $payrollRun);
     }
 
+    public function creating(PayrollRunEmployee $row): void
+    {
+        if ($row->payrollRun()->value('status') !== 'draft') {
+            throw new RuntimeException('Only draft payroll rows can be created.');
+        }
+    }
+
+    public function deleting(PayrollRunEmployee $row): void
+    {
+        if ($row->payrollRun()->value('status') !== 'draft') {
+            throw new RuntimeException('Posted payroll rows cannot be deleted.');
+        }
+    }
+
     public function updating(PayrollRunEmployee $payrollRunEmployee): void
     {
         $lockedChanges = collect(array_keys($payrollRunEmployee->getDirty()))

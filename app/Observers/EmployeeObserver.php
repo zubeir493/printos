@@ -34,7 +34,7 @@ class EmployeeObserver
     {
         $employee->salaryHistories()->create([
             'basic_salary' => $employee->basic_salary ?? 0,
-            'effective_date' => now(),
+            'effective_date' => $reason === 'Initial rate' ? $employee->hire_date : now(),
             'change_reason' => $reason,
         ]);
     }

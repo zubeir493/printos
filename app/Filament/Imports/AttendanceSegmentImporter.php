@@ -50,27 +50,27 @@ class AttendanceSegmentImporter extends Importer
                 ->label('Late(M)')
                 ->requiredMapping()
                 ->castStateUsing(fn (mixed $state): int => self::integer($state))
-                ->rules(['required', 'integer']),
+                ->rules(['required', 'integer', 'min:0']),
             ImportColumn::make('early_minutes')
                 ->label('Early(M)')
                 ->requiredMapping()
                 ->castStateUsing(fn (mixed $state): int => self::integer($state))
-                ->rules(['required', 'integer']),
+                ->rules(['required', 'integer', 'min:0']),
             ImportColumn::make('worked_minutes')
                 ->label('In Day(Hr)')
                 ->requiredMapping()
                 ->castStateUsing(fn (mixed $state): int => self::durationToMinutes($state))
-                ->rules(['required', 'integer']),
+                ->rules(['required', 'integer', 'min:0']),
             ImportColumn::make('overtime_minutes')
                 ->label('OT Hrs')
                 ->requiredMapping()
                 ->castStateUsing(fn (mixed $state): int => self::durationToMinutes($state))
-                ->rules(['required', 'integer']),
+                ->rules(['required', 'integer', 'min:0']),
             ImportColumn::make('day_fraction')
                 ->label('Count')
                 ->requiredMapping()
                 ->numeric()
-                ->rules(['required', 'numeric']),
+                ->rules(['required', 'numeric', 'min:0', 'max:1']),
             ImportColumn::make('status')
                 ->rules(['max:255']),
             ImportColumn::make('exception')
@@ -83,9 +83,11 @@ class AttendanceSegmentImporter extends Importer
     {
         $employee = $this->employee();
 
-        return AttendanceSegment::firstOrNew([
+        return AttendanceSegment::query()->whereDate('date', $this->data['date'])->firstOrNew([
             'employee_id' => $employee->id,
-            'date' => $this->data['date'],
+            'schedule_name' => $this->data['schedule_name'] ?? null,
+            'clock_in' => $this->data['clock_in'] ?? null,
+            'clock_out' => $this->data['clock_out'] ?? null,
             'fp_no' => $this->data['fp_no'],
         ]);
     }
@@ -94,6 +96,7 @@ class AttendanceSegmentImporter extends Importer
     {
         $shift = $this->syncShift();
 
+        $this->record->date = $this->data['date'];
         $this->record->employee_id = $this->employee()->id;
         $this->record->shift_id = $shift?->id;
         $this->record->raw_data = $this->originalData;

@@ -2,6 +2,7 @@
 
 namespace App\Livewire;
 
+use App\Exceptions\HrWorkflowException;
 use Filament\Notifications\Notification;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -69,6 +70,10 @@ class ExceptionHandlerHook extends ComponentHook
      */
     private static function humanise(\Throwable $e): string
     {
+        if ($e instanceof HrWorkflowException) {
+            return $e->getMessage();
+        }
+
         if ($e instanceof QueryException) {
             return self::humaniseQuery($e);
         }

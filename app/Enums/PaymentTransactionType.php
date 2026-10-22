@@ -14,6 +14,9 @@ enum PaymentTransactionType: string
     case PETTY_CASH_FUNDING = 'petty_cash_funding';
     case PETTY_CASH_EXPENSE = 'petty_cash_expense';
     case CASH_SALE_RECEIPT = 'cash_sale_receipt';
+    case PAYROLL_TAX_REMITTANCE = 'payroll_tax_remittance';
+    case PAYROLL_PENSION_REMITTANCE = 'payroll_pension_remittance';
+    case PAYROLL_UNION_REMITTANCE = 'payroll_union_remittance';
     case PAYROLL_PAYMENT = 'payroll_payment';
     case EMPLOYEE_LOAN_DISBURSEMENT = 'employee_loan_disbursement';
     case EMPLOYEE_LOAN_REPAYMENT = 'employee_loan_repayment';
@@ -31,6 +34,9 @@ enum PaymentTransactionType: string
             self::PETTY_CASH_FUNDING => 'Petty Cash Funding',
             self::PETTY_CASH_EXPENSE => 'Petty Cash Expense',
             self::CASH_SALE_RECEIPT => 'Paid-now Sale Receipt',
+            self::PAYROLL_TAX_REMITTANCE => 'Payroll tax remittance',
+            self::PAYROLL_PENSION_REMITTANCE => 'Payroll pension remittance',
+            self::PAYROLL_UNION_REMITTANCE => 'Payroll union remittance',
             self::PAYROLL_PAYMENT => 'Payroll Payment',
             self::EMPLOYEE_LOAN_DISBURSEMENT => 'Employee Loan Disbursement',
             self::EMPLOYEE_LOAN_REPAYMENT => 'Employee Loan Repayment',
@@ -49,6 +55,9 @@ enum PaymentTransactionType: string
             self::DIRECT_EXPENSE => 'Pay expense',
             self::PETTY_CASH_FUNDING => 'Fund petty cash',
             self::PETTY_CASH_EXPENSE => 'Record petty cash expense',
+            self::PAYROLL_TAX_REMITTANCE => 'Payroll tax remittance',
+            self::PAYROLL_PENSION_REMITTANCE => 'Payroll pension remittance',
+            self::PAYROLL_UNION_REMITTANCE => 'Payroll union remittance',
             self::PAYROLL_PAYMENT => 'Pay payroll payable',
             self::EMPLOYEE_LOAN_DISBURSEMENT => 'Give employee loan',
             self::EMPLOYEE_LOAN_REPAYMENT => 'Receive employee loan repayment',

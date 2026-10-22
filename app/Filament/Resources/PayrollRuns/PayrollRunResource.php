@@ -9,10 +9,13 @@ use App\Filament\Resources\PayrollRuns\RelationManagers\PayrollRunEmployeesRelat
 use App\Filament\Tables\Filters\DateRangeFilter;
 use App\Models\Bank;
 use App\Models\PayrollRun;
+use App\Services\Hr\CorrectPayrollRun;
 use App\Services\Hr\ExportPayrollBankAdvice;
+use App\Services\Hr\ExportPayrollDocuments;
 use App\Services\Hr\ExportPayrollRegisterCsv;
-use App\Services\Hr\GeneratePayrollPayments;
+use App\Services\Hr\ManagePayrollPaymentBatch;
 use App\Services\Hr\PostPayrollRun;
+use App\Services\Hr\RecordPayrollRemittance;
 use App\Support\FiscalCalendar;
 use App\Support\Money;
 use BackedEnum;
@@ -25,6 +28,8 @@ use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Select as ActionSelect;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
@@ -141,7 +146,10 @@ class PayrollRunResource extends Resource
 
     public static function table(Table $table): Table
     {
+        $currency = Money::currencyCode();
+
         return $table
+            ->modifyQueryUsing(fn ($query) => $query->withCount('employees')->withCount(['employees as payable_count' => fn ($employees) => $employees->where('net_pay', '>', 0)])->withSum('employees', 'net_pay'))
             ->columns([
                 TextColumn::make('name')->searchable(),
                 TextColumn::make('period_type')->label('Frequency')->badge(),
@@ -157,16 +165,17 @@ class PayrollRunResource extends Resource
                     }),
                 TextColumn::make('payable_employees_count')
                     ->label('Employees')
-                    ->state(fn (PayrollRun $record): string => number_format((int) $record->employees()->where('net_pay', '>', 0)->count())),
+                    ->state(fn (PayrollRun $record): string => number_format((int) $record->payable_count)),
                 TextColumn::make('payable_employees_net_pay')
                     ->label('Net Pay')
-                    ->state(fn (PayrollRun $record): string => Money::format((float) $record->employees()->where('net_pay', '>', 0)->sum('net_pay'), 2)),
+                    ->state(fn (PayrollRun $record): string => Money::format((float) $record->employees_sum_net_pay, 2, $currency)),
             ])
             ->filters([
                 DateRangeFilter::make('period', 'period_start', 'Period', 'period_end'),
             ])
             ->recordActions([
                 ActionGroup::make([
+                    ...static::batchActions(),
                     EditAction::make()
                         ->color('gray'),
                     Action::make('approve')
@@ -180,17 +189,17 @@ class PayrollRunResource extends Resource
                             Notification::make()->title('Payroll approved and journal posted')->success()->send();
                         }),
                     Action::make('generatePayments')
-                        ->label('Send payments')
+                        ->label('Prepare payment batch')
                         ->color('gray')
                         ->visible(fn (PayrollRun $record): bool => $record->status === 'approved')
                         ->schema([
-                            ActionSelect::make('bank_id')
+                            ActionSelect::make('bank_id')->getSearchResultsUsing(fn (string $search): array => Bank::query()->where('status', 'active')->where('name', 'like', '%'.$search.'%')->limit(50)->pluck('name', 'id')->all())->getOptionLabelUsing(fn ($value): ?string => Bank::find($value)?->name)
                                 ->label('Pay From Bank')
                                 ->options(fn (): array => Bank::query()
                                     ->where('status', 'active')
                                     ->orderBy('bank_name')
                                     ->orderBy('name')
-                                    ->get()
+                                    ->limit(50)->get()
                                     ->mapWithKeys(fn (Bank $bank): array => [
                                         $bank->id => $bank->name.' (available: '.Money::abbreviate($bank->current_balance, 2).')',
                                     ])
@@ -201,22 +210,22 @@ class PayrollRunResource extends Resource
                         ])
                         ->requiresConfirmation()
                         ->action(function (PayrollRun $record, array $data): void {
-                            app(GeneratePayrollPayments::class)->handle($record, 'bank', (int) $data['bank_id']);
+                            app(ManagePayrollPaymentBatch::class)->prepare($record, Bank::findOrFail((int) $data['bank_id']));
 
-                            Notification::make()->title('Payroll payments generated')->success()->send();
+                            Notification::make()->title('Payment batch prepared; no funds recorded as paid')->success()->send();
                         }),
                     Action::make('downloadBankAdvice')
                         ->label('Bank advice')
                         ->color('gray')
-                        ->visible(fn (PayrollRun $record): bool => $record->employees()->where('net_pay', '>', 0)->exists())
+                        ->visible(fn (PayrollRun $record): bool => $record->payable_count > 0)
                         ->schema([
-                            ActionSelect::make('bank_id')
+                            ActionSelect::make('bank_id')->getSearchResultsUsing(fn (string $search): array => Bank::query()->where('status', 'active')->where('name', 'like', '%'.$search.'%')->limit(50)->pluck('name', 'id')->all())->getOptionLabelUsing(fn ($value): ?string => Bank::find($value)?->name)
                                 ->label('Bank format')
                                 ->options(fn (): array => Bank::query()
                                     ->where('status', 'active')
                                     ->orderBy('bank_name')
                                     ->orderBy('name')
-                                    ->get()
+                                    ->limit(50)->get()
                                     ->mapWithKeys(fn (Bank $bank): array => [
                                         $bank->id => $bank->name.' (available: '.Money::abbreviate($bank->current_balance, 2).')',
                                     ])
@@ -232,7 +241,7 @@ class PayrollRunResource extends Resource
                     Action::make('exportRegister')
                         ->label('Export CSV')
                         ->color('gray')
-                        ->visible(fn (PayrollRun $record): bool => $record->employees()->exists())
+                        ->visible(fn (PayrollRun $record): bool => $record->employees_count > 0)
                         ->action(fn (PayrollRun $record) => app(ExportPayrollRegisterCsv::class)->download($record)),
                 ]),
             ])
@@ -253,6 +262,40 @@ class PayrollRunResource extends Resource
         return [
             PayrollRunEmployeesRelationManager::class,
         ];
+    }
+
+    /** @return array<Action> */
+    public static function batchActions(?PayrollRun $run = null): array
+    {
+        $actions = [
+            Action::make('recordRemittance')->label('Record tax / pension / union remittance')->visible(fn (?PayrollRun $record): bool => in_array(($record ?? $run)?->status, ['approved', 'paid'], true))->schema([ActionSelect::make('type')->options(['payroll_tax_remittance' => 'PAYE', 'payroll_pension_remittance' => 'Pension', 'payroll_union_remittance' => 'Workers union'])->required(), TextInput::make('amount')->numeric()->minValue(0.01)->required(), ActionSelect::make('bank_id')->getSearchResultsUsing(fn (string $search): array => Bank::query()->where('status', 'active')->where('name', 'like', '%'.$search.'%')->limit(50)->pluck('name', 'id')->all())->getOptionLabelUsing(fn ($value): ?string => Bank::find($value)?->name)->options(fn () => Bank::query()->where('status', 'active')->limit(50)->pluck('name', 'id'))->searchable()->required(), TextInput::make('reference')->required()])->requiresConfirmation()->action(fn (?PayrollRun $record, array $data) => app(RecordPayrollRemittance::class)->handle($record ?? $run, $data['type'], (float) $data['amount'], (int) $data['bank_id'], $data['reference'])),
+            Action::make('correctPayroll')->label('Reverse and create correction')->visible(fn (?PayrollRun $record): bool => ($record ?? $run)?->status === 'approved')->schema([Textarea::make('reason')->required()])->requiresConfirmation()->action(function (?PayrollRun $record, array $data) use ($run): void {
+                app(CorrectPayrollRun::class)->handle($record ?? $run, $data['reason']);
+            }),
+            Action::make('exportRemittances')->label('Tax, pension and union summary')->action(fn (?PayrollRun $record) => app(ExportPayrollDocuments::class)->remittances($record ?? $run)),
+        ];
+        foreach (['submitted' => 'Record bank submission', 'settled' => 'Confirm bank settlement', 'failed' => 'Record failed batch'] as $status => $label) {
+            $actions[] = Action::make('batch_'.$status)->label($label)
+                ->visible(fn (?PayrollRun $record): bool => ($record ?? $run)?->status === 'approved')
+                ->schema([
+                    ActionSelect::make('batch_id')->label('Batch')->options(fn (?PayrollRun $record): array => ($record ?? $run)->paymentBatches()->whereIn('status', $status === 'submitted' ? ['generated'] : ($status === 'settled' ? ['submitted'] : ['generated', 'submitted']))->get()->mapWithKeys(fn ($batch): array => [$batch->id => '#'.$batch->id.' '.$batch->status.' '.Money::format($batch->amount)])->all())->required(),
+                    TextInput::make('reference')->label('Bank reference')->required(),
+                    Textarea::make('note')->required($status === 'failed'),
+                ])->requiresConfirmation()->action(function (?PayrollRun $record, array $data) use ($run, $status): void {
+                    $batch = ($record ?? $run)->paymentBatches()->findOrFail($data['batch_id']);
+                    app(ManagePayrollPaymentBatch::class)->transition($batch, $status, $data['reference'], $data['note'] ?? '');
+                });
+        }
+        $actions[] = Action::make('downloadHistoricalAdvice')->label('Payment batch history / download')->schema([
+            ActionSelect::make('batch_id')->label('Batch')->options(fn (?PayrollRun $record): array => ($record ?? $run)->paymentBatches()->latest('id')->get()->mapWithKeys(fn ($batch): array => [$batch->id => '#'.$batch->id.' '.$batch->status.' '.($batch->reference ?? '')])->all())->required(),
+        ])->action(function (?PayrollRun $record, array $data) use ($run) {
+            $payroll = $record ?? $run;
+            $batch = $payroll->paymentBatches()->findOrFail($data['batch_id']);
+
+            return response()->streamDownload(fn () => print app(ExportPayrollBankAdvice::class)->csv($payroll, $batch->bank, $batch->id), 'payroll-batch-'.$batch->id.'.csv');
+        });
+
+        return $actions;
     }
 
     private static function baseDays(?PayrollRun $record): int

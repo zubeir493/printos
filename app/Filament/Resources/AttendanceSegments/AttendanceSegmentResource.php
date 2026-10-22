@@ -43,11 +43,11 @@ class AttendanceSegmentResource extends Resource
             TextInput::make('schedule_name')->label('Schedule'),
             TimePicker::make('clock_in')->seconds(false),
             TimePicker::make('clock_out')->seconds(false),
-            TextInput::make('late_minutes')->numeric()->default(0),
-            TextInput::make('early_minutes')->numeric()->default(0),
-            TextInput::make('worked_minutes')->numeric()->default(0),
-            TextInput::make('overtime_minutes')->numeric()->default(0),
-            TextInput::make('day_fraction')->numeric()->default(0),
+            TextInput::make('late_minutes')->numeric()->minValue(0)->default(0),
+            TextInput::make('early_minutes')->numeric()->minValue(0)->default(0),
+            TextInput::make('worked_minutes')->numeric()->minValue(0)->default(0),
+            TextInput::make('overtime_minutes')->numeric()->minValue(0)->default(0),
+            TextInput::make('day_fraction')->numeric()->minValue(0)->default(0),
             Select::make('status')
                 ->options([
                     'Present' => 'Present',

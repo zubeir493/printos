@@ -42,7 +42,8 @@ class RecalculatePayrollRegisterRow
         $penaltyAmount = round($penaltyHourlyRate * $penaltyHours, 2);
         $grossEarning = round($basicSalary + $bonus + $transportAllowance + $employerPensionContribution + $overtimeAmount + $manualEarnings, 2);
         $taxableAmount = max(0, round($grossEarning - $employerPensionContribution - $penaltyAmount, 2));
-        $incomeTax = $this->taxAmount($taxableAmount, $payrollRun?->getRawOriginal('period_end') ?? now()->toDateString(), $snapshot);
+        $tax = $this->taxCalculator->handle($taxableAmount, $payrollRun?->getRawOriginal('period_end') ?? now()->toDateString(), $snapshot['tax']['rule_id'] ?? null);
+        $incomeTax = $tax['amount'];
         $pensionContribution = $pensionEnabled ? round($basicSalary * (($employeePensionRate + $employerPensionRate) / 100), 2) : 0.0;
         $workersUnion = $unionEnabled ? round($basicSalary * ($unionRate / 100), 2) : 0.0;
         $totalDeduction = round($incomeTax + $penaltyAmount + $pensionContribution + $loan + $workersUnion + $manualDeductions, 2);
@@ -63,6 +64,7 @@ class RecalculatePayrollRegisterRow
             'net_pay' => $netPay,
             'calculation_snapshot' => [
                 ...$snapshot,
+                'tax' => $tax,
                 'union_enabled' => $unionEnabled,
                 'union_rate' => $unionRate,
                 'penalty_hourly_rate' => $penaltyHourlyRate,
@@ -80,17 +82,5 @@ class RecalculatePayrollRegisterRow
                 $row->{$key} = $value;
             }
         }
-    }
-
-    /**
-     * @param  array<string, mixed>  $snapshot
-     */
-    private function taxAmount(float $taxableAmount, string $date, array $snapshot): float
-    {
-        if (isset($snapshot['tax']['rate'], $snapshot['tax']['deduction'])) {
-            return round(max(0, ($taxableAmount * ((float) $snapshot['tax']['rate'] / 100)) - (float) $snapshot['tax']['deduction']), 2);
-        }
-
-        return $this->taxCalculator->handle($taxableAmount, $date)['amount'];
     }
 }

@@ -10,9 +10,10 @@ use App\Models\PayrollOvertimeEntry;
 use App\Models\PayrollRunEmployee;
 use App\Services\Hr\CalculatePayrollRun;
 use App\Services\Hr\ExportPayrollBankAdvice;
+use App\Services\Hr\ExportPayrollDocuments;
 use App\Services\Hr\ExportPayrollRegisterCsv;
 use App\Services\Hr\GeneratePayrollOvertimeEntries;
-use App\Services\Hr\GeneratePayrollPayments;
+use App\Services\Hr\ManagePayrollPaymentBatch;
 use App\Services\Hr\PostPayrollRun;
 use App\Services\Hr\PrepareMonthlyPayrollRun;
 use App\Services\Hr\RecalculatePayrollRegisterRow;
@@ -24,21 +25,31 @@ use Filament\Actions\ActionGroup;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Filament\Schemas\Components\Callout;
 use Filament\Schemas\Components\Utilities\Get;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\HtmlString;
+use Livewire\WithPagination;
 use Malzariey\FilamentDaterangepickerFilter\Fields\DateRangePicker;
 use RuntimeException;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class EditPayrollRun extends EditRecord
 {
+    use WithPagination;
+
     protected static string $resource = PayrollRunResource::class;
 
     protected string $view = 'filament.resources.payroll-runs.pages.edit-payroll-run';
+
+    private ?string $displayCurrency = null;
 
     public ?string $employeeSearch = null;
 
@@ -92,6 +103,7 @@ class EditPayrollRun extends EditRecord
     {
         return [
             Action::make('setupPayroll')
+                ->visible(fn (): bool => $this->record->status === 'draft')
                 ->label('Settings')
                 ->icon('heroicon-m-cog')
                 ->color('gray')
@@ -145,8 +157,12 @@ class EditPayrollRun extends EditRecord
 
                     unset($data['period_range']);
 
-                    $this->record->update($data);
-                    app(PrepareMonthlyPayrollRun::class)->handle($this->record);
+                    DB::transaction(function () use ($data): void {
+                        $this->record = $this->record->newQuery()->lockForUpdate()->findOrFail($this->record->id);
+                        abort_unless($this->record->status === 'draft', 422, 'Approved payroll settings are locked.');
+                        $this->record->update($data);
+                        app(PrepareMonthlyPayrollRun::class)->handle($this->record);
+                    });
                     $this->record->refresh();
 
                     Notification::make()
@@ -154,6 +170,10 @@ class EditPayrollRun extends EditRecord
                         ->success()
                         ->send();
                 }),
+            Action::make('reviewAttendance')->label('Confirm attendance review')->visible(fn (): bool => $this->record->status === 'draft')->schema([Textarea::make('note')->required()])->action(function (array $data): void {
+                Gate::authorize('update', $this->record);
+                $this->record->update(['attendance_reviewed_at' => now(), 'attendance_reviewed_by' => auth()->id(), 'attendance_review_note' => $data['note']]);
+            }),
             Action::make('approve')
                 ->label('Approve')
                 ->color('gray')
@@ -169,13 +189,13 @@ class EditPayrollRun extends EditRecord
                     Notification::make()->title('Payroll approved and journal posted')->success()->send();
                 }),
             Action::make('generatePayments')
-                ->label('Send payments')
+                ->label('Prepare payment batch')
                 ->color('gray')
                 ->visible(fn (): bool => $this->record->status === 'approved')
                 ->schema([
                     Select::make('bank_id')
                         ->label('Pay From Bank')
-                        ->options(fn (): array => $this->bankOptions())
+                        ->options(fn (): array => $this->bankOptions())->getSearchResultsUsing(fn (string $search): array => $this->bankOptions($search))->getOptionLabelUsing(fn ($value): ?string => Bank::find($value)?->name)
                         ->searchable()
                         ->preload()
                         ->live()
@@ -187,11 +207,12 @@ class EditPayrollRun extends EditRecord
                 ])
                 ->requiresConfirmation()
                 ->action(function (array $data): void {
-                    app(GeneratePayrollPayments::class)->handle($this->record, 'bank', (int) $data['bank_id']);
+                    app(ManagePayrollPaymentBatch::class)->prepare($this->record, Bank::findOrFail((int) $data['bank_id']));
                     $this->record->refresh();
-                    Notification::make()->title('Payroll payments generated')->success()->send();
+                    Notification::make()->title('Payment batch prepared; no funds recorded as paid')->success()->send();
                 }),
             ActionGroup::make([
+                ...PayrollRunResource::batchActions($this->record),
                 Action::make('reviewOvertime')
                     ->label('Review overtime')
                     ->icon('heroicon-m-clock')
@@ -207,7 +228,7 @@ class EditPayrollRun extends EditRecord
                     ->schema([
                         Select::make('employee_ids')
                             ->label('Employees')
-                            ->options(fn (): array => $this->addableEmployeeOptions())
+                            ->getSearchResultsUsing(fn (string $search): array => $this->addableEmployeeOptions($search))->getOptionLabelsUsing(fn (array $values): array => Employee::query()->whereKey($values)->get()->mapWithKeys(fn (Employee $employee): array => [$employee->id => $employee->full_name])->all())
                             ->multiple()
                             ->searchable()
                             ->preload()
@@ -223,7 +244,7 @@ class EditPayrollRun extends EditRecord
                     ->schema([
                         Select::make('bank_id')
                             ->label('Bank format')
-                            ->options(fn (): array => $this->bankOptions())
+                            ->options(fn (): array => $this->bankOptions())->getSearchResultsUsing(fn (string $search): array => $this->bankOptions($search))->getOptionLabelUsing(fn ($value): ?string => Bank::find($value)?->name)
                             ->searchable()
                             ->preload()
                             ->required(),
@@ -260,7 +281,7 @@ class EditPayrollRun extends EditRecord
 
     private function ensureCalculatedPayrollExists(): void
     {
-        if (! $this->record->employees()->exists() || (float) $this->record->employees()->sum('net_pay') <= 0) {
+        if (! $this->record->employees()->exists() || (float) $this->record->employees()->sum('gross_earning') <= 0) {
             throw new RuntimeException('Calculate payroll and review employee salary rows before approval.');
         }
     }
@@ -268,13 +289,18 @@ class EditPayrollRun extends EditRecord
     /**
      * @return array<int, string>
      */
-    private function bankOptions(): array
+    public function updatedEmployeeSearch(): void
+    {
+        $this->resetPage('payrollPage');
+    }
+
+    private function bankOptions(?string $search = null): array
     {
         return Bank::query()
-            ->where('status', 'active')
+            ->where('status', 'active')->when($search, fn ($query) => $query->where('name', 'like', '%'.$search.'%'))
             ->orderBy('bank_name')
             ->orderBy('name')
-            ->get()
+            ->limit(50)->get()
             ->mapWithKeys(fn (Bank $bank): array => [
                 $bank->id => $bank->name.' (available: '.Money::abbreviate($bank->current_balance, 2).')',
             ])
@@ -313,37 +339,9 @@ class EditPayrollRun extends EditRecord
      */
     public function summary(): array
     {
-        $employees = $this->summaryRows();
+        $totals = $this->record->employees()->selectRaw("COUNT(*) AS employee_count, COALESCE(SUM(gross_earning), 0) AS payroll_cost, COALESCE(SUM(net_pay), 0) AS net_pay, COALESCE(SUM(income_tax), 0) AS taxes, COALESCE(SUM(total_deduction), 0) AS deductions, COALESCE(SUM(bonus), 0) AS bonuses, COALESCE(SUM(transport_allowance), 0) AS benefits, COALESCE(MAX(CAST(JSON_EXTRACT(calculation_snapshot, '$.base_days') AS DECIMAL(10,2))), 0) AS base_days")->first()->getAttributes();
 
-        return [
-            'period' => $this->periodLabel(),
-            'base_days' => (int) $employees->max(fn (PayrollRunEmployee $employee): float => (float) data_get($employee->calculation_snapshot, 'base_days', 0)),
-            'employee_count' => $employees->count(),
-            'payroll_cost' => (float) $employees->sum('gross_earning'),
-            'net_pay' => (float) $employees->sum('net_pay'),
-            'pay_day' => $this->payDateLabel(),
-            'taxes' => (float) $employees->sum('income_tax'),
-            'deductions' => (float) $employees->sum('total_deduction'),
-            'bonuses' => (float) $employees->sum('bonus'),
-            'benefits' => (float) $employees->sum('transport_allowance'),
-        ];
-    }
-
-    /**
-     * @return Collection<int, PayrollRunEmployee>
-     */
-    private function summaryRows(): Collection
-    {
-        $selectedEmployeeIds = $this->selectedEmployeeIds();
-
-        return $this->record
-            ->employees()
-            ->when(
-                $selectedEmployeeIds !== [],
-                fn ($query) => $query->whereIn('employee_id', $selectedEmployeeIds),
-                fn ($query) => $query->where('net_pay', '>', 0),
-            )
-            ->get();
+        return [...$totals, 'employee_count' => (int) $totals['employee_count'], 'base_days' => (int) $totals['base_days'], 'period' => $this->periodLabel(), 'pay_day' => $this->payDateLabel()];
     }
 
     /**
@@ -359,13 +357,8 @@ class EditPayrollRun extends EditRecord
             ->all();
     }
 
-    /**
-     * @return Collection<int, PayrollRunEmployee>
-     */
-    public function payrollRows(): Collection
+    public function payrollRows(): LengthAwarePaginator
     {
-        $selectedEmployeeIds = $this->selectedEmployeeIds();
-
         return $this->record
             ->employees()
             ->with('employee')
@@ -379,13 +372,8 @@ class EditPayrollRun extends EditRecord
                         ->orWhereRaw('LOWER(employee_id) LIKE ?', [$search]);
                 });
             })
-            ->when(
-                $selectedEmployeeIds !== [],
-                fn ($query) => $query->whereIn('employee_id', $selectedEmployeeIds),
-                fn ($query) => $query->where('net_pay', '>', 0),
-            )
             ->orderByDesc('net_pay')
-            ->get();
+            ->paginate(25, pageName: 'payrollPage');
     }
 
     public function payrollDetail(): ?PayrollRunEmployee
@@ -404,6 +392,11 @@ class EditPayrollRun extends EditRecord
     {
         $this->detailsEmployeeId = $payrollRunEmployeeId;
         $this->fillPayrollDetailForm();
+    }
+
+    public function downloadPayslip(int $rowId): StreamedResponse
+    {
+        return app(ExportPayrollDocuments::class)->payslip($this->record->employees()->findOrFail($rowId));
     }
 
     public function closePayrollDetails(): void
@@ -487,39 +480,44 @@ class EditPayrollRun extends EditRecord
 
     public function removePayrollEmployee(int $payrollRunEmployeeId): void
     {
-        $detail = PayrollRunEmployee::query()
-            ->whereBelongsTo($this->record)
-            ->find($payrollRunEmployeeId);
+        DB::transaction(function () use ($payrollRunEmployeeId): void {
+            $this->record = $this->record->newQuery()->lockForUpdate()->findOrFail($this->record->id);
+            Gate::authorize('update', $this->record);
+            $detail = PayrollRunEmployee::query()
+                ->whereBelongsTo($this->record)
+                ->find($payrollRunEmployeeId);
 
-        if (! $detail || $this->record->status !== 'draft') {
-            return;
-        }
+            if (! $detail || $this->record->status !== 'draft') {
+                return;
+            }
 
-        $employeeIds = collect($this->rosterEmployeeIds())
-            ->reject(fn (int $employeeId): bool => $employeeId === (int) $detail->employee_id)
-            ->values()
-            ->all();
+            $employeeIds = collect($this->rosterEmployeeIds())
+                ->reject(fn (int $employeeId): bool => $employeeId === (int) $detail->employee_id)
+                ->values()
+                ->all();
 
-        if ($employeeIds !== []) {
-            $this->record->forceFill([
-                'selected_employee_ids' => $employeeIds,
-                'excluded_employee_ids' => [],
-            ])->save();
-            app(CalculatePayrollRun::class)->handle($this->record->refresh(), $employeeIds);
-            $this->record->forceFill(['prepared_at' => now()])->save();
-        } else {
-            $this->record->forceFill([
-                'selected_employee_ids' => [],
-                'excluded_employee_ids' => [],
-            ])->save();
-            $detail->delete();
-        }
+            if ($employeeIds !== []) {
+                $this->record->forceFill([
+                    'selected_employee_ids' => $employeeIds,
+                    'excluded_employee_ids' => [],
+                ])->save();
+                app(CalculatePayrollRun::class)->handle($this->record->refresh(), $employeeIds);
+                $this->record->forceFill(['prepared_at' => now()])->save();
+            } else {
+                $this->record->forceFill([
+                    'selected_employee_ids' => [],
+                    'excluded_employee_ids' => [],
+                ])->save();
+                $detail->delete();
+            }
 
-        $this->record->refresh();
+            $this->record->refresh();
 
-        if ($this->detailsEmployeeId === $payrollRunEmployeeId) {
-            $this->closePayrollDetails();
-        }
+            if ($this->detailsEmployeeId === $payrollRunEmployeeId) {
+                $this->closePayrollDetails();
+            }
+
+        }, 3);
     }
 
     /**
@@ -535,7 +533,6 @@ class EditPayrollRun extends EditRecord
 
         return $this->record
             ->employees()
-            ->where('net_pay', '>', 0)
             ->pluck('employee_id')
             ->map(fn ($id): int => (int) $id)
             ->values()
@@ -547,68 +544,80 @@ class EditPayrollRun extends EditRecord
      */
     public function addPayrollEmployees(array $employeeIds): void
     {
-        if ($this->record->status !== 'draft') {
-            return;
-        }
+        DB::transaction(function () use ($employeeIds): void {
+            $this->record = $this->record->newQuery()->lockForUpdate()->findOrFail($this->record->id);
+            Gate::authorize('update', $this->record);
+            if ($this->record->status !== 'draft') {
+                return;
+            }
 
-        $employeeIds = collect($this->rosterEmployeeIds())
-            ->merge($employeeIds)
-            ->map(fn ($id): int => (int) $id)
-            ->filter()
-            ->unique()
-            ->values()
-            ->all();
+            $employeeIds = collect($this->rosterEmployeeIds())
+                ->merge($employeeIds)
+                ->map(fn ($id): int => (int) $id)
+                ->filter()
+                ->unique()
+                ->values()
+                ->all();
 
-        if ($employeeIds === []) {
-            return;
-        }
+            if ($employeeIds === []) {
+                return;
+            }
 
-        $this->record->forceFill([
-            'selected_employee_ids' => $employeeIds,
-            'excluded_employee_ids' => [],
-        ])->save();
+            $this->record->forceFill([
+                'selected_employee_ids' => $employeeIds,
+                'excluded_employee_ids' => [],
+            ])->save();
 
-        app(CalculatePayrollRun::class)->handle($this->record->refresh(), $employeeIds);
-        $this->record->forceFill(['prepared_at' => now()])->save();
-        $this->record->refresh();
+            app(CalculatePayrollRun::class)->handle($this->record->refresh(), $employeeIds);
+            $this->record->forceFill(['prepared_at' => now()])->save();
+            $this->record->refresh();
+
+        }, 3);
     }
 
     public function savePayrollDetails(bool $notify = true): void
     {
-        $detail = $this->payrollDetail();
+        DB::transaction(function () use ($notify): void {
+            $this->record = $this->record->newQuery()->lockForUpdate()->findOrFail($this->record->id);
+            Gate::authorize('update', $this->record);
+            $detail = $this->payrollDetail();
 
-        if (! $detail || $this->record->status !== 'draft') {
-            return;
-        }
+            if (! $detail || $this->record->status !== 'draft') {
+                return;
+            }
 
-        $snapshot = is_array($detail->calculation_snapshot) ? $detail->calculation_snapshot : [];
-        $snapshot['manual_earnings'] = $this->normalizedManualItems($this->detailForm['manual_earnings'] ?? []);
-        $snapshot['manual_deductions'] = $this->normalizedManualItems($this->detailForm['manual_deductions'] ?? []);
+            $this->validate(['detailForm.basic_salary' => ['required', 'numeric', 'min:0'], 'detailForm.bonus' => ['nullable', 'numeric', 'min:0'], 'detailForm.transport_allowance' => ['nullable', 'numeric', 'min:0'], 'detailForm.penalty_hours' => ['nullable', 'numeric', 'min:0'], 'detailForm.loan' => ['nullable', 'numeric', 'min:0'], 'detailForm.overtime_amount' => ['nullable', 'numeric', 'min:0'], 'detailForm.manual_earnings.*.amount' => ['required', 'numeric', 'min:0'], 'detailForm.manual_deductions.*.amount' => ['required', 'numeric', 'min:0']]);
+            $snapshot = is_array($detail->calculation_snapshot) ? $detail->calculation_snapshot : [];
+            $snapshot['overrides'] = collect($this->detailForm)->only(['basic_salary', 'transport_allowance', 'penalty_hours', 'loan'])->map(fn ($value): float => max(0, (float) $value))->all();
+            $snapshot['manual_earnings'] = $this->normalizedManualItems($this->detailForm['manual_earnings'] ?? []);
+            $snapshot['manual_deductions'] = $this->normalizedManualItems($this->detailForm['manual_deductions'] ?? []);
 
-        $detail->forceFill([
-            'basic_salary' => max(0, (float) ($this->detailForm['basic_salary'] ?? $detail->basic_salary)),
-            'bonus' => max(0, (float) ($this->detailForm['bonus'] ?? 0)),
-            'transport_allowance' => max(0, (float) ($this->detailForm['transport_allowance'] ?? 0)),
-            'overtime_amount' => max(0, (float) ($this->detailForm['overtime_amount'] ?? $detail->overtime_amount)),
-            'penalty_hours' => max(0, (float) ($this->detailForm['penalty_hours'] ?? 0)),
-            'loan' => max(0, (float) ($this->detailForm['loan'] ?? 0)),
-            'calculation_snapshot' => $snapshot,
-        ]);
+            $detail->forceFill([
+                'basic_salary' => max(0, (float) ($this->detailForm['basic_salary'] ?? $detail->basic_salary)),
+                'bonus' => max(0, (float) ($this->detailForm['bonus'] ?? 0)),
+                'transport_allowance' => max(0, (float) ($this->detailForm['transport_allowance'] ?? 0)),
+                'overtime_amount' => max(0, (float) ($this->detailForm['overtime_amount'] ?? $detail->overtime_amount)),
+                'penalty_hours' => max(0, (float) ($this->detailForm['penalty_hours'] ?? 0)),
+                'loan' => max(0, (float) ($this->detailForm['loan'] ?? 0)),
+                'calculation_snapshot' => $snapshot,
+            ]);
 
-        app(RecalculatePayrollRegisterRow::class)->forModel($detail, $this->record);
-        $detail->save();
-        $this->syncPayrollDetailLineItems($detail->refresh());
-        $this->record->refresh();
-        $this->fillPayrollDetailForm();
+            app(RecalculatePayrollRegisterRow::class)->forModel($detail, $this->record);
+            $detail->save();
+            $this->syncPayrollDetailLineItems($detail->refresh());
+            $this->record->refresh();
+            $this->fillPayrollDetailForm();
 
-        if ($notify) {
-            Notification::make()->title('Payroll detail updated')->success()->send();
-        }
+            if ($notify) {
+                Notification::make()->title('Payroll detail updated')->success()->send();
+            }
+
+        }, 3);
     }
 
     public function money(float|int|string|null $amount, int $precision = 2): string
     {
-        return Money::format((float) $amount, $precision);
+        return Money::format((float) $amount, $precision, $this->displayCurrency ??= Money::currencyCode());
     }
 
     /**
@@ -941,34 +950,39 @@ class EditPayrollRun extends EditRecord
 
     private function setOvertimeEntryStatus(int $entryId, string $status): void
     {
-        if ($this->record->status !== 'draft') {
-            return;
-        }
+        DB::transaction(function () use ($entryId, $status): void {
+            $this->record = $this->record->newQuery()->lockForUpdate()->findOrFail($this->record->id);
+            Gate::authorize('update', $this->record);
+            if ($this->record->status !== 'draft') {
+                return;
+            }
 
-        $entry = PayrollOvertimeEntry::query()
-            ->whereBelongsTo($this->record)
-            ->find($entryId);
+            $entry = PayrollOvertimeEntry::query()
+                ->whereBelongsTo($this->record)
+                ->find($entryId);
 
-        if (! $entry) {
-            return;
-        }
+            if (! $entry) {
+                return;
+            }
 
-        $entry->update([
-            'status' => $status,
-            'reviewed_by' => auth()->id(),
-            'reviewed_at' => now(),
-        ]);
+            $entry->update([
+                'status' => $status,
+                'reviewed_by' => auth()->id(),
+                'reviewed_at' => now(),
+            ]);
 
-        $detail = PayrollRunEmployee::query()
-            ->whereBelongsTo($this->record)
-            ->where('employee_id', $entry->employee_id)
-            ->first();
+            $detail = PayrollRunEmployee::query()
+                ->whereBelongsTo($this->record)
+                ->where('employee_id', $entry->employee_id)
+                ->first();
 
-        if ($detail) {
-            $this->refreshPayrollOvertimeTotals($detail);
-        }
+            if ($detail) {
+                $this->refreshPayrollOvertimeTotals($detail);
+            }
 
-        $this->record->refresh();
+            $this->record->refresh();
+
+        }, 3);
     }
 
     private function refreshPayrollOvertimeTotals(PayrollRunEmployee $detail): void

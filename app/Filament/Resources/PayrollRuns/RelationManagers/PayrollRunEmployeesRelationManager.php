@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\PayrollRuns\RelationManagers;
 
 use App\Models\PayrollRunEmployee;
+use App\Services\Hr\ExportPayrollDocuments;
 use App\Support\Money;
 use Filament\Actions\Action;
 use Filament\Infolists\Components\TextEntry;
@@ -67,6 +68,7 @@ class PayrollRunEmployeesRelationManager extends RelationManager
                     ->state(fn (PayrollRunEmployee $record): bool => filled($record->payment_id)),
             ])
             ->actions([
+                Action::make('payslip')->visible(fn (): bool => $this->getOwnerRecord()->status !== 'draft')->action(fn (PayrollRunEmployee $record) => app(ExportPayrollDocuments::class)->payslip($record)),
                 Action::make('details')
                     ->label('Details')
                     ->icon('heroicon-m-eye')

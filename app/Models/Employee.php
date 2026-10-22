@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Validation\ValidationException;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 
@@ -42,6 +43,15 @@ class Employee extends Model
         'bank_name',
         'account_number',
     ];
+
+    protected static function booted(): void
+    {
+        static::saving(function (self $employee): void {
+            if ((float) $employee->basic_salary < 0 || (float) $employee->transport_allowance < 0 || ($employee->termination_date && $employee->termination_date->lt($employee->hire_date))) {
+                throw ValidationException::withMessages(['basic_salary' => 'Rates must be nonnegative and termination cannot precede employment.']);
+            }
+        });
+    }
 
     protected function casts(): array
     {

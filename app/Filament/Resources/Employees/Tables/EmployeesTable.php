@@ -25,6 +25,7 @@ class EmployeesTable
                     ->sortable(),
                 TextColumn::make('position')
                     ->searchable(),
+                TextColumn::make('payroll_readiness')->label('Payroll setup')->state(fn ($record): string => collect(['Attendance device' => $record->attendance_device_id, 'Bank name' => $record->bank_name, 'Account number' => $record->account_number, 'Tax ID' => $record->tax_id])->filter(fn ($value): bool => blank($value))->keys()->join(', ') ?: 'Ready')->description('Missing fields'),
                 TextColumn::make('status')
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {

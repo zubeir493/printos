@@ -34,6 +34,7 @@ use App\Filament\Resources\OvertimeRules\OvertimeRuleResource;
 use App\Filament\Resources\Partners\PartnerResource;
 use App\Filament\Resources\Payments\PaymentResource;
 use App\Filament\Resources\PayrollRuns\PayrollRunResource;
+use App\Filament\Resources\Proformas\ProformaResource;
 use App\Filament\Resources\PurchaseOrderItems\PurchaseOrderItemResource;
 use App\Filament\Resources\PurchaseOrders\PurchaseOrderResource;
 use App\Filament\Resources\SalesOrders\SalesOrderResource;
@@ -93,6 +94,7 @@ class FinancePanelProvider extends PanelProvider
                 OvertimeRuleResource::class,
                 JobOrderResource::class,
                 PartnerResource::class,
+                ProformaResource::class,
                 JournalEntryResource::class,
                 PurchaseOrderResource::class,
                 PurchaseOrderItemResource::class,

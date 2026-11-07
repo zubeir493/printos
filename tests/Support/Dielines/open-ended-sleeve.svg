@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" width="21.82in" height="4.45in" viewBox="0 0 1571.18 320.4">
+<title>Sleeve dieline 152.4 x 101.6 x 38.1 mm</title>
+<rect width="1571.18" height="320.4" fill="#FFFFFF"/>
+<g id="Bleed" inkscape:groupmode="layer" inkscape:label="Bleed">
+<path d="M45 45 L478.3 45 L478.3 153 L45 153 Z M478.3 45 L767.59 45 L767.59 153 L478.3 153 Z M767.59 45 L1200.89 45 L1200.89 153 L767.59 153 Z M1200.89 45 L1490.18 45 L1490.18 153 L1200.89 153 Z M1490.18 45 L1526.18 54.72 L1526.18 143.28 L1490.18 153 Z" fill="none" stroke="#00A3AD" stroke-width="18" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M45 45 L478.3 45 L478.3 153 L45 153 Z M478.3 45 L767.59 45 L767.59 153 L478.3 153 Z M767.59 45 L1200.89 45 L1200.89 153 L767.59 153 Z M1200.89 45 L1490.18 45 L1490.18 153 L1200.89 153 Z M1490.18 45 L1526.18 54.72 L1526.18 143.28 L1490.18 153 Z" fill="none" stroke="#E3F6F7" stroke-width="17" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M45 45 L478.3 45 L478.3 153 L45 153 Z M478.3 45 L767.59 45 L767.59 153 L478.3 153 Z M767.59 45 L1200.89 45 L1200.89 153 L767.59 153 Z M1200.89 45 L1490.18 45 L1490.18 153 L1200.89 153 Z M1490.18 45 L1526.18 54.72 L1526.18 143.28 L1490.18 153 Z" fill="#FFFFFF"/>
+</g>
+<g id="Glue" inkscape:groupmode="layer" inkscape:label="Glue">
+<path d="M1490.18 45 L1526.18 54.72 L1526.18 143.28 L1490.18 153 Z" fill="#ECECEC"/>
+</g>
+<g id="Safe-zone" inkscape:groupmode="layer" inkscape:label="Safe zone">
+<path d="M54 54 L469.3 54 L469.3 144 L54 144 Z M487.3 54 L758.59 54 L758.59 144 L487.3 144 Z M776.59 54 L1191.89 54 L1191.89 144 L776.59 144 Z M1209.89 54 L1481.18 54 L1481.18 144 L1209.89 144 Z" fill="none" stroke="#22A447" stroke-width="0.5" stroke-dasharray="1.5 2.5" stroke-linejoin="round" stroke-linecap="round"/>
+</g>
+<g id="Fold" inkscape:groupmode="layer" inkscape:label="Fold">
+<path d="M478.3 45 L478.3 153 M767.59 45 L767.59 153 M1200.89 45 L1200.89 153 M1490.18 45 L1490.18 153" fill="none" stroke="#0077C8" stroke-width="0.75" stroke-dasharray="4.5 3" stroke-linejoin="round" stroke-linecap="round"/>
+</g>
+<g id="Cut" inkscape:groupmode="layer" inkscape:label="Cut">
+<path d="M45 45 L478.3 45 L767.59 45 L1200.89 45 L1490.18 45 L1526.18 54.72 L1526.18 143.28 L1490.18 153 L1200.89 153 L767.59 153 L478.3 153 L45 153 L45 45" fill="none" stroke="#E6007E" stroke-width="0.75" stroke-linejoin="round" stroke-linecap="round"/>
+</g>
+<g id="Labels" inkscape:groupmode="layer" inkscape:label="Labels">
+<text x="261.65" y="104.04" font-family="Helvetica, Arial, sans-serif" font-size="14.4" fill="#8A8F98" text-anchor="middle">BACK</text>
+<text x="622.94" y="104.04" font-family="Helvetica, Arial, sans-serif" font-size="14.4" fill="#8A8F98" text-anchor="middle">SIDE</text>
+<text x="984.24" y="104.04" font-family="Helvetica, Arial, sans-serif" font-size="14.4" fill="#8A8F98" text-anchor="middle">FRONT</text>
+<text x="1345.54" y="104.04" font-family="Helvetica, Arial, sans-serif" font-size="14.4" fill="#8A8F98" text-anchor="middle">SIDE</text>
+<text x="1511.71" y="99" font-family="Helvetica, Arial, sans-serif" font-size="10.08" fill="#8A8F98" text-anchor="middle" transform="rotate(-90 1511.71 99)">GLUE</text>
+</g>
+<g id="Legend" inkscape:groupmode="layer" inkscape:label="Legend">
+<text x="36" y="192.24" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#0F1115" text-anchor="start">Sleeve dieline · inside 152.4 × 101.6 × 38.1 mm</text>
+<text x="36" y="207.24" font-family="Helvetica, Arial, sans-serif" font-size="8" fill="#565C68" text-anchor="start">Board: SBS paperboard 0.018 in (0.46 mm) · Flat size (cut line): 522.5 mm × 38.1 mm · Drawn at 1:1, print at 100% (actual size)</text>
+<text x="36" y="219.24" font-family="Helvetica, Arial, sans-serif" font-size="8" fill="#565C68" text-anchor="start">Front/back panel 152.9 mm · Side panel 102.1 mm · Sleeve depth 38.1 mm · Glue flap 12.7 mm</text>
+<path d="M36 234.24 L58 234.24" fill="none" stroke="#E6007E" stroke-width="0.75" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="64" y="237.24" font-family="Helvetica, Arial, sans-serif" font-size="8" fill="#0F1115" text-anchor="start">Cut</text>
+<path d="M92.45 234.24 L114.45 234.24" fill="none" stroke="#0077C8" stroke-width="0.75" stroke-dasharray="4.5 3" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="120.45" y="237.24" font-family="Helvetica, Arial, sans-serif" font-size="8" fill="#0F1115" text-anchor="start">Fold</text>
+<path d="M152.01 234.24 L174.01 234.24" fill="none" stroke="#00A3AD" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="180.01" y="237.24" font-family="Helvetica, Arial, sans-serif" font-size="8" fill="#0F1115" text-anchor="start">Bleed 0.125 in (3.2 mm)</text>
+<path d="M281.38 234.24 L303.38 234.24" fill="none" stroke="#22A447" stroke-width="0.75" stroke-dasharray="1.5 2.5" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="309.38" y="237.24" font-family="Helvetica, Arial, sans-serif" font-size="8" fill="#0F1115" text-anchor="start">Safe zone 0.125 in inside</text>
+<path d="M415.21 234.24 L437.21 234.24" fill="none" stroke="#ECECEC" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="443.21" y="237.24" font-family="Helvetica, Arial, sans-serif" font-size="8" fill="#0F1115" text-anchor="start">Glue area</text>
+<path d="M1463.18 185.24 L1463.18 191.24 M1463.18 188.24 L1535.18 188.24 M1535.18 185.24 L1535.18 191.24" fill="none" stroke="#0F1115" stroke-width="0.75" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="1459.18" y="190.74" font-family="Helvetica, Arial, sans-serif" font-size="7" fill="#0F1115" text-anchor="end">1 in</text>
+<path d="M1463.18 201.24 L1463.18 207.24 M1463.18 204.24 L1534.05 204.24 M1534.05 201.24 L1534.05 207.24" fill="none" stroke="#0F1115" stroke-width="0.75" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="1459.18" y="206.74" font-family="Helvetica, Arial, sans-serif" font-size="7" fill="#0F1115" text-anchor="end">25 mm</text>
+<text x="36" y="253.24" font-family="Helvetica, Arial, sans-serif" font-size="7.5" fill="#565C68" text-anchor="start">Rule-of-thumb board allowances are built in. Print at 100% and fold a test sample before you send artwork to production.</text>
+<a href="https://www.vorexpackaging.ca/quote/?product=Sleeve%20Boxes&amp;length=152.4&amp;width=101.6&amp;height=38.1&amp;unit=mm&amp;utm_source=dieline-template&amp;utm_medium=download&amp;utm_campaign=dieline-sleeve&amp;utm_content=svg"><text x="36" y="271.24" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#0F5F63" text-anchor="start">Want it printed? Get a quote at vorexpackaging.ca/quote</text></a>
+<text x="36" y="284.24" font-family="Helvetica, Arial, sans-serif" font-size="7" fill="#565C68" text-anchor="start">Free dieline template from vorexpackaging.ca/tools/dieline-generator · Custom printed boxes made to your size</text>
+</g>
+</svg>

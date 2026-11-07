@@ -79,6 +79,7 @@ class DielinePath
             $this->distance($start, $corner),
             $this->distance($end, $corner),
         );
+        $radius = $distanceToTangent * tan($angle / 2);
 
         $tangentStart = [
             'x' => $corner['x'] + ($fromCorner['x'] * $distanceToTangent),
@@ -111,8 +112,17 @@ class DielinePath
             $endAngle -= M_PI * 2;
         }
 
-        for ($segment = 1; $segment <= $this->arcSegments; $segment++) {
-            $progress = $segment / $this->arcSegments;
+        $maximumStep = 2 * acos(max(-1, min(1, 1 - 0.01 / $radius)));
+        $segments = max($this->arcSegments, (int) ceil(abs($endAngle - $startAngle) / max(0.001, $maximumStep)));
+
+        for ($segment = 1; $segment <= $segments; $segment++) {
+            if ($segment === $segments) {
+                $this->lineTo($tangentEnd['x'], $tangentEnd['y']);
+
+                continue;
+            }
+
+            $progress = $segment / $segments;
             $angle = $startAngle + (($endAngle - $startAngle) * $progress);
 
             $this->lineTo(

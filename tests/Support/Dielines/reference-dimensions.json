@@ -1,0 +1,159 @@
+{
+    "burger-box": {
+        "l": 200,
+        "w": 100,
+        "h": 100,
+        "lid_depth": 50,
+        "lid_panel_depth": 89.133,
+        "hinge_depth": 49.133,
+        "tuck_flap": 49.5,
+        "board_thickness": 0.5
+    },
+    "carry-bag": {
+        "l": 100,
+        "w": 50,
+        "h": 150,
+        "top_hem": 40,
+        "bottom_depth": 38,
+        "glue_flap": 13,
+        "handle_span": 50,
+        "handle_drop": 15,
+        "hole_diameter": 5
+    },
+    "clamshell-burger-box": {
+        "l": 120,
+        "w": 120,
+        "h": 40,
+        "lid_depth": 40
+    },
+    "flip-top-burger-box": {
+        "l": 97.5,
+        "w": 97.5,
+        "h": 80,
+        "rim_length": 120
+    },
+    "fries-scoop": {
+        "l": 100,
+        "w": 40,
+        "h": 100,
+        "base_length": 50,
+        "camber": 15,
+        "board_thickness": 0.5,
+        "gusset_allowance": 1.345,
+        "front_clearance": 5
+    },
+    "gable-box": {
+        "l": 101,
+        "w": 50,
+        "h": 70,
+        "handle_height": 80,
+        "hole_diameter": 22
+    },
+    "hang-tab-carton": {
+        "l": 100,
+        "w": 50,
+        "h": 150,
+        "hanger_height": 50,
+        "hanger_slot_width": 40,
+        "hanger_slot_height": 6,
+        "hanger_hole_diameter": 10,
+        "tuck_flap": 15,
+        "dust_flap": 32
+    },
+    "lock-tab-pizza-box": {
+        "l": 200,
+        "w": 150,
+        "h": 50,
+        "board_thickness": 1,
+        "vent_diameter": 15
+    },
+    "open-food-tray": {
+        "l": 200,
+        "w": 100,
+        "h": 40,
+        "corner_tab": 15,
+        "board_thickness": 0.5
+    },
+    "pizza-box": {
+        "l": 200,
+        "w": 200,
+        "h": 50,
+        "corner_cut": 58.5,
+        "board_thickness": 1,
+        "vent_diameter": 20
+    },
+    "rollover-pizza-box": {
+        "l": 200,
+        "w": 160,
+        "h": 60,
+        "board_thickness": 1
+    },
+    "sandwich-wedge": {
+        "l": 200,
+        "w": 110,
+        "h": 15
+    },
+    "seal-end-carton": {
+        "l": 100,
+        "w": 50,
+        "h": 150,
+        "glue_flap": 13,
+        "seal_flap": 50
+    },
+    "vial-insert": {
+        "l": 200,
+        "w": 150,
+        "h": 50,
+        "vial_diameter": 20,
+        "wall_taper": 13
+    },
+    "auto-bottom-tuck-top": {
+        "l": 100,
+        "w": 50,
+        "h": 150,
+        "tuck_flap": 15,
+        "glue_flap": 13
+    },
+    "reverse-tuck-flap-box": {
+        "l": 100,
+        "w": 50,
+        "h": 150,
+        "tuck_flap": 15,
+        "glue_flap": 13
+    },
+    "straight-tuck-flap": {
+        "l": 100,
+        "w": 50,
+        "h": 150,
+        "tuck_flap": 15,
+        "glue_flap": 13
+    },
+    "snap-lock-bottom-tuck-top": {
+        "l": 100,
+        "w": 50,
+        "h": 150,
+        "tuck_flap": 15,
+        "glue_flap": 13
+    },
+    "four-corner-food-tray": {
+        "l": 150,
+        "w": 90,
+        "h": 40,
+        "tuck_flap": 15,
+        "corner_tab": 20
+    },
+    "full-overlap-carton": {
+        "l": 100,
+        "w": 50,
+        "h": 150,
+        "glue_flap": 20,
+        "flap_height": 49.1
+    },
+    "open-ended-sleeve": {
+        "l": 152.4,
+        "w": 101.6,
+        "h": 38.1,
+        "glue_flap": 12.7,
+        "board_thickness": 0.4572
+    }
+}

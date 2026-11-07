@@ -1,0 +1,243 @@
+<?xml version="1.0"?>
+<svg xmlns="http://www.w3.org/2000/svg" data-source="https://www.diecuttemplates.com/" width="100%" id="svg" class="main_svg main_svg_black_bg" viewBox="-167.2065283088 -185 334.4130566176 378.87469545269" height="100%" style="background:#111;min-height:100vh" data-original-drawing="https://d2atdwxjx7uc4i.cloudfront.net/svg/s_5221020260912-2-atsg5l.svg" data-original-page="https://www.diecuttemplates.com/dielines/52210/food-boxes-becf-12013" data-reference-dimensions="{&quot;l&quot;:100,&quot;w&quot;:40,&quot;h&quot;:100,&quot;base_length&quot;:50,&quot;camber&quot;:15,&quot;board_thickness&quot;:0.5,&quot;gusset_allowance&quot;:1.345,&quot;front_clearance&quot;:5}">
+  <style>
+  .color-1 {
+    stroke:rgb(255,0,0);
+    stroke-width:1;
+  }
+
+  .color-2 {
+    stroke:rgb(255,255,0);
+    stroke-width: 1;
+  }
+
+  .color-3 {
+    stroke:rgb(0,255,0);
+    stroke-width: 1;
+  }
+
+  .color-4 {
+    stroke:rgb(0,255,255);
+    stroke-width: 1;
+  }
+
+  .color-5 {
+    stroke:rgb(0,0,255);
+    stroke-width: 1;
+  }
+
+  .color-6 {
+    stroke:rgb(255,0,255);
+    stroke-width: 1;
+  }
+
+  .color-8 {
+    stroke:rgb(65,65,65);
+    stroke-width: 1;
+  }
+
+  .color-9 {
+    stroke:rgb(128,128,128);
+    stroke-width: 1;
+  }
+
+  .color-10 {
+    stroke:rgb(255,0,0);
+    stroke-width: 1;
+  }
+
+  .color-50 {
+    stroke:rgb(255,255,0);
+    stroke-width: 1;
+  }
+
+  .color-11 {
+    stroke:rgb(255,170,170);
+    stroke-width: 1;
+  }
+
+  .color-12 {
+    stroke:rgb(189,0,0);
+    stroke-width: 1;
+  }
+
+  .color-13 {
+    stroke:rgb(189,126,126);
+    stroke-width: 1;
+  }
+
+  .color-14 {
+    stroke:rgb(129,0,0);
+    stroke-width: 1;
+  }
+
+  .color-17 {
+    stroke:rgb(104,69 ,69);
+    stroke-width: 1;
+  }
+
+  .color-20 {
+    stroke:rgb(255,63,0);
+    stroke-width: 1;
+  }
+
+  .color-35 {
+    stroke:rgb(129,107,86);
+    stroke-width: 1;
+  }
+
+  .color-115 {
+    stroke:rgb(86,129,107);
+    stroke-width: 1;
+  }
+
+  .color-43 {
+    stroke:rgb(189, 173, 126);
+    stroke-width: 1;
+  }
+
+  .color-255 {
+    stroke:rgb(255,255,255);
+    stroke-width: 1;
+  }
+
+  .color-254 {
+    stroke:rgb(190,190,190);
+    stroke-width: 1;
+  }
+
+  .color-7 {
+    stroke:rgb(255,255,255);
+    stroke-width: 1;
+  }
+
+  </style>
+
+  <defs>
+    <marker id="arrow_start" markerWidth="10" markerHeight="10" refX="0" refY="1" orient="auto" markerUnits="strokeWidth">
+      <line x1="0" y1="1" x2="3" y2="2" class="dmt-line" stroke="white"/>
+      <line x1="0" y1="1" x2="3" y2="0" class="dmt-line" stroke="white"/>
+    </marker>
+    <marker id="arrow_end" markerWidth="10" markerHeight="10" refX="3" refY="1" orient="auto" markerUnits="strokeWidth">
+      <line x1="0" y1="0" x2="3" y2="1" class="dmt-line" stroke="white"/>
+      <line x1="3" y1="1" x2="0" y2="2" class="dmt-line" stroke="white"/>
+    </marker>
+  </defs>
+
+    <line x1="-48.25" y1="115.0" x2="-24.7932021797" y2="21.1728087187" class="svg-line color-1"/>
+<line x1="-66.344625479" y1="-9.6638436302" x2="-91.344625479" y2="-12.7013573986" class="svg-line color-1"/>
+<line x1="-65.859554229" y1="-7.7235586299" x2="-66.344625479" y2="-9.6638436302" class="svg-line color-1"/>
+<line x1="-25.3802703644" y1="-17.8433795961" x2="-45.1872414895" y2="-12.8916368148" class="svg-line color-1"/>
+<line x1="-65.859554229" y1="-7.7235586299" x2="-45.1872414895" y2="-12.8916368148" class="svg-line color-1"/>
+<line x1="-28.5265396142" y1="-0.0" x2="-25.0" y2="-20.0" class="svg-line color-1"/>
+<line x1="-25.0" y1="20.0" x2="-28.5265396142" y2="-0.0" class="svg-line color-1"/>
+<line x1="-102.2061537878" y1="-33.0667229775" x2="-91.344625479" y2="-12.7013573986" class="svg-line color-1"/>
+<line x1="-102.2061537878" y1="-98.2074024741" x2="-102.2061537878" y2="-33.0667229775" class="svg-line color-1"/>
+<line x1="-50.0" y1="-120.0" x2="-91.344625479" y2="-109.6638436302" class="svg-line color-1"/>
+<line x1="-91.344625479" y1="-109.6638436302" x2="-101.2549230149" y2="-100.3988733623" class="svg-line color-1"/>
+<line x1="-25.0" y1="20.0" x2="-24.7932021797" y2="21.1728087187" class="svg-line color-1"/>
+<line x1="50.0" y1="-120.0" x2="91.344625479" y2="-109.6638436302" class="svg-line color-1"/>
+<line x1="91.344625479" y1="-109.6638436302" x2="101.2549230149" y2="-100.3988733623" class="svg-line color-1"/>
+<line x1="102.2061537878" y1="-98.2074024741" x2="102.2061537878" y2="-33.0667229775" class="svg-line color-1"/>
+<line x1="102.2061537878" y1="-33.0667229775" x2="91.344625479" y2="-12.7013573986" class="svg-line color-1"/>
+<line x1="25.0" y1="20.0" x2="28.5265396142" y2="-0.0" class="svg-line color-1"/>
+<line x1="28.5265396142" y1="-0.0" x2="25.0" y2="-20.0" class="svg-line color-1"/>
+<line x1="65.859554229" y1="-7.7235586299" x2="45.1872414895" y2="-12.8916368148" class="svg-line color-1"/>
+<line x1="25.3802703644" y1="-17.8433795961" x2="45.1872414895" y2="-12.8916368148" class="svg-line color-1"/>
+<line x1="65.859554229" y1="-7.7235586299" x2="66.344625479" y2="-9.6638436302" class="svg-line color-1"/>
+<line x1="66.344625479" y1="-9.6638436302" x2="91.344625479" y2="-12.7013573986" class="svg-line color-1"/>
+<line x1="25.0" y1="20.0" x2="24.7932021797" y2="21.1728087187" class="svg-line color-1"/>
+<line x1="-7.5" y1="26.133029644" x2="-5.4062916774" y2="16.2829064291" class="svg-line color-1"/>
+<line x1="-3.449996476" y1="14.6987298108" x2="3.449996476" y2="14.6987298108" class="svg-line color-1"/>
+<line x1="5.4062916774" y1="16.2829064291" x2="7.5" y2="26.133029644" class="svg-line color-1"/>
+<line x1="48.25" y1="115.0" x2="24.7932021797" y2="21.1728087187" class="svg-line color-1"/>
+<line x1="-91.344625479" y1="-109.6638436302" x2="-65.859554229" y2="-7.7235586299" class="svg-line color-3"/>
+<line x1="-45.1872414895" y1="-12.8916368148" x2="-70.6723127395" y2="-114.8319218151" class="svg-line color-3"/>
+<line x1="-50.0" y1="-120.0" x2="-25.0" y2="-20.0" class="svg-line color-3"/>
+<line x1="-28.5265396142" y1="-0.0" x2="28.5265396142" y2="-0.0" class="svg-line color-3"/>
+<line x1="45.1872414895" y1="-12.8916368148" x2="70.6723127395" y2="-114.8319218151" class="svg-line color-3"/>
+<line x1="91.344625479" y1="-109.6638436302" x2="66.344625479" y2="-9.6638436302" class="svg-line color-3"/>
+<line x1="50.0" y1="-120.0" x2="25.0" y2="-20.0" class="svg-line color-3"/>
+
+
+      <g class="dmt"><text x="-115.2061537878" y="18.8748477264" fill="white" transform="rotate(-90, -115.2061537878, 18.8748477264)" font-size="6px" style="stroke-width:0; " data-text="248.87mm" class="svg-text line-text">248.87mm</text>
+  <g class="dmt-lines">
+<line x1="-113.2061537878" y1="-120.0" x2="-105.2061537878" y2="-120.0" class="line-indicator svg-line dmt-line color-255"/>
+
+<line x1="-113.2061537878" y1="128.8746954527" x2="-105.2061537878" y2="128.8746954527" class="line-indicator svg-line dmt-line color-255"/>
+
+<line x1="-112.2061537878" y1="-120.0" x2="-111.7061537878" y2="-118.1339745962" class="line-indicator svg-line dmt-line color-255"/>
+
+<line x1="-112.2061537878" y1="-120.0" x2="-112.7061537878" y2="-118.1339745962" class="line-indicator svg-line dmt-line color-255"/>
+
+<line x1="-112.2061537878" y1="128.8746954527" x2="-112.7061537878" y2="127.0086700489" class="line-indicator svg-line dmt-line color-255"/>
+
+<line x1="-112.2061537878" y1="128.8746954527" x2="-111.7061537878" y2="127.0086700489" class="line-indicator svg-line dmt-line color-255"/>
+
+<line x1="-112.2061537878" y1="-120.0" x2="-112.2061537878" y2="128.8746954527" class="line-indicator svg-line dmt-line color-255"/>
+
+
+  </g>
+</g><g class="dmt"><text x="-11.09375" y="-133.0" fill="white" transform="rotate(0, -11.09375, -133.0)" font-size="6px" style="stroke-width:0; " data-text="204.41mm" class="svg-text line-text">204.41mm</text>
+  <g class="dmt-lines">
+<line x1="-102.2061537878" y1="-131.0" x2="-102.2061537878" y2="-123.0" class="line-indicator svg-line dmt-line color-255"/>
+
+<line x1="102.2061537878" y1="-131.0" x2="102.2061537878" y2="-123.0" class="line-indicator svg-line dmt-line color-255"/>
+
+<line x1="-102.2061537878" y1="-130.0" x2="-100.340128384" y2="-130.5" class="line-indicator svg-line dmt-line color-255"/>
+
+<line x1="-102.2061537878" y1="-130.0" x2="-100.340128384" y2="-129.5" class="line-indicator svg-line dmt-line color-255"/>
+
+<line x1="102.2061537878" y1="-130.0" x2="100.340128384" y2="-129.5" class="line-indicator svg-line dmt-line color-255"/>
+
+<line x1="102.2061537878" y1="-130.0" x2="100.340128384" y2="-130.5" class="line-indicator svg-line dmt-line color-255"/>
+
+<line x1="-102.2061537878" y1="-130.0" x2="102.2061537878" y2="-130.0" class="line-indicator svg-line dmt-line color-255"/>
+
+
+  </g>
+</g>
+
+    
+    <path d="M -49.999999999998536 -120.00000000000563 A 90.8333333333 90.8333333333 0 0 0 49.999999999998536 -120.00000000000563" fill="none" class="svg-arc color-1" data-cx="0.0" data-cy="-195.8333333333" data-r="90.8333333333"/>
+<path d="M -101.2549230149313 -100.39887336233005 A 3.0 3.0 0 0 0 -102.2061537878 -98.2074024741" fill="none" class="svg-arc color-1" data-cx="-99.2061537878" data-cy="-98.2074024741" data-r="3.0"/>
+<path d="M 102.2061537878 -98.2074024741 A 3.0 3.0 0 0 0 101.2549230149313 -100.39887336233005" fill="none" class="svg-arc color-1" data-cx="99.2061537878" data-cy="-98.2074024741" data-r="3.0"/>
+<path d="M -3.449996476 14.6987298108 A 2.0 2.0 0 0 0 -5.4062916774516445 16.282906429089365" fill="none" class="svg-arc color-1" data-cx="-3.449996476" data-cy="16.6987298108" data-r="2.0"/>
+<path d="M 5.4062916774516445 16.282906429089365 A 2.0 2.0 0 0 0 3.449996476 14.6987298108" fill="none" class="svg-arc color-1" data-cx="3.449996476" data-cy="16.6987298108" data-r="2.0"/>
+<path d="M -48.250000000035534 114.99999999998465 A 90.8333333333 90.8333333333 0 0 0 48.25000000003555 114.99999999998465" fill="none" class="svg-arc color-1" data-cx="0.0" data-cy="38.0413621194" data-r="90.8333333333"/>
+<path d="M 25.000000000000007 -20.00000000002193 A 50.0 50.0 0 0 0 -25.00000000000002 -20.000000000021917" fill="none" class="svg-arc color-3" data-cx="0.0" data-cy="23.3012701892" data-r="50.0"/>
+<path d="M 7.5000000000184395 26.13302964401017 A 50.0 50.0 0 0 0 25.000000000000007 20.00000000002193" fill="none" class="svg-arc color-3" data-cx="-0.0" data-cy="-23.3012701892" data-r="50.0"/>
+<path d="M -24.99999999999999 20.000000000021938 A 50.0 50.0 0 0 0 -7.500000000018423 26.133029644010175" fill="none" class="svg-arc color-3" data-cx="0.0" data-cy="-23.3012701892" data-r="50.0"/>
+
+
+      
+
+
+  
+
+
+
+
+
+  <g class="abc" id="abc-52210-a" style="opacity: 0"> <text x="0.0" y="-126.0 " font-size="10.0" fill="white" id="text-52210-a" class="line-text svg-abc-line" style="stroke-width:0;">
+a
+</text><line class="svg-line dmt-line" stroke-width="1" marker-start="url(#arrow_start)" marker-end="url(#arrow_end)" stroke="white" x1="-50.0" y1="-120.0" x2="50.0" y2="-120.0"/>
+</g>
+<g class="abc" id="abc-52210-b" style="opacity: 0"> <text x="0.0" y="-26.0 " font-size="10.0" fill="white" id="text-52210-b" class="line-text svg-abc-line" style="stroke-width:0;">
+b
+</text><line class="svg-line dmt-line" stroke-width="1" marker-start="url(#arrow_start)" marker-end="url(#arrow_end)" stroke="white" x1="-25.0" y1="-20.0" x2="25.0" y2="-20.0"/>
+</g>
+<g class="abc" id="abc-52210-c" style="opacity: 0"> <text x="-19.0" y="-76.0 " font-size="10.0" fill="white" id="text-52210-c" class="line-text svg-abc-line" style="stroke-width:0;">
+c
+</text><line class="svg-line dmt-line" stroke-width="1" marker-start="url(#arrow_start)" marker-end="url(#arrow_end)" stroke="white" x1="-25.0" y1="-20.0" x2="-25.0" y2="-120.0"/>
+</g>
+<g class="abc" id="abc-52210-d" style="opacity: 0"> <text x="31.0" y="-6.0 " font-size="10.0" fill="white" id="text-52210-d" class="line-text svg-abc-line" style="stroke-width:0;">
+d
+</text><line class="svg-line dmt-line" stroke-width="1" marker-start="url(#arrow_start)" marker-end="url(#arrow_end)" stroke="white" x1="25.0" y1="-20.0" x2="25.0" y2="20.0"/>
+</g>
+<g class="abc" id="abc-52210-e" style="opacity: 0"> <text x="6.0" y="-118.5 " font-size="10.0" fill="white" id="text-52210-e" class="line-text svg-abc-line" style="stroke-width:0;">
+e
+</text><line class="svg-line dmt-line" stroke-width="1" stroke="white" x1="0.0" y1="-105.0" x2="0.0" y2="-120.0"/>
+</g>
+ Sorry, your browser does not support inline SVG.
+</svg>

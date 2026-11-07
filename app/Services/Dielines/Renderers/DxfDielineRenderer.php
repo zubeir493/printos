@@ -17,10 +17,12 @@ class DxfDielineRenderer
             ...$this->layer('CUT', 1),
             ...$this->layer('CREASE', 7),
             ...$this->layer('BLEED', 6),
+            ...$this->layer('PERFORATION', 200),
+            ...$this->layer('CUT_CREASE', 4),
             '0', 'ENDTAB', '0', 'ENDSEC', '0', 'SECTION', '2', 'ENTITIES',
         ];
 
-        foreach (['CUT' => 'cut', 'CREASE' => 'crease', 'BLEED' => 'bleed'] as $dxfLayer => $geometryLayer) {
+        foreach (['CUT' => 'cut', 'CREASE' => 'crease', 'BLEED' => 'bleed', 'PERFORATION' => 'perforation', 'CUT_CREASE' => 'cut_crease'] as $dxfLayer => $geometryLayer) {
             foreach ($geometry['layers'][$geometryLayer] ?? [] as $line) {
                 array_push($lines, ...$this->line($dxfLayer, $line));
             }

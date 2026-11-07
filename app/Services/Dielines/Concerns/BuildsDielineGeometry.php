@@ -7,6 +7,49 @@ use InvalidArgumentException;
 
 trait BuildsDielineGeometry
 {
+    /** @return array{l: string, w: string, h: string} */
+    public function baseDimensionLabels(): array
+    {
+        return ['l' => 'Length', 'w' => 'Width', 'h' => 'Height'];
+    }
+
+    public function referenceUrl(): ?string
+    {
+        return null;
+    }
+
+    public function referenceDrawingUrl(): ?string
+    {
+        return null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $dimensions
+     * @return array<string, array<int, string>>
+     */
+    public function dimensionRules(array $dimensions): array
+    {
+        return [];
+    }
+
+    /**
+     * Rule calculations must also work while a dependent input is blank.
+     * Required and numeric rules validate the original state separately.
+     *
+     * @param  array<string, mixed>  $dimensions
+     * @return array<string, float>
+     */
+    protected function dimensionsForRules(array $dimensions): array
+    {
+        $values = [];
+
+        foreach ($this->defaults() as $key => $default) {
+            $values[$key] = is_numeric($dimensions[$key] ?? null) ? (float) $dimensions[$key] : (float) $default;
+        }
+
+        return $values;
+    }
+
     /**
      * @param  array<string, mixed>  $dimensions
      */

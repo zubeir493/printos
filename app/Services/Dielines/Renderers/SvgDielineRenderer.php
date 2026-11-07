@@ -72,8 +72,9 @@ class SvgDielineRenderer
         return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="'.$viewBox.'"'.$sizeAttributes.' role="img" aria-label="'.$this->escape($geometry['name'] ?? 'Dieline').'">'.
             '<g stroke-linecap="round" stroke-linejoin="round" fill="none">'.
             $this->layer($geometry, 'bleed', $bleedColor, $strokeWidth, $bleedDash, $forExport, $coordinateScale).
-            ($forExport ? '' : $this->areas($geometry['layers']['glue'] ?? [])).
             $this->layer($geometry, 'crease', $creaseColor, $strokeWidth, $creaseDash, $forExport, $coordinateScale).
+            $this->layer($geometry, 'cut_crease', '#0891b2', $strokeWidth, '8 3 2 3', $forExport, $coordinateScale).
+            $this->layer($geometry, 'perforation', '#a855f7', $strokeWidth, '2 2', $forExport, $coordinateScale).
             $this->layer($geometry, 'cut', $cutColor, $strokeWidth, null, $forExport, $coordinateScale).
             '</g>'.
             ($forExport ? '' : $this->labels($geometry['labels'] ?? [], '#374151')).
@@ -92,14 +93,25 @@ class SvgDielineRenderer
                 '<span>'.e($this->sizeLabel($geometry)).'</span>'.
                 '</div>'.
                 '<div class="dieline-preview-artboard">'.$this->render($geometry).'</div>'.
-                '<div class="dieline-preview-legend">'.
-                '<span><i class="dieline-legend-line dieline-legend-cut"></i><strong>Cut</strong></span>'.
-                '<span><i class="dieline-legend-line dieline-legend-crease"></i><strong>Crease</strong></span>'.
-                '<span><i class="dieline-legend-area dieline-legend-glue"></i><strong>Glue</strong></span>'.
-                '<span><i class="dieline-legend-line dieline-legend-bleed"></i><strong>Bleed</strong></span>'.
-                '</div>'.
+                $this->legend($geometry).
                 '</div>'
         );
+    }
+
+    /** @param array<string, mixed> $geometry */
+    private function legend(array $geometry): string
+    {
+        $items = [];
+        foreach ([['cut', 'Cut', '#111827', null], ['crease', 'Crease', '#2563eb', '8 6'], ['bleed', 'Bleed', '#d97706', '6 5'], ['perforation', 'Perforation', '#a855f7', '2 2'], ['cut_crease', 'Cut &amp; crease', '#0891b2', '8 3 2 3']] as [$layer, $label, $color, $dash]) {
+            if (empty($geometry['layers'][$layer])) {
+                continue;
+            }
+
+            $sample = '<line x1="0" y1="5" x2="30" y2="5" stroke="'.$color.'" stroke-width="1.5"'.($dash ? ' stroke-dasharray="'.$dash.'"' : '').'/>';
+            $items[] = '<span data-dieline-layer="'.$layer.'"><svg viewBox="0 0 30 10" width="30" height="10" aria-hidden="true">'.$sample.'</svg><strong>'.$label.'</strong></span>';
+        }
+
+        return $items === [] ? '' : '<div class="dieline-preview-legend">'.implode('', $items).'</div>';
     }
 
     /**
@@ -121,22 +133,6 @@ class SvgDielineRenderer
     }
 
     /**
-     * @param  array<int, array{points: array<int, array{x: float, y: float}>}>  $areas
-     */
-    private function areas(array $areas): string
-    {
-        return collect($areas)
-            ->map(function (array $area): string {
-                $points = collect($area['points'])
-                    ->map(fn (array $point): string => $point['x'].','.$point['y'])
-                    ->implode(' ');
-
-                return '<polygon points="'.$points.'" fill="#dcfce7" stroke="#16a34a" stroke-width="1.2" vector-effect="non-scaling-stroke"/>';
-            })
-            ->implode('');
-    }
-
-    /**
      * @param  array<int, array{x: float, y: float, text: string}>  $labels
      */
     private function labels(array $labels, string $color): string
@@ -148,7 +144,7 @@ class SvgDielineRenderer
 
     private function number(float $value): string
     {
-        return Number::format($value, maxPrecision: 3);
+        return rtrim(rtrim(number_format($value, 3, '.', ''), '0'), '.');
     }
 
     /**

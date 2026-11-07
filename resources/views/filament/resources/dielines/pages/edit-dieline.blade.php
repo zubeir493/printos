@@ -3,19 +3,16 @@
         <aside class="dieline-editor-sidebar">
             <div class="dieline-editor-sidebar-scroll">
 
-                <label class="dieline-editor-field">
-                    <span>Dieline type <sup>*</sup></span>
-                    <x-filament::input.wrapper x-on:focus-input.stop="$el.querySelector('select')?.focus()">
-                        <x-filament::input.select wire:model.live="data.template_key">
-                            @foreach ($this->templateOptions() as $templateKey => $templateName)
-                                <option value="{{ $templateKey }}">{{ $templateName }}</option>
-                            @endforeach
-                        </x-filament::input.select>
-                    </x-filament::input.wrapper>
+                <div class="dieline-editor-field">
+                    <span id="dieline-type-label">Dieline type <sup>*</sup></span>
+                    <button type="button" class="dieline-template-trigger" aria-labelledby="dieline-type-label dieline-current-template" aria-haspopup="dialog" x-on:click="$dispatch('open-modal', { id: 'dieline-template-picker' })">
+                        <span><strong id="dieline-current-template">{{ $this->templateOptions()[data_get($this->data, 'template_key')] ?? 'Choose a blueprint' }}</strong></span>
+                        <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><path d="m7 4 6 6-6 6" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
+                    </button>
                     @error('data.template_key')
                         <small>{{ $message }}</small>
                     @enderror
-                </label>
+                </div>
 
                 <div class="dieline-editor-fields">
                     @foreach ($this->dimensionFields() as $field)
@@ -28,8 +25,9 @@
                             >
                                 <input
                                     type="number"
-                                    step="0.1"
-                                    min="0"
+                                    step="{{ $field['step'] }}"
+                                    min="{{ $field['min'] }}"
+                                    @if (isset($field['max'])) max="{{ $field['max'] }}" @endif
                                     wire:model.live.debounce.300ms="data.dimensions.{{ $field['key'] }}"
                                     class="fi-input"
                                 />
@@ -39,11 +37,6 @@
                             @enderror
                         </label>
                     @endforeach
-                </div>
-                <div class="dieline-preview-legend" aria-label="Dieline line types">
-                    <span><strong>Cut</strong><em>Solid black</em></span>
-                    <span><strong>Fold</strong><em>Blue dashed fold</em></span>
-                    <span><strong>Bleed</strong><em>Amber dashed margin</em></span>
                 </div>
             </div>
 
@@ -70,4 +63,23 @@
             {!! $this->preview() !!}
         </main>
     </form>
+
+    <x-filament::modal id="dieline-template-picker" width="6xl" heading="Choose a dieline" description="Browse the shapes, then select a blueprint to start with its recommended measurements.">
+        @php($cards = $this->templateCards())
+        <div x-data="{ query: '', terms: @js(array_map(fn ($card) => strtolower($card['name'].' '.$card['description']), $cards)) }" class="space-y-5" x-on:open-modal.window="if ($event.detail.id === 'dieline-template-picker') query = ''">
+            <x-filament::input.wrapper prefix-icon="heroicon-m-magnifying-glass">
+                <x-filament::input type="search" x-model="query" placeholder="Search blueprints…" aria-label="Search blueprints" />
+            </x-filament::input.wrapper>
+            <div class="dieline-template-grid grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+                @foreach ($cards as $card)
+                    <button type="button" class="dieline-template-card" wire:key="template-card-{{ $card['key'] }}" wire:click="selectTemplate('{{ $card['key'] }}')" wire:loading.attr="disabled" wire:target="selectTemplate" aria-label="{{ $card['name'] }}" aria-describedby="template-description-{{ $card['key'] }}" aria-pressed="{{ data_get($this->data, 'template_key') === $card['key'] ? 'true' : 'false' }}" x-show="{{ Illuminate\Support\Js::from(strtolower($card['name'].' '.$card['description'])) }}.includes(query.toLowerCase().trim())">
+                        <span class="dieline-template-thumbnail"><img src="{{ $card['thumbnail'] }}" alt="" loading="lazy" width="240" height="160"></span>
+                        <span class="dieline-template-card-name">{{ $card['name'] }}</span>
+                        <span class="dieline-template-card-description" id="template-description-{{ $card['key'] }}">{{ $card['description'] }}</span>
+                    </button>
+                @endforeach
+            </div>
+            <p x-cloak x-show="query.trim() && ! terms.some(term => term.includes(query.toLowerCase().trim()))" class="text-sm text-gray-500">No matching blueprints. Try another name.</p>
+        </div>
+    </x-filament::modal>
 </x-filament-panels::page>

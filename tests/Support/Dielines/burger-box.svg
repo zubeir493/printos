@@ -1,0 +1,450 @@
+<svg data-source="https://www.diecuttemplates.com/" width="100%" id="svg" xmlns="http://www.w3.org/1999/xhtml" class="main_svg main_svg_black_bg">
+  <style>
+  .color-1 {
+    stroke:rgb(255,0,0);
+    stroke-width:2;
+  }
+
+  .color-2 {
+    stroke:rgb(255,255,0);
+    stroke-width: 2;
+  }
+
+  .color-3 {
+    stroke:rgb(0,255,0);
+    stroke-width: 2;
+  }
+
+  .color-4 {
+    stroke:rgb(0,255,255);
+    stroke-width: 2;
+  }
+
+  .color-5 {
+    stroke:rgb(0,0,255);
+    stroke-width: 2;
+  }
+
+  .color-6 {
+    stroke:rgb(255,0,255);
+    stroke-width: 2;
+  }
+
+  .color-8 {
+    stroke:rgb(65,65,65);
+    stroke-width: 2;
+  }
+
+  .color-9 {
+    stroke:rgb(128,128,128);
+    stroke-width: 2;
+  }
+
+  .color-10 {
+    stroke:rgb(255,0,0);
+    stroke-width: 2;
+  }
+
+  .color-50 {
+    stroke:rgb(255,255,0);
+    stroke-width: 2;
+  }
+
+  .color-11 {
+    stroke:rgb(255,170,170);
+    stroke-width: 2;
+  }
+
+  .color-12 {
+    stroke:rgb(189,0,0);
+    stroke-width: 2;
+  }
+
+  .color-13 {
+    stroke:rgb(189,126,126);
+    stroke-width: 2;
+  }
+
+  .color-14 {
+    stroke:rgb(129,0,0);
+    stroke-width: 2;
+  }
+
+  .color-17 {
+    stroke:rgb(104,69 ,69);
+    stroke-width: 2;
+  }
+
+  .color-20 {
+    stroke:rgb(255,63,0);
+    stroke-width: 2;
+  }
+
+  .color-35 {
+    stroke:rgb(129,107,86);
+    stroke-width: 2;
+  }
+
+  .color-115 {
+    stroke:rgb(86,129,107);
+    stroke-width: 2;
+  }
+
+  .color-43 {
+    stroke:rgb(189, 173, 126);
+    stroke-width: 2;
+  }
+
+  .color-255 {
+    stroke:rgb(255,255,255);
+    stroke-width: 2;
+  }
+
+  .color-254 {
+    stroke:rgb(190,190,190);
+    stroke-width: 2;
+  }
+
+  .color-7 {
+    stroke:rgb(255,255,255);
+    stroke-width: 2;
+  }
+
+  </style>
+
+  <defs>
+    <marker id="arrow_start" markerWidth="10" markerHeight="10" refX="0" refY="1" orient="auto" markerUnits="strokeWidth">
+      <line x1="0" y1="1" x2="3" y2="2" class="dmt-line" stroke="white"  />
+      <line x1="0" y1="1" x2="3" y2="0" class="dmt-line" stroke="white"  />
+    </marker>
+    <marker id="arrow_end" markerWidth="10" markerHeight="10" refX="3" refY="1" orient="auto" markerUnits="strokeWidth">
+      <line x1="0" y1="0" x2="3" y2="1" class="dmt-line" stroke="white"  />
+      <line x1="3" y1="1" x2="0" y2="2" class="dmt-line" stroke="white"  />
+    </marker>
+  </defs>
+
+    <line x1="64.9336509646" y1="-338.7653961417" x2="135.0663490354" y2="-338.7653961417" class="svg-line color-3" />
+<line x1="62.9336509646" y1="-438.2653961417" x2="137.0663490354" y2="-438.2653961417" class="svg-line color-1" />
+<line x1="234.1147412781" y1="6.0153493272" x2="200.0" y2="-0.0" class="svg-line color-1" />
+<line x1="241.7751857093" y1="12.4432254241" x2="262.8343901576" y2="70.3029141175" class="svg-line color-1" />
+<line x1="257.3868684555" y1="82.9101827678" x2="217.6326980708" y2="100.0" class="svg-line color-1" />
+<line x1="-57.3868684555" y1="82.9101827678" x2="-17.6326980708" y2="100.0" class="svg-line color-1" />
+<line x1="-41.7751857093" y1="12.4432254241" x2="-62.8343901576" y2="70.3029141175" class="svg-line color-1" />
+<line x1="0.0" y1="-0.0" x2="-34.1147412781" y2="6.0153493272" class="svg-line color-1" />
+<line x1="218.2377576203" y1="-199.7398925191" x2="257.3868684555" y2="-182.9101827678" class="svg-line color-1" />
+<line x1="241.7751857093" y1="-112.4432254241" x2="262.8343901576" y2="-170.3029141175" class="svg-line color-1" />
+<line x1="200.0" y1="-100.0" x2="234.1147412781" y2="-106.0153493272" class="svg-line color-1" />
+<line x1="0.0" y1="-100.0" x2="-34.1147412781" y2="-106.0153493272" class="svg-line color-1" />
+<line x1="-41.7751857093" y1="-112.4432254241" x2="-62.8343901576" y2="-170.3029141175" class="svg-line color-1" />
+<line x1="-18.2377576203" y1="-199.7398925191" x2="-57.3868684555" y2="-182.9101827678" class="svg-line color-1" />
+<line x1="-18.4809980936" y1="-201.6470258273" x2="-58.2404619584" y2="-207.7491580893" class="svg-line color-1" />
+<line x1="-67.880681845" y1="-330.1698113472" x2="-66.1508446379" y2="-374.1448020989" class="svg-line color-1" />
+<line x1="-19.1326980708" y1="-338.7653961417" x2="-67.880681845" y2="-330.1698113472" class="svg-line color-3" />
+<line x1="-63.325698802" y1="-213.4457545909" x2="-67.880681845" y2="-330.1698113472" class="svg-line color-1" />
+<line x1="-17.6326980708" y1="100.0" x2="41.1836509646" y2="100.0" class="svg-line color-1" />
+<line x1="217.6326980708" y1="100.0" x2="158.8163490354" y2="100.0" class="svg-line color-1" />
+<line x1="217.6326980708" y1="100.0" x2="200.0" y2="-0.0" class="svg-line color-3" />
+<line x1="-17.6326980708" y1="100.0" x2="0.0" y2="-0.0" class="svg-line color-3" />
+<line x1="300.0" y1="17.6326980708" x2="300.0" y2="-117.6326980708" class="svg-line color-1" />
+<line x1="200.0" y1="-100.0" x2="300.0" y2="-117.6326980708" class="svg-line color-1" />
+<line x1="0.0" y1="-100.0" x2="-100.0" y2="-117.6326980708" class="svg-line color-1" />
+<line x1="-100.0" y1="17.6326980708" x2="-100.0" y2="-117.6326980708" class="svg-line color-1" />
+<line x1="-18.6326980708" y1="-389.1801208325" x2="-18.6326980708" y2="-432.2653961417" class="svg-line color-1" />
+<line x1="-19.4204747998" y1="-388.2028996276" x2="-62.1392268231" y2="-378.9256620418" class="svg-line color-1" />
+<line x1="219.4204747998" y1="-388.2028996276" x2="262.1392268231" y2="-378.9256620418" class="svg-line color-1" />
+<line x1="218.6326980708" y1="-389.1801208325" x2="218.6326980708" y2="-432.2653961417" class="svg-line color-1" />
+<line x1="-64.9825256205" y1="-377.2379695282" x2="-19.1326980708" y2="-338.7653961417" class="svg-line color-5" />
+<line x1="-19.1326980708" y1="-338.7653961417" x2="-19.1326980708" y2="-388.3140954287" class="svg-line color-3" />
+<line x1="-19.1326980708" y1="-289.6326980708" x2="-19.1326980708" y2="-338.7653961417" class="svg-line color-3" />
+<line x1="219.1326980708" y1="-338.7653961417" x2="267.880681845" y2="-330.1698113472" class="svg-line color-3" />
+<line x1="264.9825256205" y1="-377.2379695282" x2="219.1326980708" y2="-338.7653961417" class="svg-line color-5" />
+<line x1="267.880681845" y1="-330.1698113472" x2="266.1508446379" y2="-374.1448020989" class="svg-line color-1" />
+<line x1="263.325698802" y1="-213.4457545909" x2="267.880681845" y2="-330.1698113472" class="svg-line color-1" />
+<line x1="219.1326980708" y1="-338.7653961417" x2="219.1326980708" y2="-388.3140954287" class="svg-line color-3" />
+<line x1="219.1326980708" y1="-289.6326980708" x2="219.1326980708" y2="-338.7653961417" class="svg-line color-3" />
+<line x1="200.0" y1="-100.0" x2="217.6899972709" y2="-200.3249599118" class="svg-line color-3" />
+<line x1="-17.6899972709" y1="-200.3249599118" x2="0.0" y2="-100.0" class="svg-line color-3" />
+<line x1="200.0" y1="-0.0" x2="300.0" y2="17.6326980708" class="svg-line color-1" />
+<line x1="158.8163490354" y1="100.0" x2="151.582507872" y2="63.0773633116" class="svg-line color-1" />
+<line x1="41.1836509646" y1="100.0" x2="48.417492128" y2="63.0773633116" class="svg-line color-1" />
+<line x1="-100.0" y1="17.6326980708" x2="0.0" y2="-0.0" class="svg-line color-1" />
+<line x1="-19.1326980708" y1="-201.747046277" x2="-19.1326980708" y2="-249.6326980708" class="svg-line color-3" />
+<line x1="-17.6453550297" y1="-200.5" x2="80.0" y2="-200.5" class="svg-line color-5" />
+<line x1="217.6453550297" y1="-200.5" x2="120.0" y2="-200.5" class="svg-line color-5" />
+<line x1="219.1326980708" y1="-201.747046277" x2="219.1326980708" y2="-249.6326980708" class="svg-line color-3" />
+<line x1="218.4809980936" y1="-201.6470258273" x2="258.2404619584" y2="-207.7491580893" class="svg-line color-1" />
+<line x1="0.0" y1="-100.0" x2="0.0" y2="-0.0" class="svg-line color-3" />
+<line x1="0.0" y1="-100.0" x2="200.0" y2="-100.0" class="svg-line color-3" />
+<line x1="-18.7227511324" y1="-388.7653961417" x2="218.7227511324" y2="-388.7653961417" class="svg-line color-3" />
+<line x1="0.0" y1="-0.0" x2="200.0" y2="-0.0" class="svg-line color-3" />
+<line x1="200.0" y1="-100.0" x2="200.0" y2="-0.0" class="svg-line color-3" />
+<line x1="58.2309251748" y1="55.0" x2="141.7690748252" y2="55.0" class="svg-line color-1" />
+<line x1="41.1836509646" y1="-200.5" x2="48.417492128" y2="-163.5773633116" class="svg-line color-2" />
+<line x1="58.2309251748" y1="-155.5" x2="141.7690748252" y2="-155.5" class="svg-line color-2" />
+<line x1="158.8163490354" y1="-200.5" x2="151.582507872" y2="-163.5773633116" class="svg-line color-2" />
+<line x1="117.2928932188" y1="-203.2071067812" x2="120.5" y2="-200.0" class="svg-line color-1" />
+<line x1="83.4142135624" y1="-203.5" x2="116.5857864376" y2="-203.5" class="svg-line color-1" />
+<line x1="82.7071067812" y1="-203.2071067812" x2="79.5" y2="-200.0" class="svg-line color-1" />
+<line x1="216.4255912897" y1="-286.9255912897" x2="219.6326980708" y2="-290.1326980708" class="svg-line color-1" />
+<line x1="216.1326980708" y1="-286.2184845085" x2="216.1326980708" y2="-253.0469116332" class="svg-line color-1" />
+<line x1="216.4255912897" y1="-252.339804852" x2="219.6326980708" y2="-249.1326980708" class="svg-line color-1" />
+<line x1="-16.4255912897" y1="-252.339804852" x2="-19.6326980708" y2="-249.1326980708" class="svg-line color-1" />
+<line x1="-16.1326980708" y1="-286.2184845085" x2="-16.1326980708" y2="-253.0469116332" class="svg-line color-1" />
+<line x1="-16.4255912897" y1="-286.9255912897" x2="-19.6326980708" y2="-290.1326980708" class="svg-line color-1" />
+<line x1="18.6407577458" y1="-336.0582893605" x2="15.4336509646" y2="-339.2653961417" class="svg-line color-1" />
+<line x1="62.2265441834" y1="-336.0582893605" x2="65.4336509646" y2="-339.2653961417" class="svg-line color-1" />
+<line x1="137.7734558166" y1="-336.0582893605" x2="134.5663490354" y2="-339.2653961417" class="svg-line color-1" />
+<line x1="181.3592422542" y1="-336.0582893605" x2="184.5663490354" y2="-339.2653961417" class="svg-line color-1" />
+<line x1="-12.6326980708" y1="-438.2653961417" x2="17.9336509646" y2="-438.2653961417" class="svg-line color-1" />
+<line x1="17.9336509646" y1="-438.2653961417" x2="20.4336509646" y2="-441.2653961417" class="svg-line color-1" />
+<line x1="20.4336509646" y1="-441.2653961417" x2="60.4336509646" y2="-441.2653961417" class="svg-line color-1" />
+<line x1="60.4336509646" y1="-441.2653961417" x2="62.9336509646" y2="-438.2653961417" class="svg-line color-1" />
+<line x1="212.6326980708" y1="-438.2653961417" x2="182.0663490354" y2="-438.2653961417" class="svg-line color-1" />
+<line x1="139.5663490354" y1="-441.2653961417" x2="179.5663490354" y2="-441.2653961417" class="svg-line color-1" />
+<line x1="179.5663490354" y1="-441.2653961417" x2="182.0663490354" y2="-438.2653961417" class="svg-line color-1" />
+<line x1="137.0663490354" y1="-438.2653961417" x2="139.5663490354" y2="-441.2653961417" class="svg-line color-1" />
+<line x1="219.1326980708" y1="-338.7653961417" x2="184.0663490354" y2="-338.7653961417" class="svg-line color-3" />
+<line x1="-19.1326980708" y1="-338.7653961417" x2="15.9336509646" y2="-338.7653961417" class="svg-line color-3" />
+<line x1="19.3478645269" y1="-335.7653961417" x2="61.5194374022" y2="-335.7653961417" class="svg-line color-1" />
+<line x1="138.4805625978" y1="-335.7653961417" x2="180.6521354731" y2="-335.7653961417" class="svg-line color-1" />
+
+
+      
+
+    
+    <path d="M 241.77518570928297 12.443225424108917 A 10.0 10.0 0 0 0 234.11474127810368 6.015349327183982" fill="none" class="svg-arc color-1" data-cx="232.3782595014" data-cy="15.8634268573" data-r="10.0" />
+<path d="M 257.3868684555058 82.91018276779154 A 10.0 10.0 0 0 0 262.83439015754715 70.30291411751051" fill="none" class="svg-arc color-1" data-cx="253.4374639497" data-cy="73.7231155508" data-r="10.0" />
+<path d="M -62.83439015754715 70.30291411751051 A 10.0 10.0 0 0 0 -57.386868455505834 82.91018276779154" fill="none" class="svg-arc color-1" data-cx="-53.4374639497" data-cy="73.7231155508" data-r="10.0" />
+<path d="M -34.114741278103686 6.0153493271839835 A 10.0 10.0 0 0 0 -41.775185709282965 12.443225424108919" fill="none" class="svg-arc color-1" data-cx="-32.3782595014" data-cy="15.8634268573" data-r="10.0" />
+<path d="M 262.83439015754715 -170.3029141175105 A 10.0 10.0 0 0 0 257.3868684555058 -182.91018276779153" fill="none" class="svg-arc color-1" data-cx="253.4374639497" data-cy="-173.7231155508" data-r="10.0" />
+<path d="M 234.11474127810368 -106.01534932718398 A 10.0 10.0 0 0 0 241.77518570928297 -112.44322542410892" fill="none" class="svg-arc color-1" data-cx="232.3782595014" data-cy="-115.8634268573" data-r="10.0" />
+<path d="M -41.775185709282965 -112.44322542410892 A 10.0 10.0 0 0 0 -34.11474127810368 -106.01534932718398" fill="none" class="svg-arc color-1" data-cx="-32.3782595014" data-cy="-115.8634268573" data-r="10.0" />
+<path d="M -57.38686845550584 -182.91018276779153 A 10.0 10.0 0 0 0 -62.83439015754715 -170.3029141175105" fill="none" class="svg-arc color-1" data-cx="-53.4374639497" data-cy="-173.7231155508" data-r="10.0" />
+<path d="M -18.237757620288367 -199.7398925190712 A 1.0 1.0 0 0 0 -18.480998093598625 -201.64702582730862" fill="none" class="svg-arc color-1" data-cx="-18.6326980708" data-cy="-200.6585992408" data-r="1.0" />
+<path d="M -19.42047479980555 -388.20289962762956 A 1.0 1.0 0 0 0 -18.6326980708 -389.1801208325" fill="none" class="svg-arc color-1" data-cx="-19.6326980708" data-cy="-389.1801208325" data-r="1.0" />
+<path d="M 218.6326980708 -389.1801208325 A 1.0 1.0 0 0 0 219.42047479980553 -388.20289962762956" fill="none" class="svg-arc color-1" data-cx="219.6326980708" data-cy="-389.1801208325" data-r="1.0" />
+<path d="M 218.48099809359863 -201.64702582730862 A 1.0 1.0 0 0 0 218.23775762028836 -199.7398925190712" fill="none" class="svg-arc color-1" data-cx="218.6326980708" data-cy="-200.6585992408" data-r="1.0" />
+<path d="M -63.32569880199984 -213.44575459089947 A 6.0 6.0 0 0 0 -58.240461958391045 -207.74915808936095" fill="none" class="svg-arc color-1" data-cx="-57.3302620951" data-cy="-213.6797176084" data-r="6.0" />
+<path d="M 258.24046195839105 -207.74915808936095 A 6.0 6.0 0 0 0 263.32569880199986 -213.44575459089947" fill="none" class="svg-arc color-1" data-cx="257.3302620951" data-cy="-213.6797176084" data-r="6.0" />
+<path d="M 151.58250787201797 63.07736331158975 A 10.0 10.0 0 0 0 141.7690748252 55.0" fill="none" class="svg-arc color-1" data-cx="141.7690748252" data-cy="65.0" data-r="10.0" />
+<path d="M 58.2309251748 55.0 A 10.0 10.0 0 0 0 48.41749212798204 63.07736331158975" fill="none" class="svg-arc color-1" data-cx="58.2309251748" data-cy="65.0" data-r="10.0" />
+<path d="M 48.41749212798204 -163.57736331158975 A 10.0 10.0 0 0 0 58.2309251748 -155.5" fill="none" class="svg-arc color-2" data-cx="58.2309251748" data-cy="-165.5" data-r="10.0" />
+<path d="M 141.7690748252 -155.5 A 10.0 10.0 0 0 0 151.58250787201797 -163.57736331158975" fill="none" class="svg-arc color-2" data-cx="141.7690748252" data-cy="-165.5" data-r="10.0" />
+<path d="M 266.15084463795614 -374.1448020988971 A 5.0 5.0 0 0 0 262.1392268231102 -378.92566204184624" fill="none" class="svg-arc color-1" data-cx="261.152303405" data-cy="-374.0240314798" data-r="5.0" />
+<path d="M -62.139226823110214 -378.92566204184624 A 5.0 5.0 0 0 0 -66.15084463795615 -374.1448020988971" fill="none" class="svg-arc color-1" data-cx="-61.152303405" data-cy="-374.0240314798" data-r="5.0" />
+<path d="M 218.6326980708 -432.2653961417 A 6.0 6.0 0 0 0 212.6326980708 -438.2653961417" fill="none" class="svg-arc color-1" data-cx="212.6326980708" data-cy="-432.2653961417" data-r="6.0" />
+<path d="M -12.6326980708 -438.2653961417 A 6.0 6.0 0 0 0 -18.6326980708 -432.2653961417" fill="none" class="svg-arc color-1" data-cx="-12.6326980708" data-cy="-432.2653961417" data-r="6.0" />
+<path d="M 117.29289321878656 -203.20710678118655 A 1.0 1.0 0 0 0 116.5857864376 -203.5" fill="none" class="svg-arc color-1" data-cx="116.5857864376" data-cy="-202.5" data-r="1.0" />
+<path d="M 83.4142135624 -203.5 A 1.0 1.0 0 0 0 82.70710678121344 -203.20710678118655" fill="none" class="svg-arc color-1" data-cx="83.4142135624" data-cy="-202.5" data-r="1.0" />
+<path d="M 216.42559128966406 -286.92559128973716 A 1.0 1.0 0 0 0 216.1326980708 -286.2184845085" fill="none" class="svg-arc color-1" data-cx="217.1326980708" data-cy="-286.2184845085" data-r="1.0" />
+<path d="M 216.1326980708 -253.0469116332 A 1.0 1.0 0 0 0 216.42559128966406 -252.33980485196287" fill="none" class="svg-arc color-1" data-cx="217.1326980708" data-cy="-253.0469116332" data-r="1.0" />
+<path d="M -16.42559128966405 -252.33980485196287 A 1.0 1.0 0 0 0 -16.1326980708 -253.0469116332" fill="none" class="svg-arc color-1" data-cx="-17.1326980708" data-cy="-253.0469116332" data-r="1.0" />
+<path d="M -16.1326980708 -286.2184845085 A 1.0 1.0 0 0 0 -16.42559128966405 -286.92559128973716" fill="none" class="svg-arc color-1" data-cx="-17.1326980708" data-cy="-286.2184845085" data-r="1.0" />
+<path d="M 18.640757745764052 -336.0582893604629 A 1.0 1.0 0 0 0 19.3478645269 -335.7653961417" fill="none" class="svg-arc color-1" data-cx="19.3478645269" data-cy="-336.7653961417" data-r="1.0" />
+<path d="M 61.5194374022 -335.7653961417 A 1.0 1.0 0 0 0 62.226544183386544 -336.05828936051347" fill="none" class="svg-arc color-1" data-cx="61.5194374022" data-cy="-336.7653961417" data-r="1.0" />
+<path d="M 137.77345581661345 -336.05828936051347 A 1.0 1.0 0 0 0 138.4805625978 -335.7653961417" fill="none" class="svg-arc color-1" data-cx="138.4805625978" data-cy="-336.7653961417" data-r="1.0" />
+<path d="M 180.6521354731 -335.7653961417 A 1.0 1.0 0 0 0 181.35924225423594 -336.0582893604629" fill="none" class="svg-arc color-1" data-cx="180.6521354731" data-cy="-336.7653961417" data-r="1.0" />
+
+
+      
+
+
+  
+
+      
+
+
+  <g class="dmt"><text x="90.0" y="-454.2653961417"
+  fill="white"
+  transform="rotate(0, 90.0, -454.2653961417)"
+  font-size="12px"
+  style="stroke-width:0; "
+  data-text="400.00mm"
+  class="svg-text line-text">400.00mm</text>
+  <g class="dmt-lines">
+<line x1="300.0" y1="-451.2653961417" x2="-100.0" y2="-451.2653961417"
+  class="line-indicator svg-line dmt-line color-255" />
+
+<line x1="300.0" y1="-451.2653961417" x2="297.0" y2="-452.2653961417"
+  class="line-indicator svg-line dmt-line color-255" />
+
+<line x1="300.0" y1="-451.2653961417" x2="297.0" y2="-450.2653961417"
+  class="line-indicator svg-line dmt-line color-255" />
+
+<line x1="-100.0" y1="-451.2653961417" x2="-97.0" y2="-452.2653961417"
+  class="line-indicator svg-line dmt-line color-255" />
+
+<line x1="-100.0" y1="-451.2653961417" x2="-97.0" y2="-450.2653961417"
+  class="line-indicator svg-line dmt-line color-255" />
+
+<line x1="300.0" y1="-444.2653961417" x2="300.0" y2="-451.2653961417"
+  class="line-indicator svg-line dmt-line color-255" />
+
+<line x1="-100.0" y1="-444.2653961417" x2="-100.0" y2="-451.2653961417"
+  class="line-indicator svg-line dmt-line color-255" />
+
+
+  </g>
+</g><g class="dmt"><text x="240.0" y="-13.0"
+  fill="white"
+  transform="rotate(0, 240.0, -13.0)"
+  font-size="12px"
+  style="stroke-width:0; "
+  data-text="100.00mm"
+  class="svg-text line-text">100.00mm</text>
+  <g class="dmt-lines">
+<line x1="300.0" y1="-10.0" x2="200.0" y2="-10.0"
+  class="line-indicator svg-line dmt-line color-255" />
+
+<line x1="300.0" y1="-10.0" x2="297.0" y2="-11.0"
+  class="line-indicator svg-line dmt-line color-255" />
+
+<line x1="300.0" y1="-10.0" x2="297.0" y2="-9.0"
+  class="line-indicator svg-line dmt-line color-255" />
+
+<line x1="200.0" y1="-10.0" x2="203.0" y2="-11.0"
+  class="line-indicator svg-line dmt-line color-255" />
+
+<line x1="200.0" y1="-10.0" x2="203.0" y2="-9.0"
+  class="line-indicator svg-line dmt-line color-255" />
+
+
+  </g>
+</g><g class="dmt"><text x="-113.0" y="-160.6326980709"
+  fill="white"
+  transform="rotate(-90, -113.0, -160.6326980709)"
+  font-size="12px"
+  style="stroke-width:0; "
+  data-text="541.27mm"
+  class="svg-text line-text">541.27mm</text>
+  <g class="dmt-lines">
+<line x1="-110.0" y1="-441.2653961417" x2="-110.0" y2="100.0"
+  class="line-indicator svg-line dmt-line color-255" />
+
+<line x1="-110.0" y1="-441.2653961417" x2="-109.0" y2="-438.2653961417"
+  class="line-indicator svg-line dmt-line color-255" />
+
+<line x1="-110.0" y1="-441.2653961417" x2="-111.0" y2="-438.2653961417"
+  class="line-indicator svg-line dmt-line color-255" />
+
+<line x1="-110.0" y1="100.0" x2="-109.0" y2="97.0"
+  class="line-indicator svg-line dmt-line color-255" />
+
+<line x1="-110.0" y1="100.0" x2="-111.0" y2="97.0"
+  class="line-indicator svg-line dmt-line color-255" />
+
+<line x1="-103.0" y1="-441.2653961417" x2="-110.0" y2="-441.2653961417"
+  class="line-indicator svg-line dmt-line color-255" />
+
+<line x1="-103.0" y1="100.0" x2="-110.0" y2="100.0"
+  class="line-indicator svg-line dmt-line color-255" />
+
+
+  </g>
+</g><g class="dmt"><text x="90.0" y="-13.0"
+  fill="white"
+  transform="rotate(0, 90.0, -13.0)"
+  font-size="12px"
+  style="stroke-width:0; "
+  data-text="200.00mm"
+  class="svg-text line-text">200.00mm</text>
+  <g class="dmt-lines">
+<line x1="200.0" y1="-10.0" x2="0.0" y2="-10.0"
+  class="line-indicator svg-line dmt-line color-255" />
+
+<line x1="200.0" y1="-10.0" x2="197.0" y2="-11.0"
+  class="line-indicator svg-line dmt-line color-255" />
+
+<line x1="200.0" y1="-10.0" x2="197.0" y2="-9.0"
+  class="line-indicator svg-line dmt-line color-255" />
+
+<line x1="0.0" y1="-10.0" x2="3.0" y2="-11.0"
+  class="line-indicator svg-line dmt-line color-255" />
+
+<line x1="0.0" y1="-10.0" x2="3.0" y2="-9.0"
+  class="line-indicator svg-line dmt-line color-255" />
+
+
+  </g>
+</g><g class="dmt"><text x="187.0" y="-40.0"
+  fill="white"
+  transform="rotate(-90, 187.0, -40.0)"
+  font-size="12px"
+  style="stroke-width:0; "
+  data-text="100.00mm"
+  class="svg-text line-text">100.00mm</text>
+  <g class="dmt-lines">
+<line x1="190.0" y1="-100.0" x2="190.0" y2="-0.0"
+  class="line-indicator svg-line dmt-line color-255" />
+
+<line x1="190.0" y1="-100.0" x2="191.0" y2="-97.0"
+  class="line-indicator svg-line dmt-line color-255" />
+
+<line x1="190.0" y1="-100.0" x2="189.0" y2="-97.0"
+  class="line-indicator svg-line dmt-line color-255" />
+
+<line x1="190.0" y1="-0.0" x2="191.0" y2="-3.0"
+  class="line-indicator svg-line dmt-line color-255" />
+
+<line x1="190.0" y1="-0.0" x2="189.0" y2="-3.0"
+  class="line-indicator svg-line dmt-line color-255" />
+
+
+  </g>
+</g>
+
+      
+
+
+  
+
+
+
+
+
+  <g class="abc" id="abc-186592-w" style="opacity: 0"> <text
+  x="196.0"
+  y="-56.0 "
+  font-size="16.0"
+  fill="white"
+  id = "text-186592-w"
+  class="line-text svg-abc-line"
+  style="stroke-width:0;">
+w
+</text><line class="svg-line dmt-line" stroke-width="1" marker-start="url(#arrow_start)" marker-end="url(#arrow_end)" stroke="white" x1="190.0" y1="-0.0" x2="190.0" y2="-100.0"/>
+</g>
+<g class="abc" id="abc-186592-l" style="opacity: 0"> <text
+  x="100.0"
+  y="-16.0 "
+  font-size="16.0"
+  fill="white"
+  id = "text-186592-l"
+  class="line-text svg-abc-line"
+  style="stroke-width:0;">
+l
+</text><line class="svg-line dmt-line" stroke-width="1" marker-start="url(#arrow_start)" marker-end="url(#arrow_end)" stroke="white" x1="0.0" y1="-10.0" x2="200.0" y2="-10.0"/>
+</g>
+<g class="abc" id="abc-186592-h1" style="opacity: 0"> <text
+  x="250.0"
+  y="-56.0 "
+  font-size="16.0"
+  fill="white"
+  id = "text-186592-h1"
+  class="line-text svg-abc-line"
+  style="stroke-width:0;">
+h1
+</text><line class="svg-line dmt-line" stroke-width="1" marker-start="url(#arrow_start)" marker-end="url(#arrow_end)" stroke="white" x1="200.0" y1="-50.0" x2="300.0" y2="-50.0"/>
+</g>
+<g class="abc" id="abc-186592-h2" style="opacity: 0"> <text
+  x="106.0"
+  y="-369.7653961417 "
+  font-size="16.0"
+  fill="white"
+  id = "text-186592-h2"
+  class="line-text svg-abc-line"
+  style="stroke-width:0;">
+h2
+</text><line class="svg-line dmt-line" stroke-width="1" marker-start="url(#arrow_start)" marker-end="url(#arrow_end)" stroke="white" x1="100.0" y1="-338.7653961417" x2="100.0" y2="-388.7653961417"/>
+</g>
+ Sorry, your browser does not support inline SVG.
+</svg>

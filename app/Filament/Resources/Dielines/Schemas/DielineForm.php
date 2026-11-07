@@ -84,26 +84,47 @@ class DielineForm
                 (float) ($field['min'] ?? 0),
                 $field['suffix'] ?? 'mm',
             )
+                ->label(fn (Get $get): string => (string) (self::fieldConfiguration($get, $field['key'])['label'] ?? $field['label']))
+                ->minValue(fn (Get $get): float => (float) (self::fieldConfiguration($get, $field['key'])['min'] ?? 0))
+                ->maxValue(fn (Get $get): ?float => isset(self::fieldConfiguration($get, $field['key'])['max']) ? (float) self::fieldConfiguration($get, $field['key'])['max'] : null)
+                ->suffix(fn (Get $get): string => (string) (self::fieldConfiguration($get, $field['key'])['suffix'] ?? 'mm'))
                 ->visible(fn (Get $get): bool => in_array($get('template_key') ?: 'reverse-tuck-flap-box', $field['templates'], true))
                 ->required(fn (Get $get): bool => in_array($get('template_key') ?: 'reverse-tuck-flap-box', $field['templates'], true)))
             ->all();
     }
 
+    /** @return array<string, mixed> */
+    private static function fieldConfiguration(Get $get, string $key): array
+    {
+        return app(DielineTemplateRegistry::class)->fieldForTemplate($get('template_key') ?: 'reverse-tuck-flap-box', $key);
+    }
+
     private static function dimensionField(string $key, string $label, float $default, float $min = 1, string $suffix = 'mm'): TextInput
     {
         return TextInput::make("dimensions.{$key}")
-            ->label($label)
+            ->label(function (Get $get) use ($key, $label): string {
+                $template = app(DielineTemplateRegistry::class)->template($get('template_key') ?: 'reverse-tuck-flap-box');
+
+                return $template->baseDimensionLabels()[$key] ?? $label;
+            })
             ->numeric()
             ->minValue($min)
             ->suffix($suffix)
             ->default($default)
+            ->rules(function (Get $get) use ($key): array {
+                $template = app(DielineTemplateRegistry::class)->template($get('template_key') ?: 'reverse-tuck-flap-box');
+                $rules = $template->dimensionRules((array) ($get('dimensions') ?? []))[$key] ?? [];
+                $integer = (bool) (self::fieldConfiguration($get, $key)['integer'] ?? false);
+
+                return [...$rules, ...($integer ? ['integer'] : [])];
+            })
             ->afterStateHydrated(function (TextInput $component, mixed $state, Get $get) use ($key, $default): void {
                 if ($state !== null && $state !== '') {
                     return;
                 }
 
-                $length = (float) ($get('dimensions.l') ?? 0);
-                $component->state($key === 'dust_flap' && $length > 0 ? $length * 0.5 : $default);
+                $defaults = app(DielineTemplateRegistry::class)->template($get('template_key') ?: 'reverse-tuck-flap-box')->defaults();
+                $component->state($defaults[$key] ?? $default);
             })
             ->live(onBlur: true)
             ->required();

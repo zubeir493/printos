@@ -1,6 +1,37 @@
 <?php
 
+use App\Services\Dielines\Templates\BurgerBoxTemplate;
+use App\Services\Dielines\Templates\CarryBagTemplate;
+use App\Services\Dielines\Templates\ClamshellBurgerBoxTemplate;
+use App\Services\Dielines\Templates\FlipTopBurgerBoxTemplate;
+use App\Services\Dielines\Templates\FriesScoopTemplate;
+use App\Services\Dielines\Templates\GableBoxTemplate;
+use App\Services\Dielines\Templates\HangTabCartonTemplate;
+use App\Services\Dielines\Templates\LockTabPizzaBoxTemplate;
+use App\Services\Dielines\Templates\OpenFoodTrayTemplate;
+use App\Services\Dielines\Templates\PizzaBoxTemplate;
+use App\Services\Dielines\Templates\RolloverPizzaBoxTemplate;
+use App\Services\Dielines\Templates\SandwichWedgeTemplate;
+use App\Services\Dielines\Templates\SealEndCartonTemplate;
+use App\Services\Dielines\Templates\VialInsertTemplate;
 use Tests\TestCase;
+
+dataset('packaging blueprints', [
+    PizzaBoxTemplate::class,
+    LockTabPizzaBoxTemplate::class,
+    ClamshellBurgerBoxTemplate::class,
+    RolloverPizzaBoxTemplate::class,
+    FlipTopBurgerBoxTemplate::class,
+    BurgerBoxTemplate::class,
+    FriesScoopTemplate::class,
+    SandwichWedgeTemplate::class,
+    CarryBagTemplate::class,
+    GableBoxTemplate::class,
+    OpenFoodTrayTemplate::class,
+    SealEndCartonTemplate::class,
+    HangTabCartonTemplate::class,
+    VialInsertTemplate::class,
+]);
 
 /*
 |--------------------------------------------------------------------------

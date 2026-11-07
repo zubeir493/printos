@@ -42,6 +42,7 @@ use App\Observers\SalesOrderObserver;
 use App\Observers\StockMovementObserver;
 use App\Observers\TextFileObserver;
 use App\Policies\PaymentPolicy;
+use App\Services\Dielines\DielineTemplateRegistry;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\View\ActionsIconAlias;
@@ -72,7 +73,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->scoped(DielineTemplateRegistry::class);
     }
 
     /**

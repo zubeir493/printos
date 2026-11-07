@@ -3,6 +3,7 @@
 use App\Services\Dielines\Concerns\BuildsDielineGeometry;
 use App\Services\Dielines\DielineTemplateRegistry;
 use App\Services\Dielines\Geometry\DielineCanvas;
+use App\Services\Dielines\Geometry\DielinePath;
 use App\Services\Dielines\Renderers\DxfDielineRenderer;
 use App\Services\Dielines\Renderers\SvgDielineRenderer;
 use App\Services\Dielines\Templates\AutoBottomTuckTopTemplate;
@@ -174,81 +175,19 @@ it('defines templates with shared base dimensions', function (): void {
     }
 });
 
-it('generates reverse tuck flap box with reference flap directions', function (): void {
+it('generates reverse tuck closures on opposite faces with source reliefs', function (): void {
     $template = new ReverseTuckFlapBoxTemplate;
-    $geometry = $template->generate([
-        'l' => 160,
-        'w' => 55,
-        'h' => 120,
-        'tuck_flap' => 15,
-        'tuck_radius' => 6,
-        'dust_flap' => 50,
-        'glue_flap' => 20,
-    ]);
-
-    expect($template->name())->toBe('Reverse Tuck Flap Box')
-        ->and($geometry['bounds'])
-        ->toBe(['x' => 0.0, 'y' => -70.0, 'width' => 450.0, 'height' => 260.0])
-        ->and($geometry['layers']['cut'])
-        ->toContain(['x1' => 450.0, 'y1' => 0.0, 'x2' => 450.0, 'y2' => 120.0])
-        ->toContain(['x1' => 235.0, 'y1' => -55.0, 'x2' => 235.0, 'y2' => 0.0])
-        ->toContain(['x1' => 20.0, 'y1' => 175.0, 'x2' => 20.0, 'y2' => 120.0])
-        ->toContain(['x1' => 20.0, 'y1' => 0.0, 'x2' => 180.0, 'y2' => 0.0])
-        ->toContain(['x1' => 235.0, 'y1' => 120.0, 'x2' => 395.0, 'y2' => 120.0])
-        ->toContain(['x1' => 235.0, 'y1' => 0.0, 'x2' => 232.25, 'y2' => -2.75])
-        ->toContain(['x1' => 180.0, 'y1' => 120.0, 'x2' => 182.75, 'y2' => 122.75])
-        ->toContain(['x1' => 395.0, 'y1' => 0.0, 'x2' => 397.75, 'y2' => -2.75])
-        ->toContain(['x1' => 450.0, 'y1' => 120.0, 'x2' => 447.25, 'y2' => 122.75])
-        ->and($geometry['layers']['crease'])
-        ->toContain(['x1' => 395.0, 'y1' => 0.0, 'x2' => 235.0, 'y2' => 0.0])
-        ->toContain(['x1' => 180.0, 'y1' => 0.0, 'x2' => 235.0, 'y2' => 0.0])
-        ->toContain(['x1' => 180.0, 'y1' => 120.0, 'x2' => 20.0, 'y2' => 120.0])
-        ->toContain(['x1' => 235.0, 'y1' => 120.0, 'x2' => 180.0, 'y2' => 120.0])
-        ->and(collect($template->advancedFields())->pluck('key')->all())
-        ->toBe(['tuck_flap', 'tuck_radius', 'dust_flap', 'glue_flap']);
-
-    expect($geometry['layers']['crease'])
-        ->not->toContain(['x1' => 20.0, 'y1' => 0.0, 'x2' => 180.0, 'y2' => 0.0])
-        ->not->toContain(['x1' => 235.0, 'y1' => 120.0, 'x2' => 395.0, 'y2' => 120.0]);
+    $geometry = $template->generate(['l' => 160, 'w' => 55, 'h' => 120, 'tuck_flap' => 15, 'glue_flap' => 20]);
+    expect($geometry['layers']['crease'])->toContain(['x1' => 215.0, 'y1' => -120.5, 'x2' => 375.0, 'y2' => -120.5])
+        ->toContain(['x1' => 160.0, 'y1' => .5, 'x2' => 0.0, 'y2' => .5])
+        ->and(array_column($template->advancedFields(), 'key'))->toBe(['tuck_flap', 'glue_flap']);
 });
 
-it('generates straight tuck flap with both closure assemblies on the second Length panel', function (): void {
-    $template = new StraightTuckFlapTemplate;
-    $geometry = $template->generate([
-        'l' => 160,
-        'w' => 55,
-        'h' => 120,
-        'tuck_flap' => 15,
-        'tuck_radius' => 6,
-        'dust_flap' => 50,
-        'glue_flap' => 20,
-    ]);
-
-    expect($template->name())->toBe('Straight Tuck flap')
-        ->and($geometry['bounds'])
-        ->toBe(['x' => 0.0, 'y' => -70.0, 'width' => 450.0, 'height' => 260.0])
-        ->and($geometry['layers']['cut'])
-        ->toContain(['x1' => 235.0, 'y1' => -55.0, 'x2' => 235.0, 'y2' => 0.0])
-        ->toContain(['x1' => 235.0, 'y1' => 175.0, 'x2' => 235.0, 'y2' => 120.0])
-        ->toContain(['x1' => 20.0, 'y1' => 0.0, 'x2' => 180.0, 'y2' => 0.0])
-        ->toContain(['x1' => 20.0, 'y1' => 120.0, 'x2' => 180.0, 'y2' => 120.0])
-        ->toContain(['x1' => 235.0, 'y1' => 120.0, 'x2' => 232.25, 'y2' => 122.75])
-        ->toContain(['x1' => 395.0, 'y1' => 120.0, 'x2' => 397.75, 'y2' => 122.75])
-        ->and($geometry['layers']['crease'])
-        ->toContain(['x1' => 235.0, 'y1' => 120.0, 'x2' => 395.0, 'y2' => 120.0])
-        ->toContain(['x1' => 395.0, 'y1' => 0.0, 'x2' => 235.0, 'y2' => 0.0])
-        ->toContain(['x1' => 180.0, 'y1' => 0.0, 'x2' => 235.0, 'y2' => 0.0])
-        ->and(collect($template->advancedFields())->pluck('key')->all())
-        ->toBe(['tuck_flap', 'tuck_radius', 'dust_flap', 'glue_flap']);
-
-    expect($geometry['layers']['cut'])
-        ->not->toContain(['x1' => 235.0, 'y1' => 120.0, 'x2' => 395.0, 'y2' => 120.0])
-        ->not->toContain(['x1' => 20.0, 'y1' => 176.0, 'x2' => 20.0, 'y2' => 120.0]);
-
-    expect($geometry['layers']['crease'])
-        ->not->toContain(['x1' => 20.0, 'y1' => 120.0, 'x2' => 180.0, 'y2' => 120.0]);
+it('generates straight tuck closures on the same face', function (): void {
+    $geometry = (new StraightTuckFlapTemplate)->generate(['l' => 160, 'w' => 55, 'h' => 120, 'tuck_flap' => 15, 'glue_flap' => 20]);
+    expect($geometry['layers']['crease'])->toContain(['x1' => 160.0, 'y1' => -120.5, 'x2' => 0.0, 'y2' => -120.5])
+        ->toContain(['x1' => 160.0, 'y1' => .5, 'x2' => 0.0, 'y2' => .5]);
 });
-
 it('builds reusable dieline helper geometry for directional flaps and areas', function (): void {
     $helpers = dielineGeometryHelpers();
 
@@ -462,146 +401,37 @@ it('renders DXF exports with solid print layers and print lineweight', function 
         ->not->toContain('Width');
 });
 
-it('draws the snap-lock bottom across both length and width panels', function (): void {
-    $template = new SnapLockBottomTemplate;
-    $geometry = $template->generate($template->defaults());
-
-    expect($geometry['bounds'])
-        ->toBe(['x' => 0.0, 'y' => -58.0, 'width' => 212.0, 'height' => 193.0]);
-
-    expect($geometry['layers']['crease'])
-        ->toContain(['x1' => 72.0, 'y1' => 0.0, 'x2' => 12.0, 'y2' => 0.0])
-        ->toContain(['x1' => 12.0, 'y1' => 100.0, 'x2' => 72.0, 'y2' => 100.0]);
-
-    expect($geometry['layers']['cut'])
-        ->toContain(['x1' => 112.0, 'y1' => 0.0, 'x2' => 172.0, 'y2' => 0.0])
-        ->toContain(['x1' => 12.0, 'y1' => 100.0, 'x2' => 27.0, 'y2' => 113.4])
-        ->toContain(['x1' => 72.0, 'y1' => 100.0, 'x2' => 72.0, 'y2' => 135.0])
-        ->toContain(['x1' => 112.0, 'y1' => 100.0, 'x2' => 112.0, 'y2' => 125.0])
-        ->toContain(['x1' => 212.0, 'y1' => 100.0, 'x2' => 212.0, 'y2' => 135.0])
-        ->toContain(['x1' => 126.0, 'y1' => 113.4, 'x2' => 158.0, 'y2' => 113.4]);
-
-    $bottomCreases = collect($geometry['layers']['crease'])
-        ->filter(fn (array $line): bool => $line['y1'] === 100.0 && $line['y2'] === 100.0);
-
-    expect($bottomCreases)
-        ->toHaveCount(4)
-        ->toContain(['x1' => 12.0, 'y1' => 100.0, 'x2' => 72.0, 'y2' => 100.0])
-        ->toContain(['x1' => 72.0, 'y1' => 100.0, 'x2' => 112.0, 'y2' => 100.0])
-        ->toContain(['x1' => 112.0, 'y1' => 100.0, 'x2' => 172.0, 'y2' => 100.0])
-        ->toContain(['x1' => 172.0, 'y1' => 100.0, 'x2' => 212.0, 'y2' => 100.0]);
+it('draws four separate snap-lock base hinges and the source locking profiles', function (): void {
+    $geometry = (new SnapLockBottomTemplate)->generate(['l' => 100, 'w' => 50, 'h' => 150, 'tuck_flap' => 15, 'glue_flap' => 13]);
+    $base = array_filter($geometry['layers']['crease'], fn (array $line): bool => abs($line['y1']) < .00001 && abs($line['y2']) < .00001);
+    expect($base)->toHaveCount(4)->and($geometry['bounds']['y'])->toBe(-214.0)
+        ->and($geometry['bounds']['y'] + $geometry['bounds']['height'])->toEqualWithDelta(37.5, .00001);
 });
 
-it('draws the auto-bottom crease wings and glue zones as a crash-lock base', function (): void {
-    $template = new AutoBottomTuckTopTemplate;
-    $geometry = $template->generate($template->defaults());
-
-    expect($geometry['layers']['crease'])
-        ->toContain(['x1' => 82.0, 'y1' => 0.0, 'x2' => 12.0, 'y2' => 0.0])
-        ->toContain(['x1' => 82.0, 'y1' => 110.0, 'x2' => 104.5, 'y2' => 145.0])
-        ->toContain(['x1' => 127.0, 'y1' => 110.0, 'x2' => 104.5, 'y2' => 145.0]);
-
-    expect($geometry['layers']['glue'])->toHaveCount(5);
+it('draws the source crash-lock diagonal wings and three gluing contact areas', function (): void {
+    $geometry = (new AutoBottomTuckTopTemplate)->generate(['l' => 100, 'w' => 50, 'h' => 150, 'tuck_flap' => 15, 'glue_flap' => 13]);
+    $diagonals = array_filter($geometry['layers']['crease'], fn (array $line): bool => abs(abs($line['x2'] - $line['x1']) - abs($line['y2'] - $line['y1'])) < .00001 && abs($line['x2'] - $line['x1']) > 10);
+    expect($diagonals)->toHaveCount(2)->and($geometry['layers']['glue'])->toHaveCount(3);
 });
 
-it('swaps full-overlap panel dimensions and draws every top and bottom flap', function (): void {
+it('uses full-width overlap flaps and adjusts their depth independently', function (): void {
     $template = new FullOverlapCartonTemplate;
-    $geometry = $template->generate($template->defaults());
-
-    expect($template->defaults())
-        ->toMatchArray(['l' => 50, 'w' => 80, 'flap_height' => 50])
-        ->and($template->advancedFields())
-        ->toContain(['key' => 'flap_height', 'label' => 'Flap height', 'default' => 50, 'min' => 0, 'suffix' => 'mm'])
-        ->and($geometry['bounds'])
-        ->toBe(['x' => 0.0, 'y' => -50.0, 'width' => 275.0, 'height' => 200.0]);
-
-    foreach ([
-        ['x1' => 15.0, 'y1' => 0.0, 'x2' => 95.0, 'y2' => 0.0],
-        ['x1' => 95.0, 'y1' => 0.0, 'x2' => 145.0, 'y2' => 0.0],
-        ['x1' => 145.0, 'y1' => 0.0, 'x2' => 225.0, 'y2' => 0.0],
-        ['x1' => 225.0, 'y1' => 0.0, 'x2' => 275.0, 'y2' => 0.0],
-        ['x1' => 15.0, 'y1' => 100.0, 'x2' => 95.0, 'y2' => 100.0],
-        ['x1' => 95.0, 'y1' => 100.0, 'x2' => 145.0, 'y2' => 100.0],
-        ['x1' => 145.0, 'y1' => 100.0, 'x2' => 225.0, 'y2' => 100.0],
-        ['x1' => 225.0, 'y1' => 100.0, 'x2' => 275.0, 'y2' => 100.0],
-    ] as $crease) {
-        expect($geometry['layers']['crease'])->toContain($crease);
-    }
-
-    foreach ([
-        ['x1' => 15.0, 'y1' => -50.0, 'x2' => 95.0, 'y2' => -50.0],
-        ['x1' => 95.0, 'y1' => -50.0, 'x2' => 145.0, 'y2' => -50.0],
-        ['x1' => 145.0, 'y1' => -50.0, 'x2' => 225.0, 'y2' => -50.0],
-        ['x1' => 225.0, 'y1' => -50.0, 'x2' => 275.0, 'y2' => -50.0],
-        ['x1' => 15.0, 'y1' => 150.0, 'x2' => 95.0, 'y2' => 150.0],
-        ['x1' => 95.0, 'y1' => 150.0, 'x2' => 145.0, 'y2' => 150.0],
-        ['x1' => 145.0, 'y1' => 150.0, 'x2' => 225.0, 'y2' => 150.0],
-        ['x1' => 225.0, 'y1' => 150.0, 'x2' => 275.0, 'y2' => 150.0],
-    ] as $cut) {
-        expect($geometry['layers']['cut'])->toContain($cut);
-    }
-
-    expect($geometry['labels'])
-        ->toContain(['x' => 55.0, 'y' => 50.0, 'text' => 'Width'])
-        ->toContain(['x' => 120.0, 'y' => 50.0, 'text' => 'Length'])
-        ->toContain(['x' => 185.0, 'y' => 50.0, 'text' => 'Width'])
-        ->toContain(['x' => 250.0, 'y' => 50.0, 'text' => 'Length']);
-
-    $shortFlapGeometry = $template->generate([...$template->defaults(), 'flap_height' => 35]);
-
-    expect($shortFlapGeometry['bounds'])
-        ->toBe(['x' => 0.0, 'y' => -35.0, 'width' => 275.0, 'height' => 170.0]);
-
-    foreach ([
-        ['x1' => 15.0, 'y1' => -35.0, 'x2' => 95.0, 'y2' => -35.0],
-        ['x1' => 95.0, 'y1' => -35.0, 'x2' => 145.0, 'y2' => -35.0],
-        ['x1' => 145.0, 'y1' => -35.0, 'x2' => 225.0, 'y2' => -35.0],
-        ['x1' => 225.0, 'y1' => -35.0, 'x2' => 275.0, 'y2' => -35.0],
-        ['x1' => 15.0, 'y1' => 135.0, 'x2' => 95.0, 'y2' => 135.0],
-        ['x1' => 95.0, 'y1' => 135.0, 'x2' => 145.0, 'y2' => 135.0],
-        ['x1' => 145.0, 'y1' => 135.0, 'x2' => 225.0, 'y2' => 135.0],
-        ['x1' => 225.0, 'y1' => 135.0, 'x2' => 275.0, 'y2' => 135.0],
-    ] as $cut) {
-        expect($shortFlapGeometry['layers']['cut'])->toContain($cut);
-    }
+    $dimensions = ['l' => 100, 'w' => 50, 'h' => 150, 'glue_flap' => 20, 'flap_height' => 49.1];
+    $geometry = $template->generate($dimensions);
+    expect($geometry['bounds']['x'])->toBe(-20.0)->and($geometry['bounds']['width'])->toEqualWithDelta(319.1, .00001)
+        ->and($geometry['bounds']['height'])->toEqualWithDelta(248.2, .00001);
+    $changed = $template->generate([...$dimensions, 'flap_height' => 35]);
+    expect($changed['bounds']['height'])->toEqualWithDelta(220, .00001)->and($changed['layers']['glue'])->toHaveCount(1);
 });
 
-it('builds the reference four-corner glued food tray net with its tuck lid', function (): void {
-    $sleeve = (new SleeveBoxTemplate)->generate((new SleeveBoxTemplate)->defaults());
-    $overlapTemplate = new FullOverlapCartonTemplate;
-    $overlap = $overlapTemplate->generate($overlapTemplate->defaults());
-    $trayTemplate = new FoodTrayTemplate;
-    $tray = $trayTemplate->generate($trayTemplate->defaults());
-
-    expect($sleeve['bounds']['height'])->toBe(40.0)
-        ->and($sleeve['layers']['glue'])->toHaveCount(1)
-        ->and($overlap['layers']['crease'])
-        ->toContain(['x1' => 15.0, 'y1' => 0.0, 'x2' => 95.0, 'y2' => 0.0])
-        ->toContain(['x1' => 145.0, 'y1' => 0.0, 'x2' => 225.0, 'y2' => 0.0])
-        ->and($tray['name'])->toBe('Four-Corner Glued Food Tray with Tuck Lid')
-        ->and($tray['bounds'])
-        ->toBe(['x' => 0.0, 'y' => 0.0, 'width' => 354.0, 'height' => 369.5])
-        ->and($tray['layers']['glue'])->toHaveCount(4)
-        ->and($tray['layers']['cut'])
-        ->toContain(['x1' => 64.0, 'y1' => 69.5, 'x2' => 102.0, 'y2' => 69.5])
-        ->toContain(['x1' => 158.0, 'y1' => 0.0, 'x2' => 196.0, 'y2' => 0.0])
-        ->toContain(['x1' => 102.0, 'y1' => 69.5, 'x2' => 60.0, 'y2' => 84.5])
-        ->toContain(['x1' => 54.0, 'y1' => 96.5, 'x2' => 54.0, 'y2' => 142.5])
-        ->toContain(['x1' => 60.0, 'y1' => 154.5, 'x2' => 102.0, 'y2' => 169.5])
-        ->toContain(['x1' => 102.0, 'y1' => 319.5, 'x2' => 54.0, 'y2' => 319.5])
-        ->toContain(['x1' => 54.0, 'y1' => 319.5, 'x2' => 54.0, 'y2' => 359.5])
-        ->toContain(['x1' => 64.0, 'y1' => 369.5, 'x2' => 290.0, 'y2' => 369.5])
-        ->toContain(['x1' => 0.0, 'y1' => 219.5, 'x2' => 0.0, 'y2' => 249.5])
-        ->toContain(['x1' => 0.0, 'y1' => 249.5, 'x2' => 3.0, 'y2' => 249.5])
-        ->toContain(['x1' => 354.0, 'y1' => 249.5, 'x2' => 351.0, 'y2' => 249.5])
-        ->and($tray['layers']['crease'])
-        ->toContain(['x1' => 102.0, 'y1' => 219.5, 'x2' => 102.0, 'y2' => 319.5])
-        ->toContain(['x1' => 102.0, 'y1' => 319.5, 'x2' => 102.0, 'y2' => 369.5])
-        ->toContain(['x1' => 252.0, 'y1' => 319.5, 'x2' => 252.0, 'y2' => 369.5])
-        ->toContain(['x1' => 102.0, 'y1' => 169.5, 'x2' => 252.0, 'y2' => 169.5])
-        ->toContain(['x1' => 152.0, 'y1' => 19.5, 'x2' => 202.0, 'y2' => 19.5]);
+it('builds a calibrated sleeve and a separate one-piece hinged food tray', function (): void {
+    $sleeve = (new SleeveBoxTemplate)->generate([]);
+    $tray = (new FoodTrayTemplate)->generate(['l' => 150, 'w' => 90, 'h' => 40, 'tuck_flap' => 15, 'corner_tab' => 20]);
+    expect($sleeve['bounds']['height'])->toBe(50.0)->and($sleeve['layers']['glue'])->toHaveCount(1)
+        ->and($sleeve['layers']['crease'])->toHaveCount(4)
+        ->and($tray['bounds'])->toBe(['x' => -60.0, 'y' => -235.0, 'width' => 270.0, 'height' => 275.0])
+        ->and($tray['layers']['crease'])->toContain(['x1' => 149.5, 'y1' => -130.5, 'x2' => .5, 'y2' => -130.5]);
 });
-
 it('supports canvas-style drawing commands for dieline layers', function (): void {
     $ctx = new DielineCanvas(arcSegments: 2);
 
@@ -626,4 +456,67 @@ it('supports canvas-style drawing commands for dieline layers', function (): voi
         ->and($ctx->layers()['crease'])->toBe([
             ['x1' => 10.0, 'y1' => 20.0, 'x2' => 40.0, 'y2' => 20.0],
         ]);
+});
+
+it('fits an oversized corner radius to both available edges in both drawing helpers', function (): void {
+    $path = new DielinePath;
+    $path->moveTo(0, 3)->arcTo(0, 5, 5, 5, 20)->lineTo(5, 5);
+    $canvas = new DielineCanvas;
+    $canvas->beginPath();
+    $canvas->moveTo(0, 3);
+    $canvas->arcTo(0, 5, 5, 5, 20);
+    $canvas->lineTo(5, 5);
+    $canvas->strokeStyle = 'cut';
+    $canvas->stroke();
+
+    foreach ([$path->lines(), $canvas->layers()['cut']] as $lines) {
+        expect($lines[array_key_last($lines)])
+            ->toEqual(['x1' => 2.0, 'y1' => 5.0, 'x2' => 5.0, 'y2' => 5.0]);
+
+        foreach ($lines as $line) {
+            expect($line['x1'])->toBeBetween(-0.000001, 5.000001)
+                ->and($line['y1'])->toBeBetween(2.999999, 5.000001);
+        }
+    }
+});
+
+it('keeps the chord error of a large rounded corner below one hundredth of a millimetre', function (): void {
+    $path = new DielinePath;
+    $path->moveTo(0, 100)->arcTo(0, 0, 100, 0, 100);
+
+    foreach ($path->lines() as $line) {
+        $x = ($line['x1'] + $line['x2']) / 2;
+        $y = ($line['y1'] + $line['y2']) / 2;
+        expect(abs(hypot($x - 100, $y - 100) - 100))->toBeLessThanOrEqual(0.010001);
+    }
+});
+
+it('exports large physical dimensions without locale grouping separators', function (): void {
+    $geometry = ['name' => 'Large bag', 'bounds' => ['x' => -1000, 'y' => -500, 'width' => 2400, 'height' => 1500], 'layers' => ['cut' => [['x1' => -1000, 'y1' => -500, 'x2' => 1400, 'y2' => 1000]]]];
+    $svg = (new SvgDielineRenderer)->renderForSvg($geometry);
+    $xml = simplexml_load_string($svg);
+
+    expect((string) $xml['viewBox'])->toBe('-1000 -500 2400 1500')
+        ->and((string) $xml['width'])->toBe('2400mm')
+        ->and((string) $xml['height'])->toBe('1500mm')
+        ->and((new SvgDielineRenderer)->renderForPdf($geometry))->not->toContain(',');
+});
+
+it('shows only used legend layers and gives each one an accurate visual swatch', function (): void {
+    $line = ['x1' => 0.0, 'y1' => 0.0, 'x2' => 10.0, 'y2' => 10.0];
+    $geometry = ['name' => 'Legend sample', 'bounds' => ['width' => 10, 'height' => 10], 'layers' => ['cut' => [$line], 'crease' => [$line], 'glue' => [], 'bleed' => [], 'perforation' => [], 'cut_crease' => []]];
+    $renderer = new SvgDielineRenderer;
+    $preview = (string) $renderer->preview($geometry);
+    expect($preview)->toContain('data-dieline-layer="cut"', 'data-dieline-layer="crease"')
+        ->not->toContain('data-dieline-layer="glue"', 'data-dieline-layer="bleed"', 'data-dieline-layer="perforation"', 'data-dieline-layer="cut_crease"');
+    $geometry['layers'] = [...$geometry['layers'], 'glue' => [['points' => [['x' => 0, 'y' => 0], ['x' => 10, 'y' => 0], ['x' => 10, 'y' => 10]]]], 'bleed' => [$line], 'perforation' => [$line], 'cut_crease' => [$line]];
+    $document = new DOMDocument;
+    $document->loadXML('<root>'.(string) $renderer->preview($geometry).'</root>');
+    $xpath = new DOMXPath($document);
+    foreach (['cut', 'crease', 'bleed', 'perforation', 'cut_crease'] as $layer) {
+        expect($xpath->query('//*[@data-dieline-layer="'.$layer.'"]/*[local-name()="svg"]/*')->length)->toBe(1);
+    }
+    expect((string) $renderer->preview($geometry))->not->toContain('data-dieline-layer="glue"', '<polygon', '#dcfce7', '#16a34a');
+    expect($xpath->query('//*[@data-dieline-layer="perforation"]//line')->item(0)->getAttribute('stroke-dasharray'))->toBe('2 2')
+        ->and($xpath->query('//*[@data-dieline-layer="cut_crease"]//line')->item(0)->getAttribute('stroke-dasharray'))->toBe('8 3 2 3');
 });

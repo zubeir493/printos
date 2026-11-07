@@ -8,9 +8,12 @@ use App\Models\User;
 use App\Services\Dielines\DielineExportService;
 use App\Services\Dielines\DielineGeometryService;
 use App\Services\Dielines\DielineTemplateRegistry;
+use App\Services\Dielines\Renderers\SvgDielineRenderer;
+use App\Services\Dielines\Templates\VialInsertTemplate;
 use App\UserRole;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 
 uses(RefreshDatabase::class);
@@ -38,14 +41,14 @@ it('renders the dieline editor as a fullscreen canvas with a left settings sideb
         ->assertSeeHtml('dieline-preview-artboard')
         ->assertSeeHtml('dieline-save-action')
         ->assertSeeHtml('dieline-save-menu')
-        ->assertSeeHtml('fi-select-input')
+        ->assertSeeHtml('dieline-template-picker')
         ->assertSeeHtml('fi-input-wrp')
         ->assertSeeHtml('fi-fo-text-input')
         ->assertSeeHtml('fi-input')
         ->assertDontSee('Job task')
-        ->assertSee('Solid black')
-        ->assertSee('Blue dashed fold')
-        ->assertSee('Amber dashed margin');
+        ->assertSee('Cut')
+        ->assertSee('Crease')
+        ->assertDontSeeHtml('<strong>Bleed</strong>');
 });
 
 it('creates dieline drafts from a setup modal then saves dimensions and geometry', function (): void {
@@ -102,9 +105,9 @@ it('lists the additional templates in the new dieline selector', function (): vo
     expect(app(DielineTemplateRegistry::class)->advancedFields())
         ->toContain([
             'key' => 'flap_height',
-            'label' => 'Flap height',
-            'default' => 50,
-            'min' => 0,
+            'label' => 'Sealing flap depth',
+            'default' => 119.1,
+            'min' => 1,
             'suffix' => 'mm',
             'templates' => ['full-overlap-carton'],
         ]);
@@ -251,6 +254,181 @@ it('scopes fullscreen chrome hiding and split save styling to the dieline editor
         ->not->toContain('cursor: grab');
 
     expect($blade)
-        ->toContain('<x-filament::input.wrapper x-on:focus-input.stop="$el.querySelector(\'select\')?.focus()">')
-        ->toContain('<x-filament::input.select wire:model.live="data.template_key">');
+        ->toContain('dieline-template-picker')
+        ->toContain('selectTemplate(');
+});
+
+it('creates edits and exports every new packaging blueprint', function (string $class): void {
+    $template = new $class;
+
+    Livewire::test(ListDielines::class)
+        ->mountAction('createDieline')
+        ->setActionData(['name' => $template->name(), 'template_key' => $template->key(), 'job_order_id' => null])
+        ->callMountedAction()
+        ->assertHasNoActionErrors();
+
+    $dieline = Dieline::query()->sole();
+    $editor = Livewire::test(EditDieline::class, ['record' => $dieline->getKey()]);
+
+    foreach ($template->advancedFields() as $field) {
+        $editor->assertSee($field['label'])->assertFormFieldVisible('dimensions.'.$field['key']);
+    }
+
+    $dimensions = [...$template->defaults(), 'l' => $template->defaults()['l'] + 10];
+
+    $editor->fillForm(['template_key' => $template->key(), 'dimensions' => $dimensions])
+        ->call('save')
+        ->assertHasNoFormErrors();
+
+    $dieline->refresh();
+
+    expect($dieline->dimensions['l'])->toEqual($dimensions['l'])
+        ->and($dieline->geometry['name'])->toBe($template->name())
+        ->and(app(DielineTemplateRegistry::class)->options()[$template->key()])->toBe($template->name());
+
+    foreach (['svg', 'dxf', 'pdf'] as $format) {
+        $response = app(DielineExportService::class)->downloadDieline($dieline, $format);
+        ob_start();
+        $response->sendContent();
+        $content = ob_get_clean();
+
+        expect($content)->not->toBeEmpty();
+
+        if ($format === 'pdf') {
+            expect($content)->toStartWith('%PDF-');
+        }
+    }
+
+    Livewire::test(ListDielines::class)->assertCanSeeTableRecords([$dieline])->assertSee($template->name());
+})->with('packaging blueprints');
+
+it('switches field labels defaults and validation limits with the selected template', function (): void {
+    $dieline = Dieline::factory()->create();
+    $editor = Livewire::test(EditDieline::class, ['record' => $dieline->getKey()])
+        ->set('data.template_key', 'pizza-box')
+        ->assertSet('data.dimensions.l', 300)
+        ->assertSet('data.dimensions.corner_cut', 60)
+        ->assertSee('Octagon corner cut')
+        ->assertDontSee('View source drawing');
+
+    $editor->set('data.template_key', 'open-food-tray')
+        ->assertSet('data.dimensions.corner_tab', 15)
+        ->assertSee('Corner glue-tab width')
+        ->assertDontSee('Octagon corner cut')
+        ->assertDontSee('View source drawing')
+        ->assertFormFieldVisible('dimensions.board_thickness')
+        ->set('data.dimensions.corner_tab', 0)
+        ->call('save')
+        ->assertHasFormErrors(['dimensions.corner_tab' => 'min']);
+});
+
+it('requires every declared template measurement', function (string $class): void {
+    $template = new $class;
+    $dieline = Dieline::factory()->create(['template_key' => $template->key(), 'dimensions' => $template->defaults()]);
+    $missingFields = array_fill_keys(array_keys($template->defaults()), null);
+    $errors = array_fill_keys(array_map(fn (string $key): string => 'dimensions.'.$key, array_keys($missingFields)), 'required');
+
+    $editor = Livewire::test(EditDieline::class, ['record' => $dieline->getKey()])
+        ->set('data.dimensions', [...$template->defaults(), ...$missingFields]);
+
+    $editor->call('save');
+    $editor->assertHasFormErrors($errors);
+})->with('packaging blueprints');
+
+it('validates insert aperture and wall taper before saving', function (string $field, float|int $value, string $rule): void {
+    $template = new VialInsertTemplate;
+    $dieline = Dieline::factory()->create(['template_key' => $template->key(), 'dimensions' => $template->defaults()]);
+
+    Livewire::test(EditDieline::class, ['record' => $dieline->getKey()])
+        ->set('data.dimensions.'.$field, $value)
+        ->call('save')
+        ->assertHasFormErrors(['dimensions.'.$field => $rule]);
+})->with([
+    ['vial_diameter', 0, 'min'],
+    ['wall_taper', 60, 'max'],
+    ['vial_diameter', 160, 'max'],
+]);
+
+it('resolves the expanded catalog once per request when rendering fields', function (): void {
+    app()->forgetInstance(DielineTemplateRegistry::class);
+    DB::enableQueryLog();
+    $registry = app(DielineTemplateRegistry::class);
+    $options = $registry->options();
+
+    foreach (array_keys($options) as $key) {
+        $registry->fieldsForTemplate($key);
+        $registry->defaultsByTemplate();
+    }
+
+    $queries = collect(DB::getQueryLog())->filter(fn (array $query): bool => str_contains($query['query'], 'dieline_templates'));
+    DB::disableQueryLog();
+    $sortedNames = array_values($options);
+    sort($sortedNames);
+
+    expect($queries)->toHaveCount(1)
+        ->and(app(DielineTemplateRegistry::class))->toBe($registry)
+        ->and(array_values($options))->toBe($sortedNames);
+});
+
+it('rejects incompatible measurements instead of saving a silently shortened feature', function (string $key, string $field, mixed $value, string $rule): void {
+    $template = app(DielineTemplateRegistry::class)->template($key);
+    $dieline = Dieline::factory()->create(['template_key' => $key, 'dimensions' => $template->defaults()]);
+
+    Livewire::test(EditDieline::class, ['record' => $dieline->getKey()])
+        ->set('data.dimensions.'.$field, $value)
+        ->assertSee('Enter valid measurements')
+        ->call('save')
+        ->assertHasFormErrors(['dimensions.'.$field => $rule]);
+
+    expect($dieline->fresh()->dimensions[$field])->toEqual($template->defaults()[$field]);
+})->with([
+    ['pizza-box', 'corner_cut', 150, 'max'],
+    ['burger-box', 'lid_depth', 120, 'max'],
+    ['fries-scoop', 'base_length', 110, 'max'],
+    ['fries-scoop', 'base_length', 'invalid', 'numeric'],
+    ['sandwich-wedge', 'h', 60, 'max'],
+    ['carry-bag', 'handle_drop', 60, 'max'],
+    ['gable-box', 'hole_diameter', 60, 'max'],
+    ['open-food-tray', 'corner_tab', 50, 'max'],
+    ['seal-end-carton', 'seal_flap', 60, 'max'],
+    ['hang-tab-carton', 'hanger_slot_width', 160, 'max'],
+    ['vial-insert', 'wall_taper', 60, 'max'],
+]);
+
+it('keeps source metadata internally without adding links beneath the picker', function (string $key): void {
+    $template = app(DielineTemplateRegistry::class)->template($key);
+    $dieline = Dieline::factory()->create(['template_key' => $key, 'dimensions' => $template->defaults()]);
+
+    Livewire::test(EditDieline::class, ['record' => $dieline->getKey()])
+        ->assertDontSee('View source drawing')
+        ->assertDontSeeHtml('href="'.asset('dielines/references/'.$key.'.svg').'"')
+        ->assertSeeHtml('step="any"');
+})->with(['fries-scoop', 'burger-box', 'open-food-tray', 'hang-tab-carton', 'pizza-box', 'lock-tab-pizza-box', 'clamshell-burger-box', 'rollover-pizza-box', 'flip-top-burger-box', 'carry-bag', 'gable-box', 'seal-end-carton', 'sandwich-wedge', 'vial-insert']);
+
+it('browses actual thumbnails and applies every registered blueprint without saving the draft', function (): void {
+    $dieline = Dieline::factory()->create();
+    $original = $dieline->dimensions;
+    $editor = Livewire::test(EditDieline::class, ['record' => $dieline->getKey()]);
+    $editor->assertSee('Choose a dieline')->assertSee('Search blueprints')->assertDontSee('View source drawing');
+    foreach (app(DielineTemplateRegistry::class)->options() as $key => $name) {
+        $template = app(DielineTemplateRegistry::class)->template($key);
+        $editor->call('selectTemplate', $key)->assertSet('data.template_key', $key)->assertDispatched('close-modal', id: 'dieline-template-picker');
+        foreach ($template->defaults() as $field => $value) {
+            $editor->assertSet('data.dimensions.'.$field, $value);
+        }
+        $editor->assertSee($name)->assertSeeHtml('dielines/thumbnails/'.$key.'.svg');
+        $geometry = app(DielineGeometryService::class)->generate($key, $template->defaults());
+        expect($geometry['layers']['cut'])->not->toBeEmpty();
+        $renderer = new SvgDielineRenderer;
+        foreach ([(string) $renderer->preview($geometry), $renderer->renderForSvg($geometry), $renderer->renderForPdf($geometry)] as $drawing) {
+            expect($drawing)->not->toContain('data-dieline-layer="glue"', '<polygon', '#dcfce7', '#16a34a');
+        }
+        $geometry['labels'] = [];
+        expect(file_get_contents(public_path('dielines/thumbnails/'.$key.'.svg')))->toBe($renderer->render($geometry));
+        $thumbnail = new DOMDocument;
+        expect($thumbnail->load(public_path('dielines/thumbnails/'.$key.'.svg')))->toBeTrue();
+        expect($thumbnail->getElementsByTagName('line')->length)->toBe(count($geometry['layers']['cut']) + count($geometry['layers']['crease']) + count($geometry['layers']['perforation'] ?? []) + count($geometry['layers']['cut_crease'] ?? []) + count($geometry['layers']['bleed'] ?? []));
+    }
+    expect($dieline->fresh()->dimensions)->toBe($original);
+    $editor->call('selectTemplate', 'unknown-blueprint')->assertHasErrors('data.template_key');
 });

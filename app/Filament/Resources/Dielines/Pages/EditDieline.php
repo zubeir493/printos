@@ -10,6 +10,7 @@ use App\Services\Dielines\Renderers\SvgDielineRenderer;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\HtmlString;
+use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class EditDieline extends EditRecord
@@ -43,26 +44,46 @@ class EditDieline extends EditRecord
         return app(DielineTemplateRegistry::class)->options();
     }
 
+    /** @return array<int, array{key: string, name: string, description: string, thumbnail: string}> */
+    public function templateCards(): array
+    {
+        $registry = app(DielineTemplateRegistry::class);
+        $cards = [];
+
+        foreach ($registry->options() as $key => $name) {
+            $cards[] = ['key' => $key, 'name' => $name, 'description' => $registry->template($key)->description(), 'thumbnail' => asset('dielines/thumbnails/'.$key.'.svg')];
+        }
+
+        return $cards;
+    }
+
+    public function selectTemplate(string $key): void
+    {
+        if (! array_key_exists($key, $this->templateOptions())) {
+            throw ValidationException::withMessages(['data.template_key' => 'Choose an available blueprint.']);
+        }
+
+        data_set($this->data, 'template_key', $key);
+        $this->updatedDataTemplateKey($key);
+        $this->resetValidation();
+        $this->dispatch('close-modal', id: 'dieline-template-picker');
+    }
+
     /**
-     * @return array<int, array{key: string, label: string, suffix: string}>
+     * @return array<int, array{key: string, label: string, suffix: string, min: float|int, max?: float|int, step: string|int}>
      */
     public function dimensionFields(): array
     {
         $templateKey = (string) data_get($this->data, 'template_key', 'reverse-tuck-flap-box');
+        $labels = app(DielineTemplateRegistry::class)->template($templateKey)->baseDimensionLabels();
         $fields = [
-            ['key' => 'l', 'label' => 'Length', 'suffix' => 'mm'],
-            ['key' => 'w', 'label' => 'Width', 'suffix' => 'mm'],
-            ['key' => 'h', 'label' => 'Height', 'suffix' => 'mm'],
+            ['key' => 'l', 'label' => $labels['l'], 'suffix' => 'mm', 'min' => 1, 'step' => 'any'],
+            ['key' => 'w', 'label' => $labels['w'], 'suffix' => 'mm', 'min' => 1, 'step' => 'any'],
+            ['key' => 'h', 'label' => $labels['h'], 'suffix' => 'mm', 'min' => 1, 'step' => 'any'],
         ];
 
-        foreach (app(DielineTemplateRegistry::class)->advancedFields() as $field) {
-            if (in_array($templateKey, $field['templates'], true)) {
-                $fields[] = [
-                    'key' => $field['key'],
-                    'label' => $field['label'],
-                    'suffix' => $field['suffix'] ?? 'mm',
-                ];
-            }
+        foreach (app(DielineTemplateRegistry::class)->fieldsForTemplate($templateKey) as $field) {
+            $fields[] = [...$field, 'suffix' => $field['suffix'] ?? 'mm', 'min' => $field['min'] ?? 0, 'step' => ($field['integer'] ?? false) ? 1 : 'any'];
         }
 
         return $fields;

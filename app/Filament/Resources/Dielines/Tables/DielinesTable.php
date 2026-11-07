@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Dielines\Tables;
 
 use App\Models\Dieline;
 use App\Services\Dielines\DielineExportService;
+use App\Services\Dielines\DielineTemplateRegistry;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
@@ -24,6 +25,7 @@ class DielinesTable
                     ->description(fn (Dieline $record): string => $record->jobOrder?->job_order_number ?? 'Instant-ready dieline'),
                 TextColumn::make('template.name')
                     ->label('Type')
+                    ->state(fn (Dieline $record): string => app(DielineTemplateRegistry::class)->template($record->template_key)->name())
                     ->badge()
                     ->color('gray'),
                 TextColumn::make('creator.name')

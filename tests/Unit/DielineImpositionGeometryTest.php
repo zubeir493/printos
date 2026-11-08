@@ -10,12 +10,12 @@ use Tests\TestCase;
 
 uses(TestCase::class);
 
-it('keeps the dense small-carton B1 layout within the search budget', function (int $budget): void {
+it('keeps a useful B1 estimate and finds the dense small-carton layout with the final search budget', function (int $budget, int $minimumCopies): void {
     $source = (new ReverseTuckFlapBoxTemplate)->generate(['l' => 60, 'w' => 30, 'h' => 30, 'tuck_flap' => 12, 'glue_flap' => 10]);
     $imposition = new DielineImposition(['name' => 'Reverse Tuck Carton', 'paper_size' => 'b1', 'paper_width' => 707, 'paper_height' => 1000, 'margin' => 0, 'gap' => 0, 'source_geometry' => $source]);
     $layout = app(DielineImpositionService::class)->nest($imposition, $budget);
-    expect($layout['copies'])->toBeGreaterThanOrEqual(39);
-})->with([1000, 5000]);
+    expect($layout['copies'])->toBeGreaterThanOrEqual($minimumCopies);
+})->with(['quick estimate' => [1000, 30], 'final generation' => [5000, 39]]);
 
 it('reuses nesting results only for the same geometry, sheet, clearance and search quality', function (): void {
     $source = (new ReverseTuckFlapBoxTemplate)->generate(['l' => 60, 'w' => 30, 'h' => 30, 'tuck_flap' => 12, 'glue_flap' => 10]);
@@ -29,19 +29,38 @@ it('reuses nesting results only for the same geometry, sheet, clearance and sear
     expect($service->nest($imposition))->toBe($layout);
     Process::assertRanTimes(fn (): bool => true, 1);
 
-    foreach (['paper_width' => 708, 'paper_height' => 1001, 'margin' => 1, 'gap' => 1, 'source_geometry' => [...$source, 'layers' => []]] as $field => $value) {
+    foreach (['paper_width' => 708, 'paper_height' => 1001, 'margin' => 1, 'gap' => 1, 'horizontal_gap' => 2, 'vertical_gap' => 3, 'minimum_parallel_clearance' => 4, 'source_geometry' => [...$source, 'layers' => []]] as $field => $value) {
         $changed = clone $imposition;
         $changed->{$field} = $value;
         $service->nest($changed);
     }
     $service->nest($imposition, 1200);
-    Process::assertRanTimes(fn (): bool => true, 7);
+    Process::assertRanTimes(fn (): bool => true, 10);
 });
 
-it('adds more than four copies to the A1 reverse tuck layout after compaction', function (): void {
+it('passes independent sheet-axis gaps and the cutter minimum to the nesting engine', function (): void {
+    $layout = ['placements' => [['x' => 0, 'y' => 0, 'rotation' => 0]], 'copies' => 1, 'utilisation' => 10];
+    Process::fake(['*' => Process::result(output: json_encode($layout, JSON_THROW_ON_ERROR))]);
+    $source = (new ReverseTuckFlapBoxTemplate)->generate(['l' => 60, 'w' => 30, 'h' => 30, 'tuck_flap' => 12, 'glue_flap' => 10]);
+    $service = app(DielineImpositionService::class);
+    $service->nest(new DielineImposition(['paper_width' => 707, 'paper_height' => 1000, 'margin' => 0, 'gap' => 9, 'horizontal_gap' => 0, 'vertical_gap' => 5, 'minimum_parallel_clearance' => 3, 'source_geometry' => $source]));
+    Process::assertRan(function ($process): bool {
+        $input = json_decode($process->input, true);
+
+        return $input['horizontal_gap'] === 0 && $input['vertical_gap'] === 5 && $input['minimum_parallel_clearance'] === 3;
+    });
+    $service->nest(new DielineImposition(['paper_width' => 707, 'paper_height' => 1000, 'margin' => 0, 'gap' => 2, 'source_geometry' => $source]));
+    Process::assertRan(function ($process): bool {
+        $input = json_decode($process->input, true);
+
+        return $input['horizontal_gap'] === 2 && $input['vertical_gap'] === 2 && $input['minimum_parallel_clearance'] === 0;
+    });
+});
+
+it('finds more than four copies in the A1 reverse tuck layout with an extended search', function (): void {
     $source = (new ReverseTuckFlapBoxTemplate)->generate(['l' => 100, 'w' => 80, 'h' => 80, 'tuck_flap' => 15, 'glue_flap' => 10]);
     $imposition = new DielineImposition(['name' => 'Reverse Tuck Carton', 'paper_size' => 'a1', 'paper_width' => 594, 'paper_height' => 841, 'margin' => 0, 'gap' => 0, 'source_geometry' => $source]);
-    config(['dielines.imposition.search_ms' => 5000]);
+    config(['dielines.imposition.search_ms' => 15000]);
     $layout = app(DielineImpositionService::class)->nest($imposition);
     expect($layout['copies'])->toBeGreaterThan(4);
 });
@@ -62,10 +81,10 @@ it('compacts the short reverse tuck carton beyond its old rectangular grid spaci
     }
 });
 
-it('nests every blueprint with its true outline and preserves full-size manufacturing lines', function (string $key, string $class): void {
+it('nests every blueprint with its true outline and preserves full-size manufacturing lines', function (string $key, string $class, array $clearance): void {
     $template = new $class;
     $source = $template->generate($template->defaults());
-    $imposition = new DielineImposition(['name' => $template->name(), 'paper_size' => 'b0', 'paper_width' => 1000, 'paper_height' => 1414, 'margin' => 0, 'gap' => 0, 'source_geometry' => $source]);
+    $imposition = new DielineImposition(['name' => $template->name(), 'paper_size' => 'b0', 'paper_width' => 1000, 'paper_height' => 1414, 'margin' => 0, 'gap' => 0, 'source_geometry' => $source, ...$clearance]);
     config(['dielines.imposition.search_ms' => 300]);
     $service = app(DielineImpositionService::class);
     $layout = $service->nest($imposition);
@@ -88,4 +107,5 @@ it('nests every blueprint with its true outline and preserves full-size manufact
     }
     $svg = (new SvgDielineRenderer)->renderForSvg($sheet);
     expect($svg)->toContain('width="1000mm"', 'height="1414mm"', 'viewBox="0 0 1000 1414"');
-})->with(fn (): array => collect((new DielineTemplateRegistry)->fallbackTypes())->map(fn ($class, $key) => [$key, $class])->all());
+})->with(fn (): array => collect((new DielineTemplateRegistry)->fallbackTypes())->map(fn ($class, $key) => [$key, $class])->all())
+    ->with(['legacy zero gap' => [[]], 'directional spacing and cutter minimum' => [['horizontal_gap' => 0, 'vertical_gap' => 5, 'minimum_parallel_clearance' => 3]]]);

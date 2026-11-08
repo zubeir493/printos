@@ -16,13 +16,13 @@ class DielineImposition extends Model
 
     protected $fillable = [
         'dieline_id', 'user_id', 'name', 'paper_size', 'paper_width', 'paper_height',
-        'margin', 'gap', 'status', 'source_geometry', 'placements', 'copies',
+        'margin', 'gap', 'horizontal_gap', 'vertical_gap', 'minimum_parallel_clearance', 'status', 'source_geometry', 'placements', 'copies',
         'utilisation', 'disk', 'files', 'error_message', 'completed_at',
     ];
 
     protected function casts(): array
     {
-        return ['source_geometry' => 'array', 'placements' => 'array', 'files' => 'array', 'completed_at' => 'datetime', 'margin' => 'float', 'gap' => 'float', 'utilisation' => 'float'];
+        return ['source_geometry' => 'array', 'placements' => 'array', 'files' => 'array', 'completed_at' => 'datetime', 'margin' => 'float', 'gap' => 'float', 'horizontal_gap' => 'float', 'vertical_gap' => 'float', 'minimum_parallel_clearance' => 'float', 'utilisation' => 'float'];
     }
 
     public function user(): BelongsTo

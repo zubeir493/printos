@@ -16,10 +16,13 @@ class DielineImpositionService
             'geometry' => $imposition->source_geometry,
             'sheet' => ['width' => $imposition->paper_width, 'height' => $imposition->paper_height],
             'margin' => $imposition->margin, 'gap' => $imposition->gap,
+            'horizontal_gap' => $imposition->horizontal_gap ?? $imposition->gap,
+            'vertical_gap' => $imposition->vertical_gap ?? $imposition->gap,
+            'minimum_parallel_clearance' => $imposition->minimum_parallel_clearance ?? 0,
             'search_ms' => $searchMilliseconds ?? config('dielines.imposition.search_ms'), 'max_copies' => config('dielines.imposition.max_copies'),
         ], JSON_THROW_ON_ERROR);
 
-        return Cache::remember('dieline-nesting:v1:'.hash('sha256', $input), now()->addHour(), function () use ($input): array {
+        return Cache::remember('dieline-nesting:v4:'.hash('sha256', $input), now()->addHour(), function () use ($input): array {
             $result = Process::path(base_path())->timeout(40)->input($input)
                 ->run([config('dielines.imposition.node_binary'), '--max-old-space-size=512', base_path('resources/js/dielines/nest.mjs')]);
 

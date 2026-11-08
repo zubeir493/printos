@@ -66,11 +66,11 @@
         </main>
     </form>
 
-    <x-filament::modal id="dieline-imposition-picker" width="md" heading="Impose on sheet" description="Set your sheet measurements in millimetres, review the estimate, then generate your files.">
+    <x-filament::modal id="dieline-imposition-picker" width="md" heading="Impose on sheet">
         <form wire:submit="startImposition" class="space-y-5">
             <div class="grid grid-cols-2 gap-4">
-                @foreach (['width' => 'Sheet width', 'height' => 'Sheet height', 'margin' => 'Edge margin', 'spacing' => 'Spacing'] as $key => $label)
-                    <label class="block space-y-2" for="imposition-{{ $key }}">
+                @foreach (['width' => 'Sheet width', 'height' => 'Sheet height', 'horizontal_spacing' => 'Horizontal spacing', 'vertical_spacing' => 'Vertical spacing', 'minimum_parallel_clearance' => 'Minimum cut-line distance'] as $key => $label)
+                    <label @class(['block space-y-2', 'col-span-2' => $key === 'minimum_parallel_clearance']) for="imposition-{{ $key }}">
                         <span class="text-sm font-medium">{{ $label }}</span>
                         <x-filament::input.wrapper suffix="mm">
                             <x-filament::input id="imposition-{{ $key }}" type="number" :min="in_array($key, ['width', 'height']) ? 1 : 0" :max="in_array($key, ['width', 'height']) ? 5000 : 100" :step="in_array($key, ['width', 'height']) ? 1 : 0.01" wire:model.live.debounce.600ms="impositionSettings.{{ $key }}" required />
@@ -79,7 +79,6 @@
                     </label>
                 @endforeach
             </div>
-            <p class="text-xs text-gray-500 dark:text-gray-400">Margin applies to every sheet edge. Spacing is the distance between cut outlines. Use 0 for touching edges.</p>
 
             <div class="rounded-lg bg-gray-50 p-4 text-sm dark:bg-gray-800" role="status" aria-live="polite">
                 <div wire:loading wire:target="refreshImpositionPreview,impositionSettings">Calculating copies…</div>

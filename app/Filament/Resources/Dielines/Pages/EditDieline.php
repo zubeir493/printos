@@ -34,7 +34,7 @@ class EditDieline extends EditRecord
     #[Locked]
     public bool $impositionNotified = true;
 
-    public array $impositionSettings = ['width' => 594, 'height' => 841, 'margin' => 5, 'spacing' => 2];
+    public array $impositionSettings = ['width' => 594, 'height' => 841, 'horizontal_spacing' => 0, 'vertical_spacing' => 0, 'minimum_parallel_clearance' => 3];
 
     #[Locked]
     public ?array $impositionPreview = null;
@@ -61,14 +61,14 @@ class EditDieline extends EditRecord
 
         try {
             $draft = $this->impositionDraft();
-            $key = 'dieline-imposition-preview:'.hash('sha256', json_encode($draft->getAttributes(), JSON_THROW_ON_ERROR));
+            $key = 'dieline-imposition-preview:v4:'.hash('sha256', json_encode($draft->getAttributes(), JSON_THROW_ON_ERROR));
             $layout = Cache::remember($key, now()->addMinutes(5), fn (): array => app(DielineImpositionService::class)->nest($draft, (int) config('dielines.imposition.preview_search_ms')));
             $this->impositionPreview = ['copies' => $layout['copies'], 'utilisation' => $layout['utilisation']];
         } catch (ValidationException) {
             $this->impositionPreviewError = 'Enter valid sheet and dieline measurements to calculate copies.';
         } catch (\RuntimeException $exception) {
             if (str_contains($exception->getMessage(), 'does not fit')) {
-                $this->impositionPreviewError = 'No copies fit at 100% scale. Increase the sheet size or reduce the margin or spacing.';
+                $this->impositionPreviewError = 'No copies fit at 100% scale. Increase the sheet size or reduce the spacing.';
             } else {
                 report($exception);
                 $this->impositionPreviewError = 'The copy estimate could not be calculated. Please try again.';
@@ -82,23 +82,24 @@ class EditDieline extends EditRecord
         $settings = $this->validate([
             'impositionSettings.width' => ['required', 'integer', 'min:1', 'max:5000'],
             'impositionSettings.height' => ['required', 'integer', 'min:1', 'max:5000'],
-            'impositionSettings.margin' => ['required', 'numeric', 'min:0', 'max:100', 'decimal:0,2'],
-            'impositionSettings.spacing' => ['required', 'numeric', 'min:0', 'max:100', 'decimal:0,2'],
+            'impositionSettings.horizontal_spacing' => ['required', 'numeric', 'min:0', 'max:100', 'decimal:0,2'],
+            'impositionSettings.vertical_spacing' => ['required', 'numeric', 'min:0', 'max:100', 'decimal:0,2'],
+            'impositionSettings.minimum_parallel_clearance' => ['required', 'numeric', 'min:0', 'max:100', 'decimal:0,2'],
         ], [], [
             'impositionSettings.width' => 'sheet width', 'impositionSettings.height' => 'sheet height',
-            'impositionSettings.margin' => 'edge margin', 'impositionSettings.spacing' => 'spacing',
+            'impositionSettings.horizontal_spacing' => 'horizontal spacing',
+            'impositionSettings.vertical_spacing' => 'vertical spacing',
+            'impositionSettings.minimum_parallel_clearance' => 'minimum cut-line distance',
         ])['impositionSettings'];
-
-        if (2 * (float) $settings['margin'] >= min((int) $settings['width'], (int) $settings['height'])) {
-            throw ValidationException::withMessages(['impositionSettings.margin' => 'The margin must leave usable space on the sheet.']);
-        }
 
         $data = $this->prepareDielineData($this->form->getState());
 
         return new DielineImposition([
             'user_id' => auth()->id(), 'dieline_id' => $this->record->getKey(), 'name' => $data['name'],
             'paper_size' => 'custom', 'paper_width' => (int) $settings['width'], 'paper_height' => (int) $settings['height'],
-            'margin' => $settings['margin'], 'gap' => $settings['spacing'],
+            'margin' => 0, 'gap' => 0,
+            'horizontal_gap' => $settings['horizontal_spacing'], 'vertical_gap' => $settings['vertical_spacing'],
+            'minimum_parallel_clearance' => $settings['minimum_parallel_clearance'],
             'status' => 'queued', 'source_geometry' => $data['geometry'],
         ]);
     }

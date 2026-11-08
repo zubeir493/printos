@@ -34,10 +34,12 @@ it('previews custom sheets without generating files and queues an unsaved snapsh
     $dieline = Dieline::factory()->create();
     $original = $dieline->dimensions;
     $page = Livewire::test(EditDieline::class, ['record' => $dieline->id])
-        ->assertSee('Impose on sheet')->assertSee('Sheet width')->assertSee('Sheet height')->assertSee('Edge margin')->assertSee('Spacing')->assertSee('Generate files')
+        ->assertSee('Impose on sheet')->assertSee('Sheet width')->assertSee('Sheet height')->assertSee('Horizontal spacing')->assertSee('Vertical spacing')->assertSee('Minimum cut-line distance')->assertSee('Generate files')
+        ->assertDontSee('Edge margin')
+        ->assertSet('impositionSettings.minimum_parallel_clearance', 3)
         ->assertDontSee('Choose a paper size')->assertDontSee('Download imposed PDF')
         ->set('data.dimensions.h', 123)
-        ->set('impositionSettings', ['width' => 620, 'height' => 900, 'margin' => 7.5, 'spacing' => 3.25])
+        ->set('impositionSettings', ['width' => 620, 'height' => 900, 'margin' => 99, 'horizontal_spacing' => 3.25, 'vertical_spacing' => 0, 'minimum_parallel_clearance' => 2.5])
         ->assertHasNoErrors()->assertSee('Estimated')->assertSee('620 × 900 mm');
     Queue::assertNothingPushed();
     expect(DielineImposition::query()->count())->toBe(0);
@@ -46,14 +48,17 @@ it('previews custom sheets without generating files and queues an unsaved snapsh
     $imposition = DielineImposition::query()->sole();
     expect($imposition->paper_width)->toBe(620)->and($imposition->paper_height)->toBe(900)
         ->and($imposition->paper_size)->toBe('custom')->and($imposition->sheetLabel())->toBe('620 × 900 mm')
-        ->and($imposition->margin)->toBe(7.5)->and($imposition->gap)->toBe(3.25)
+        ->and($imposition->margin)->toBe(0.0)->and($imposition->gap)->toBe(0.0)
+        ->and($imposition->horizontal_gap)->toBe(3.25)->and($imposition->vertical_gap)->toBe(0.0)
+        ->and($imposition->minimum_parallel_clearance)->toBe(2.5)
         ->and($imposition->source_geometry)->toEqual(app(DielineGeometryService::class)->generate($dieline->template_key, [...$original, 'h' => 123]))
         ->and($imposition->user_id)->toBe(auth()->id())
         ->and($dieline->fresh()->dimensions)->toBe($original);
     Queue::assertPushed(GenerateDielineImposition::class, fn ($job) => $job->impositionId === $imposition->id && $job->afterCommit);
     $snapshot = $imposition->source_geometry;
-    $page->set('data.dimensions.h', 145)->call('startImposition');
-    expect(DielineImposition::query()->count())->toBe(1)->and($imposition->fresh()->source_geometry)->toBe($snapshot);
+    $page->set('data.dimensions.h', 145)->set('impositionSettings.horizontal_spacing', 10)->call('startImposition');
+    expect(DielineImposition::query()->count())->toBe(1)->and($imposition->fresh()->source_geometry)->toBe($snapshot)
+        ->and($imposition->fresh()->horizontal_gap)->toBe(3.25);
     $imposition->update(['status' => 'completed', 'copies' => 4]);
     $page->call('$refresh')->assertSeeHtml('wire:poll.3s.keep-alive="checkImposition"')
         ->call('checkImposition')->assertNotified('Imposition ready')->assertSet('impositionNotified', true)
@@ -69,30 +74,42 @@ it('rejects invalid custom sheet settings before queuing any work', function (st
     expect(DielineImposition::query()->count())->toBe(0);
 })->with([
     ['width', 0], ['height', ''], ['width', 5001], ['width', 594.5],
-    ['margin', -1], ['margin', 101], ['spacing', -1], ['spacing', 101], ['spacing', 0.001],
+    ['horizontal_spacing', -1], ['horizontal_spacing', 101], ['horizontal_spacing', 0.001],
+    ['vertical_spacing', -1], ['vertical_spacing', 101], ['vertical_spacing', ''],
+    ['minimum_parallel_clearance', -1], ['minimum_parallel_clearance', 101], ['minimum_parallel_clearance', 0.001],
 ]);
 
-it('rejects margins that consume the sheet and reports when no copies fit', function (): void {
+it('reports when the custom sheet cannot fit a single copy', function (): void {
     Queue::fake();
     $page = Livewire::test(EditDieline::class, ['record' => Dieline::factory()->create()->id])
-        ->set('impositionSettings', ['width' => 100, 'height' => 100, 'margin' => 50, 'spacing' => 0])
-        ->call('startImposition')->assertHasErrors('impositionSettings.margin');
-    $page->set('impositionSettings', ['width' => 10, 'height' => 10, 'margin' => 0, 'spacing' => 0])
+        ->set('impositionSettings', ['width' => 10, 'height' => 10, 'horizontal_spacing' => 0, 'vertical_spacing' => 0, 'minimum_parallel_clearance' => 3])
         ->assertSet('impositionPreview', null)->assertSee('No copies fit at 100% scale');
     Queue::assertNothingPushed();
 });
 
-it('caches the quick estimate and allows zero margin and spacing', function (): void {
+it('caches the quick estimate and allows zero spacing and cut clearance', function (): void {
     Queue::fake();
     $nesting = Mockery::mock(DielineImpositionService::class);
-    $nesting->shouldReceive('nest')->once()->withArgs(fn (DielineImposition $draft, int $searchMilliseconds): bool => $draft->margin === 0.0 && $draft->gap === 0.0 && $searchMilliseconds === 1200)
+    $nesting->shouldReceive('nest')->once()->withArgs(fn (DielineImposition $draft, int $searchMilliseconds): bool => $draft->margin === 0.0 && $draft->horizontal_gap === 0.0 && $draft->vertical_gap === 0.0 && $draft->minimum_parallel_clearance === 0.0 && $searchMilliseconds === 1200)
         ->andReturn(['copies' => 2, 'utilisation' => 54.5]);
     app()->instance(DielineImpositionService::class, $nesting);
     Livewire::test(EditDieline::class, ['record' => Dieline::factory()->create()->id])
-        ->set('impositionSettings', ['width' => 594, 'height' => 841, 'margin' => 0, 'spacing' => 0])
+        ->set('impositionSettings', ['width' => 594, 'height' => 841, 'horizontal_spacing' => 0, 'vertical_spacing' => 0, 'minimum_parallel_clearance' => 0])
         ->call('refreshImpositionPreview')->assertSee('Estimated 2 copies per sheet')
         ->assertSee('54.5% material use')->call('startImposition')->assertHasNoErrors();
     Queue::assertPushed(GenerateDielineImposition::class);
+});
+
+it('invalidates the estimate when either spacing or the cut-line minimum changes', function (): void {
+    $nesting = Mockery::mock(DielineImpositionService::class);
+    $nesting->shouldReceive('nest')->times(4)->andReturn(['copies' => 2, 'utilisation' => 54.5]);
+    app()->instance(DielineImpositionService::class, $nesting);
+    Livewire::test(EditDieline::class, ['record' => Dieline::factory()->create()->id])
+        ->call('refreshImpositionPreview')
+        ->set('impositionSettings.horizontal_spacing', 4)
+        ->set('impositionSettings.vertical_spacing', 5)
+        ->set('impositionSettings.minimum_parallel_clearance', 2)
+        ->call('refreshImpositionPreview')->assertHasNoErrors();
 });
 
 it('rejects invalid dieline measurements before queuing work', function (): void {

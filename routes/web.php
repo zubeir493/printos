@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AccountingExportDownloadController;
+use App\Http\Controllers\DielineImpositionDownloadController;
 use App\Http\Controllers\JobOrderPrintController;
 use App\Http\Controllers\PrivateStorageController;
 use App\Http\Controllers\ProformaDownloadController;
@@ -17,6 +18,10 @@ Route::get('private-storage/{disk}/{path}', [PrivateStorageController::class, 's
     ->name('private-storage.show');
 
 Route::middleware(['auth', 'rate.requests:30,1'])->group(function (): void {
+    Route::get('dieline-impositions/{dielineImposition}/{format}', DielineImpositionDownloadController::class)
+        ->whereIn('format', ['pdf', 'svg', 'dxf'])
+        ->name('dieline-impositions.download');
+
     Route::get('accounting-exports/{accountingExport}/download', AccountingExportDownloadController::class)
         ->name('accounting-exports.download');
 

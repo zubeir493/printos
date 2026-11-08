@@ -32,21 +32,14 @@ class ListDielines extends ListRecords
                                 ->required()
                                 ->maxLength(255)
                                 ->default('New dieline'),
-                            Select::make('template_key')
-                                ->label('Dieline type')
-                                ->options(fn (): array => app(DielineTemplateRegistry::class)->options())
-                                ->default('reverse-tuck-flap-box')
-                                ->required()
-                                ->searchable(),
                             Select::make('job_order_id')
-                                ->label('Job task')
+                                ->label('Job order')
                                 ->options(fn (): array => JobOrder::query()
-                                    ->with('jobOrder')
                                     ->latest('id')
                                     ->limit(100)
                                     ->get()
-                                    ->mapWithKeys(fn (JobOrder $task): array => [
-                                        $task->id => "{$task->name} ({$task->jobOrder?->job_order_number})",
+                                    ->mapWithKeys(fn (JobOrder $jobOrder): array => [
+                                        $jobOrder->id => "{$jobOrder->job_order_number} — {$jobOrder->name}",
                                     ])
                                     ->all())
                                 ->searchable()
@@ -55,7 +48,7 @@ class ListDielines extends ListRecords
                         ]),
                 ])
                 ->action(function (array $data): void {
-                    $templateKey = (string) $data['template_key'];
+                    $templateKey = 'reverse-tuck-flap-box';
                     $dimensions = app(DielineTemplateRegistry::class)->template($templateKey)->defaults();
                     $geometry = app(DielineGeometryService::class)->generate($templateKey, $dimensions);
 

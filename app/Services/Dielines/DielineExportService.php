@@ -58,10 +58,26 @@ class DielineExportService
         };
     }
 
-    /**
-     * @param  array<string, mixed>  $geometry
-     */
+    /** @param array<string, mixed> $geometry */
+    public function contents(array $geometry, string $format): string
+    {
+        return match ($format) {
+            'pdf' => $this->pdfDocument($geometry)->output(),
+            'dxf' => $this->dxf->render($geometry),
+            'svg' => $this->svg->renderForSvg($geometry),
+        };
+    }
+
+    /** @param array<string, mixed> $geometry */
     private function pdf(array $geometry, string $filename): StreamedResponse
+    {
+        $pdf = $this->pdfDocument($geometry);
+
+        return response()->streamDownload(fn (): int => print $pdf->output(), $filename, ['Content-Type' => 'application/pdf']);
+    }
+
+    /** @param array<string, mixed> $geometry */
+    private function pdfDocument(array $geometry): \Barryvdh\DomPDF\PDF
     {
         $bounds = $geometry['bounds'] ?? ['width' => 210, 'height' => 297];
         $widthMm = (float) $bounds['width'];
@@ -76,10 +92,6 @@ class DielineExportService
         ])
             ->setPaper([0, 0, $width, $height]);
 
-        return response()->streamDownload(
-            fn (): int => print $pdf->output(),
-            $filename,
-            ['Content-Type' => 'application/pdf'],
-        );
+        return $pdf;
     }
 }

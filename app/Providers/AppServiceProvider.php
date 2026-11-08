@@ -103,6 +103,7 @@ class AppServiceProvider extends ServiceProvider
             )
         );
         FilamentTimezone::set(config('app.timezone'));
+        FilamentView::spaUrlExceptions(['*/dieline-impositions/*']);
 
         FilamentView::registerRenderHook(
             PanelsRenderHook::SCRIPTS_AFTER,

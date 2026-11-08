@@ -229,7 +229,7 @@ it('copies the replacement and variant source contours without adding or droppin
 
     $template = new $class;
     $preview = new DOMDocument;
-    $preview->load(__DIR__.'/../../public/dielines/references/'.$template->key().'.svg');
+    $preview->load(__DIR__.'/../../public/dieline-assets/references/'.$template->key().'.svg');
     expect($preview->documentElement->namespaceURI)->toBe('http://www.w3.org/2000/svg')
         ->and($preview->documentElement->getAttribute('viewBox'))->not->toBeEmpty()
         ->and($preview->documentElement->getAttribute('data-original-drawing'))->toBe($template->referenceDrawingUrl())
@@ -238,7 +238,7 @@ it('copies the replacement and variant source contours without adding or droppin
 
     foreach (['cut', 'crease', 'cut_crease', 'perforation'] as $layer) {
         $source = sourceDielineLines($fixture, $layer);
-        expect(sourceDielineLines($fixture, $layer, __DIR__.'/../../public/dielines/references'))->toBe($source);
+        expect(sourceDielineLines($fixture, $layer, __DIR__.'/../../public/dieline-assets/references'))->toBe($source);
         $actual = $geometry['layers'][$layer];
 
         if ($source === []) {

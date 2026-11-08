@@ -3,6 +3,7 @@
 use App\Filament\Resources\Dielines\Pages\EditDieline;
 use App\Filament\Resources\Dielines\Pages\ListDielines;
 use App\Models\Dieline;
+use App\Models\JobOrder;
 use App\Models\Setting;
 use App\Models\User;
 use App\Services\Dielines\DielineExportService;
@@ -26,6 +27,16 @@ beforeEach(function (): void {
         'role' => UserRole::Admin,
     ]));
 });
+
+it('opens the dieline list without colliding with a public asset directory', function (UserRole $role, string $path): void {
+    $this->actingAs(User::factory()->create(['role' => $role]));
+    $this->get($path)->assertSuccessful()->assertSee('Dielines');
+    expect(is_dir(public_path('dielines')))->toBeFalse()
+        ->and(is_file(public_path('dieline-assets/thumbnails/reverse-tuck-flap-box.svg')))->toBeTrue();
+})->with([
+    'admin' => [UserRole::Admin, '/dielines/'],
+    'design' => [UserRole::Design, '/design/dielines/'],
+]);
 
 it('renders the dieline editor as a fullscreen canvas with a left settings sidebar', function (): void {
     $dieline = Dieline::factory()->create();
@@ -52,12 +63,16 @@ it('renders the dieline editor as a fullscreen canvas with a left settings sideb
 });
 
 it('creates dieline drafts from a setup modal then saves dimensions and geometry', function (): void {
+    $jobOrder = JobOrder::factory()->create();
+
     Livewire::test(ListDielines::class)
         ->mountAction('createDieline')
+        ->assertMountedActionModalSee('Job order')
+        ->assertMountedActionModalDontSee('Dieline type')
+        ->assertMountedActionModalDontSee('Job task')
         ->setActionData([
             'name' => 'Pharma carton',
-            'template_key' => 'reverse-tuck-flap-box',
-            'job_order_id' => null,
+            'job_order_id' => $jobOrder->getKey(),
         ])
         ->callMountedAction()
         ->assertHasNoActionErrors();
@@ -83,6 +98,8 @@ it('creates dieline drafts from a setup modal then saves dimensions and geometry
         ->assertHasNoFormErrors();
 
     $dieline->refresh();
+
+    expect($dieline->jobOrder->is($jobOrder))->toBeTrue();
 
     expect($dieline)
         ->not->toBeNull()
@@ -218,12 +235,10 @@ it('validates the setup modal before creating a dieline draft', function (): voi
         ->mountAction('createDieline')
         ->setActionData([
             'name' => null,
-            'template_key' => null,
         ])
         ->callMountedAction()
         ->assertHasActionErrors([
             'name' => 'required',
-            'template_key' => 'required',
         ]);
 
     expect(Dieline::query()->count())->toBe(0);
@@ -263,12 +278,16 @@ it('creates edits and exports every new packaging blueprint', function (string $
 
     Livewire::test(ListDielines::class)
         ->mountAction('createDieline')
-        ->setActionData(['name' => $template->name(), 'template_key' => $template->key(), 'job_order_id' => null])
+        ->assertMountedActionModalSee('Job order')
+        ->assertMountedActionModalDontSee('Dieline type')
+        ->assertMountedActionModalDontSee('Job task')
+        ->setActionData(['name' => $template->name(), 'job_order_id' => null])
         ->callMountedAction()
         ->assertHasNoActionErrors();
 
     $dieline = Dieline::query()->sole();
-    $editor = Livewire::test(EditDieline::class, ['record' => $dieline->getKey()]);
+    $editor = Livewire::test(EditDieline::class, ['record' => $dieline->getKey()])
+        ->call('selectTemplate', $template->key());
 
     foreach ($template->advancedFields() as $field) {
         $editor->assertSee($field['label'])->assertFormFieldVisible('dimensions.'.$field['key']);
@@ -401,7 +420,7 @@ it('keeps source metadata internally without adding links beneath the picker', f
 
     Livewire::test(EditDieline::class, ['record' => $dieline->getKey()])
         ->assertDontSee('View source drawing')
-        ->assertDontSeeHtml('href="'.asset('dielines/references/'.$key.'.svg').'"')
+        ->assertDontSeeHtml('href="'.asset('dieline-assets/references/'.$key.'.svg').'"')
         ->assertSeeHtml('step="any"');
 })->with(['fries-scoop', 'burger-box', 'open-food-tray', 'hang-tab-carton', 'pizza-box', 'lock-tab-pizza-box', 'clamshell-burger-box', 'rollover-pizza-box', 'flip-top-burger-box', 'carry-bag', 'gable-box', 'seal-end-carton', 'sandwich-wedge', 'vial-insert']);
 
@@ -416,7 +435,7 @@ it('browses actual thumbnails and applies every registered blueprint without sav
         foreach ($template->defaults() as $field => $value) {
             $editor->assertSet('data.dimensions.'.$field, $value);
         }
-        $editor->assertSee($name)->assertSeeHtml('dielines/thumbnails/'.$key.'.svg');
+        $editor->assertSee($name)->assertSeeHtml('dieline-assets/thumbnails/'.$key.'.svg');
         $geometry = app(DielineGeometryService::class)->generate($key, $template->defaults());
         expect($geometry['layers']['cut'])->not->toBeEmpty();
         $renderer = new SvgDielineRenderer;
@@ -424,9 +443,9 @@ it('browses actual thumbnails and applies every registered blueprint without sav
             expect($drawing)->not->toContain('data-dieline-layer="glue"', '<polygon', '#dcfce7', '#16a34a');
         }
         $geometry['labels'] = [];
-        expect(file_get_contents(public_path('dielines/thumbnails/'.$key.'.svg')))->toBe($renderer->render($geometry));
+        expect(file_get_contents(public_path('dieline-assets/thumbnails/'.$key.'.svg')))->toBe($renderer->render($geometry));
         $thumbnail = new DOMDocument;
-        expect($thumbnail->load(public_path('dielines/thumbnails/'.$key.'.svg')))->toBeTrue();
+        expect($thumbnail->load(public_path('dieline-assets/thumbnails/'.$key.'.svg')))->toBeTrue();
         expect($thumbnail->getElementsByTagName('line')->length)->toBe(count($geometry['layers']['cut']) + count($geometry['layers']['crease']) + count($geometry['layers']['perforation'] ?? []) + count($geometry['layers']['cut_crease'] ?? []) + count($geometry['layers']['bleed'] ?? []));
     }
     expect($dieline->fresh()->dimensions)->toBe($original);

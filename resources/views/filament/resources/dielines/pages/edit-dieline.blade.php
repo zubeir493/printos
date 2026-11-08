@@ -1,5 +1,6 @@
 <x-filament-panels::page full-height>
-    <form wire:submit="save" class="dieline-canvas-shell">
+    @php($imposition = $this->currentImposition())
+    <form wire:submit="save" class="dieline-canvas-shell" @if ($imposition && ! $this->impositionNotified) wire:poll.3s.keep-alive="checkImposition" @endif>
         <aside class="dieline-editor-sidebar">
             <div class="dieline-editor-sidebar-scroll">
 
@@ -45,13 +46,14 @@
                     <span>Save Dieline</span>
                 </button>
 
-                <button type="button" class="dieline-save-menu" x-on:click="open = ! open" aria-label="Download options">
+                <button type="button" class="dieline-save-menu" x-on:click="open = ! open" aria-label="Dieline actions" x-bind:aria-expanded="open" aria-haspopup="true">
                     <svg viewBox="0 0 20 20" aria-hidden="true">
                         <path d="M5.2 7.7a1 1 0 0 1 1.4 0L10 11.1l3.4-3.4a1 1 0 1 1 1.4 1.4l-4.1 4.1a1 1 0 0 1-1.4 0L5.2 9.1a1 1 0 0 1 0-1.4Z" />
                     </svg>
                 </button>
 
                 <div class="dieline-download-menu" x-cloak x-show="open" x-transition.origin.bottom.left>
+                    <button type="button" wire:click="refreshImpositionPreview" x-on:click="open = false; $dispatch('open-modal', { id: 'dieline-imposition-picker' })">Impose on sheet</button>
                     <button type="button" wire:click="downloadInstantSvg" x-on:click="open = false">Download SVG</button>
                     <button type="button" wire:click="downloadInstantPdf" x-on:click="open = false">Download PDF</button>
                     <button type="button" wire:click="downloadInstantDxf" x-on:click="open = false">Download DXF</button>
@@ -63,6 +65,45 @@
             {!! $this->preview() !!}
         </main>
     </form>
+
+    <x-filament::modal id="dieline-imposition-picker" width="md" heading="Impose on sheet" description="Set your sheet measurements in millimetres, review the estimate, then generate your files.">
+        <form wire:submit="startImposition" class="space-y-5">
+            <div class="grid grid-cols-2 gap-4">
+                @foreach (['width' => 'Sheet width', 'height' => 'Sheet height', 'margin' => 'Edge margin', 'spacing' => 'Spacing'] as $key => $label)
+                    <label class="block space-y-2" for="imposition-{{ $key }}">
+                        <span class="text-sm font-medium">{{ $label }}</span>
+                        <x-filament::input.wrapper suffix="mm">
+                            <x-filament::input id="imposition-{{ $key }}" type="number" :min="in_array($key, ['width', 'height']) ? 1 : 0" :max="in_array($key, ['width', 'height']) ? 5000 : 100" :step="in_array($key, ['width', 'height']) ? 1 : 0.01" wire:model.live.debounce.600ms="impositionSettings.{{ $key }}" required />
+                        </x-filament::input.wrapper>
+                        @error('impositionSettings.'.$key) <span class="text-xs text-danger-600">{{ $message }}</span> @enderror
+                    </label>
+                @endforeach
+            </div>
+            <p class="text-xs text-gray-500 dark:text-gray-400">Margin applies to every sheet edge. Spacing is the distance between cut outlines. Use 0 for touching edges.</p>
+
+            <div class="rounded-lg bg-gray-50 p-4 text-sm dark:bg-gray-800" role="status" aria-live="polite">
+                <div wire:loading wire:target="refreshImpositionPreview,impositionSettings">Calculating copies…</div>
+                <div wire:loading.remove wire:target="refreshImpositionPreview,impositionSettings" class="space-y-1">
+                    @if ($this->impositionPreviewError)
+                        <p class="text-danger-600">{{ $this->impositionPreviewError }}</p>
+                    @elseif ($this->impositionPreview)
+                        <p class="font-semibold">Estimated {{ $this->impositionPreview['copies'] }} {{ $this->impositionPreview['copies'] === 1 ? 'copy' : 'copies' }} per sheet</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">{{ $this->impositionSettings['width'] }} × {{ $this->impositionSettings['height'] }} mm · {{ number_format($this->impositionPreview['utilisation'], 1) }}% material use</p>
+                    @else
+                        <p class="text-gray-500">Enter sheet measurements to calculate copies.</p>
+                    @endif
+                </div>
+            </div>
+            @if (in_array($imposition?->status, ['queued', 'processing'], true))
+                <p class="text-sm text-gray-500" role="status">An imposition is already generating. We will notify you when it is ready.</p>
+            @endif
+            <div class="flex justify-end">
+                <x-filament::button type="submit" wire:loading.attr="disabled" :disabled="! $this->impositionPreview || in_array($imposition?->status, ['queued', 'processing'], true)">
+                    Generate files
+                </x-filament::button>
+            </div>
+        </form>
+    </x-filament::modal>
 
     <x-filament::modal id="dieline-template-picker" width="6xl" heading="Choose a dieline" description="Browse the shapes, then select a blueprint to start with its recommended measurements.">
         @php($cards = $this->templateCards())

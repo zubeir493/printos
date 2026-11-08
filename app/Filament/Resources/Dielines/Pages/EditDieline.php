@@ -4,13 +4,20 @@ namespace App\Filament\Resources\Dielines\Pages;
 
 use App\Filament\Resources\Dielines\DielineResource;
 use App\Filament\Resources\Dielines\Pages\Concerns\PreparesDielineData;
+use App\Jobs\GenerateDielineImposition;
+use App\Models\DielineImposition;
 use App\Services\Dielines\DielineGeometryService;
+use App\Services\Dielines\DielineImpositionService;
 use App\Services\Dielines\DielineTemplateRegistry;
 use App\Services\Dielines\Renderers\SvgDielineRenderer;
+use App\UserRole;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Contracts\Support\Htmlable;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\HtmlString;
 use Illuminate\Validation\ValidationException;
+use Livewire\Attributes\Locked;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class EditDieline extends EditRecord
@@ -20,6 +27,115 @@ class EditDieline extends EditRecord
     protected static string $resource = DielineResource::class;
 
     protected string $view = 'filament.resources.dielines.pages.edit-dieline';
+
+    #[Locked]
+    public ?int $impositionId = null;
+
+    #[Locked]
+    public bool $impositionNotified = true;
+
+    public array $impositionSettings = ['width' => 594, 'height' => 841, 'margin' => 5, 'spacing' => 2];
+
+    #[Locked]
+    public ?array $impositionPreview = null;
+
+    #[Locked]
+    public ?string $impositionPreviewError = null;
+
+    public function mount(int|string $record): void
+    {
+        parent::mount($record);
+        $this->impositionId = DielineImposition::query()->where('user_id', auth()->id())->where('dieline_id', $this->record->getKey())->latest('id')->value('id');
+        $this->impositionNotified = ! in_array($this->currentImposition()?->status, ['queued', 'processing'], true);
+    }
+
+    public function updatedImpositionSettings(): void
+    {
+        $this->refreshImpositionPreview();
+    }
+
+    public function refreshImpositionPreview(): void
+    {
+        $this->impositionPreview = null;
+        $this->impositionPreviewError = null;
+
+        try {
+            $draft = $this->impositionDraft();
+            $key = 'dieline-imposition-preview:'.hash('sha256', json_encode($draft->getAttributes(), JSON_THROW_ON_ERROR));
+            $layout = Cache::remember($key, now()->addMinutes(5), fn (): array => app(DielineImpositionService::class)->nest($draft, (int) config('dielines.imposition.preview_search_ms')));
+            $this->impositionPreview = ['copies' => $layout['copies'], 'utilisation' => $layout['utilisation']];
+        } catch (ValidationException) {
+            $this->impositionPreviewError = 'Enter valid sheet and dieline measurements to calculate copies.';
+        } catch (\RuntimeException $exception) {
+            if (str_contains($exception->getMessage(), 'does not fit')) {
+                $this->impositionPreviewError = 'No copies fit at 100% scale. Increase the sheet size or reduce the margin or spacing.';
+            } else {
+                report($exception);
+                $this->impositionPreviewError = 'The copy estimate could not be calculated. Please try again.';
+            }
+        }
+    }
+
+    private function impositionDraft(): DielineImposition
+    {
+        abort_unless(in_array(auth()->user()?->role, [UserRole::Admin, UserRole::Design], true), 403);
+        $settings = $this->validate([
+            'impositionSettings.width' => ['required', 'integer', 'min:1', 'max:5000'],
+            'impositionSettings.height' => ['required', 'integer', 'min:1', 'max:5000'],
+            'impositionSettings.margin' => ['required', 'numeric', 'min:0', 'max:100', 'decimal:0,2'],
+            'impositionSettings.spacing' => ['required', 'numeric', 'min:0', 'max:100', 'decimal:0,2'],
+        ], [], [
+            'impositionSettings.width' => 'sheet width', 'impositionSettings.height' => 'sheet height',
+            'impositionSettings.margin' => 'edge margin', 'impositionSettings.spacing' => 'spacing',
+        ])['impositionSettings'];
+
+        if (2 * (float) $settings['margin'] >= min((int) $settings['width'], (int) $settings['height'])) {
+            throw ValidationException::withMessages(['impositionSettings.margin' => 'The margin must leave usable space on the sheet.']);
+        }
+
+        $data = $this->prepareDielineData($this->form->getState());
+
+        return new DielineImposition([
+            'user_id' => auth()->id(), 'dieline_id' => $this->record->getKey(), 'name' => $data['name'],
+            'paper_size' => 'custom', 'paper_width' => (int) $settings['width'], 'paper_height' => (int) $settings['height'],
+            'margin' => $settings['margin'], 'gap' => $settings['spacing'],
+            'status' => 'queued', 'source_geometry' => $data['geometry'],
+        ]);
+    }
+
+    public function currentImposition(): ?DielineImposition
+    {
+        return $this->impositionId ? DielineImposition::query()->where('user_id', auth()->id())->find($this->impositionId) : null;
+    }
+
+    public function startImposition(): void
+    {
+        abort_unless(in_array(auth()->user()?->role, [UserRole::Admin, UserRole::Design], true), 403);
+        if (in_array($this->currentImposition()?->status, ['queued', 'processing'], true)) {
+            return;
+        }
+        $imposition = $this->impositionDraft();
+        $imposition->save();
+        $this->impositionId = $imposition->getKey();
+        $this->impositionNotified = false;
+        GenerateDielineImposition::dispatch($imposition->getKey())->afterCommit();
+        $this->dispatch('close-modal', id: 'dieline-imposition-picker');
+        Notification::make()->info()->title('Generating imposition')->body('You can keep working. We will notify you when your '.$imposition->sheetLabel().' sheet is ready.')->send();
+    }
+
+    public function checkImposition(): void
+    {
+        $imposition = $this->currentImposition();
+        if ($this->impositionNotified || ! $imposition || ! in_array($imposition->status, ['completed', 'failed'], true)) {
+            return;
+        }
+        $this->impositionNotified = true;
+        if ($imposition->status === 'completed') {
+            $imposition->completedNotification()->send();
+        } else {
+            Notification::make()->danger()->title('Imposition failed')->body($imposition->error_message)->send();
+        }
+    }
 
     public function getHeading(): string|Htmlable|null
     {
@@ -51,7 +167,7 @@ class EditDieline extends EditRecord
         $cards = [];
 
         foreach ($registry->options() as $key => $name) {
-            $cards[] = ['key' => $key, 'name' => $name, 'description' => $registry->template($key)->description(), 'thumbnail' => asset('dielines/thumbnails/'.$key.'.svg')];
+            $cards[] = ['key' => $key, 'name' => $name, 'description' => $registry->template($key)->description(), 'thumbnail' => asset('dieline-assets/thumbnails/'.$key.'.svg')];
         }
 
         return $cards;

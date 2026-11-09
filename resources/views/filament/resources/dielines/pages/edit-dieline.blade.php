@@ -3,6 +3,10 @@
     <form wire:submit="save" class="dieline-canvas-shell" @if ($imposition && ! $this->impositionNotified) wire:poll.3s.keep-alive="checkImposition" @endif>
         <aside class="dieline-editor-sidebar">
             <div class="dieline-editor-sidebar-scroll">
+                <a href="{{ $this->backUrl() }}" class="mb-4 inline-flex w-full items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600">
+                    <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><path d="m11.5 4.5-5 5.5 5 5.5M7 10h8" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"/></svg>
+                    <span>{{ $this->backLabel() }}</span>
+                </a>
 
                 <div class="dieline-editor-field">
                     <span id="dieline-type-label">Dieline type <sup>*</sup></span>

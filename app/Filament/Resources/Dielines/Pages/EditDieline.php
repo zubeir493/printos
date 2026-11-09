@@ -148,6 +148,20 @@ class EditDieline extends EditRecord
         return [];
     }
 
+    public function backUrl(): string
+    {
+        return auth()->user()?->role === UserRole::Design
+            ? DielineResource::getUrl('index', panel: 'design')
+            : url('/');
+    }
+
+    public function backLabel(): string
+    {
+        return auth()->user()?->role === UserRole::Design
+            ? 'Back to dielines'
+            : 'Back to dashboard';
+    }
+
     protected function getHeaderActions(): array
     {
         return [];

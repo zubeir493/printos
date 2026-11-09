@@ -62,6 +62,24 @@ it('renders the dieline editor as a fullscreen canvas with a left settings sideb
         ->assertDontSeeHtml('<strong>Bleed</strong>');
 });
 
+it('links admins back to the dashboard from the dieline editor', function (): void {
+    $dieline = Dieline::factory()->create();
+
+    Livewire::test(EditDieline::class, ['record' => $dieline->getKey()])
+        ->assertSee('Back to dashboard')
+        ->assertSeeHtml('href="'.url('/').'"');
+});
+
+it('links designers back to their dieline list from the editor', function (): void {
+    Filament::setCurrentPanel(Filament::getPanel('design'));
+    $this->actingAs(User::factory()->create(['role' => UserRole::Design]));
+    $dieline = Dieline::factory()->create();
+
+    Livewire::test(EditDieline::class, ['record' => $dieline->getKey()])
+        ->assertSee('Back to dielines')
+        ->assertSeeHtml('href="'.route('filament.design.resources.dielines.index').'"');
+});
+
 it('creates dieline drafts from a setup modal then saves dimensions and geometry', function (): void {
     $jobOrder = JobOrder::factory()->create();
 

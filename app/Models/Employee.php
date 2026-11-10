@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Validation\ValidationException;
@@ -17,7 +18,7 @@ class Employee extends Model
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly(['employee_id', 'attendance_device_id', 'first_name', 'last_name', 'phone', 'hire_date', 'termination_date', 'status', 'employment_type', 'department', 'position', 'tax_id', 'pension_enabled', 'basic_salary', 'transport_allowance', 'payment_method'])
+            ->logOnly(['employee_id', 'attendance_device_id', 'attendance_shift_id', 'first_name', 'last_name', 'phone', 'hire_date', 'termination_date', 'status', 'employment_type', 'department', 'position', 'tax_id', 'pension_enabled', 'basic_salary', 'transport_allowance', 'payment_method'])
             ->logOnlyDirty()
             ->useLogName('employee');
     }
@@ -25,6 +26,7 @@ class Employee extends Model
     protected $fillable = [
         'employee_id',
         'attendance_device_id',
+        'attendance_shift_id',
         'first_name',
         'last_name',
         'image',
@@ -72,6 +74,11 @@ class Employee extends Model
     public function attendanceLogs(): HasMany
     {
         return $this->hasMany(AttendanceLog::class);
+    }
+
+    public function attendanceShift(): BelongsTo
+    {
+        return $this->belongsTo(Shift::class, 'attendance_shift_id');
     }
 
     public function attendanceDailySummaries(): HasMany

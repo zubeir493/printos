@@ -1,5 +1,6 @@
 <?php
 
+use App\Jobs\SyncDeviceAttendance;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -23,3 +24,9 @@ Schedule::command('invoices:fix-balances')->dailyAt('03:00')->withoutOverlapping
 Schedule::command('payroll:generate-monthly-drafts')->monthlyOn(25, '06:15')->withoutOverlapping()->onOneServer();
 
 Schedule::command('accounting:generate-exports')->everyMinute()->withoutOverlapping()->onOneServer();
+
+Schedule::job(new SyncDeviceAttendance)
+    ->name('attendance-device-sync')
+    ->everyFiveMinutes()
+    ->withoutOverlapping()
+    ->when(fn (): bool => (bool) config('attendance_device.enabled'));

@@ -83,6 +83,10 @@ class AttendanceSegmentImporter extends Importer
     {
         $employee = $this->employee();
 
+        if (AttendanceSegment::where('employee_id', $employee->id)->whereDate('date', $this->data['date'])->whereNotNull('device_sync_key')->exists()) {
+            throw new RowImportFailedException('Device attendance already exists for this employee and date. Use the attendance edit action to make a correction.');
+        }
+
         return AttendanceSegment::query()->whereDate('date', $this->data['date'])->firstOrNew([
             'employee_id' => $employee->id,
             'schedule_name' => $this->data['schedule_name'] ?? null,

@@ -56,6 +56,10 @@ class ImportAttendanceSegmentCsv
                         throw new RuntimeException("No employee found for FP No {$normalized['fp_no']}.");
                     }
 
+                    if (AttendanceSegment::where('employee_id', $employee->id)->whereDate('date', $normalized['date'])->whereNotNull('device_sync_key')->exists()) {
+                        throw new RuntimeException('Device attendance already exists for this employee and date. Use the attendance edit action to make a correction.');
+                    }
+
                     $shift = $this->syncShift($normalized);
                     $normalized = $this->applyShiftDefaults($normalized, $shift);
 

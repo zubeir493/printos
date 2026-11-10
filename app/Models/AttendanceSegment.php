@@ -50,6 +50,7 @@ class AttendanceSegment extends Model
         'exception',
         'correction_reason',
         'raw_data',
+        'device_sync_key',
     ];
 
     protected function casts(): array

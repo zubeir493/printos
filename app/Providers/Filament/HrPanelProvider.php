@@ -7,6 +7,7 @@ use App\Filament\Hr\Widgets\AttendanceActivityWidget;
 use App\Filament\Hr\Widgets\HrPanelStats;
 use App\Filament\Hr\Widgets\LeaveApprovalRateWidget;
 use App\Filament\Hr\Widgets\WorkforceMixWidget;
+use App\Filament\Pages\AttendanceDevice;
 use App\Filament\Pages\Auth\EditProfile;
 use App\Filament\Resources\AttendanceSegments\AttendanceSegmentResource;
 use App\Filament\Resources\Employees\EmployeeResource;
@@ -62,6 +63,7 @@ class HrPanelProvider extends PanelProvider
             ])
             ->pages([
                 Dashboard::class,
+                AttendanceDevice::class,
             ])
             ->widgets([
                 HrPanelStats::class,

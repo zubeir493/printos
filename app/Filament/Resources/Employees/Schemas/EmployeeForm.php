@@ -43,6 +43,11 @@ class EmployeeForm
                                 TextInput::make('attendance_device_id')
                                     ->label('Punch Machine AC No')
                                     ->unique(ignoreRecord: true),
+                                Select::make('attendance_shift_id')
+                                    ->label('Biometric attendance shift')
+                                    ->relationship('attendanceShift', 'name')
+                                    ->searchable()
+                                    ->helperText('Used to process device punches. Leave blank to use the configured default shift.'),
                                 TextInput::make('first_name')
                                     ->required(),
 

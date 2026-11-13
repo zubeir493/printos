@@ -7,8 +7,18 @@
 
     <div class="space-y-6">
         <x-filament::section heading="Payroll review">
-            <p class="text-sm">Review attendance, overtime and employee adjustments before approval. Zero-net employees remain in the register and are excluded from payments.</p>
-            <p class="mt-2 text-sm">Attendance reviewed: {{ $this->record->attendance_reviewed_at?->format('Y-m-d H:i') ?? 'Not yet recorded' }}. Approved by: {{ $this->record->approved_by ?? 'Not approved' }}.</p>
+            <p class="text-sm">Attendance reviewed: {{ $this->record->attendance_reviewed_at?->format('Y-m-d H:i') ?? 'Pending' }}. Approved by: {{ $this->record->approved_by ?? 'Pending' }}.</p>
+            @if ($this->attendanceIssues !== [])
+                <div class="mt-4 rounded-lg bg-warning-50 p-4 text-warning-900 dark:bg-warning-950 dark:text-warning-100">
+                    <p class="font-medium">Resolve attendance before approval</p>
+                    <p class="mt-1 text-sm">Correct punches, record approved leave or absence, and recalculate payroll. Missing punches do not automatically remove salary.</p>
+                    <ul class="mt-2 list-disc space-y-1 ps-5 text-sm">
+                        @foreach ($this->attendanceIssues as $issue)
+                            <li>{{ $issue }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
             @foreach ($this->record->paymentBatches()->latest('id')->limit(5)->get() as $batch)
                 <p class="mt-2 text-sm">Batch #{{ $batch->id }}: {{ $batch->status }} · {{ $this->money($batch->amount) }} · {{ $batch->reference }}</p>
             @endforeach
@@ -16,7 +26,7 @@
         <x-filament::section>
             <div class="grid gap-5 md:grid-cols-2 xl:grid-cols-[1.5fr_0.7fr_1.4fr]">
                 <div class="min-w-0 md:col-span-2 xl:col-span-1">
-                    <div class="text-sm font-medium text-gray-600 dark:text-gray-300">Period: {{ $summary['period'] }} | {{ $summary['base_days'] }} Base Days</div>
+                    <div class="text-sm font-medium text-gray-600 dark:text-gray-300">Period: {{ $summary['period'] }}</div>
                     <div class="mt-5 grid gap-4 sm:grid-cols-2">
                         <div class="min-w-0">
                             <div class="break-words text-xl font-semibold text-gray-950 dark:text-white sm:text-2xl">{{ $this->money($summary['payroll_cost']) }}</div>
@@ -54,6 +64,10 @@
                         <div class="flex justify-between gap-4">
                             <dt class="text-gray-600 dark:text-gray-400">Benefits</dt>
                             <dd class="font-medium text-gray-950 dark:text-white">{{ $this->money($summary['benefits']) }}</dd>
+                        </div>
+                        <div class="flex justify-between gap-4">
+                            <dt class="text-gray-600 dark:text-gray-400">Employer pension</dt>
+                            <dd class="font-medium text-gray-950 dark:text-white">{{ $this->money($summary['employer_pension']) }}</dd>
                         </div>
                     </dl>
                 </div>
@@ -426,9 +440,9 @@
                         <div class="grid gap-3 border-b border-gray-100 px-5 py-4 text-sm dark:border-gray-800 md:grid-cols-[1.2fr_1fr_0.8fr_0.7fr_0.8fr_0.8fr] md:items-center md:gap-4">
                             <div class="min-w-0">
                                 <div class="font-medium text-gray-950 dark:text-white">{{ $entry->employee?->full_name }}</div>
-                                <div class="mt-1 text-xs text-gray-500 dark:text-gray-400 md:hidden">{{ $entry->overtimeRule?->name }}</div>
+                                <div class="mt-1 text-xs text-gray-500 dark:text-gray-400 md:hidden">{{ $entry->category_label }}</div>
                             </div>
-                            <div class="hidden text-gray-700 dark:text-gray-300 md:block">{{ $entry->overtimeRule?->name }}</div>
+                            <div class="hidden text-gray-700 dark:text-gray-300 md:block">{{ $entry->category_label }}</div>
                             <div class="text-gray-600 dark:text-gray-400">{{ $entry->date?->format('M j') ?? 'Period' }}</div>
                             <div class="font-medium tabular-nums text-gray-950 dark:text-white">{{ number_format((float) $entry->hours, 2) }}</div>
                             <div class="font-semibold tabular-nums text-gray-950 dark:text-white">{{ $this->money($entry->amount) }}</div>

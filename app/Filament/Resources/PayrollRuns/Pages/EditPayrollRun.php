@@ -12,11 +12,11 @@ use App\Services\Hr\CalculatePayrollRun;
 use App\Services\Hr\ExportPayrollBankAdvice;
 use App\Services\Hr\ExportPayrollDocuments;
 use App\Services\Hr\ExportPayrollRegisterCsv;
-use App\Services\Hr\GeneratePayrollOvertimeEntries;
 use App\Services\Hr\ManagePayrollPaymentBatch;
 use App\Services\Hr\PostPayrollRun;
 use App\Services\Hr\PrepareMonthlyPayrollRun;
 use App\Services\Hr\RecalculatePayrollRegisterRow;
+use App\Services\Hr\ReviewOvertime;
 use App\Support\FiscalCalendar;
 use App\Support\Money;
 use Carbon\CarbonImmutable;
@@ -36,6 +36,8 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\HtmlString;
+use Illuminate\Validation\Rule;
+use Livewire\Attributes\Computed;
 use Livewire\WithPagination;
 use Malzariey\FilamentDaterangepickerFilter\Fields\DateRangePicker;
 use RuntimeException;
@@ -217,7 +219,7 @@ class EditPayrollRun extends EditRecord
                     ->label('Review overtime')
                     ->icon('heroicon-m-clock')
                     ->color('gray')
-                    ->visible(fn (): bool => $this->record->overtimeEntries()->exists())
+                    ->visible(fn (): bool => $this->overtimeReviewEntries()->isNotEmpty())
                     ->action(fn (): bool => $this->reviewingOvertime = true),
                 Action::make('addEmployee')
                     ->label('Add employee')
@@ -274,7 +276,6 @@ class EditPayrollRun extends EditRecord
 
         Notification::make()
             ->title('Payroll refreshed')
-            ->body('Employee rows were recalculated from the current payroll setup.')
             ->success()
             ->send();
     }
@@ -339,7 +340,7 @@ class EditPayrollRun extends EditRecord
      */
     public function summary(): array
     {
-        $totals = $this->record->employees()->selectRaw("COUNT(*) AS employee_count, COALESCE(SUM(gross_earning), 0) AS payroll_cost, COALESCE(SUM(net_pay), 0) AS net_pay, COALESCE(SUM(income_tax), 0) AS taxes, COALESCE(SUM(total_deduction), 0) AS deductions, COALESCE(SUM(bonus), 0) AS bonuses, COALESCE(SUM(transport_allowance), 0) AS benefits, COALESCE(MAX(CAST(JSON_EXTRACT(calculation_snapshot, '$.base_days') AS DECIMAL(10,2))), 0) AS base_days")->first()->getAttributes();
+        $totals = $this->record->employees()->selectRaw("COUNT(*) AS employee_count, COALESCE(SUM(gross_earning + employer_pension_contribution), 0) AS payroll_cost, COALESCE(SUM(employer_pension_contribution), 0) AS employer_pension, COALESCE(SUM(net_pay), 0) AS net_pay, COALESCE(SUM(income_tax), 0) AS taxes, COALESCE(SUM(total_deduction), 0) AS deductions, COALESCE(SUM(bonus), 0) AS bonuses, COALESCE(SUM(transport_allowance), 0) AS benefits, COALESCE(MAX(CAST(JSON_EXTRACT(calculation_snapshot, '$.base_days') AS DECIMAL(10,2))), 0) AS base_days")->first()->getAttributes();
 
         return [...$totals, 'employee_count' => (int) $totals['employee_count'], 'base_days' => (int) $totals['base_days'], 'period' => $this->periodLabel(), 'pay_day' => $this->payDateLabel()];
     }
@@ -427,7 +428,7 @@ class EditPayrollRun extends EditRecord
         $isEarning = $type === 'earning';
         $code = $selectedCode ?: ($isEarning ? $this->newEarningType : $this->newDeductionType);
 
-        if ($code === '') {
+        if (! array_key_exists($code, $isEarning ? $this->allEarningTypeOptions() : $this->allDeductionTypeOptions())) {
             return;
         }
 
@@ -586,19 +587,20 @@ class EditPayrollRun extends EditRecord
                 return;
             }
 
-            $this->validate(['detailForm.basic_salary' => ['required', 'numeric', 'min:0'], 'detailForm.bonus' => ['nullable', 'numeric', 'min:0'], 'detailForm.transport_allowance' => ['nullable', 'numeric', 'min:0'], 'detailForm.penalty_hours' => ['nullable', 'numeric', 'min:0'], 'detailForm.loan' => ['nullable', 'numeric', 'min:0'], 'detailForm.overtime_amount' => ['nullable', 'numeric', 'min:0'], 'detailForm.manual_earnings.*.amount' => ['required', 'numeric', 'min:0'], 'detailForm.manual_deductions.*.amount' => ['required', 'numeric', 'min:0']]);
+            $this->validate([
+                'detailForm.bonus' => ['nullable', 'numeric', 'min:0'],
+                'detailForm.manual_earnings.*.code' => ['required', Rule::in(['commission', 'reimbursement'])],
+                'detailForm.manual_deductions.*.code' => ['required', Rule::in(array_keys($this->allDeductionTypeOptions()))],
+                'detailForm.manual_earnings.*.amount' => ['required', 'numeric', 'min:0'],
+                'detailForm.manual_deductions.*.amount' => ['required', 'numeric', 'min:0'],
+            ]);
             $snapshot = is_array($detail->calculation_snapshot) ? $detail->calculation_snapshot : [];
-            $snapshot['overrides'] = collect($this->detailForm)->only(['basic_salary', 'transport_allowance', 'penalty_hours', 'loan'])->map(fn ($value): float => max(0, (float) $value))->all();
+            unset($snapshot['overrides']);
             $snapshot['manual_earnings'] = $this->normalizedManualItems($this->detailForm['manual_earnings'] ?? []);
             $snapshot['manual_deductions'] = $this->normalizedManualItems($this->detailForm['manual_deductions'] ?? []);
 
             $detail->forceFill([
-                'basic_salary' => max(0, (float) ($this->detailForm['basic_salary'] ?? $detail->basic_salary)),
                 'bonus' => max(0, (float) ($this->detailForm['bonus'] ?? 0)),
-                'transport_allowance' => max(0, (float) ($this->detailForm['transport_allowance'] ?? 0)),
-                'overtime_amount' => max(0, (float) ($this->detailForm['overtime_amount'] ?? $detail->overtime_amount)),
-                'penalty_hours' => max(0, (float) ($this->detailForm['penalty_hours'] ?? 0)),
-                'loan' => max(0, (float) ($this->detailForm['loan'] ?? 0)),
                 'calculation_snapshot' => $snapshot,
             ]);
 
@@ -625,10 +627,13 @@ class EditPayrollRun extends EditRecord
      */
     public function overtimeReviewEntries(): Collection
     {
-        return $this->record
-            ->overtimeEntries()
-            ->with(['employee', 'overtimeRule'])
-            ->orderByRaw("FIELD(status, 'pending', 'approved', 'rejected')")
+        return PayrollOvertimeEntry::query()
+            ->whereIn('employee_id', $this->record->employees()->pluck('employee_id'))
+            ->whereNotNull('pay_policy_id')
+            ->whereDate('date', '>=', $this->record->period_start)
+            ->whereDate('date', '<=', $this->record->period_end)
+            ->with(['employee', 'payPolicy'])
+            ->orderByRaw("CASE status WHEN 'pending' THEN 0 WHEN 'approved' THEN 1 ELSE 2 END")
             ->orderBy('date')
             ->orderBy('id')
             ->get();
@@ -636,17 +641,21 @@ class EditPayrollRun extends EditRecord
 
     public function pendingOvertimeApprovalCount(): int
     {
-        return $this->record
-            ->overtimeEntries()
-            ->where('status', PayrollOvertimeEntry::STATUS_PENDING)
-            ->count();
+        return $this->overtimeReviewEntries()->where('status', PayrollOvertimeEntry::STATUS_PENDING)->count();
     }
 
     public function approveModalDescription(): string
     {
         return $this->pendingOvertimeApprovalCount() > 0
-            ? $this->pendingOvertimeApprovalCount().' pending overtime candidates will remain unpaid unless approved. You can still approve this payroll.'
+            ? 'Review all '.$this->pendingOvertimeApprovalCount().' pending overtime candidates, then recalculate payroll before approval.'
             : 'Approve this payroll and post its journal entry.';
+    }
+
+    /** @return list<string> */
+    #[Computed]
+    public function attendanceIssues(): array
+    {
+        return $this->record->employees()->with('employee')->get()->flatMap(fn ($row) => collect($row->calculation_snapshot['attendance_issues'] ?? [])->map(fn (string $issue): string => ($row->employee?->full_name ?? 'Employee').': '.$issue))->take(20)->values()->all();
     }
 
     public function overtimeStatusColor(string $status): string
@@ -682,8 +691,8 @@ class EditPayrollRun extends EditRecord
 
         $adjustments = collect([
             ['label' => 'Bonus', 'amount' => (float) ($form['bonus'] ?? $detail->bonus), 'code' => 'bonus', 'removable' => true, 'editable' => true, 'field' => 'bonus'],
-            ['label' => 'Allowance', 'amount' => (float) ($form['transport_allowance'] ?? $detail->transport_allowance), 'code' => 'transport_allowance', 'removable' => true, 'editable' => true, 'field' => 'transport_allowance'],
-            ['label' => 'Overtime', 'amount' => (float) ($form['overtime_amount'] ?? $detail->overtime_amount), 'code' => 'overtime_amount', 'removable' => true, 'editable' => true, 'field' => 'overtime_amount'],
+            ['label' => 'Allowance', 'amount' => (float) $detail->transport_allowance, 'code' => 'transport_allowance', 'removable' => false, 'editable' => false],
+            ['label' => 'Approved overtime', 'amount' => (float) $detail->overtime_amount, 'code' => 'overtime_amount', 'removable' => false, 'editable' => false],
         ]);
 
         return $fixed
@@ -719,8 +728,7 @@ class EditPayrollRun extends EditRecord
         ]);
 
         $adjustments = collect([
-            ['label' => 'Penalty', 'amount' => (float) $detail->penalty_amount, 'code' => 'penalty_hours', 'removable' => true, 'editable' => true, 'field' => 'penalty_hours', 'suffix' => 'hrs'],
-            ['label' => 'Loan', 'amount' => (float) ($form['loan'] ?? $detail->loan), 'code' => 'loan', 'removable' => true, 'editable' => true, 'field' => 'loan'],
+            ['label' => 'Scheduled loan repayment', 'amount' => (float) $detail->loan, 'code' => 'loan', 'removable' => false, 'editable' => false],
         ]);
 
         return $fixed
@@ -856,8 +864,6 @@ class EditPayrollRun extends EditRecord
     {
         return [
             'bonus' => 'Bonus',
-            'transport_allowance' => 'Allowance',
-            'overtime_amount' => 'Overtime',
             'commission' => 'Commission',
             'reimbursement' => 'Reimbursement',
         ];
@@ -869,8 +875,6 @@ class EditPayrollRun extends EditRecord
     private function allDeductionTypeOptions(): array
     {
         return [
-            'loan' => 'Loan',
-            'penalty_hours' => 'Penalty',
             'advance' => 'Salary advance',
             'damage' => 'Damage deduction',
             'fine' => 'Fine',
@@ -910,7 +914,7 @@ class EditPayrollRun extends EditRecord
 
     private function isBuiltInAdjustment(string $code): bool
     {
-        return in_array($code, ['bonus', 'transport_allowance', 'overtime_amount', 'loan', 'penalty_hours'], true);
+        return $code === 'bonus';
     }
 
     private function syncPayrollDetailLineItems(PayrollRunEmployee $detail): void
@@ -931,6 +935,9 @@ class EditPayrollRun extends EditRecord
             }
 
             $this->createPayrollLineItem($detail, 'deduction', $item);
+        }
+        if ((float) $detail->employer_pension_contribution > 0) {
+            $this->createPayrollLineItem($detail, 'employer_cost', ['code' => 'employer_pension', 'label' => 'Employer pension contribution', 'amount' => $detail->employer_pension_contribution]);
         }
     }
 
@@ -958,18 +965,16 @@ class EditPayrollRun extends EditRecord
             }
 
             $entry = PayrollOvertimeEntry::query()
-                ->whereBelongsTo($this->record)
+                ->whereIn('employee_id', $this->record->employees()->pluck('employee_id'))
+                ->whereDate('date', '>=', $this->record->period_start)
+                ->whereDate('date', '<=', $this->record->period_end)
                 ->find($entryId);
 
             if (! $entry) {
                 return;
             }
 
-            $entry->update([
-                'status' => $status,
-                'reviewed_by' => auth()->id(),
-                'reviewed_at' => now(),
-            ]);
+            app(ReviewOvertime::class)->handle($entry, $status === 'approved', 'Reviewed in payroll #'.$this->record->id);
 
             $detail = PayrollRunEmployee::query()
                 ->whereBelongsTo($this->record)
@@ -977,32 +982,12 @@ class EditPayrollRun extends EditRecord
                 ->first();
 
             if ($detail) {
-                $this->refreshPayrollOvertimeTotals($detail);
+                app(CalculatePayrollRun::class)->handle($this->record, $this->rosterEmployeeIds());
+                $this->fillPayrollDetailForm();
             }
 
             $this->record->refresh();
 
         }, 3);
-    }
-
-    private function refreshPayrollOvertimeTotals(PayrollRunEmployee $detail): void
-    {
-        $totals = app(GeneratePayrollOvertimeEntries::class)->approvedTotals($this->record, $detail);
-        $snapshot = is_array($detail->calculation_snapshot) ? $detail->calculation_snapshot : [];
-        $snapshot['approved_overtime_entry_ids'] = $totals['ids'];
-
-        $detail->forceFill([
-            'overtime_hours' => $totals['hours'],
-            'overtime_amount' => $totals['amount'],
-            'calculation_snapshot' => $snapshot,
-        ]);
-
-        app(RecalculatePayrollRegisterRow::class)->forModel($detail, $this->record);
-        $detail->save();
-        $this->syncPayrollDetailLineItems($detail->refresh());
-
-        if ($this->detailsEmployeeId === $detail->id) {
-            $this->fillPayrollDetailForm();
-        }
     }
 }

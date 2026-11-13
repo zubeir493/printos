@@ -47,6 +47,13 @@ use Illuminate\Validation\ValidationException;
 
 uses(RefreshDatabase::class);
 
+beforeEach(function (): void {
+    Employee::created(fn (Employee $employee) => seedEmployeePayrollWork($employee));
+    AttendancePeriodSummary::created(function (AttendancePeriodSummary $summary): void {
+        seedPayrollPeriodPunches($summary->employee, $summary->period_start->toDateString(), $summary->period_end->toDateString());
+    });
+});
+
 beforeEach(function () {
     expect(app()->environment())->toBe('testing');
     if (config('database.default') === 'mysql') {
@@ -74,7 +81,7 @@ it('audit: leave minutes are divided over the original leave dates', function ()
     $type = LeaveType::create(['name' => 'Paid audit leave', 'is_paid' => true]);
     $employee->leaveRequests()->create(['leave_type_id' => $type->id, 'start_date' => '2026-05-30', 'end_date' => '2026-06-02', 'minutes' => 1920, 'status' => 'approved']);
     $run = app(CalculatePayrollRun::class)->handle(PayrollRun::factory()->create(), [$employee->id]);
-    expect($run->employees()->firstOrFail()->calculation_snapshot['paid_leave_minutes'])->toBe(960);
+    expect($run->employees()->firstOrFail()->calculation_snapshot['paid_leave_minutes'])->toBe(480);
 });
 
 it('audit: approved payroll settings cannot change when preparation fails', function () {
@@ -131,7 +138,7 @@ it('audit: daily attendance prorates a midmonth hire against the full payroll pe
     $run = app(CalculatePayrollRun::class)->handle(PayrollRun::factory()->create(), [$employee->id]);
     $row = $run->employees()->firstOrFail();
     $snapshot = $row->calculation_snapshot;
-    expect((float) $row->basic_salary)->toBe(round(12000 * $snapshot['employment_business_days'] / $snapshot['period_business_days'], 2));
+    expect((float) $row->basic_salary)->toBe(round(12000 * 16 / 31, 2));
 });
 
 function hrApprovedRun(): PayrollRun
@@ -334,7 +341,7 @@ it('derives half day leave minutes from times and moves attendance summaries on 
     $segment = AttendanceSegment::create(['employee_id' => $employee->id, 'date' => '2026-05-04', 'fp_no' => $employee->attendance_device_id, 'day_fraction' => 1, 'worked_minutes' => 480, 'status' => 'Present']);
     app(RebuildAttendanceDailySummaries::class)->forSegments(collect([$segment]));
     $segment->update(['date' => '2026-05-05']);
-    expect(AttendanceDailySummary::where('employee_id', $employee->id)->whereDate('date', '2026-05-04')->exists())->toBeFalse()
+    expect(AttendanceDailySummary::where('employee_id', $employee->id)->whereDate('date', '2026-05-04')->firstOrFail()->status)->toBe('needs_review')
         ->and(AttendanceDailySummary::where('employee_id', $employee->id)->whereDate('date', '2026-05-05')->count())->toBe(1);
 });
 
@@ -344,7 +351,8 @@ it('blocks approval when attendance inputs changed after calculation', function 
     $summary = AttendancePeriodSummary::create(['employee_id' => $employee->id, 'period_start' => '2026-05-01', 'period_end' => '2026-05-31', 'shift_type' => 'normal', 'work_days' => 26, 'actual_days' => 26]);
     app(CalculatePayrollRun::class)->handle($run);
     $run->update(['attendance_reviewed_at' => now()]);
-    $summary->update(['actual_days' => 20]);
+    $employee->attendanceSegments()->orderBy('id')->firstOrFail()->update(['clock_out' => '16:00:00', 'correction_reason' => 'Corrected checkout']);
+    $run->refresh()->update(['attendance_reviewed_at' => now()]);
     expect(fn () => app(PostPayrollRun::class)->handle($run))->toThrow(RuntimeException::class, 'Payroll inputs changed');
     expect($run->fresh()->status)->toBe('draft');
 });

@@ -51,7 +51,6 @@ class ImportAttendanceSummaryReport
 
                 $employee = Employee::query()
                     ->where('attendance_device_id', $rawRow['attendance_device_id'])
-                    ->orWhere('employee_id', $rawRow['attendance_device_id'])
                     ->first();
 
                 if (! $employee) {

@@ -13,7 +13,7 @@ class ManageShifts extends ManageRecords
     protected function getHeaderActions(): array
     {
         return [
-            CreateAction::make(),
+            CreateAction::make()->label('Create shift')->modalHeading('Create a shift')->modalSubmitActionLabel('Create shift')->modalWidth('3xl')->stickyModalHeader()->stickyModalFooter(),
         ];
     }
 }

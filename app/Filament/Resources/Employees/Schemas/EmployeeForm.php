@@ -43,11 +43,6 @@ class EmployeeForm
                                 TextInput::make('attendance_device_id')
                                     ->label('Punch Machine AC No')
                                     ->unique(ignoreRecord: true),
-                                Select::make('attendance_shift_id')
-                                    ->label('Biometric attendance shift')
-                                    ->relationship('attendanceShift', 'name')
-                                    ->searchable()
-                                    ->helperText('Used to process device punches. Leave blank to use the configured default shift.'),
                                 TextInput::make('first_name')
                                     ->required(),
 
@@ -70,6 +65,7 @@ class EmployeeForm
                                 TextInput::make('tax_id')
                                     ->label('Tax ID'),
                                 Select::make('pension_enabled')
+                                    ->disabledOn('edit')
                                     ->label('Pension')
                                     ->options([
                                         true => 'Enabled',
@@ -78,11 +74,12 @@ class EmployeeForm
                                     ->default(true)
                                     ->required(),
                                 TextInput::make('basic_salary')
-                                    ->label('Monthly Rate')->disabledOn('edit')->helperText('Use Revise salary to record an effective date and reason.')
+                                    ->label('Monthly Rate')->disabledOn('edit')->helperText('Change with Revise salary.')
                                     ->numeric()
                                     ->suffix(fn (): string => Money::suffix())
                                     ->default(0),
                                 TextInput::make('transport_allowance')->minValue(0)
+                                    ->disabledOn('edit')
                                     ->label('Transportation Allowance')
                                     ->numeric()
                                     ->suffix(fn (): string => Money::suffix())

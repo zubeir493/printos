@@ -5,6 +5,7 @@ namespace App\Filament\Resources\LeaveRequests;
 use App\Filament\Resources\LeaveRequests\Pages\ManageLeaveRequests;
 use App\Filament\Tables\Filters\DateRangeFilter;
 use App\Models\LeaveRequest;
+use App\Models\LeaveType;
 use App\Services\Hr\ReviewLeaveRequest;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -14,17 +15,19 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\TimePicker;
+use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Gate;
 
 class LeaveRequestResource extends Resource
 {
     protected static ?string $model = LeaveRequest::class;
 
-    protected static ?string $navigationParentItem = 'Payroll';
+    protected static ?string $navigationParentItem = 'Attendance';
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedClipboardDocumentCheck;
 
@@ -32,7 +35,18 @@ class LeaveRequestResource extends Resource
     {
         return $schema->components([
             Select::make('employee_id')->relationship('employee', 'first_name')->searchable()->required(),
-            Select::make('leave_type_id')->relationship('leaveType', 'name')->required(),
+            Select::make('leave_type_id')->label('Leave type')->relationship('leaveType', 'name')->searchable()->preload()->required()
+                ->createOptionForm([
+                    TextInput::make('name')->required()->maxLength(255)->unique(LeaveType::class, 'name'),
+                    TextInput::make('annual_allowance_days')->label('Annual limit')->numeric()->minValue(0)->maxValue(366)->suffix('days')->placeholder('No limit'),
+                    Toggle::make('is_paid')->label('Paid leave')->default(true),
+                ])
+                ->createOptionAction(fn (Action $action): Action => $action->modalHeading('New leave type')->modalWidth('md')->authorize(fn (): bool => Gate::allows('create', LeaveType::class)))
+                ->createOptionUsing(function (array $data): int {
+                    Gate::authorize('create', LeaveType::class);
+
+                    return LeaveType::create(collect($data)->only(['name', 'annual_allowance_days', 'is_paid'])->all())->getKey();
+                }),
             DatePicker::make('start_date')->required(),
             DatePicker::make('end_date')->required()->afterOrEqual('start_date'),
             TimePicker::make('start_time')->seconds(false),

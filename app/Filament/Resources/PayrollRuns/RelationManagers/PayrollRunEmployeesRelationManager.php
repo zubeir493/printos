@@ -36,17 +36,16 @@ class PayrollRunEmployeesRelationManager extends RelationManager
                     ->weight('bold')
                     ->description(fn ($record) => $record->employee?->employee_id),
                 TextColumn::make('time_on_duty')
-                    ->label('Paid Days')
-                    ->formatStateUsing(fn (PayrollRunEmployee $record): string => number_format((float) data_get($record->calculation_snapshot, 'paid_days', ((float) $record->time_on_duty / 8)), 2))
+                    ->label('Recorded hours')
                     ->numeric(decimalPlaces: 2)
-                    ->summarize(Sum::make()->label('Paid Days')),
+                    ->summarize(Sum::make()->label('Recorded hours')),
                 TextColumn::make('gross_earning')
                     ->label('Gross')
                     ->formatStateUsing(fn ($state) => Money::format($state))
                     ->summarize(Sum::make()->label('Gross')->formatStateUsing(fn ($state) => Money::format($state))),
                 TextColumn::make('transport_allowance')
                     ->label('Benefits')
-                    ->formatStateUsing(fn (PayrollRunEmployee $record): string => Money::format((float) $record->transport_allowance + (float) $record->bonus + (float) $record->employer_pension_contribution, 2))
+                    ->formatStateUsing(fn (PayrollRunEmployee $record): string => Money::format((float) $record->transport_allowance + (float) $record->bonus, 2))
                     ->summarize(Sum::make()->label('Benefits')->formatStateUsing(fn ($state) => Money::format($state))),
                 TextColumn::make('total_deduction')
                     ->label('Deductions')
@@ -80,11 +79,11 @@ class PayrollRunEmployeesRelationManager extends RelationManager
                             ->schema([
                                 TextEntry::make('basic_salary')->label('Basic')->formatStateUsing(fn ($state) => Money::format($state)),
                                 TextEntry::make('pay_per_hour')->label('Hourly rate')->formatStateUsing(fn ($state) => Money::format($state, 4)),
-                                TextEntry::make('time_on_duty')->label('Hours paid')->numeric(decimalPlaces: 2),
+                                TextEntry::make('time_on_duty')->label('Recorded hours')->numeric(decimalPlaces: 2),
                                 TextEntry::make('overtime_hours')->label('Overtime hours')->numeric(decimalPlaces: 2),
                                 TextEntry::make('overtime_amount')->label('Overtime amount')->formatStateUsing(fn ($state) => Money::format($state)),
-                                TextEntry::make('penalty_hours')->label('Penalty hours')->numeric(decimalPlaces: 2),
-                                TextEntry::make('penalty_amount')->label('Penalty amount')->formatStateUsing(fn ($state) => Money::format($state)),
+                                TextEntry::make('unpaid_time_reduction')->label('Unpaid salary reduction')->state(fn (PayrollRunEmployee $record) => $record->calculation_snapshot['unpaid_time_reduction'] ?? 0)->formatStateUsing(fn ($state) => Money::format($state)),
+                                TextEntry::make('employer_pension_contribution')->label('Employer pension cost')->formatStateUsing(fn ($state) => Money::format($state)),
                                 TextEntry::make('pension_contribution')->label('Pension')->formatStateUsing(fn ($state) => Money::format($state)),
                                 TextEntry::make('loan')->label('Loan')->formatStateUsing(fn ($state) => Money::format($state)),
                                 TextEntry::make('workers_union')->label('Union')->formatStateUsing(fn ($state) => Money::format($state)),

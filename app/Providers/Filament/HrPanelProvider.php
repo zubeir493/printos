@@ -13,8 +13,11 @@ use App\Filament\Resources\AttendanceSegments\AttendanceSegmentResource;
 use App\Filament\Resources\Employees\EmployeeResource;
 use App\Filament\Resources\Holidays\HolidayResource;
 use App\Filament\Resources\LeaveRequests\LeaveRequestResource;
-use App\Filament\Resources\LeaveTypes\LeaveTypeResource;
+use App\Filament\Resources\PayPolicies\PayPolicyResource;
+use App\Filament\Resources\PayrollOvertimeEntries\PayrollOvertimeEntryResource;
+use App\Filament\Resources\PayrollRuns\PayrollRunResource;
 use App\Filament\Resources\Shifts\ShiftResource;
+use App\Filament\Resources\WorkSchedules\WorkScheduleResource;
 use Filament\Enums\ThemeMode;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -58,8 +61,11 @@ class HrPanelProvider extends PanelProvider
                 EmployeeResource::class,
                 HolidayResource::class,
                 LeaveRequestResource::class,
-                LeaveTypeResource::class,
                 ShiftResource::class,
+                WorkScheduleResource::class,
+                PayPolicyResource::class,
+                PayrollOvertimeEntryResource::class,
+                PayrollRunResource::class,
             ])
             ->pages([
                 Dashboard::class,

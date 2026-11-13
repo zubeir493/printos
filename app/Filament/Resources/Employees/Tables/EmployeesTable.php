@@ -14,6 +14,7 @@ class EmployeesTable
     public static function configure(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn ($query) => $query->with(['workAssignments' => fn ($assignments) => $assignments->with(['workSchedule', 'payPolicy'])->whereDate('effective_from', '<=', today())->where(fn ($dates) => $dates->whereNull('effective_to')->orWhereDate('effective_to', '>=', today()))]))
             ->columns([
                 TextColumn::make('full_name')
                     ->label('Name')
@@ -22,10 +23,10 @@ class EmployeesTable
                     ->searchable(['first_name', 'last_name']),
                 TextColumn::make('department')
                     ->searchable()
+                    ->description(fn ($record) => $record->position)
                     ->sortable(),
-                TextColumn::make('position')
-                    ->searchable(),
-                TextColumn::make('payroll_readiness')->label('Payroll setup')->state(fn ($record): string => collect(['Attendance device' => $record->attendance_device_id, 'Bank name' => $record->bank_name, 'Account number' => $record->account_number, 'Tax ID' => $record->tax_id])->filter(fn ($value): bool => blank($value))->keys()->join(', ') ?: 'Ready')->description('Missing fields'),
+                TextColumn::make('current_schedule')->label('Schedule')->state(fn ($record): string => $record->workAssignments->first()?->workSchedule->name ?? 'Not assigned')
+                    ->description(fn ($record): ?string => $record->workAssignments->first()?->payPolicy->name),
                 TextColumn::make('status')
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
@@ -34,9 +35,6 @@ class EmployeesTable
                         'terminated' => 'danger',
                         default => 'gray',
                     })
-                    ->sortable(),
-                TextColumn::make('hire_date')
-                    ->date()
                     ->sortable(),
             ])
             ->filters([

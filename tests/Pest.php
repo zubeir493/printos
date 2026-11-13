@@ -1,5 +1,9 @@
 <?php
 
+use App\Models\Employee;
+use App\Models\PayPolicy;
+use App\Models\Shift;
+use App\Models\WorkSchedule;
 use App\Services\Dielines\Templates\BurgerBoxTemplate;
 use App\Services\Dielines\Templates\CarryBagTemplate;
 use App\Services\Dielines\Templates\ClamshellBurgerBoxTemplate;
@@ -14,6 +18,7 @@ use App\Services\Dielines\Templates\RolloverPizzaBoxTemplate;
 use App\Services\Dielines\Templates\SandwichWedgeTemplate;
 use App\Services\Dielines\Templates\SealEndCartonTemplate;
 use App\Services\Dielines\Templates\VialInsertTemplate;
+use Carbon\CarbonImmutable;
 use Tests\TestCase;
 
 dataset('packaging blueprints', [
@@ -77,4 +82,28 @@ expect()->extend('toBeOne', function () {
 function something()
 {
     // ..
+}
+
+function seedEmployeePayrollWork(Employee $employee): void
+{
+    $policy = PayPolicy::firstOrCreate(['code' => 'TEST-MONTHLY', 'version' => 1], ['name' => 'Payroll fixture policy']);
+    $schedule = WorkSchedule::where('name', 'Payroll fixture schedule')->first();
+    if (! $schedule) {
+        $schedule = WorkSchedule::create(['name' => 'Payroll fixture schedule']);
+        $shift = Shift::factory()->create();
+        foreach (range(0, 6) as $weekday) {
+            $schedule->days()->create(['day_of_week' => $weekday, 'shift_id' => $weekday === 0 ? null : $shift->id]);
+        }
+    }
+    $employee->workAssignments()->create(['work_schedule_id' => $schedule->id, 'pay_policy_id' => $policy->id, 'effective_from' => $employee->hire_date, 'reason' => 'Payroll test fixture']);
+}
+
+function seedPayrollPeriodPunches(Employee $employee, string $from, string $to): void
+{
+    for ($date = CarbonImmutable::parse($from); $date->lte(CarbonImmutable::parse($to)); $date = $date->addDay()) {
+        if ($date->isSunday() || $date->lt($employee->hire_date) || $employee->attendanceSegments()->whereDate('date', $date)->exists()) {
+            continue;
+        }
+        $employee->attendanceSegments()->create(['date' => $date->toDateString(), 'fp_no' => $employee->attendance_device_id, 'clock_in' => '08:00:00', 'clock_out' => '17:00:00', 'status' => 'Present']);
+    }
 }

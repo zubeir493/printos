@@ -21,9 +21,15 @@ class AttendanceSegment extends Model
     protected static function booted(): void
     {
         static::updated(function (self $segment): void {
-            $builder = app(RebuildAttendanceDailySummaries::class);
             $originalDate = CarbonImmutable::parse($segment->getRawOriginal('date'))->toDateString();
-            $builder->forPeriod([(int) $segment->getRawOriginal('employee_id')], $originalDate, $originalDate);
+            $originalEmployeeId = (int) $segment->getRawOriginal('employee_id');
+            if ($segment->isDirty(['clock_in', 'clock_out', 'date']) && $segment->correction_reason && isset($segment->raw_data['work_intervals'])) {
+                $raw = $segment->raw_data;
+                unset($raw['work_intervals']);
+                $segment->updateQuietly(['raw_data' => $raw]);
+            }
+            $builder = app(RebuildAttendanceDailySummaries::class);
+            $builder->forPeriod([$originalEmployeeId], $originalDate, $originalDate);
             $builder->forPeriod([(int) $segment->employee_id], $segment->date->toDateString(), $segment->date->toDateString());
             PayrollRun::query()->where('status', 'draft')->whereDate('period_start', '<=', max($originalDate, $segment->date->toDateString()))->whereDate('period_end', '>=', min($originalDate, $segment->date->toDateString()))->update(['attendance_reviewed_at' => null, 'attendance_reviewed_by' => null]);
         });

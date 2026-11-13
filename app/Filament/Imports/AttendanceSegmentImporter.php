@@ -110,11 +110,6 @@ class AttendanceSegmentImporter extends Importer
             $this->record->scheduled_end ??= $shift->end_time;
         }
 
-        if (($this->record->clock_in && ! $this->record->clock_out) || (! $this->record->clock_in && $this->record->clock_out)) {
-            $this->record->clock_in ??= $this->record->scheduled_start;
-            $this->record->clock_out ??= $this->record->scheduled_end;
-        }
-
         if ((int) $this->record->worked_minutes === 0 && $this->record->clock_in && $this->record->clock_out) {
             $this->record->worked_minutes = self::minutesBetween($this->record->clock_in, $this->record->clock_out);
         }
@@ -157,13 +152,12 @@ class AttendanceSegmentImporter extends Importer
             'name' => $scheduleName,
         ]);
 
-        $shift->fill([
-            'start_time' => $this->data['scheduled_start'] ?? $shift->start_time ?? '00:00:00',
-            'end_time' => $this->data['scheduled_end'] ?? $shift->end_time ?? '00:00:00',
-        ]);
-
-        $shift->expected_minutes = self::minutesBetween($shift->start_time, $shift->end_time);
-        $shift->save();
+        if (! $shift->exists) {
+            $shift->fill([
+                'start_time' => $this->data['scheduled_start'] ?? '08:00:00',
+                'end_time' => $this->data['scheduled_end'] ?? '17:00:00',
+            ])->save();
+        }
 
         return $shift;
     }

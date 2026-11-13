@@ -2,7 +2,10 @@
 
 use App\Models\AttendanceSegment;
 use App\Models\Employee;
+use App\Models\EmployeeWorkAssignment;
+use App\Models\PayPolicy;
 use App\Models\Shift;
+use App\Models\WorkSchedule;
 use App\Services\Hr\ImportAttendanceSegmentCsv;
 use Database\Seeders\AttendanceDemoSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -16,6 +19,9 @@ test('attendance demo seeder matches uploaded attendance csv employees', functio
     ]);
 
     expect(Employee::query()->whereIn('attendance_device_id', ['22', '96', '3', '9'])->count())->toBe(4);
+    expect(EmployeeWorkAssignment::count())->toBe(4)
+        ->and(PayPolicy::count())->toBe(1)
+        ->and(WorkSchedule::count())->toBe(2);
 
     $path = storage_path('app/attendance-demo-upload.csv');
 

@@ -20,7 +20,7 @@ class EmployeeObserver
      */
     public function updated(Employee $employee): void
     {
-        if ($employee->wasChanged('basic_salary')) {
+        if ($employee->wasChanged(['basic_salary', 'transport_allowance', 'pension_enabled'])) {
             $this->recordSalaryHistory($employee, 'Rate update');
         }
 
@@ -34,6 +34,8 @@ class EmployeeObserver
     {
         $employee->salaryHistories()->create([
             'basic_salary' => $employee->basic_salary ?? 0,
+            'transport_allowance' => $employee->transport_allowance ?? 0,
+            'pension_enabled' => $employee->pension_enabled,
             'effective_date' => $reason === 'Initial rate' ? $employee->hire_date : now(),
             'change_reason' => $reason,
         ]);

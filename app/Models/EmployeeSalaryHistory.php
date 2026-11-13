@@ -13,6 +13,8 @@ class EmployeeSalaryHistory extends Model
     protected $fillable = [
         'employee_id',
         'basic_salary',
+        'transport_allowance',
+        'pension_enabled',
         'effective_date',
         'change_reason',
     ];
@@ -22,6 +24,8 @@ class EmployeeSalaryHistory extends Model
         return [
             'effective_date' => 'date',
             'basic_salary' => 'decimal:2',
+            'transport_allowance' => 'decimal:2',
+            'pension_enabled' => 'boolean',
         ];
     }
 

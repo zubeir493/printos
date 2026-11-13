@@ -27,14 +27,9 @@ class AttendanceSegmentsRelationManager extends RelationManager
         return $schema->components([
             DatePicker::make('date')->required(),
             TextInput::make('fp_no')->label('FP No')->required(),
-            TextInput::make('schedule_name')->label('Schedule'),
+            TextInput::make('schedule_name')->label('Source schedule')->disabled(),
             TimePicker::make('clock_in')->seconds(false),
             TimePicker::make('clock_out')->seconds(false),
-            TextInput::make('late_minutes')->numeric()->default(0),
-            TextInput::make('early_minutes')->numeric()->default(0),
-            TextInput::make('worked_minutes')->numeric()->default(0),
-            TextInput::make('overtime_minutes')->numeric()->default(0),
-            TextInput::make('day_fraction')->numeric()->default(0),
             Select::make('status')->options([
                 'Present' => 'Present',
                 'Absent' => 'Absent',

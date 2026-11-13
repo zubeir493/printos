@@ -16,6 +16,7 @@ use App\Filament\Finance\Widgets\FinancePanelStats;
 use App\Filament\Finance\Widgets\InvoiceCollectionRateWidget;
 use App\Filament\Finance\Widgets\ReceivablesRiskWidget;
 use App\Filament\Pages\Auth\EditProfile;
+use App\Filament\Pages\Settings;
 use App\Filament\Resources\AccountingExports\AccountingExportResource;
 use App\Filament\Resources\Accounts\AccountResource;
 use App\Filament\Resources\Banks\BankResource;
@@ -30,9 +31,10 @@ use App\Filament\Resources\ExpenseTrackingItems\ExpenseTrackingItemResource;
 use App\Filament\Resources\Invoices\InvoiceResource;
 use App\Filament\Resources\JobOrders\JobOrderResource;
 use App\Filament\Resources\JournalEntries\JournalEntryResource;
-use App\Filament\Resources\OvertimeRules\OvertimeRuleResource;
 use App\Filament\Resources\Partners\PartnerResource;
 use App\Filament\Resources\Payments\PaymentResource;
+use App\Filament\Resources\PayPolicies\PayPolicyResource;
+use App\Filament\Resources\PayrollOvertimeEntries\PayrollOvertimeEntryResource;
 use App\Filament\Resources\PayrollRuns\PayrollRunResource;
 use App\Filament\Resources\PurchaseOrderItems\PurchaseOrderItemResource;
 use App\Filament\Resources\PurchaseOrders\PurchaseOrderResource;
@@ -90,7 +92,8 @@ class FinancePanelProvider extends PanelProvider
                 InvoiceResource::class,
                 EmployeeLoanResource::class,
                 PayrollRunResource::class,
-                OvertimeRuleResource::class,
+                PayPolicyResource::class,
+                PayrollOvertimeEntryResource::class,
                 JobOrderResource::class,
                 PartnerResource::class,
                 JournalEntryResource::class,
@@ -104,6 +107,7 @@ class FinancePanelProvider extends PanelProvider
             ->discoverPages(in: app_path('Filament/Finance/Pages'), for: 'App\Filament\Finance\Pages')
             ->pages([
                 Dashboard::class,
+                Settings::class,
                 AccountStatementReport::class,
                 BalanceSheetReport::class,
                 GeneralLedgerReport::class,

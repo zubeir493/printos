@@ -2,19 +2,22 @@
 
 namespace Database\Seeders;
 
-use Carbon\CarbonImmutable;
+use App\Models\Employee;
+use App\Models\PayPolicy;
+use App\Models\WorkSchedule;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\DB;
 
 class AttendanceDemoSeeder extends Seeder
 {
     public function run(): void
     {
-        $now = CarbonImmutable::parse('2026-06-24 09:00:00');
+        $this->call(HrWorkSetupSeeder::class);
+        $policy = PayPolicy::where('code', 'STANDARD')->where('version', 1)->firstOrFail();
+        $schedule = WorkSchedule::where('name', 'Standard Monday-Saturday')->firstOrFail();
 
         foreach ($this->employees() as $employee) {
-            DB::table('employees')->updateOrInsert(
-                ['employee_id' => $employee['employee_id']],
+            $record = Employee::updateOrCreate(
+                ['attendance_device_id' => $employee['attendance_device_id']],
                 [
                     ...$employee,
                     'hire_date' => '2025-10-01',
@@ -28,10 +31,14 @@ class AttendanceDemoSeeder extends Seeder
                     'payment_method' => 'bank',
                     'bank_name' => 'Bank of Abyssinia',
                     'account_number' => '9000'.$employee['attendance_device_id'],
-                    'updated_at' => $now,
-                    'created_at' => $now,
                 ],
             );
+            if (! $record->salaryHistories()->exists()) {
+                $record->salaryHistories()->create(['effective_date' => $record->hire_date, 'basic_salary' => $record->basic_salary, 'transport_allowance' => $record->transport_allowance, 'pension_enabled' => $record->pension_enabled, 'change_reason' => 'Initial demo salary terms']);
+            }
+            if (! $record->workAssignments()->exists()) {
+                $record->workAssignments()->create(['work_schedule_id' => $schedule->id, 'pay_policy_id' => $policy->id, 'effective_from' => $record->hire_date, 'reason' => 'Demo work assignment']);
+            }
         }
     }
 

@@ -30,6 +30,6 @@ class ShiftPolicy
 
     public function delete(User $user, Shift $record): bool
     {
-        return false;
+        return $this->viewAny($user);
     }
 }

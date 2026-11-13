@@ -30,7 +30,6 @@ class ListPayrollRuns extends ListRecords
                 ->icon('heroicon-m-plus')
                 ->modalWidth('2xl')
                 ->modalHeading('New payroll run')
-                ->modalDescription('Set the payroll period now. Detailed employee selection can be adjusted after the draft opens.')
                 ->schema([
                     Group::make()
                         ->columns(2)

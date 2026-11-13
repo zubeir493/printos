@@ -39,6 +39,7 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\DB;
 use Malzariey\FilamentDaterangepickerFilter\Fields\DateRangePicker;
 
 class PayrollRunResource extends Resource
@@ -121,7 +122,7 @@ class PayrollRunResource extends Resource
                         ->content(fn (?PayrollRun $record): string => number_format((int) $record?->employees()->where('net_pay', '>', 0)->count())),
                     Placeholder::make('summary_payroll_cost')
                         ->label('Payroll cost')
-                        ->content(fn (?PayrollRun $record): string => Money::format((float) $record?->employees()->where('net_pay', '>', 0)->sum('gross_earning'), 2)),
+                        ->content(fn (?PayrollRun $record): string => Money::format((float) $record?->employees()->sum(DB::raw('gross_earning + employer_pension_contribution')), 2)),
                     Placeholder::make('summary_net_pay')
                         ->label('Employees net pay')
                         ->content(fn (?PayrollRun $record): string => Money::format((float) $record?->employees()->where('net_pay', '>', 0)->sum('net_pay'), 2)),

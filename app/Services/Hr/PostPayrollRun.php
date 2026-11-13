@@ -8,6 +8,7 @@ use App\Models\Employee;
 use App\Models\EmployeeLoanInstallment;
 use App\Models\JournalEntry;
 use App\Models\JournalItem;
+use App\Models\PayrollOvertimeEntry;
 use App\Models\PayrollRun;
 use App\Models\Setting;
 use Illuminate\Support\Facades\DB;
@@ -51,9 +52,16 @@ class PostPayrollRun
             $settings = Setting::getSettings();
             foreach ($payrollRun->employees as $row) {
                 $snapshot = $row->calculation_snapshot ?? [];
+                if (($snapshot['attendance_issues'] ?? []) !== []) {
+                    throw new HrWorkflowException('Resolve attendance issues before approving payroll: '.$snapshot['attendance_issues'][0]);
+                }
+                if (PayrollOvertimeEntry::where('employee_id', $row->employee_id)->whereNotNull('pay_policy_id')->where('status', 'pending')->whereDate('date', '>=', $payrollRun->period_start)->whereDate('date', '<=', $payrollRun->period_end)->exists()) {
+                    throw new HrWorkflowException('Review all pending overtime before approving payroll.');
+                }
                 if (isset($snapshot['input_signature']) && $snapshot['input_signature'] !== PayrollInputs::signature($row->employee, $payrollRun->period_start->toDateString(), $payrollRun->period_end->toDateString())) {
                     throw new HrWorkflowException('Payroll inputs changed. Recalculate and review attendance before approval.');
                 }
+                app(GeneratePayrollOvertimeEntries::class)->linkEntriesToPayrollRow($row);
                 $snapshot['currency_code'] = $settings->currency_code ?: 'ETB';
                 $snapshot['employer'] = ['company_name' => $settings->company_name, 'tax_id' => $settings->company_tax_id];
                 $snapshot['beneficiary'] = ['employee_id' => $row->employee?->employee_id, 'name' => $row->employee?->full_name, 'position' => $row->employee?->position, 'bank_name' => $row->employee?->bank_name, 'account_number' => $row->employee?->account_number];
@@ -67,11 +75,11 @@ class PostPayrollRun
             $grossEarning = (float) $payrollRun->employees->sum('gross_earning');
             $overtime = (float) $payrollRun->employees->sum('overtime_amount');
             $employerPension = (float) $payrollRun->employees->sum('employer_pension_contribution');
-            $salaryExpense = round($grossEarning - $overtime - $employerPension, 2);
+            $salaryExpense = round($grossEarning - $overtime, 2);
             $netPay = (float) $payrollRun->employees->sum('net_pay');
             $incomeTax = (float) $payrollRun->employees->sum('income_tax');
             $penalty = (float) $payrollRun->employees->sum('penalty_amount');
-            $pension = (float) $payrollRun->employees->sum('pension_contribution');
+            $pension = (float) $payrollRun->employees->sum('pension_contribution') + $employerPension;
             $loan = (float) $payrollRun->employees->sum('loan');
             $workersUnion = (float) $payrollRun->employees->sum('workers_union');
             $manualDeductions = $payrollRun->employees->sum(fn ($row): float => (float) collect($row->calculation_snapshot['manual_deductions'] ?? [])->sum(fn (array $item): float => max(0, (float) ($item['amount'] ?? 0))));

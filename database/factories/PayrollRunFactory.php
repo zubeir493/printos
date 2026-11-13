@@ -14,7 +14,7 @@ class PayrollRunFactory extends Factory
     {
         return [
             'name' => $this->faker->monthName().' payroll',
-            'period_type' => 'custom',
+            'period_type' => 'monthly',
             'period_start' => '2026-05-01',
             'period_end' => '2026-05-31',
             'pay_date' => '2026-05-31',

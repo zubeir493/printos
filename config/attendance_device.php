@@ -10,7 +10,6 @@ return [
     'comm_key' => (int) env('ZKTECO_COMM_KEY', 0),
     'timeout' => (float) env('ZKTECO_TIMEOUT', 5),
     'timezone' => env('ZKTECO_TIMEZONE', 'Africa/Addis_Ababa'),
-    'default_shift_id' => env('ATTENDANCE_DEVICE_DEFAULT_SHIFT_ID'),
     // Use sequential only after verifying that this device reports a constant direction.
     'pairing' => env('ATTENDANCE_DEVICE_PAIRING', 'device'),
     'sync_from' => env('ATTENDANCE_DEVICE_SYNC_FROM'),

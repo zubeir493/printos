@@ -50,6 +50,7 @@ class CorrectPayrollRun
                 }
             }
             $run->update(['status' => 'reversed']);
+            $run->overtimeEntries()->update(['payroll_run_id' => null, 'payroll_run_employee_id' => null]);
             $draft = $run->replicate(['status', 'posted_at', 'paid_at', 'approved_by', 'journal_entry_id', 'attendance_reviewed_at', 'attendance_reviewed_by', 'attendance_review_note', 'prepared_at']);
             $draft->fill(['status' => 'draft', 'created_by' => auth()->id(), 'name' => $run->name.' correction of #'.$run->id])->save();
             foreach ($run->employees()->get() as $row) {

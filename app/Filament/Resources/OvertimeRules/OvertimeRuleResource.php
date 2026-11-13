@@ -32,6 +32,16 @@ use Illuminate\Support\Str;
 
 class OvertimeRuleResource extends Resource
 {
+    public static function canAccess(): bool
+    {
+        return false;
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return false;
+    }
+
     protected static ?string $model = OvertimeRule::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedClock;

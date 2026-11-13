@@ -2,6 +2,8 @@
 
 use App\Filament\Imports\AttendanceSegmentImporter;
 use App\Filament\Pages\AttendanceDevice;
+use App\Filament\Resources\AttendanceSegments\AttendanceSegmentResource;
+use App\Filament\Resources\AttendanceSegments\Pages\ManageAttendanceSegments;
 use App\Jobs\SyncDeviceAttendance as SyncJob;
 use App\Models\AttendanceDailySummary;
 use App\Models\AttendanceDevicePunch;
@@ -9,10 +11,13 @@ use App\Models\AttendanceDeviceSync;
 use App\Models\AttendanceLog;
 use App\Models\AttendanceSegment;
 use App\Models\Employee;
+use App\Models\EmployeeShiftOverride;
+use App\Models\EmployeeWorkAssignment;
 use App\Models\PayrollRun;
 use App\Models\PayrollRunEmployee;
 use App\Models\Shift;
 use App\Models\User;
+use App\Models\WorkSchedule;
 use App\Services\Hr\ImportAttendanceSegmentCsv;
 use App\Services\Hr\ReadZktecoAttendance;
 use App\Services\Hr\SyncDeviceAttendance;
@@ -38,10 +43,14 @@ beforeEach(function (): void {
     $this->travelTo(now()->setDate(2026, 11, 10)->setTime(12, 0));
     $this->shift = Shift::create([
         'name' => 'Normal', 'start_time' => '08:00:00', 'end_time' => '17:00:00',
-        'expected_minutes' => 480, 'break_minutes' => 60, 'grace_minutes' => 5, 'overtime_eligible' => true,
+        'expected_minutes' => 480, 'break_minutes' => 60, 'break_start' => '12:00:00', 'break_end' => '13:00:00', 'grace_minutes' => 5, 'overtime_eligible' => true,
     ]);
-    config(['attendance_device.default_shift_id' => $this->shift->id]);
     $this->employee = Employee::factory()->create(['attendance_device_id' => '12']);
+    $schedule = WorkSchedule::create(['name' => 'Device test week']);
+    foreach (range(0, 6) as $weekday) {
+        $schedule->days()->create(['day_of_week' => $weekday, 'shift_id' => $this->shift->id]);
+    }
+    $this->assignment = EmployeeWorkAssignment::factory()->create(['employee_id' => $this->employee->id, 'work_schedule_id' => $schedule->id]);
 });
 
 function deviceAttendanceRow(string $time, int $direction, string $userId = '12', int $uid = 99): array
@@ -116,18 +125,20 @@ it('waits for a checkout instead of inventing worked time and completes on a lat
     expect(AttendanceSegment::count())->toBe(1)->and(AttendanceLog::count())->toBe(2);
 });
 
-it('requires an explicit shift and can use an employee shift instead of the default', function (): void {
-    config(['attendance_device.default_shift_id' => null]);
+it('requires a dated work assignment rather than a default shift', function (): void {
+    $attributes = $this->assignment->only(['employee_id', 'work_schedule_id', 'pay_policy_id', 'effective_from', 'reason']);
+    $this->assignment->delete();
     mockDeviceAttendance([deviceAttendanceRow('2026-11-09 08:00:00', 0), deviceAttendanceRow('2026-11-09 17:00:00', 1)]);
     app(SyncDeviceAttendance::class)->handle();
     expect(AttendanceSegment::count())->toBe(0);
-    $this->employee->update(['attendance_shift_id' => $this->shift->id]);
+    EmployeeWorkAssignment::create($attributes);
     app(SyncDeviceAttendance::class)->handle();
     expect(AttendanceSegment::firstOrFail()->shift_id)->toBe($this->shift->id);
 });
 
 it('handles overnight shifts using the start date', function (): void {
-    $this->shift->update(['start_time' => '22:00:00', 'end_time' => '06:00:00', 'break_minutes' => 0, 'is_night_shift' => true]);
+    $night = Shift::factory()->create(['start_time' => '22:00:00', 'end_time' => '06:00:00', 'break_start' => null, 'break_end' => null, 'break_minutes' => 0]);
+    EmployeeShiftOverride::create(['employee_id' => $this->employee->id, 'date' => '2026-11-08', 'shift_id' => $night->id, 'reason' => 'Night shift']);
     mockDeviceAttendance([deviceAttendanceRow('2026-11-08 22:00:00', 0), deviceAttendanceRow('2026-11-09 06:00:00', 1)]);
     app(SyncDeviceAttendance::class)->handle();
     expect(AttendanceSegment::firstOrFail()->date->toDateString())->toBe('2026-11-08')
@@ -257,18 +268,14 @@ it('exposes status and queues manual synchronization for HR', function (): void 
     $this->actingAs(User::factory()->create(['role' => UserRole::HR]));
     AttendanceDeviceSync::factory()->create(['device_id' => 'office-mb360', 'last_error' => 'Connection timed out', 'status' => 'failed']);
     Bus::fake();
-    Livewire::test(AttendanceDevice::class)->assertSee('Connection timed out')->callAction('syncNow')->assertNotified();
+    Livewire::test(ManageAttendanceSegments::class)->callAction('syncNow')->assertNotified();
     Bus::assertDispatched(SyncJob::class);
 });
 
-it('shows collected punches, unmapped AC numbers and device clock warnings to HR', function (): void {
+it('redirects the retired device screen to attendance for HR', function (): void {
     Filament::setCurrentPanel(Filament::getPanel('hr'));
     $this->actingAs(User::factory()->create(['role' => UserRole::HR]));
-    AttendanceDevicePunch::factory()->create(['device_user_id' => '999', 'punched_at' => '2026-11-10 15:00:00']);
-    Livewire::test(AttendanceDevice::class)
-        ->assertSee('Collected punches')
-        ->assertSee('Unmatched AC No./FP No. values')
-        ->assertSee('Some recorded punches are ahead of ERP time.');
+    Livewire::test(AttendanceDevice::class)->assertRedirect(AttendanceSegmentResource::getUrl());
 });
 
 it('compares enrolled device users using AC numbers while keeping the internal employee ID separate', function (): void {
@@ -287,7 +294,7 @@ it('blocks non-HR roles and disables manual synchronization until enabled', func
     $this->actingAs(User::factory()->create(['role' => UserRole::HR]));
     config(['attendance_device.enabled' => false]);
     Bus::fake();
-    Livewire::test(AttendanceDevice::class)->assertActionDisabled('syncNow')->callAction('syncNow');
+    Livewire::test(ManageAttendanceSegments::class)->callAction('syncNow');
     Bus::assertNotDispatched(SyncJob::class);
     $this->actingAs(User::factory()->create(['role' => UserRole::Finance]));
     expect(AttendanceDevice::canAccess())->toBeFalse();

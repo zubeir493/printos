@@ -16,7 +16,12 @@ class RecordPayrollRemittance
     {
         $column = self::COLUMNS[$type] ?? throw new HrWorkflowException('Unsupported payroll liability.');
 
-        return max(0, round((float) $run->employees()->sum($column) - (float) Payment::query()->where('payable_type', PayrollRun::class)->where('payable_id', $run->id)->where('transaction_type', $type)->whereNull('voided_at')->sum('amount'), 2));
+        $due = (float) $run->employees()->sum($column);
+        if ($type === 'payroll_pension_remittance') {
+            $due += (float) $run->employees()->sum('employer_pension_contribution');
+        }
+
+        return max(0, round($due - (float) Payment::query()->where('payable_type', PayrollRun::class)->where('payable_id', $run->id)->where('transaction_type', $type)->whereNull('voided_at')->sum('amount'), 2));
     }
 
     public function handle(PayrollRun $run, string $type, float $amount, int $bankId, string $reference): Payment

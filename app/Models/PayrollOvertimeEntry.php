@@ -6,6 +6,7 @@ use Database\Factories\PayrollOvertimeEntryFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Validation\ValidationException;
 
 class PayrollOvertimeEntry extends Model
 {
@@ -22,6 +23,7 @@ class PayrollOvertimeEntry extends Model
         'payroll_run_id',
         'payroll_run_employee_id',
         'employee_id',
+        'pay_policy_id', 'category', 'started_at', 'ended_at', 'calculation_snapshot',
         'overtime_rule_id',
         'date',
         'source_type',
@@ -39,9 +41,22 @@ class PayrollOvertimeEntry extends Model
         'reviewed_at',
     ];
 
+    protected static function booted(): void
+    {
+        $guard = function (self $entry): void {
+            $runId = $entry->getRawOriginal('payroll_run_id');
+            if ($entry->exists && $runId && PayrollRun::whereKey($runId)->where('status', '!=', 'draft')->exists()) {
+                throw ValidationException::withMessages(['status' => 'Finalized overtime cannot be changed.']);
+            }
+        };
+        static::updating($guard);
+        static::deleting($guard);
+    }
+
     protected function casts(): array
     {
         return [
+            'started_at' => 'immutable_datetime', 'ended_at' => 'immutable_datetime', 'calculation_snapshot' => 'array',
             'date' => 'date',
             'minutes' => 'integer',
             'hours' => 'decimal:2',
@@ -71,6 +86,18 @@ class PayrollOvertimeEntry extends Model
     public function overtimeRule(): BelongsTo
     {
         return $this->belongsTo(OvertimeRule::class);
+    }
+
+    public function payPolicy(): BelongsTo
+    {
+        return $this->belongsTo(PayPolicy::class);
+    }
+
+    public function getCategoryLabelAttribute(): string
+    {
+        return match ($this->category) {
+            'day' => 'Daytime overtime', 'night' => 'Nighttime overtime', 'rest' => 'Rest-day work', 'holiday' => 'Public-holiday work', default => 'Overtime'
+        };
     }
 
     public function reviewer(): BelongsTo

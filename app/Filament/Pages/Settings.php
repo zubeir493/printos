@@ -5,15 +5,19 @@ namespace App\Filament\Pages;
 use App\Filament\Resources\Accounts\AccountResource;
 use App\Models\AccountingExport;
 use App\Models\AccountingIntegration;
+use App\Models\PayPolicy;
 use App\Models\Setting;
 use App\Services\Accounting\GenerateAccountingExport;
+use App\Services\Hr\SavePayrollPolicy;
 use App\Support\FiscalCalendar;
 use App\Support\Money;
+use App\Support\PayrollSettingsForm;
 use App\UserRole;
 use BackedEnum;
 use DateTimeZone;
 use Filament\Actions\Action;
 use Filament\Forms\Components\BaseFileUpload;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
@@ -37,8 +41,10 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\HtmlString;
+use Illuminate\Validation\ValidationException;
 
 class Settings extends Page implements HasForms
 {
@@ -61,6 +67,7 @@ class Settings extends Page implements HasForms
         $peachtree = $integrations->get(AccountingIntegration::PROVIDER_PEACHTREE_DESKTOP);
         $this->form->fill([
             ...$settings->toArray(),
+            ...$this->payRuleState(),
             'timezone' => $settings->timezone ?? $peachtree?->timezone,
             ...collect(AccountingIntegration::providerDefinitions())
                 ->mapWithKeys(fn (array $definition, string $provider): array => [
@@ -81,21 +88,22 @@ class Settings extends Page implements HasForms
                     ->hiddenLabel()
                     ->contained(false)
                     ->id('settings-tabs')
+                    ->activeTab(auth()->user()?->role === UserRole::Finance ? 1 : (request()->query('section') === 'payroll' ? 3 : 1))
                     ->extraAttributes(['class' => 'settings-tabs'])
                     ->tabs([
-                        Tab::make('Company')
+                        Tab::make('Company')->visible(fn (): bool => auth()->user()?->role === UserRole::Admin)
                             ->icon(Heroicon::OutlinedBuildingOffice)
                             ->schema($this->companySettingsSchema()),
-                        Tab::make('Finance')
+                        Tab::make('Finance')->visible(fn (): bool => auth()->user()?->role === UserRole::Admin)
                             ->icon(Heroicon::OutlinedBanknotes)
                             ->schema($this->financeSettingsSchema()),
                         Tab::make('Payroll')
                             ->icon(Heroicon::OutlinedUsers)
                             ->schema($this->payrollSettingsSchema()),
-                        Tab::make('Communication')
+                        Tab::make('Communication')->visible(fn (): bool => auth()->user()?->role === UserRole::Admin)
                             ->icon(Heroicon::OutlinedEnvelope)
                             ->schema($this->communicationSettingsSchema()),
-                        Tab::make('Integrations')
+                        Tab::make('Integrations')->visible(fn (): bool => auth()->user()?->role === UserRole::Admin)
                             ->icon(Heroicon::OutlinedPuzzlePiece)
                             ->schema($this->integrationSettingsTabSchema()),
                     ]),
@@ -105,7 +113,27 @@ class Settings extends Page implements HasForms
 
     public function save(): void
     {
+        abort_unless(static::canAccess(), 403);
+        DB::transaction(fn () => $this->saveSettings());
+    }
+
+    private function saveSettings(): void
+    {
         $data = $this->form->getState();
+        try {
+            app(SavePayrollPolicy::class)->handle($data['pay_rules'], $data['pay_rules_from']);
+        } catch (ValidationException $exception) {
+            throw ValidationException::withMessages(collect($exception->errors())->mapWithKeys(fn (array $messages, string $field): array => [($field === 'effective_from' ? 'data.pay_rules_from' : 'data.pay_rules.'.$field) => $messages])->all());
+        }
+        $data = Arr::except($data, ['pay_rules', 'pay_rules_from']);
+        if (auth()->user()->role === UserRole::Finance) {
+            Setting::getSettings()->update(Arr::only($data, ['workers_union_enabled', 'workers_union_rate', 'employee_pension_rate', 'employer_pension_rate']));
+            Cache::forget('app_settings');
+            $this->mount();
+            Notification::make()->title('Settings saved')->success()->send();
+
+            return;
+        }
         $integrationData = Arr::only($data, [
             ...array_map(
                 fn (string $provider): string => $this->integrationToggleKey($provider),
@@ -161,6 +189,7 @@ class Settings extends Page implements HasForms
         $peachtree = AccountingIntegration::peachtreeDesktop();
         $this->form->fill([
             ...$settings->toArray(),
+            ...$this->payRuleState(),
             ...collect(AccountingIntegration::providerDefinitions())
                 ->mapWithKeys(fn (array $definition, string $provider): array => [
                     $this->integrationToggleKey($provider) => AccountingIntegration::integrationFor($provider)->enabled,
@@ -173,13 +202,13 @@ class Settings extends Page implements HasForms
 
         Notification::make()
             ->title('Settings saved')
-            ->body('Your settings have been saved successfully.')
             ->success()
             ->send();
     }
 
     public function generatePeachtreeExport(): void
     {
+        abort_unless(auth()->user()?->role === UserRole::Admin, 403);
         $integration = AccountingIntegration::peachtreeDesktop();
         $export = app(GenerateAccountingExport::class)->handle(
             $integration,
@@ -206,7 +235,7 @@ class Settings extends Page implements HasForms
 
     public static function canAccess(): bool
     {
-        return auth()->user()?->role === UserRole::Admin;
+        return in_array(auth()->user()?->role, [UserRole::Admin, UserRole::Finance], true);
     }
 
     protected function getHeaderActions(): array
@@ -350,6 +379,8 @@ class Settings extends Page implements HasForms
     private function payrollSettingsSchema(): array
     {
         return [
+            Group::make()->statePath('pay_rules')->schema(PayrollSettingsForm::fields()),
+            Grid::make(4)->schema([DatePicker::make('pay_rules_from')->label('Apply rule changes from')->default(today())->minDate(today())->required()]),
             Group::make()
                 ->schema([
                     Grid::make(4)
@@ -381,6 +412,15 @@ class Settings extends Page implements HasForms
                                 ->suffix('%'),
                         ]),
                 ]),
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    private function payRuleState(): array
+    {
+        return [
+            'pay_rules' => (PayPolicy::where('is_active', true)->latest('id')->first() ?? new PayPolicy(['name' => 'Company pay rules', 'code' => 'STANDARD']))->attributesToArray(),
+            'pay_rules_from' => max(today()->toDateString(), PayPolicy::where('is_active', true)->latest('id')->value('effective_from') ?? today()->toDateString()),
         ];
     }
 

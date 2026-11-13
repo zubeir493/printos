@@ -196,11 +196,6 @@ class ImportAttendanceSegmentCsv
         $clockIn = $this->parseTime($row['Clock In'] ?? null);
         $clockOut = $this->parseTime($row['Clock Out'] ?? null);
 
-        if (($clockIn && ! $clockOut) || (! $clockIn && $clockOut)) {
-            $clockIn ??= $scheduledStart;
-            $clockOut ??= $scheduledEnd;
-        }
-
         if ($workedMinutes === 0 && $clockIn && $clockOut) {
             $workedMinutes = $this->minutesBetween($clockIn, $clockOut);
         }
@@ -245,25 +240,6 @@ class ImportAttendanceSegmentCsv
                     $normalized['scheduled_end'] ?? null,
                 ),
             ]);
-        } else {
-            $updates = [];
-
-            if ($normalized['scheduled_start'] && $shift->start_time !== $normalized['scheduled_start']) {
-                $updates['start_time'] = $normalized['scheduled_start'];
-            }
-
-            if ($normalized['scheduled_end'] && $shift->end_time !== $normalized['scheduled_end']) {
-                $updates['end_time'] = $normalized['scheduled_end'];
-            }
-
-            if ($updates !== []) {
-                $updates['expected_minutes'] = $this->expectedShiftMinutes(
-                    $updates['start_time'] ?? $shift->start_time,
-                    $updates['end_time'] ?? $shift->end_time,
-                );
-
-                $shift->fill($updates);
-            }
         }
 
         $shift->save();
@@ -283,11 +259,6 @@ class ImportAttendanceSegmentCsv
 
         $normalized['scheduled_start'] ??= $shift->start_time;
         $normalized['scheduled_end'] ??= $shift->end_time;
-
-        if (($normalized['clock_in'] && ! $normalized['clock_out']) || (! $normalized['clock_in'] && $normalized['clock_out'])) {
-            $normalized['clock_in'] ??= $shift->start_time;
-            $normalized['clock_out'] ??= $shift->end_time;
-        }
 
         if ($normalized['worked_minutes'] === 0 && $normalized['clock_in'] && $normalized['clock_out']) {
             $normalized['worked_minutes'] = $this->minutesBetween($normalized['clock_in'], $normalized['clock_out']);

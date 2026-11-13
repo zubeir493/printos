@@ -81,6 +81,16 @@ class Employee extends Model
         return $this->belongsTo(Shift::class, 'attendance_shift_id');
     }
 
+    public function workAssignments(): HasMany
+    {
+        return $this->hasMany(EmployeeWorkAssignment::class);
+    }
+
+    public function shiftOverrides(): HasMany
+    {
+        return $this->hasMany(EmployeeShiftOverride::class);
+    }
+
     public function attendanceDailySummaries(): HasMany
     {
         return $this->hasMany(AttendanceDailySummary::class);

@@ -33,7 +33,7 @@ class ExportPayrollDocuments
             ['Payroll', $run->id, $run->status],
             ['Liability', 'Original amount', 'Currency', 'Outstanding'],
             ['PAYE', $run->employees()->sum('income_tax'), Money::currencyCode(), app(RecordPayrollRemittance::class)->outstanding($run, 'payroll_tax_remittance')],
-            ['Pension (employee and employer)', $run->employees()->sum('pension_contribution'), Money::currencyCode(), app(RecordPayrollRemittance::class)->outstanding($run, 'payroll_pension_remittance')],
+            ['Pension (employee and employer)', $run->employees()->sum('pension_contribution') + $run->employees()->sum('employer_pension_contribution'), Money::currencyCode(), app(RecordPayrollRemittance::class)->outstanding($run, 'payroll_pension_remittance')],
             ['Workers union', $run->employees()->sum('workers_union'), Money::currencyCode(), app(RecordPayrollRemittance::class)->outstanding($run, 'payroll_union_remittance')],
         ]);
     }

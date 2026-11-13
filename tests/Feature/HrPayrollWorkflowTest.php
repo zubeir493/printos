@@ -1,7 +1,7 @@
 <?php
 
 use App\Filament\Resources\OvertimeRules\OvertimeRuleResource;
-use App\Filament\Resources\OvertimeRules\Pages\ManageOvertimeRules;
+use App\Filament\Resources\PayPolicies\Pages\ManagePayPolicies;
 use App\Filament\Resources\PayrollRuns\Pages\CreatePayrollRun;
 use App\Filament\Resources\PayrollRuns\Pages\EditPayrollRun;
 use App\Filament\Resources\PayrollRuns\Pages\ListPayrollRuns;
@@ -12,10 +12,10 @@ use App\Models\AttendancePeriodSummary;
 use App\Models\AttendanceSegment;
 use App\Models\Bank;
 use App\Models\Employee;
+use App\Models\EmployeeShiftOverride;
 use App\Models\Holiday;
 use App\Models\JournalEntry;
 use App\Models\LeaveType;
-use App\Models\OvertimeRule;
 use App\Models\Payment;
 use App\Models\PayrollOvertimeEntry;
 use App\Models\PayrollRun;
@@ -26,6 +26,7 @@ use App\Models\User;
 use App\Services\Hr\CalculatePayrollRun;
 use App\Services\Hr\ExportPayrollBankAdvice;
 use App\Services\Hr\ExportPayrollRegisterCsv;
+use App\Services\Hr\GeneratePayrollOvertimeEntries;
 use App\Services\Hr\GeneratePayrollPayments;
 use App\Services\Hr\ImportAttendanceSegmentCsv;
 use App\Services\Hr\ImportAttendanceSummaryReport;
@@ -36,6 +37,7 @@ use App\Services\Hr\RecordManualAttendanceLog;
 use App\Services\Hr\RepayEmployeeLoan;
 use App\Support\Money;
 use App\UserRole;
+use Database\Seeders\HrWorkSetupSeeder;
 use Database\Seeders\OvertimeRuleSeeder;
 use Database\Seeders\PayrollTaxRuleSeeder;
 use Filament\Facades\Filament;
@@ -45,6 +47,13 @@ use Illuminate\Support\Facades\Schema;
 use Livewire\Livewire;
 
 uses(RefreshDatabase::class);
+
+beforeEach(function (): void {
+    Employee::created(fn (Employee $employee) => seedEmployeePayrollWork($employee));
+    AttendancePeriodSummary::created(function (AttendancePeriodSummary $summary): void {
+        seedPayrollPeriodPunches($summary->employee, $summary->period_start->toDateString(), $summary->period_end->toDateString());
+    });
+});
 
 it('registers payroll run resource routes only in the finance panel', function (): void {
     expect(Route::has('filament.finance.resources.payroll-runs.index'))->toBeTrue()
@@ -164,18 +173,18 @@ it('imports one attendance csv as segments and builds daily summaries', function
         ->and(Schema::hasColumn('attendance_daily_summaries', 'shift_id'))->toBeFalse()
         ->and(Schema::hasColumn('attendance_segments', 'shift_id'))->toBeTrue()
         ->and(Schema::hasTable('shifts'))->toBeTrue()
-        ->and(Schema::hasTable('work_schedules'))->toBeFalse()
+        ->and(Schema::hasTable('work_schedules'))->toBeTrue()
         ->and(Shift::query()->where('name', 'Morning(Shift)')->exists())->toBeTrue()
         ->and(AttendanceSegment::query()->where('schedule_name', 'Morning(Shift)')->firstOrFail()->shift_id)->not->toBeNull()
         ->and($summary->expected_minutes)->toBe(480)
-        ->and($summary->worked_minutes)->toBe(493)
+        ->and($summary->worked_minutes)->toBe(480)
         ->and($summary->status)->toBe('present')
-        ->and($nightSummary->status)->toBe('partial')
-        ->and(AttendanceSegment::query()->where('employee_id', $nightEmployee->id)->firstOrFail()->clock_out)->toBe('03:00:00')
+        ->and($nightSummary->status)->toBe('needs_review')
+        ->and(AttendanceSegment::query()->where('employee_id', $nightEmployee->id)->firstOrFail()->clock_out)->toBeNull()
         ->and($nightSummary->calculation_snapshot)->not->toHaveKey('shift_types');
 });
 
-it('uses matched shift times when imported attendance is missing one clock value', function () {
+it('preserves missing clock values for attendance review', function () {
     $employee = Employee::create([
         'employee_id' => 'EMP-0011',
         'attendance_device_id' => '44',
@@ -211,8 +220,8 @@ it('uses matched shift times when imported attendance is missing one clock value
     expect($segment->shift_id)->not->toBeNull()
         ->and($segment->scheduled_start)->toBe('08:00:00')
         ->and($segment->scheduled_end)->toBe('12:30:00')
-        ->and($segment->clock_out)->toBe('12:30:00')
-        ->and($segment->worked_minutes)->toBe(265);
+        ->and($segment->clock_out)->toBeNull()
+        ->and($segment->worked_minutes)->toBe(0);
 });
 
 it('calculates payroll from imported attendance segments', function () {
@@ -245,51 +254,20 @@ it('calculates payroll from imported attendance segments', function () {
 
     $payrollEmployee = $payrollRun->employees()->firstOrFail();
 
-    expect($payrollEmployee->calculation_snapshot['daily_summary_ids'])->not->toBeEmpty()
+    expect($payrollEmployee->calculation_snapshot['attendance'])->not->toBeEmpty()
         ->and((float) $payrollEmployee->net_pay)->toBeGreaterThan(0);
 });
 
-it('uses attendance segment worked days and late early minutes in payroll calculation', function () {
+it('shows late attendance without applying a second penalty to monthly salary', function (): void {
     $this->seed(PayrollTaxRuleSeeder::class);
-
-    $employee = Employee::create([
-        'employee_id' => 'EMP-SEGMENT-MINUTES',
-        'attendance_device_id' => '707',
-        'first_name' => 'Segment',
-        'last_name' => 'Minutes',
-        'phone' => '0911777007',
-        'hire_date' => '2026-05-01',
-        'status' => 'active',
-        'basic_salary' => 10000,
-        'overtime_multiplier' => 1,
-    ]);
-
-    AttendanceSegment::create([
-        'employee_id' => $employee->id,
-        'date' => '2026-05-04',
-        'fp_no' => '707',
-        'worked_minutes' => 470,
-        'late_minutes' => 10,
-        'early_minutes' => 5,
-        'day_fraction' => 1,
-        'status' => 'Early',
-    ]);
-
-    $payrollRun = PayrollRun::create([
-        'name' => 'Segment minute payroll',
-        'period_start' => '2026-05-04',
-        'period_end' => '2026-05-04',
-    ]);
-
-    app(CalculatePayrollRun::class)->handle($payrollRun, [$employee->id]);
-
-    $payrollEmployee = $payrollRun->employees()->firstOrFail();
-
-    expect((float) $payrollEmployee->calculation_snapshot['paid_days'])->toBe(1.0)
-        ->and((int) $payrollEmployee->calculation_snapshot['late_minutes'])->toBe(15)
-        ->and((float) $payrollEmployee->penalty_hours)->toBe(0.25)
-        ->and((float) $payrollEmployee->penalty_amount)->toBe(10.42)
-        ->and((float) $payrollEmployee->basic_salary)->toBe(10000.0);
+    $employee = Employee::factory()->create(['basic_salary' => 10000]);
+    AttendanceSegment::create(['employee_id' => $employee->id, 'date' => '2026-05-04', 'fp_no' => $employee->attendance_device_id, 'clock_in' => '08:10:00', 'clock_out' => '16:55:00', 'status' => 'Present']);
+    $run = PayrollRun::factory()->create(['period_start' => '2026-05-04', 'period_end' => '2026-05-04', 'period_type' => 'custom']);
+    app(CalculatePayrollRun::class)->handle($run, [$employee->id]);
+    $row = $run->employees()->firstOrFail();
+    expect((float) $row->basic_salary)->toBe(333.33)
+        ->and((float) $row->penalty_amount)->toBe(0.0)
+        ->and($employee->attendanceDailySummaries()->firstOrFail()->late_minutes)->toBe(15);
 });
 
 it('calculates batch payroll from merged attendance summaries and locks recalculation after approval', function () {
@@ -353,7 +331,7 @@ it('calculates batch payroll from merged attendance summaries and locks recalcul
     $payrollEmployee = $payrollRun->employees()->firstOrFail();
 
     expect($payrollRun->refresh()->status)->toBe('draft')
-        ->and($payrollRun->overtimeEntries()->where('status', PayrollOvertimeEntry::STATUS_PENDING)->count())->toBeGreaterThan(0)
+        ->and($payrollRun->overtimeEntries()->count())->toBe(0)
         ->and((float) $payrollEmployee->overtime_amount)->toBe(0.0)
         ->and((float) $payrollEmployee->income_tax)->toBeGreaterThan(0)
         ->and((float) $payrollEmployee->net_pay)->toBeGreaterThan(0);
@@ -402,7 +380,7 @@ it('uses the employee transportation allowance as the payroll default', function
         ->and((float) $payrollEmployee->gross_earning)->toBe((float) $payrollEmployee->basic_salary + 150.0);
 });
 
-it('does not pay a full month when an employee has no attendance data', function () {
+it('holds missing attendance for review without deleting monthly salary entitlement', function () {
     $this->seed(PayrollTaxRuleSeeder::class);
 
     $employee = Employee::create([
@@ -427,10 +405,8 @@ it('does not pay a full month when an employee has no attendance data', function
 
     $payrollEmployee = $payrollRun->employees()->firstOrFail();
 
-    expect((float) $payrollEmployee->basic_salary)->toBe(0.0)
-        ->and((float) $payrollEmployee->gross_earning)->toBe(0.0)
-        ->and((float) $payrollEmployee->net_pay)->toBe(0.0)
-        ->and($payrollEmployee->calculation_snapshot['has_attendance_data'])->toBeFalse();
+    expect((float) $payrollEmployee->basic_salary)->toBe(12000.0)
+        ->and($payrollEmployee->calculation_snapshot['attendance_issues'])->not->toBeEmpty();
 });
 
 it('prepares a monthly payroll draft from filters and exports bank advice', function () {
@@ -729,12 +705,11 @@ it('updates payroll employee detail earnings and deductions from the workspace d
 
     $row->refresh();
 
-    expect((float) $row->overtime_amount)->toBe(125.5)
-        ->and((float) $row->gross_earning)->toBe(10625.5)
-        ->and((float) $row->total_deduction)->toBe(2332.65)
-        ->and((float) $row->net_pay)->toBe(8292.85)
+    expect((float) $row->overtime_amount)->toBe(0.0)
+        ->and((float) $row->gross_earning)->toBe(10500.0)
+        ->and((float) $row->net_pay)->toBe(round((float) $row->gross_earning - (float) $row->total_deduction, 2))
         ->and($row->lineItems()->where('code', 'commission')->exists())->toBeTrue()
-        ->and($row->lineItems()->where('code', 'overtime_amount')->exists())->toBeTrue()
+        ->and($row->lineItems()->where('code', 'overtime_amount')->exists())->toBeFalse()
         ->and($row->lineItems()->where('code', 'advance')->exists())->toBeTrue()
         ->and($row->lineItems()->where('code', 'bonus')->exists())->toBeFalse();
 });
@@ -863,7 +838,7 @@ it('removes and adds payroll employees back from the workspace roster', function
         ->and($component->instance()->summary()['employee_count'])->toBe(2);
 });
 
-it('shows explicitly selected payroll employees even when their calculated net is zero', function () {
+it('retains explicitly selected employees with attendance review holds', function () {
     $this->seed(PayrollTaxRuleSeeder::class);
     Filament::setCurrentPanel(Filament::getPanel('finance'));
 
@@ -895,7 +870,7 @@ it('shows explicitly selected payroll employees even when their calculated net i
         ->assertHasNoActionErrors();
 
     expect($payrollRun->refresh()->employees()->count())->toBe(2)
-        ->and((float) $payrollRun->employees()->sum('net_pay'))->toBe(0.0)
+        ->and((float) $payrollRun->employees()->sum('net_pay'))->toBeGreaterThan(0)
         ->and($component->instance()->payrollRows())->toHaveCount(2)
         ->and($component->instance()->summary()['employee_count'])->toBe(2)
         ->and($component->instance()->addableEmployeeOptions())->not->toHaveKeys($employees->pluck('id')->all());
@@ -946,7 +921,7 @@ it('counts only payable employees on payroll workspace and list table', function
         ->assertTableColumnStateSet('payable_employees_net_pay', Money::format(3000, 2), $payrollRun);
 });
 
-it('edits and removes payroll penalty from the detail drawer', function () {
+it('prevents penalty overrides from the detail drawer', function () {
     $this->seed(PayrollTaxRuleSeeder::class);
     Filament::setCurrentPanel(Filament::getPanel('finance'));
 
@@ -1026,374 +1001,73 @@ it('colors the payroll title status badge by workflow status', function () {
         ->and(Livewire::test(EditPayrollRun::class, ['record' => $paid->id])->instance()->getTitle()->toHtml())->toContain('bg-success-50');
 });
 
-it('generates overtime candidates and pays only approved entries', function () {
+it('generates exclusive overtime candidates independently and pays only approved entries', function (): void {
     $this->seed(PayrollTaxRuleSeeder::class);
     Filament::setCurrentPanel(Filament::getPanel('finance'));
-
-    $this->actingAs(User::factory()->create([
-        'role' => UserRole::Finance,
-    ]));
-
-    foreach ([
-        ['Normal', 'normal_test', OvertimeRule::BASIS_ATTENDANCE_OVERTIME, [OvertimeRule::DAY_REGULAR], 1.5, null, null, 10],
-        ['Before shift', 'before_test', OvertimeRule::BASIS_BEFORE_SHIFT, [OvertimeRule::DAY_REGULAR], 1.1, null, null, 20],
-        ['After 5:30 PM', 'after_530_test', OvertimeRule::BASIS_AFTER_CLOCK_TIME, [OvertimeRule::DAY_REGULAR], 1.25, '17:30:00', null, 30],
-        ['Night', 'night_test', OvertimeRule::BASIS_TIME_WINDOW, [OvertimeRule::DAY_REGULAR], 2.0, '22:00:00', '06:00:00', 40],
-        ['Holiday', 'holiday_test', OvertimeRule::BASIS_WORKED_DAY, [OvertimeRule::DAY_HOLIDAY], 2.5, null, null, 5],
-        ['Day off', 'dayoff_test', OvertimeRule::BASIS_WORKED_DAY, [OvertimeRule::DAY_WEEKEND_DAYOFF], 2.0, null, null, 6],
-    ] as [$name, $code, $minutesBasis, $appliesOnDays, $multiplier, $windowStart, $windowEnd, $priority]) {
-        OvertimeRule::create([
-            'name' => $name,
-            'code' => $code,
-            'minutes_basis' => $minutesBasis,
-            'applies_on_days' => $appliesOnDays,
-            'multiplier' => $multiplier,
-            'hourly_rate' => 100,
-            'minimum_minutes' => 0,
-            'rounding_increment_minutes' => 1,
-            'window_start_time' => $windowStart,
-            'window_end_time' => $windowEnd,
-            'priority' => $priority,
-            'is_active' => true,
-        ]);
+    $this->actingAs(User::factory()->create(['role' => UserRole::Finance]));
+    $employee = Employee::factory()->create(['basic_salary' => 24000, 'pension_enabled' => false]);
+    $night = Shift::factory()->create(['start_time' => '22:00:00', 'end_time' => '06:00:00', 'break_start' => null, 'break_end' => null, 'break_minutes' => 0]);
+    EmployeeShiftOverride::create(['employee_id' => $employee->id, 'date' => '2026-05-07', 'shift_id' => $night->id, 'reason' => 'Night shift']);
+    Holiday::create(['name' => 'Holiday', 'date' => '2026-05-08', 'counts_as_holiday_overtime' => true, 'is_paid' => true]);
+    foreach ([['2026-05-04', '08:00:00', '18:00:00'], ['2026-05-05', '07:00:00', '17:00:00'], ['2026-05-06', '08:00:00', '19:00:00'], ['2026-05-07', '22:00:00', '06:00:00'], ['2026-05-08', '08:00:00', '10:00:00'], ['2026-05-10', '08:00:00', '10:00:00']] as [$date, $in, $out]) {
+        AttendanceSegment::create(['employee_id' => $employee->id, 'date' => $date, 'fp_no' => $employee->attendance_device_id, 'clock_in' => $in, 'clock_out' => $out, 'status' => 'Present']);
     }
-
-    $employee = Employee::create([
-        'employee_id' => 'EMP-OT-RULES',
-        'attendance_device_id' => 'EMP-OT-RULES',
-        'first_name' => 'Overtime',
-        'last_name' => 'Rules',
-        'phone' => '0911888555',
-        'hire_date' => '2026-05-01',
-        'status' => 'active',
-        'basic_salary' => 24000,
-        'pension_enabled' => false,
-    ]);
-    $dayShift = Shift::create([
-        'name' => 'Day overtime shift',
-        'start_time' => '08:00:00',
-        'end_time' => '16:00:00',
-        'expected_minutes' => 480,
-        'overtime_eligible' => true,
-    ]);
-    $nightShift = Shift::create([
-        'name' => 'Night overtime shift',
-        'start_time' => '22:00:00',
-        'end_time' => '06:00:00',
-        'expected_minutes' => 480,
-        'is_night_shift' => true,
-        'overtime_eligible' => true,
-    ]);
-
-    Holiday::create([
-        'name' => 'Overtime holiday',
-        'date' => '2026-05-08',
-        'type' => 'public',
-        'is_paid' => true,
-        'counts_as_holiday_overtime' => true,
-    ]);
-
-    foreach ([
-        ['2026-05-04', $dayShift->id, '08:00:00', '16:00:00', '08:00:00', '17:00:00', 480, 60, null, null],
-        ['2026-05-05', $dayShift->id, '08:00:00', '16:00:00', '07:00:00', '16:00:00', 540, 0, null, null],
-        ['2026-05-06', $dayShift->id, '08:00:00', '16:00:00', '08:00:00', '19:00:00', 660, 0, null, null],
-        ['2026-05-07', $nightShift->id, '22:00:00', '06:00:00', '22:00:00', '06:00:00', 480, 0, null, null],
-        ['2026-05-08', $dayShift->id, '08:00:00', '16:00:00', '08:00:00', '16:00:00', 480, 0, 'Holiday', 'Holiday'],
-        ['2026-05-10', $dayShift->id, '08:00:00', '16:00:00', '08:00:00', '16:00:00', 480, 0, 'Dayoff', 'Dayoff'],
-    ] as [$date, $shiftId, $scheduledStart, $scheduledEnd, $clockIn, $clockOut, $workedMinutes, $overtimeMinutes, $status, $exception]) {
-        AttendanceSegment::create([
-            'employee_id' => $employee->id,
-            'shift_id' => $shiftId,
-            'date' => $date,
-            'fp_no' => 'EMP-OT-RULES',
-            'scheduled_start' => $scheduledStart,
-            'scheduled_end' => $scheduledEnd,
-            'clock_in' => $clockIn,
-            'clock_out' => $clockOut,
-            'worked_minutes' => $workedMinutes,
-            'overtime_minutes' => $overtimeMinutes,
-            'day_fraction' => 1,
-            'status' => $status,
-            'exception' => $exception,
-        ]);
-    }
-
-    $payrollRun = PayrollRun::create([
-        'name' => 'Overtime rules payroll',
-        'period_start' => '2026-05-04',
-        'period_end' => '2026-05-10',
-    ]);
-
-    app(CalculatePayrollRun::class)->handle($payrollRun, [$employee->id]);
-
-    $payrollEmployee = $payrollRun->employees()->firstOrFail();
-    $entries = $payrollRun->overtimeEntries()->with('overtimeRule')->get();
-    $normal = $entries->firstWhere('overtimeRule.code', 'normal_test');
-    $afterClockTime = $entries->firstWhere('overtimeRule.code', 'after_530_test');
-
-    expect($entries->map(fn (PayrollOvertimeEntry $entry): string => $entry->overtimeRule->code)->sort()->values()->all())->toBe([
-        'after_530_test',
-        'before_test',
-        'dayoff_test',
-        'holiday_test',
-        'night_test',
-        'normal_test',
-    ])
-        ->and((float) $entries->firstWhere('overtimeRule.code', 'normal_test')->amount)->toBe(150.0)
-        ->and((float) $entries->firstWhere('overtimeRule.code', 'before_test')->amount)->toBe(110.0)
-        ->and((float) $afterClockTime->amount)->toBe(187.5)
-        ->and((float) $entries->firstWhere('overtimeRule.code', 'night_test')->amount)->toBe(1600.0)
-        ->and((float) $entries->firstWhere('overtimeRule.code', 'holiday_test')->amount)->toBe(2000.0)
-        ->and((float) $entries->firstWhere('overtimeRule.code', 'dayoff_test')->amount)->toBe(1600.0)
-        ->and((float) $payrollEmployee->overtime_amount)->toBe(0.0);
-
-    $component = Livewire::test(EditPayrollRun::class, ['record' => $payrollRun->id])
-        ->assertActionVisible('approve')
-        ->assertActionVisible('reviewOvertime')
-        ->call('approveOvertimeEntry', $normal->id)
-        ->call('rejectOvertimeEntry', $afterClockTime->id);
-
-    $payrollEmployee->refresh();
-
-    expect((float) $payrollEmployee->overtime_amount)->toBe(150.0)
-        ->and((float) $payrollEmployee->overtime_hours)->toBe(1.0)
-        ->and((float) $payrollEmployee->gross_earning)->toBeGreaterThan((float) $payrollEmployee->basic_salary)
-        ->and($normal->refresh()->status)->toBe(PayrollOvertimeEntry::STATUS_APPROVED)
-        ->and($afterClockTime->refresh()->status)->toBe(PayrollOvertimeEntry::STATUS_REJECTED)
-        ->and($component->instance()->approveModalDescription())->toContain('pending overtime candidates')
+    seedPayrollPeriodPunches($employee, '2026-05-09', '2026-05-09');
+    app(GeneratePayrollOvertimeEntries::class)->generate($employee, '2026-05-04', '2026-05-10');
+    $entries = PayrollOvertimeEntry::orderBy('date')->get();
+    expect($entries)->toHaveCount(6)->and($entries->where('category', 'night'))->toHaveCount(0);
+    $run = PayrollRun::factory()->create(['period_start' => '2026-05-04', 'period_end' => '2026-05-10']);
+    app(CalculatePayrollRun::class)->handle($run, [$employee->id]);
+    expect((float) $run->employees()->firstOrFail()->overtime_amount)->toBe(0.0);
+    $component = Livewire::test(EditPayrollRun::class, ['record' => $run->id])
+        ->assertActionVisible('reviewOvertime')->call('approveOvertimeEntry', $entries[0]->id)->call('rejectOvertimeEntry', $entries[2]->id);
+    expect((float) $run->employees()->firstOrFail()->overtime_amount)->toBe(150.0)
         ->and($component->instance()->pendingOvertimeApprovalCount())->toBe(4);
-
-    $payrollRun->overtimeEntries()->where('status', 'pending')->update(['status' => 'rejected']);
-    $payrollRun->update(['attendance_reviewed_at' => now()]);
-    $journalEntry = app(PostPayrollRun::class)->handle($payrollRun->refresh());
-
-    expect((float) $journalEntry->journalItems()->whereBelongsTo(Account::where('code', '5110')->firstOrFail())->firstOrFail()->debit)->toBe(150.0);
+    PayrollOvertimeEntry::where('status', 'pending')->update(['status' => 'rejected']);
+    app(CalculatePayrollRun::class)->handle($run, [$employee->id]);
+    $run->update(['attendance_reviewed_at' => now()]);
+    $journal = app(PostPayrollRun::class)->handle($run);
+    expect((float) $journal->journalItems()->whereBelongsTo(Account::where('code', '5110')->firstOrFail())->firstOrFail()->debit)->toBe(150.0);
 });
 
-it('creates overtime rules without exposing internal setup as required workflow', function () {
+it('replaces standalone overtime rules with shared versioned pay policies', function (): void {
     Filament::setCurrentPanel(Filament::getPanel('finance'));
-
-    $this->actingAs(User::factory()->create([
-        'role' => UserRole::Finance,
-    ]));
-
-    Livewire::test(ManageOvertimeRules::class)
-        ->mountAction('create')
-        ->setActionData([
-            'name' => 'After 5:30 PM overtime',
-            'applies_on_days' => [OvertimeRule::DAY_REGULAR],
-            'minutes_basis' => OvertimeRule::BASIS_AFTER_CLOCK_TIME,
-            'multiplier' => 1.5,
-            'hourly_rate' => null,
-            'window_start_time' => '17:30:00',
-            'is_active' => true,
-            'minimum_minutes' => 0,
-            'rounding_increment_minutes' => 1,
-            'priority' => 100,
-        ])
-        ->callMountedAction()
-        ->assertHasNoActionErrors();
-
-    Livewire::test(ManageOvertimeRules::class)
-        ->mountAction('create')
-        ->setActionData([
-            'name' => 'Night window overtime',
-            'applies_on_days' => [OvertimeRule::DAY_REGULAR],
-            'minutes_basis' => OvertimeRule::BASIS_TIME_WINDOW,
-            'multiplier' => 1.75,
-            'hourly_rate' => null,
-            'window_range' => [
-                'start' => '22:00',
-                'end' => '06:00',
-            ],
-            'is_active' => true,
-            'minimum_minutes' => 30,
-            'rounding_increment_minutes' => 15,
-            'priority' => 100,
-        ])
-        ->callMountedAction()
-        ->assertHasNoActionErrors();
-
-    $rule = OvertimeRule::query()->where('name', 'After 5:30 PM overtime')->firstOrFail();
-    $nightRule = OvertimeRule::query()->where('name', 'Night window overtime')->firstOrFail();
-
-    expect($rule->code)->toBe('after_530_pm_overtime')
-        ->and($rule->minutes_basis)->toBe(OvertimeRule::BASIS_AFTER_CLOCK_TIME)
-        ->and($rule->applies_on_days)->toBe([OvertimeRule::DAY_REGULAR])
-        ->and($nightRule->window_start_time)->toBe('22:00:00')
-        ->and($nightRule->window_end_time)->toBe('06:00:00')
-        ->and(OvertimeRuleResource::minutesBasisExplanation(OvertimeRule::BASIS_TIME_WINDOW))->toContain('inside the selected time range');
-
-    OvertimeRule::create([
-        'name' => 'Regular overtime',
-        'code' => 'regular_overtime',
-        'minutes_basis' => OvertimeRule::BASIS_ATTENDANCE_OVERTIME,
-        'applies_on_days' => [OvertimeRule::DAY_REGULAR],
-        'multiplier' => 1.5,
-        'minimum_minutes' => 0,
-        'rounding_increment_minutes' => 1,
-        'priority' => 110,
-        'is_active' => true,
-    ]);
-
-    Livewire::test(ManageOvertimeRules::class)
-        ->assertSee('Shift / attendance');
+    $this->actingAs(User::factory()->create(['role' => UserRole::Finance]));
+    expect(OvertimeRuleResource::canAccess())->toBeFalse()->and(OvertimeRuleResource::shouldRegisterNavigation())->toBeFalse();
+    $this->seed(HrWorkSetupSeeder::class);
+    Livewire::test(ManagePayPolicies::class)->assertSee('Standard monthly pay')->assertActionVisible('create');
 });
 
-it('matches the finance payroll register formula and exports the register csv', function () {
-    $rule = PayrollTaxRule::create([
-        'name' => 'Finance sample PAYE',
-        'jurisdiction' => 'ET',
-        'effective_from' => '2010-01-01',
-        'is_active' => true,
-    ]);
-    $rule->brackets()->create([
-        'min_income' => 0,
-        'max_income' => null,
-        'rate' => 35,
-        'deduction' => 2050,
-    ]);
-    OvertimeRule::create([
-        'name' => 'Finance sample overtime',
-        'code' => 'finance_sample_overtime',
-        'minutes_basis' => OvertimeRule::BASIS_ATTENDANCE_OVERTIME,
-        'applies_on_days' => [OvertimeRule::DAY_REGULAR],
-        'multiplier' => 1,
-        'hourly_rate' => 15432 / 24 / 8,
-        'minimum_minutes' => 0,
-        'rounding_increment_minutes' => 1,
-        'priority' => 10,
-        'is_active' => true,
-    ]);
-
-    $employee = Employee::create([
-        'employee_id' => 'EMP-FIN-1',
-        'attendance_device_id' => '501',
-        'first_name' => 'Abas',
-        'last_name' => 'Seman',
-        'phone' => '0911555001',
-        'hire_date' => '2026-01-01',
-        'status' => 'active',
-        'position' => 'Bin. Dep.Hea.',
-        'basic_salary' => 15432,
-        'overtime_multiplier' => 1,
-        'pension_enabled' => true,
-    ]);
-
-    $loan = $employee->loans()->create([
-        'legacy_disbursement_confirmed' => true,
-        'loan_date' => '2026-05-03',
-        'return_date' => '2026-05-31',
-        'amount' => 3750,
-        'reason' => 'Monthly loan deduction',
-        'status' => 'active',
-    ]);
-
-    AttendancePeriodSummary::create([
-        'employee_id' => $employee->id,
-        'period_start' => '2026-05-01',
-        'period_end' => '2026-05-31',
-        'shift_type' => 'normal',
-        'work_days' => 26,
-        'actual_days' => 26,
-        'absent_days' => 0,
-        'late_minutes' => 0,
-        'early_minutes' => 0,
-        'overtime_minutes' => 2684,
-        'work_time_hours' => 208,
-    ]);
-
-    $payrollRun = PayrollRun::create([
-        'name' => 'Finance sample payroll',
-        'period_start' => '2026-05-01',
-        'period_end' => '2026-05-31',
-    ]);
-
-    app(CalculatePayrollRun::class)->handle($payrollRun, [$employee->id]);
-
-    $payrollEmployee = $payrollRun->employees()->firstOrFail();
-    $overtimeEntry = $payrollRun->overtimeEntries()->firstOrFail();
-
-    expect($overtimeEntry->status)->toBe(PayrollOvertimeEntry::STATUS_PENDING)
-        ->and((float) $overtimeEntry->hours)->toBe(44.73)
-        ->and((float) $overtimeEntry->amount)->toBe(3595.17)
-        ->and((float) $payrollEmployee->overtime_amount)->toBe(0.0);
-
-    $overtimeEntry->update(['status' => PayrollOvertimeEntry::STATUS_APPROVED]);
-    app(CalculatePayrollRun::class)->handle($payrollRun->refresh(), [$employee->id]);
-
-    $payrollEmployee = $payrollRun->refresh()->employees()->firstOrFail();
-    $csv = app(ExportPayrollRegisterCsv::class)->csv($payrollRun->refresh());
-
-    expect((float) $payrollEmployee->basic_salary)->toBe(15432.0)
-        ->and((float) $payrollEmployee->pay_per_hour)->toBe(74.1923)
-        ->and((float) $payrollEmployee->overtime_hours)->toBe(44.73)
-        ->and((float) $payrollEmployee->overtime_amount)->toBe(3595.17)
-        ->and((float) $payrollEmployee->employer_pension_contribution)->toBe(1697.52)
-        ->and((float) $payrollEmployee->gross_earning)->toBe(20724.69)
-        ->and((float) $payrollEmployee->taxable_amount)->toBe(19027.17)
-        ->and((float) $payrollEmployee->income_tax)->toBe(4609.51)
-        ->and((float) $payrollEmployee->pension_contribution)->toBe(2777.76)
-        ->and((float) $payrollEmployee->loan)->toBe(3750.0)
-        ->and((float) $payrollEmployee->workers_union)->toBe(154.32)
-        ->and((float) $payrollEmployee->total_deduction)->toBe(11291.59)
-        ->and((float) $payrollEmployee->net_pay)->toBe(9433.1)
-        ->and($payrollEmployee->calculation_snapshot['loan_ids'])->toContain($loan->id)
-        ->and($payrollEmployee->calculation_snapshot['loan_installment_ids'])->toContain($loan->installments()->firstOrFail()->id)
-        ->and($csv)->toContain('Employer Pension')
-        ->and($csv)->toContain('9433.10');
+it('exports the policy payroll formula with separate employee and employer pension', function (): void {
+    $rule = PayrollTaxRule::create(['name' => 'Sample tax', 'jurisdiction' => 'ET', 'effective_from' => '2010-01-01', 'is_active' => true]);
+    $rule->brackets()->create(['min_income' => 0, 'max_income' => null, 'rate' => 35, 'deduction' => 2050]);
+    $employee = Employee::factory()->create(['basic_salary' => 15432, 'transport_allowance' => 0, 'pension_enabled' => true]);
+    $loan = $employee->loans()->create(['legacy_disbursement_confirmed' => true, 'loan_date' => '2026-05-03', 'return_date' => '2026-05-31', 'amount' => 3750, 'reason' => 'Loan', 'status' => 'active']);
+    AttendanceSegment::create(['employee_id' => $employee->id, 'date' => '2026-05-04', 'fp_no' => $employee->attendance_device_id, 'clock_in' => '08:00:00', 'clock_out' => '18:01:00', 'status' => 'Present']);
+    app(GeneratePayrollOvertimeEntries::class)->generate($employee, '2026-05-04', '2026-05-04');
+    PayrollOvertimeEntry::firstOrFail()->update(['status' => 'approved']);
+    $run = PayrollRun::factory()->create();
+    app(CalculatePayrollRun::class)->handle($run, [$employee->id]);
+    $row = $run->employees()->firstOrFail();
+    expect((float) $row->basic_salary)->toBe(15432.0)
+        ->and((float) $row->pay_per_hour)->toBe(64.3)
+        ->and((float) $row->overtime_amount)->toBe(98.06)
+        ->and((float) $row->employer_pension_contribution)->toBe(1697.52)
+        ->and((float) $row->pension_contribution)->toBe(1080.24)
+        ->and((float) $row->gross_earning)->toBe(15530.06)
+        ->and((float) $row->net_pay)->toBe(7159.98)
+        ->and($row->calculation_snapshot['loan_ids'])->toContain($loan->id)
+        ->and(app(ExportPayrollRegisterCsv::class)->csv($run))->toContain('Employer Pension', 'Employee Pension', '7159.98');
 });
 
-it('matches the payroll register penalty formula from the excel sample', function () {
-    $rule = PayrollTaxRule::create([
-        'name' => 'Penalty sample PAYE',
-        'jurisdiction' => 'ET',
-        'effective_from' => '2010-01-01',
-        'is_active' => true,
-    ]);
-    $rule->brackets()->create([
-        'min_income' => 0,
-        'max_income' => null,
-        'rate' => 0,
-        'deduction' => 0,
-    ]);
-
-    $employee = Employee::create([
-        'employee_id' => 'EMP-FIN-PENALTY',
-        'attendance_device_id' => '502',
-        'first_name' => 'Abdulkerim',
-        'last_name' => 'Abdulmelik',
-        'phone' => '0911555502',
-        'hire_date' => '2026-01-01',
-        'status' => 'active',
-        'basic_salary' => 15432.50,
-        'overtime_multiplier' => 1,
-        'pension_enabled' => false,
-    ]);
-
-    AttendancePeriodSummary::create([
-        'employee_id' => $employee->id,
-        'period_start' => '2026-05-01',
-        'period_end' => '2026-05-31',
-        'work_days' => 26,
-        'actual_days' => 26,
-        'late_minutes' => 720,
-        'work_time_hours' => 208,
-    ]);
-
-    $payrollRun = PayrollRun::create([
-        'name' => 'Penalty sample payroll',
-        'period_start' => '2026-05-01',
-        'period_end' => '2026-05-31',
-    ]);
-
-    app(CalculatePayrollRun::class)->handle($payrollRun, [$employee->id]);
-
-    $payrollEmployee = $payrollRun->employees()->firstOrFail();
-
-    expect((float) $payrollEmployee->penalty_hours)->toBe(12.0)
-        ->and((float) $payrollEmployee->penalty_amount)->toBe(771.63)
-        ->and(round((float) $payrollEmployee->calculation_snapshot['penalty_hourly_rate'], 4))->toBe(64.3021);
+it('does not turn legacy aggregate lateness into a second salary deduction', function (): void {
+    $this->seed(PayrollTaxRuleSeeder::class);
+    $employee = Employee::factory()->create(['basic_salary' => 15432.50]);
+    AttendancePeriodSummary::create(['employee_id' => $employee->id, 'period_start' => '2026-05-01', 'period_end' => '2026-05-31', 'work_days' => 26, 'actual_days' => 26, 'late_minutes' => 720]);
+    $run = PayrollRun::factory()->create();
+    app(CalculatePayrollRun::class)->handle($run, [$employee->id]);
+    $row = $run->employees()->firstOrFail();
+    expect((float) $row->basic_salary)->toBe(15432.50)->and((float) $row->penalty_amount)->toBe(0.0);
 });
 
 it('deducts only due loan installments and closes them when payroll is posted', function () {
@@ -1489,13 +1163,13 @@ it('posts payroll approval to salary overtime pension and deduction accounts', f
     $payrollEmployee->forceFill(['calculation_snapshot' => ['loan_installment_ids' => $loan->installments()->pluck('id')->all()]])->saveQuietly();
     $entry = app(PostPayrollRun::class)->handle(tap($payrollRun, fn ($run) => $run->update(['attendance_reviewed_at' => now()])));
 
-    expect((float) $entry->total_debit)->toBe(1310.0)
-        ->and((float) $entry->total_credit)->toBe(1310.0)
-        ->and((float) $entry->journalItems()->whereBelongsTo(Account::where('code', '5100')->firstOrFail())->firstOrFail()->debit)->toBe(1000.0)
+    expect((float) $entry->total_debit)->toBe(1420.0)
+        ->and((float) $entry->total_credit)->toBe(1420.0)
+        ->and((float) $entry->journalItems()->whereBelongsTo(Account::where('code', '5100')->firstOrFail())->firstOrFail()->debit)->toBe(1110.0)
         ->and((float) $entry->journalItems()->whereBelongsTo(Account::where('code', '5110')->firstOrFail())->firstOrFail()->debit)->toBe(200.0)
         ->and((float) $entry->journalItems()->whereBelongsTo(Account::where('code', '5120')->firstOrFail())->firstOrFail()->debit)->toBe(110.0)
         ->and((float) $entry->journalItems()->whereBelongsTo(Account::where('code', '2160')->firstOrFail())->firstOrFail()->credit)->toBe(100.0)
-        ->and((float) $entry->journalItems()->whereBelongsTo(Account::where('code', '2170')->firstOrFail())->firstOrFail()->credit)->toBe(180.0)
+        ->and((float) $entry->journalItems()->whereBelongsTo(Account::where('code', '2170')->firstOrFail())->firstOrFail()->credit)->toBe(290.0)
         ->and((float) $entry->journalItems()->whereBelongsTo(Account::where('code', '1230')->firstOrFail())->firstOrFail()->credit)->toBe(20.0);
 
     expect($payrollEmployee->refresh()->payment_id)->toBeNull();
@@ -1651,8 +1325,8 @@ it('applies paid and unpaid leave to payroll absence deductions', function () {
 
     $payrollEmployee = $payrollRun->employees()->firstOrFail();
 
-    expect((float) $payrollEmployee->penalty_amount)->toBe(333.33)
-        ->and((int) $payrollEmployee->calculation_snapshot['paid_leave_minutes'])->toBe(480)
+    expect((float) $payrollEmployee->calculation_snapshot['unpaid_time_reduction'])->toBe(333.33)
+        ->and((int) $payrollEmployee->calculation_snapshot['paid_leave_minutes'])->toBe(0)
         ->and((int) $payrollEmployee->calculation_snapshot['unpaid_leave_minutes'])->toBe(480);
 });
 
@@ -1690,10 +1364,9 @@ it('pro-rates salary for employees hired during the payroll period', function ()
 
     $payrollEmployee = $payrollRun->employees()->firstOrFail();
 
-    expect((float) $payrollEmployee->basic_salary)->toBe(13000.0)
+    expect((float) $payrollEmployee->basic_salary)->toBe(13419.35)
         ->and((float) $payrollEmployee->calculation_snapshot['full_basic_salary'])->toBe(26000.0)
-        ->and($payrollEmployee->calculation_snapshot['employment_business_days'])->toBe(13)
-        ->and($payrollEmployee->calculation_snapshot['period_business_days'])->toBe(26);
+        ->and($payrollEmployee->calculation_snapshot['salary_portions'])->toHaveCount(16);
 });
 
 it('does not double count unpaid leave and attendance absence on the same day', function () {
@@ -1738,9 +1411,9 @@ it('does not double count unpaid leave and attendance absence on the same day', 
 
     $payrollEmployee = $payrollRun->employees()->firstOrFail();
 
-    expect((float) $payrollEmployee->penalty_hours)->toBe(8.0)
-        ->and((float) $payrollEmployee->penalty_amount)->toBe(333.33)
-        ->and((int) $payrollEmployee->calculation_snapshot['deductible_absent_minutes'])->toBe(480);
+    expect((float) $payrollEmployee->penalty_amount)->toBe(0.0)
+        ->and((float) $payrollEmployee->calculation_snapshot['unpaid_time_reduction'])->toBe(322.58)
+        ->and((int) $payrollEmployee->calculation_snapshot['unpaid_minutes'])->toBe(480);
 });
 
 it('keeps an empty payroll draft when no active employees exist', function () {
@@ -1936,3 +1609,15 @@ function attendanceSegmentCsv(): string
         '9,I-32,Night Worker,05-04-26,1-9 night,7:00 PM,3:00 AM,6:55 PM,,,240,Early,,,,,Early,1,1,,0,0',
     ]);
 }
+
+it('never uses an internal ERP employee ID to match an imported machine account number', function (): void {
+    Employee::factory()->create(['employee_id' => '999', 'attendance_device_id' => '22']);
+    $path = tempnam(sys_get_temp_dir(), 'account-match-');
+    file_put_contents($path, crystalReportCsv('999', 'Unmatched account', '08:00'));
+    try {
+        $import = app(ImportAttendanceSummaryReport::class)->handle($path, 'normal');
+        expect($import->failed_rows)->toBe(1)->and(AttendancePeriodSummary::count())->toBe(0);
+    } finally {
+        unlink($path);
+    }
+});

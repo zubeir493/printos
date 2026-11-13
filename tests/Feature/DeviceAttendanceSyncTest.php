@@ -21,6 +21,7 @@ use App\Models\WorkSchedule;
 use App\Services\Hr\ImportAttendanceSegmentCsv;
 use App\Services\Hr\ReadZktecoAttendance;
 use App\Services\Hr\SyncDeviceAttendance;
+use App\Support\AttendanceDeviceSettings;
 use App\UserRole;
 use Filament\Actions\Imports\Exceptions\RowImportFailedException;
 use Filament\Actions\Imports\Models\Import;
@@ -202,10 +203,37 @@ it('can collect punches independently while shift processing is paused and repla
         ->and(AttendanceDeviceSync::firstOrFail()->last_successful_sync_at)->not->toBeNull()
         ->and(AttendanceDeviceSync::firstOrFail()->last_error)->toBeNull()
         ->and(AttendanceDeviceSync::firstOrFail()->status)->toBe('collected');
-    config(['attendance_device.processing_enabled' => true]);
+    $this->actingAs(User::factory()->create(['role' => UserRole::Admin]));
+    AttendanceDeviceSettings::save([...AttendanceDeviceSettings::formState(), 'processing_enabled' => true]);
     mockDeviceAttendance([]);
     app(SyncDeviceAttendance::class)->handle();
     expect(AttendanceSegment::count())->toBe(1);
+    app(SyncDeviceAttendance::class)->handle();
+    expect(AttendanceSegment::count())->toBe(1)->and(AttendanceDevicePunch::whereNull('processed_at')->count())->toBe(0);
+});
+
+it('processes retained punches without contacting the device or advancing download checkpoints', function (): void {
+    config(['attendance_device.processing_enabled' => false]);
+    mockDeviceAttendance([deviceAttendanceRow('2026-11-09 08:00:00', 0), deviceAttendanceRow('2026-11-09 17:00:00', 1)]);
+    app(SyncDeviceAttendance::class)->handle();
+    $checkpoint = AttendanceDeviceSync::firstOrFail()->last_successful_sync_at;
+    $this->mock(ReadZktecoAttendance::class)->shouldNotReceive('handle');
+    config(['attendance_device.processing_enabled' => true, 'attendance_device.enabled' => false]);
+    $this->artisan('attendance:device-sync --stored')->expectsOutputToContain('2 punches processed; 0 pending')->assertSuccessful();
+    $this->artisan('attendance:device-sync --stored')->expectsOutputToContain('0 punches processed; 0 pending')->assertSuccessful();
+    expect(AttendanceSegment::count())->toBe(1)
+        ->and(AttendanceDeviceSync::firstOrFail()->last_successful_sync_at->eq($checkpoint))->toBeTrue();
+});
+
+it('does not process stored punches when importing is paused or another sync holds the lock', function (): void {
+    config(['attendance_device.processing_enabled' => false]);
+    $this->artisan('attendance:device-sync --stored')->assertFailed();
+    config(['attendance_device.processing_enabled' => true]);
+    $lock = Cache::lock('attendance-device:office-mb360', 900);
+    $lock->get();
+    $this->artisan('attendance:device-sync --stored')->expectsOutputToContain('already running')->assertFailed();
+    expect(Cache::lock('attendance-device:office-mb360', 900)->get())->toBeFalse();
+    $lock->release();
 });
 
 it('retains future device timestamps unchanged and prevents them from affecting attendance', function (): void {
@@ -368,7 +396,7 @@ it('uses the real SDK to decode a read-only attendance session and always discon
     {
         public function __construct(private ZkDevice $testDevice) {}
 
-        protected function device(): ZkDevice
+        protected function device(?array $settings = null): ZkDevice
         {
             return $this->testDevice;
         }
@@ -404,7 +432,7 @@ it('disconnects and rejects unsupported or incomplete device responses', functio
     {
         public function __construct(private ZkDevice $testDevice) {}
 
-        protected function device(): ZkDevice
+        protected function device(?array $settings = null): ZkDevice
         {
             return $this->testDevice;
         }

@@ -4,6 +4,7 @@ namespace App\Services\Hr;
 
 use App\Models\AttendanceDevicePunch;
 use App\Models\AttendanceDeviceSync;
+use App\Support\AttendanceDeviceSettings;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -17,11 +18,13 @@ class SyncDeviceAttendance
 
     public function handle(): void
     {
-        if (! config('attendance_device.enabled')) {
+        $settings = AttendanceDeviceSettings::all();
+
+        if (! $settings['enabled']) {
             return;
         }
 
-        $deviceId = (string) config('attendance_device.id');
+        $deviceId = (string) $settings['id'];
         $lock = Cache::lock('attendance-device:'.$deviceId, 900);
 
         if (! $lock->get()) {
@@ -33,10 +36,10 @@ class SyncDeviceAttendance
             $state->update(['status' => 'syncing', 'last_attempt_at' => now()]);
 
             try {
-                $rows = $this->reader->handle();
+                $rows = $this->reader->handle($settings);
                 $state->update(['last_connected_at' => now()]);
 
-                DB::transaction(function () use ($rows, $deviceId): void {
+                DB::transaction(function () use ($rows, $deviceId, $settings): void {
                     $batch = [];
                     foreach ($rows as $row) {
                         $userId = (string) ($row['user_id'] ?? '');
@@ -47,7 +50,7 @@ class SyncDeviceAttendance
                             throw new RuntimeException('The device returned an invalid attendance record. No download checkpoint was advanced.');
                         }
 
-                        $time = CarbonImmutable::createFromFormat('!Y-m-d H:i:s', $timestamp, config('attendance_device.timezone'));
+                        $time = CarbonImmutable::createFromFormat('!Y-m-d H:i:s', $timestamp, $settings['timezone']);
 
                         if ($time->format('Y-m-d H:i:s') !== $timestamp) {
                             throw new RuntimeException('The device returned an invalid timestamp. Verify its clock and timezone.');
@@ -77,11 +80,11 @@ class SyncDeviceAttendance
                 });
 
                 $state->update(['last_download_at' => now(), 'last_successful_sync_at' => now(), 'fetched_count' => count($rows)]);
-                $this->processor->handle($deviceId);
+                $this->processor->handle($deviceId, $settings);
                 $pending = AttendanceDevicePunch::where('device_id', $deviceId)->whereNull('processed_at')->count();
                 $error = AttendanceDevicePunch::where('device_id', $deviceId)->whereNotNull('processing_error')->value('processing_error');
                 $updates = [
-                    'status' => $error ? 'needs_review' : (config('attendance_device.processing_enabled') ? 'completed' : 'collected'),
+                    'status' => $error ? 'needs_review' : ($settings['processing_enabled'] ? 'completed' : 'collected'),
                     'pending_count' => $pending,
                     'last_error' => $error,
                 ];

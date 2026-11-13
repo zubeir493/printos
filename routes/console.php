@@ -1,6 +1,7 @@
 <?php
 
 use App\Jobs\SyncDeviceAttendance;
+use App\Support\AttendanceDeviceSettings;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -29,4 +30,4 @@ Schedule::job(new SyncDeviceAttendance)
     ->name('attendance-device-sync')
     ->everyFiveMinutes()
     ->withoutOverlapping()
-    ->when(fn (): bool => (bool) config('attendance_device.enabled'));
+    ->when(fn (): bool => (bool) AttendanceDeviceSettings::get('enabled'));

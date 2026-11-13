@@ -2,6 +2,7 @@
 
 namespace App\Services\Hr;
 
+use App\Support\AttendanceDeviceSettings;
 use HafizAsifAli\ZkTeco\Data\Punch;
 use HafizAsifAli\ZkTeco\Protocol\Decoders\AttendanceDecoder;
 use HafizAsifAli\ZkTeco\Protocol\Opcode;
@@ -11,9 +12,9 @@ use RuntimeException;
 class ReadZktecoAttendance
 {
     /** @return list<array<string, mixed>> */
-    public function handle(): array
+    public function handle(?array $settings = null): array
     {
-        return $this->device()->session(function (ZkDevice $device): array {
+        return $this->device($settings)->session(function (ZkDevice $device): array {
             $capacity = $device->rawSession()->sendOrFail(Opcode::ReadCapacity)->payload;
 
             if (strlen($capacity) < 80) {
@@ -56,9 +57,16 @@ class ReadZktecoAttendance
         });
     }
 
-    protected function device(): ZkDevice
+    protected function device(?array $settings = null): ZkDevice
     {
-        return ZkDevice::fromArray(config('attendance_device'), config('attendance_device.id'));
+        $settings ??= AttendanceDeviceSettings::all();
+
+        return ZkDevice::fromArray($settings, $settings['id']);
+    }
+
+    public function testConnection(): void
+    {
+        $this->device()->session(fn (ZkDevice $device) => $device->rawSession()->sendOrFail(Opcode::ReadCapacity));
     }
 
     /** @return list<array{user_id: string, uid: int, name: string}> */

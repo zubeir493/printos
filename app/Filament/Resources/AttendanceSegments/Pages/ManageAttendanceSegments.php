@@ -11,6 +11,7 @@ use App\Models\AttendanceDeviceSync;
 use App\Models\AttendanceSegment;
 use App\Models\Employee;
 use App\Services\Hr\RebuildAttendanceDailySummaries;
+use App\Support\AttendanceDeviceSettings;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\CreateAction;
@@ -58,9 +59,9 @@ class ManageAttendanceSegments extends ManageRecords
             Action::make('syncNow')->label('Sync')->icon('heroicon-o-arrow-path')
                 ->authorize(fn (): bool => Gate::allows('create', AttendanceSegment::class))
                 ->modalHeading('Attendance sync')->modalWidth('md')->modalSubmitActionLabel('Sync now')
-                ->modalSubmitAction(fn (Action $action): Action => $action->disabled(! config('attendance_device.enabled')))
+                ->modalSubmitAction(fn (Action $action): Action => $action->disabled(! AttendanceDeviceSettings::get('enabled')))
                 ->schema(function (): array {
-                    $state = AttendanceDeviceSync::where('device_id', config('attendance_device.id'))->first();
+                    $state = AttendanceDeviceSync::where('device_id', AttendanceDeviceSettings::get('id'))->first();
 
                     return [
                         TextEntry::make('status')->inlineLabel()->state(str($state?->status ?? 'never_synced')->headline()->toString())->badge(),
@@ -71,13 +72,13 @@ class ManageAttendanceSegments extends ManageRecords
                             default => 'Last connection OK',
                         }),
                         TextEntry::make('last_sync')->inlineLabel()->label('Last sync')->state($state?->last_successful_sync_at?->diffForHumans() ?? 'Never'),
-                        TextEntry::make('processing')->inlineLabel()->state(config('attendance_device.processing_enabled') ? 'Enabled' : 'Paused'),
-                        TextEntry::make('pending')->inlineLabel()->label('Pending punches')->state(AttendanceDevicePunch::where('device_id', config('attendance_device.id'))->whereNull('processed_at')->count()),
+                        TextEntry::make('processing')->inlineLabel()->state(AttendanceDeviceSettings::get('processing_enabled') ? 'Enabled' : 'Paused'),
+                        TextEntry::make('pending')->inlineLabel()->label('Pending punches')->state(AttendanceDevicePunch::where('device_id', AttendanceDeviceSettings::get('id'))->whereNull('processed_at')->count()),
                         TextEntry::make('error')->inlineLabel()->state($state?->last_error)->visible(filled($state?->last_error))->columnSpanFull(),
                     ];
                 })->action(function (): void {
                     Gate::authorize('create', AttendanceSegment::class);
-                    if (! config('attendance_device.enabled')) {
+                    if (! AttendanceDeviceSettings::get('enabled')) {
                         return;
                     }
                     SyncDeviceAttendance::dispatch();

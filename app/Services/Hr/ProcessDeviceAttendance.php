@@ -9,6 +9,7 @@ use App\Models\Employee;
 use App\Models\Holiday;
 use App\Models\PayrollRun;
 use App\Models\Shift;
+use App\Support\AttendanceDeviceSettings;
 use DomainException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -16,8 +17,11 @@ use Illuminate\Validation\ValidationException;
 
 class ProcessDeviceAttendance
 {
-    public function handle(string $deviceId): void
+    private array $settings = [];
+
+    public function handle(string $deviceId, ?array $settings = null): void
     {
+        $this->settings = $settings ?? AttendanceDeviceSettings::all();
         $userIds = AttendanceDevicePunch::where('device_id', $deviceId)->whereNull('processed_at')->distinct()->pluck('device_user_id');
 
         foreach ($userIds as $userId) {
@@ -30,7 +34,7 @@ class ProcessDeviceAttendance
                 continue;
             }
 
-            if (! config('attendance_device.processing_enabled')) {
+            if (! $this->settings['processing_enabled']) {
                 $this->setError($punches->whereNull('processed_at'), null);
 
                 continue;
@@ -78,7 +82,7 @@ class ProcessDeviceAttendance
             throw new DomainException('Punch falls outside the matched employee employment dates on '.$date.'.');
         }
 
-        if (config('attendance_device.sync_from') && $date < config('attendance_device.sync_from')) {
+        if ($this->settings['sync_from'] && $date < $this->settings['sync_from']) {
             throw new DomainException('Punch precedes the configured synchronization start date; retained for review.');
         }
 
@@ -97,9 +101,9 @@ class ProcessDeviceAttendance
         $minutes = 0;
         $workIntervals = [];
         $entry = null;
-        $sequential = config('attendance_device.pairing') === 'sequential';
+        $sequential = $this->settings['pairing'] === 'sequential';
 
-        if (! in_array(config('attendance_device.pairing'), ['device', 'sequential'], true)) {
+        if (! in_array($this->settings['pairing'], ['device', 'sequential'], true)) {
             throw new DomainException('Attendance pairing must be device or sequential.');
         }
 
@@ -137,8 +141,8 @@ class ProcessDeviceAttendance
             return;
         }
 
-        $first = $punches->first()->punched_at->setTimezone(config('attendance_device.timezone'));
-        $last = $punches->last()->punched_at->setTimezone(config('attendance_device.timezone'));
+        $first = $punches->first()->punched_at->setTimezone($this->settings['timezone']);
+        $last = $punches->last()->punched_at->setTimezone($this->settings['timezone']);
         $shift = $shifts[0] ?? null;
         $windows = collect($shifts)->map(fn (Shift $period): array => app(WorkTimeIntervals::class)->scheduled($period, $date));
         $start = $windows->isNotEmpty() ? $windows->min(fn (array $window) => $window[0]) : $first;

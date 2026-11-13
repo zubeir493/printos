@@ -8,7 +8,9 @@ use App\Models\AccountingIntegration;
 use App\Models\PayPolicy;
 use App\Models\Setting;
 use App\Services\Accounting\GenerateAccountingExport;
+use App\Services\Hr\ReadZktecoAttendance;
 use App\Services\Hr\SavePayrollPolicy;
+use App\Support\AttendanceDeviceSettings;
 use App\Support\FiscalCalendar;
 use App\Support\Money;
 use App\Support\PayrollSettingsForm;
@@ -39,12 +41,14 @@ use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Contracts\View\View;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\HtmlString;
 use Illuminate\Validation\ValidationException;
+use Throwable;
 
 class Settings extends Page implements HasForms
 {
@@ -452,12 +456,69 @@ class Settings extends Page implements HasForms
     private function integrationSettingsTabSchema(): array
     {
         return [
-            Group::make()
-                ->schema([
-                    Grid::make(3)
-                        ->schema($this->integrationCards()),
-                ]),
+            Grid::make(3)->key('integration-grid')->schema([
+                ...$this->integrationCards(),
+                $this->attendanceDeviceCard(),
+            ]),
         ];
+    }
+
+    private function attendanceDeviceCard(): Section
+    {
+        return Section::make()->key('attendance-device-card')->compact()->gap(0)->schema([
+            Placeholder::make('attendance_device_brand')->hiddenLabel()
+                ->content(fn (): View => view('filament.pages.attendance-device-brand', ['device' => AttendanceDeviceSettings::all()])),
+            Group::make()->extraAttributes(['class' => 'integration-footer'])->schema([
+                SchemaActions::make([
+                    Action::make('configureAttendanceDevice')->label('Configure')->icon(Heroicon::OutlinedCog6Tooth)->color('gray')->size('sm')
+                        ->authorize(fn (): bool => auth()->user()?->role === UserRole::Admin)
+                        ->modalHeading('Attendance device')->modalWidth('lg')->modalSubmitActionLabel('Save')
+                        ->fillForm(fn (): array => AttendanceDeviceSettings::formState())
+                        ->schema([
+                            Grid::make(2)->schema([
+                                Toggle::make('enabled')->label('Automatic sync'),
+                                Toggle::make('processing_enabled')->label('Import attendance'),
+                            ]),
+                            Grid::make(2)->schema([
+                                TextInput::make('host')->label('IP address / hostname')->required()->maxLength(253)
+                                    ->regex('/\A[a-zA-Z0-9](?:[a-zA-Z0-9.\-]*[a-zA-Z0-9])?\z/'),
+                                TextInput::make('port')->integer()->minValue(1)->maxValue(65535)->required(),
+                            ]),
+                            Section::make('Advanced')->compact()->collapsed()->schema([
+                                Grid::make(2)->schema([
+                                    Select::make('transport')->options(['tcp' => 'TCP', 'udp' => 'UDP'])->required(),
+                                    TextInput::make('timeout')->numeric()->minValue(1)->maxValue(15)->suffix('seconds')->required(),
+                                ]),
+                                Select::make('timezone')->options(array_combine(DateTimeZone::listIdentifiers(), DateTimeZone::listIdentifiers()))->searchable()->required(),
+                                TextInput::make('comm_key')->label('Communication key')->password()
+                                    ->rules(['nullable', 'integer', 'between:0,4294967295'])
+                                    ->helperText('Leave blank to keep the key. Use 0 for no key.'),
+                            ]),
+                        ])
+                        ->action(function (array $data): void {
+                            AttendanceDeviceSettings::save($data);
+                            $this->data['attendance_device_enabled'] = (bool) $data['enabled'];
+                            Notification::make()->title('Device settings saved')->success()->send();
+                        }),
+                    Action::make('testAttendanceDevice')->label('Test')->color('gray')->size('sm')
+                        ->authorize(fn (): bool => auth()->user()?->role === UserRole::Admin)
+                        ->action(function (): void {
+                            abort_unless(auth()->user()?->role === UserRole::Admin, 403);
+                            try {
+                                app(ReadZktecoAttendance::class)->testConnection();
+                                Notification::make()->title('Device connected')->success()->send();
+                            } catch (Throwable $exception) {
+                                Notification::make()->title('Connection failed')->body('Check the saved address, port, communication key and network connection.')->danger()->send();
+                            }
+                        }),
+                ]),
+                Toggle::make('attendance_device_enabled')->hiddenLabel()->live()->dehydrated(false)
+                    ->afterStateHydrated(fn (Toggle $component) => $component->state(AttendanceDeviceSettings::get('enabled')))
+                    ->afterStateUpdated(function (bool $state): void {
+                        AttendanceDeviceSettings::save([...AttendanceDeviceSettings::formState(), 'enabled' => $state]);
+                    }),
+            ]),
+        ]);
     }
 
     /** @return array<int, Section> */

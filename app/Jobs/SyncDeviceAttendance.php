@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Models\AttendanceDeviceSync;
 use App\Services\Hr\SyncDeviceAttendance as Synchronizer;
+use App\Support\AttendanceDeviceSettings;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -37,7 +38,7 @@ class SyncDeviceAttendance implements ShouldBeUnique, ShouldQueue
 
     public function uniqueId(): string
     {
-        return (string) config('attendance_device.id');
+        return (string) AttendanceDeviceSettings::get('id');
     }
 
     public function backoff(): array
@@ -47,7 +48,7 @@ class SyncDeviceAttendance implements ShouldBeUnique, ShouldQueue
 
     public function failed(?Throwable $exception): void
     {
-        AttendanceDeviceSync::updateOrCreate(['device_id' => config('attendance_device.id')], [
+        AttendanceDeviceSync::updateOrCreate(['device_id' => AttendanceDeviceSettings::get('id')], [
             'status' => 'failed',
             'last_error' => $exception?->getMessage() ?? 'Attendance sync job failed or timed out.',
         ]);

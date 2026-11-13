@@ -11,7 +11,10 @@ class Setting extends Model
 {
     use HasFactory;
 
+    protected $hidden = ['attendance_device'];
+
     protected $fillable = [
+        'attendance_device',
         'company_name',
         'company_address',
         'company_phone',
@@ -43,6 +46,7 @@ class Setting extends Model
     protected function casts(): array
     {
         return [
+            'attendance_device' => 'encrypted:array',
             'vat_enabled' => 'boolean',
             'vat_rate' => 'decimal:2',
             'workers_union_enabled' => 'boolean',

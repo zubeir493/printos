@@ -53,7 +53,7 @@ class UpdateEmployeeWorkAssignment
             Validator::make($assignment->attributesToArray(), [
                 'effective_from' => ['required', 'date'],
                 'effective_to' => ['nullable', 'date', 'after_or_equal:effective_from'],
-                'reason' => ['required', 'string'],
+                'reason' => ['nullable', 'string'],
             ])->validate();
             $through = max($originalTo?->toDateString() ?? '9999-12-31', $assignment->effective_to?->toDateString() ?? '9999-12-31');
             $from = null;

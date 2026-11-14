@@ -62,7 +62,7 @@ class WorkAssignmentsRelationManager extends RelationManager
                 DatePicker::make('effective_from')->label('From')->default(today())->required(),
                 DatePicker::make('effective_to')->label('Until')->afterOrEqual('effective_from')->placeholder('Ongoing'),
             ]),
-            Textarea::make('reason')->required()->rows(2)->columnSpanFull(),
+            Textarea::make('reason')->placeholder('Optional')->rows(2)->columnSpanFull(),
         ]);
     }
 
@@ -76,7 +76,7 @@ class WorkAssignmentsRelationManager extends RelationManager
             TextColumn::make('effective_from')->date(), TextColumn::make('effective_to')->date()->placeholder('Ongoing'), TextColumn::make('reason')->limit(40),
         ])->headerActions([
             CreateAction::make()->label('Assign shifts')->modalHeading('Assign shifts')->modalWidth('3xl')->authorize(fn (): bool => auth()->user()->can('update', $this->getOwnerRecord()))
-                ->using(fn (array $data): EmployeeWorkAssignment => $this->saveAssignment(fn (): EmployeeWorkAssignment => app(AssignEmployeeWork::class)->handleCompanyRules($this->getOwnerRecord(), app(ResolveAssignmentPattern::class)->handle($data['days'])->id, $data['effective_from'], $data['reason'], ($data['effective_to'] ?? null) ?: null))),
+                ->using(fn (array $data): EmployeeWorkAssignment => $this->saveAssignment(fn (): EmployeeWorkAssignment => app(AssignEmployeeWork::class)->handleCompanyRules($this->getOwnerRecord(), app(ResolveAssignmentPattern::class)->handle($data['days'])->id, $data['effective_from'], $data['reason'] ?? null, ($data['effective_to'] ?? null) ?: null))),
         ])->recordActions([
             EditAction::make()->label('Edit')->modalHeading('Edit work assignment')->modalWidth('3xl')->authorize(fn (): bool => auth()->user()->can('update', $this->getOwnerRecord()))
                 ->using(fn (EmployeeWorkAssignment $record, array $data): EmployeeWorkAssignment => $this->saveAssignment(fn (): EmployeeWorkAssignment => app(UpdateEmployeeWorkAssignment::class)->handle($record, [...$data, 'work_schedule_id' => app(ResolveAssignmentPattern::class)->handle($data['days'], $record->work_schedule_id)->id]))),

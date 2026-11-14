@@ -12,7 +12,7 @@ use Illuminate\Validation\ValidationException;
 
 class AssignEmployeeWork
 {
-    public function handleCompanyRules(Employee $employee, int $scheduleId, string $from, string $reason, ?string $to = null): EmployeeWorkAssignment
+    public function handleCompanyRules(Employee $employee, int $scheduleId, string $from, ?string $reason = null, ?string $to = null): EmployeeWorkAssignment
     {
         Gate::authorize('update', $employee);
 
@@ -33,7 +33,7 @@ class AssignEmployeeWork
         });
     }
 
-    public function handle(Employee $employee, int $scheduleId, int $policyId, string $from, string $reason, ?string $to = null): EmployeeWorkAssignment
+    public function handle(Employee $employee, int $scheduleId, int $policyId, string $from, ?string $reason = null, ?string $to = null): EmployeeWorkAssignment
     {
         Gate::authorize('update', $employee);
 

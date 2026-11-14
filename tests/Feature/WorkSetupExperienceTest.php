@@ -206,3 +206,21 @@ it('explains invalid break times in the preview', function (): void {
     $preview = ShiftDisplay::preview(['start_time' => '08:00:00', 'end_time' => '17:00:00', '_has_break' => true, 'break_start' => '18:00:00', 'break_end' => '19:00:00']);
     expect($preview['valid'])->toBeFalse()->and($preview['message'])->toBe('The break must fall within the shift hours.');
 });
+
+it('creates and edits individual shift assignments without requiring a reason', function (): void {
+    $initial = EmployeeWorkAssignment::factory()->create();
+    $days = $initial->workSchedule->days->map(fn ($day): array => ['day_of_week' => $day->day_of_week, 'shift_ids' => $day->shift_ids])->all();
+    Livewire::test(WorkAssignmentsRelationManager::class, ['ownerRecord' => $initial->employee, 'pageClass' => EditEmployee::class])
+        ->mountAction(TestAction::make('create')->table())
+        ->set('mountedActions.0.data.days', $days)
+        ->fillForm(['effective_from' => '2026-11-11', 'reason' => null])
+        ->callMountedAction()
+        ->assertHasNoActionErrors()->assertNotified();
+    $assignment = $initial->employee->workAssignments()->whereDate('effective_from', '2026-11-11')->sole();
+    expect($assignment->reason)->toBeNull();
+    $assignment->update(['reason' => 'Old note']);
+    Livewire::test(WorkAssignmentsRelationManager::class, ['ownerRecord' => $initial->employee->fresh(), 'pageClass' => EditEmployee::class])
+        ->callAction(TestAction::make('edit')->table($assignment), ['days' => $days, 'reason' => null])
+        ->assertHasNoActionErrors()->assertNotified();
+    expect($assignment->fresh()->reason)->toBeNull();
+});

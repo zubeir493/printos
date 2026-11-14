@@ -31,7 +31,7 @@ class EmployeeWorkAssignment extends Model
             Validator::make($this->attributesToArray(), [
                 'work_schedule_id' => ['required', 'exists:work_schedules,id'], 'pay_policy_id' => ['required', 'exists:pay_policies,id'],
                 'effective_from' => ['required', 'date', 'after_or_equal:'.$employee->hire_date->toDateString()],
-                'effective_to' => ['nullable', 'date', 'after_or_equal:effective_from'], 'reason' => ['required', 'string'],
+                'effective_to' => ['nullable', 'date', 'after_or_equal:effective_from'], 'reason' => ['nullable', 'string'],
             ])->validate();
             $overlap = self::where('employee_id', $this->employee_id)->when($this->exists, fn ($query) => $query->whereKeyNot($this->id))
                 ->whereDate('effective_from', '<=', $this->effective_to?->toDateString() ?? '9999-12-31')

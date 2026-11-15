@@ -16,6 +16,7 @@ class AttendanceDeviceSync extends Model
     protected function casts(): array
     {
         return [
+            'notified_unmatched_ids' => 'array',
             'last_attempt_at' => 'immutable_datetime',
             'last_connected_at' => 'immutable_datetime',
             'last_download_at' => 'immutable_datetime',

@@ -67,7 +67,8 @@ class AttendanceSegmentResource extends Resource
                 TextColumn::make('date')->date()->sortable(),
                 TextColumn::make('schedule_name')->label('Schedule'),
                 TextColumn::make('clock_in'),
-                TextColumn::make('clock_out'),
+                TextColumn::make('clock_out')
+                    ->description(fn (AttendanceSegment $record): ?string => isset($record->raw_data['estimated_checkout']) ? 'Estimated' : null),
                 TextColumn::make('late_minutes')->numeric(),
                 TextColumn::make('early_minutes')->numeric(),
                 TextColumn::make('worked_minutes')->numeric(),

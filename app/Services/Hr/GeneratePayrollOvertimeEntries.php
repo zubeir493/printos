@@ -41,7 +41,11 @@ class GeneratePayrollOvertimeEntries
             $policy = $work['policy'];
             $scheduled = $snapshot['scheduled_intervals'] ?? (isset($snapshot['scheduled_interval']) ? [$snapshot['scheduled_interval']] : []);
             $buckets = [];
-            foreach ($snapshot['work_intervals'] ?? [] as [$start, $end]) {
+            $confirmedIntervals = $snapshot['work_intervals'] ?? [];
+            foreach ($snapshot['estimated_work_intervals'] ?? [] as $estimatedInterval) {
+                $confirmedIntervals = app(WorkTimeIntervals::class)->subtract($confirmedIntervals, $estimatedInterval);
+            }
+            foreach ($confirmedIntervals as [$start, $end]) {
                 for ($cursor = $start; $cursor < $end;) {
                     $time = CarbonImmutable::createFromTimestamp($cursor, config('app.timezone'));
                     $next = min($end, $time->startOfMinute()->addMinute()->getTimestamp());
@@ -112,7 +116,7 @@ class GeneratePayrollOvertimeEntries
 
     public static function sourceSignature(AttendanceDailySummary $summary): string
     {
-        $snapshot = collect($summary->calculation_snapshot)->only(['work_intervals', 'scheduled_interval', 'scheduled_intervals', 'shift', 'shifts', 'policy', 'issues'])->all();
+        $snapshot = collect($summary->calculation_snapshot)->only(['work_intervals', 'estimated_work_intervals', 'scheduled_interval', 'scheduled_intervals', 'shift', 'shifts', 'policy', 'issues'])->all();
         $snapshot['policy'] = collect($snapshot['policy'] ?? [])->except(['is_active', 'updated_at'])->all();
 
         return hash('sha256', json_encode($snapshot, JSON_THROW_ON_ERROR));

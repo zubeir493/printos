@@ -10,6 +10,7 @@ use App\Models\AttendanceDevicePunch;
 use App\Models\AttendanceDeviceSync;
 use App\Models\AttendanceSegment;
 use App\Models\Employee;
+use App\Services\Hr\NotifyUnmatchedAttendanceNumbers;
 use App\Services\Hr\RebuildAttendanceDailySummaries;
 use App\Support\AttendanceDeviceSettings;
 use Filament\Actions\Action;
@@ -74,6 +75,8 @@ class ManageAttendanceSegments extends ManageRecords
                         TextEntry::make('last_sync')->inlineLabel()->label('Last sync')->state($state?->last_successful_sync_at?->diffForHumans() ?? 'Never'),
                         TextEntry::make('processing')->inlineLabel()->state(AttendanceDeviceSettings::get('processing_enabled') ? 'Enabled' : 'Paused'),
                         TextEntry::make('pending')->inlineLabel()->label('Pending punches')->state(AttendanceDevicePunch::where('device_id', AttendanceDeviceSettings::get('id'))->whereNull('processed_at')->count()),
+                        TextEntry::make('unmatched')->inlineLabel()->label('Unmatched FP numbers')
+                            ->state(fn (): string => NotifyUnmatchedAttendanceNumbers::unmatchedIds(AttendanceDeviceSettings::get('id'))->join(', ') ?: 'None'),
                         TextEntry::make('error')->inlineLabel()->state($state?->last_error)->visible(filled($state?->last_error))->columnSpanFull(),
                     ];
                 })->action(function (): void {

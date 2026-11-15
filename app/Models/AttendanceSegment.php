@@ -25,7 +25,7 @@ class AttendanceSegment extends Model
             $originalEmployeeId = (int) $segment->getRawOriginal('employee_id');
             if ($segment->isDirty(['clock_in', 'clock_out', 'date']) && $segment->correction_reason && isset($segment->raw_data['work_intervals'])) {
                 $raw = $segment->raw_data;
-                unset($raw['work_intervals']);
+                unset($raw['work_intervals'], $raw['estimated_checkout']);
                 $segment->updateQuietly(['raw_data' => $raw]);
             }
             $builder = app(RebuildAttendanceDailySummaries::class);

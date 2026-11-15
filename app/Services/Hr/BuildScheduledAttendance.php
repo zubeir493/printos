@@ -95,6 +95,10 @@ class BuildScheduledAttendance
             $status = $holiday ? 'holiday' : (! $shift ? 'dayoff' : ($absent ? 'absent' : ($issues !== [] ? 'needs_review' : ($worked ? 'present' : ($paidLeave ? 'paid_leave' : ($unpaidLeave ? 'unpaid_leave' : 'scheduled'))))));
             $summary = AttendanceDailySummary::where('employee_id', $employee->id)->whereDate('date', $key)->first() ?? new AttendanceDailySummary(['employee_id' => $employee->id]);
             $summary->fill(['date' => $key, 'expected_minutes' => $expected, 'worked_minutes' => $regular, 'regular_minutes' => $regular, 'late_minutes' => $late + $early, 'overtime_minutes' => max(0, $worked - $regular), 'holiday_minutes' => $holiday || ! $shift ? $worked : 0, 'night_minutes' => 0, 'absence_minutes' => $absent ? max($unpaidLeave, $expected - $paidLeave) : $unpaidLeave, 'paid_leave_minutes' => $paidLeave, 'unpaid_leave_minutes' => $unpaidLeave, 'status' => $status, 'calculation_snapshot' => ['version' => 2, 'issues' => $issues, 'work_intervals' => $actual, 'scheduled_interval' => $scheduled, 'scheduled_intervals' => $scheduledIntervals, 'shifts' => $shifts->map->attributesToArray()->all(), 'total_worked_minutes' => $worked, 'assignment_id' => $work['assignment']->id, 'override_id' => $work['override_id'], 'shift' => $shift?->attributesToArray(), 'policy' => $work['policy']->attributesToArray(), 'attendance_segment_ids' => $daySegments->pluck('id')->all(), 'early_minutes' => $early]]);
+            $estimatedIntervals = $daySegments->map(fn ($segment) => $segment->raw_data['estimated_checkout']['interval'] ?? null)->filter()->values()->all();
+            if ($estimatedIntervals !== []) {
+                $summary->calculation_snapshot = [...$summary->calculation_snapshot, 'estimated_work_intervals' => $estimatedIntervals];
+            }
             $summary->save();
             $result->push($summary);
         }

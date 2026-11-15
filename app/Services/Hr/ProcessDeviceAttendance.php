@@ -10,6 +10,7 @@ use App\Models\Holiday;
 use App\Models\PayrollRun;
 use App\Models\Shift;
 use App\Support\AttendanceDeviceSettings;
+use Carbon\CarbonImmutable;
 use DomainException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -22,6 +23,7 @@ class ProcessDeviceAttendance
     public function handle(string $deviceId, ?array $settings = null): void
     {
         $this->settings = $settings ?? AttendanceDeviceSettings::all();
+        app(NotifyUnmatchedAttendanceNumbers::class)->handle($deviceId);
         $userIds = AttendanceDevicePunch::where('device_id', $deviceId)->whereNull('processed_at')->distinct()->pluck('device_user_id');
 
         foreach ($userIds as $userId) {
@@ -43,9 +45,20 @@ class ProcessDeviceAttendance
             $employee->load(['workAssignments.payPolicy', 'workAssignments.workSchedule.days.shift', 'workAssignments.workSchedule.days.additionalShifts', 'shiftOverrides.shift', 'shiftOverrides.additionalShifts']);
 
             $groups = collect();
+            $openDate = null;
+            $openTime = null;
             foreach ($punches as $punch) {
                 try {
-                    $date = app(ResolveEmployeeWork::class)->forPunch($employee, $punch->punched_at, $punch->direction)['date'];
+                    $isEntry = in_array($punch->direction, [0, 3, 4], true);
+                    $isExit = in_array($punch->direction, [1, 2, 5], true);
+                    $date = $this->settings['pairing'] === 'device' && $isExit && $openDate && $openTime->diffInHours($punch->punched_at) <= 36
+                        ? $openDate : app(ResolveEmployeeWork::class)->forPunch($employee, $punch->punched_at, $punch->direction)['date'];
+                    if ($isEntry) {
+                        $openDate = $date;
+                        $openTime = $punch->punched_at;
+                    } elseif ($isExit) {
+                        $openDate = $openTime = null;
+                    }
                     if (! $groups->has($date)) {
                         $groups->put($date, collect());
                     }
@@ -101,6 +114,7 @@ class ProcessDeviceAttendance
         $minutes = 0;
         $workIntervals = [];
         $entry = null;
+        $estimate = null;
         $sequential = $this->settings['pairing'] === 'sequential';
 
         if (! in_array($this->settings['pairing'], ['device', 'sequential'], true)) {
@@ -136,13 +150,18 @@ class ProcessDeviceAttendance
         }
 
         if ($entry) {
-            $this->setError($punches->whereNull('processed_at'), 'Waiting for a matching check-out on '.$date.'.');
+            $estimate = $this->estimateCheckout($entry, $shifts, $date);
+            if (! $estimate) {
+                $this->setError($punches->whereNull('processed_at'), 'Waiting for a matching check-out on '.$date.'.');
 
-            return;
+                return;
+            }
+            $minutes += (int) $entry->diffInMinutes($estimate['end']);
+            $workIntervals[] = [$entry->toDateTimeString(), $estimate['end']->toDateTimeString()];
         }
 
         $first = $punches->first()->punched_at->setTimezone($this->settings['timezone']);
-        $last = $punches->last()->punched_at->setTimezone($this->settings['timezone']);
+        $last = ($estimate['end'] ?? $punches->last()->punched_at)->setTimezone($this->settings['timezone']);
         $shift = $shifts[0] ?? null;
         $windows = collect($shifts)->map(fn (Shift $period): array => app(WorkTimeIntervals::class)->scheduled($period, $date));
         $start = $windows->isNotEmpty() ? $windows->min(fn (array $window) => $window[0]) : $first;
@@ -166,8 +185,15 @@ class ProcessDeviceAttendance
             'overtime_minutes' => max(0, $minutes - $expected),
             'day_fraction' => round($expected / 480, 2),
             'status' => $holiday ? 'Holiday' : (! $shift ? 'Dayoff' : 'Present'),
-            'exception' => null,
-            'raw_data' => ['source' => 'device', 'device_id' => $deviceId, 'punch_ids' => $punches->pluck('id')->all(), 'work_intervals' => $workIntervals],
+            'exception' => $estimate ? 'Estimated check-out' : null,
+            'raw_data' => [
+                'source' => 'device', 'device_id' => $deviceId, 'punch_ids' => $punches->pluck('id')->all(), 'work_intervals' => $workIntervals,
+                ...($estimate ? ['estimated_checkout' => [
+                    'punched_at' => $estimate['end']->toDateTimeString(), 'shift_id' => $estimate['shift_id'],
+                    'estimated_at' => $segment->raw_data['estimated_checkout']['estimated_at'] ?? now()->toDateTimeString(),
+                    'interval' => [$entry->getTimestamp(), $estimate['end']->getTimestamp()],
+                ]] : []),
+            ],
         ]);
 
         if ($segment->isDirty()) {
@@ -182,6 +208,28 @@ class ProcessDeviceAttendance
         }
 
         AttendanceDevicePunch::whereIn('id', $punches->pluck('id'))->update(['attendance_segment_id' => $segment->id, 'processed_at' => now(), 'processing_error' => null]);
+    }
+
+    /**
+     * @param  list<Shift>  $shifts
+     * @return array{end: CarbonImmutable, shift_id: int}|null
+     */
+    private function estimateCheckout(CarbonImmutable $entry, array $shifts, string $date): ?array
+    {
+        $candidates = [];
+        foreach ($shifts as $shift) {
+            [$start, $end] = app(WorkTimeIntervals::class)->scheduled($shift, $date);
+            if ($entry->gte($start->subMinutes($shift->capture_before_minutes)) && $entry->lt($end)) {
+                $candidates[] = ['start' => $start, 'end' => $end, 'shift' => $shift];
+            }
+        }
+        usort($candidates, fn (array $left, array $right): int => abs($entry->getTimestamp() - $left['start']->getTimestamp()) <=> abs($entry->getTimestamp() - $right['start']->getTimestamp()));
+        $candidate = $candidates[0] ?? null;
+        if (! $candidate || now()->lt($candidate['end']->addMinutes($candidate['shift']->capture_after_minutes))) {
+            return null;
+        }
+
+        return ['end' => $candidate['end'], 'shift_id' => $candidate['shift']->id];
     }
 
     /** @param Collection<int, AttendanceDevicePunch> $punches */

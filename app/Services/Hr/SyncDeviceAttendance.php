@@ -34,6 +34,7 @@ class SyncDeviceAttendance
         try {
             $state = AttendanceDeviceSync::firstOrCreate(['device_id' => $deviceId]);
             $state->update(['status' => 'syncing', 'last_attempt_at' => now()]);
+            $downloaded = false;
 
             try {
                 $rows = $this->reader->handle($settings);
@@ -80,6 +81,7 @@ class SyncDeviceAttendance
                 });
 
                 $state->update(['last_download_at' => now(), 'last_successful_sync_at' => now(), 'fetched_count' => count($rows)]);
+                $downloaded = true;
                 $this->processor->handle($deviceId, $settings);
                 $pending = AttendanceDevicePunch::where('device_id', $deviceId)->whereNull('processed_at')->count();
                 $error = AttendanceDevicePunch::where('device_id', $deviceId)->whereNotNull('processing_error')->value('processing_error');
@@ -93,6 +95,10 @@ class SyncDeviceAttendance
                 Log::info('Attendance device synchronization completed.', ['device_id' => $deviceId, 'fetched' => count($rows), 'pending' => $pending]);
             } catch (Throwable $exception) {
                 $state->update(['status' => 'failed', 'last_error' => $exception->getMessage()]);
+                if (! $downloaded) {
+                    rescue(fn () => $this->processor->handle($deviceId, $settings));
+                    $state->update(['pending_count' => AttendanceDevicePunch::where('device_id', $deviceId)->whereNull('processed_at')->count()]);
+                }
                 Log::error('Attendance device synchronization failed.', ['device_id' => $deviceId, 'error' => $exception->getMessage()]);
 
                 throw $exception;

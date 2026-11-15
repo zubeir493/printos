@@ -30,6 +30,7 @@ test('employee import and export columns are available', function (): void {
         ->toContain('hire_date')
         ->and($exportColumns)
         ->toContain('employee_id')
-        ->toContain('full_name')
+        ->toContain('first_name')
+        ->toContain('last_name')
         ->toContain('basic_salary');
 });

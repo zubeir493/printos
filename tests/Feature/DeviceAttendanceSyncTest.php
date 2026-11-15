@@ -117,13 +117,16 @@ it('retains unmatched identities and replays them after employee mapping even wh
         ->and(AttendanceDevicePunch::whereNull('processed_at')->count())->toBe(0);
 });
 
-it('waits for a checkout instead of inventing worked time and completes on a later poll', function (): void {
+it('estimates an overdue checkout and replaces it when the real punch arrives', function (): void {
     mockDeviceAttendance([deviceAttendanceRow('2026-11-09 08:00:00', 0)]);
     app(SyncDeviceAttendance::class)->handle();
-    expect(AttendanceSegment::count())->toBe(0)->and(AttendanceLog::count())->toBe(1);
+    expect(AttendanceSegment::firstOrFail()->clock_out)->toBe('17:00:00')
+        ->and(AttendanceSegment::firstOrFail()->raw_data)->toHaveKey('estimated_checkout')
+        ->and(AttendanceLog::count())->toBe(1);
     mockDeviceAttendance([deviceAttendanceRow('2026-11-09 17:00:00', 1)]);
     app(SyncDeviceAttendance::class)->handle();
     expect(AttendanceSegment::count())->toBe(1)->and(AttendanceLog::count())->toBe(2);
+    expect(AttendanceSegment::firstOrFail()->raw_data)->not->toHaveKey('estimated_checkout');
 });
 
 it('requires a dated work assignment rather than a default shift', function (): void {

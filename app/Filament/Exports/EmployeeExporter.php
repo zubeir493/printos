@@ -21,14 +21,16 @@ class EmployeeExporter extends Exporter
                 ->label('Employee ID'),
             ExportColumn::make('attendance_device_id')
                 ->label('Punch Machine AC No'),
-            ExportColumn::make('full_name')
-                ->label('Name'),
+            ExportColumn::make('first_name')->label('First Name'),
+            ExportColumn::make('last_name')->label('Last Name'),
             ExportColumn::make('phone')
                 ->label('Phone'),
             ExportColumn::make('hire_date')
-                ->label('Hire Date'),
+                ->label('Hire Date')
+                ->state(fn (Employee $record): ?string => $record->hire_date?->toDateString()),
             ExportColumn::make('termination_date')
-                ->label('Termination Date'),
+                ->label('Termination Date')
+                ->state(fn (Employee $record): ?string => $record->termination_date?->toDateString()),
             ExportColumn::make('status')
                 ->label('Status'),
             ExportColumn::make('employment_type')
@@ -40,7 +42,8 @@ class EmployeeExporter extends Exporter
             ExportColumn::make('tax_id')
                 ->label('Tax ID'),
             ExportColumn::make('pension_enabled')
-                ->label('Pension Enabled'),
+                ->label('Pension Enabled')
+                ->formatStateUsing(fn (bool $state): int => (int) $state),
             ExportColumn::make('basic_salary')
                 ->label('Monthly Rate'),
             ExportColumn::make('transport_allowance')

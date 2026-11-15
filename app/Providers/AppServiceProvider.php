@@ -2,7 +2,6 @@
 
 namespace App\Providers;
 
-use App\Filament\Resources\AttendanceSegments\Pages\ManageAttendanceSegments;
 use App\Filament\Resources\Payments\Pages\ListPayments;
 use App\Filament\Support\RelationManagerToolbarTabs;
 use App\Filament\Support\TableBadgeFormatter;
@@ -103,17 +102,11 @@ class AppServiceProvider extends ServiceProvider
             )
         );
         FilamentTimezone::set(config('app.timezone'));
-        FilamentView::spaUrlExceptions(['*/dieline-impositions/*']);
+        FilamentView::spaUrlExceptions(['*/dieline-impositions/*', '*/attendance-segments?action=unmatchedNumbers']);
 
         FilamentView::registerRenderHook(
             PanelsRenderHook::SCRIPTS_AFTER,
             fn (): string => Blade::render('@include(\'filament.webpush\')'),
-        );
-
-        FilamentView::registerRenderHook(
-            TablesRenderHook::TOOLBAR_SEARCH_AFTER,
-            fn (): string => view('filament.tables.attendance-employee-selector')->render(),
-            ManageAttendanceSegments::class,
         );
 
         FilamentView::registerRenderHook(

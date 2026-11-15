@@ -9,7 +9,6 @@ use App\Jobs\SyncDeviceAttendance;
 use App\Models\AttendanceDevicePunch;
 use App\Models\AttendanceDeviceSync;
 use App\Models\AttendanceSegment;
-use App\Models\Employee;
 use App\Services\Hr\NotifyUnmatchedAttendanceNumbers;
 use App\Services\Hr\RebuildAttendanceDailySummaries;
 use App\Support\AttendanceDeviceSettings;
@@ -21,42 +20,24 @@ use Filament\Actions\ImportAction;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ManageRecords;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Relations\Relation;
+use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rules\File;
-use Livewire\Attributes\Url;
 
 class ManageAttendanceSegments extends ManageRecords
 {
     protected static string $resource = AttendanceSegmentResource::class;
 
-    #[Url(as: 'employee')]
-    public ?int $selectedEmployeeId = null;
-
-    public function mount(): void
-    {
-        parent::mount();
-
-        $this->selectedEmployeeId ??= Employee::query()
-            ->orderBy('first_name')
-            ->value('id');
-    }
-
-    public function updatedSelectedEmployeeId(): void
-    {
-        $this->resetPage();
-    }
-
-    protected function getTableQuery(): Builder|Relation|null
-    {
-        return parent::getTableQuery()
-            ?->when($this->selectedEmployeeId, fn (Builder $query): Builder => $query->where('employee_id', $this->selectedEmployeeId));
-    }
-
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('unmatchedNumbers')->label('Unmatched FP')->icon('heroicon-o-user-plus')->color('warning')
+                ->badge(fn (): int => NotifyUnmatchedAttendanceNumbers::unmatchedIds(AttendanceDeviceSettings::get('id'))->count())
+                ->authorize(fn (): bool => Gate::allows('create', AttendanceSegment::class))
+                ->modalHeading('Unmatched FP numbers')->modalWidth('lg')->modalSubmitAction(false)->modalCancelActionLabel('Close')
+                ->modalContent(fn (): View => view('filament.resources.attendance-segments.unmatched-numbers', [
+                    'rows' => NotifyUnmatchedAttendanceNumbers::unmatchedRows(AttendanceDeviceSettings::get('id')),
+                ])),
             Action::make('syncNow')->label('Sync')->icon('heroicon-o-arrow-path')
                 ->authorize(fn (): bool => Gate::allows('create', AttendanceSegment::class))
                 ->modalHeading('Attendance sync')->modalWidth('md')->modalSubmitActionLabel('Sync now')

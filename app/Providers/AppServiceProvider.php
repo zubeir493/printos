@@ -41,6 +41,8 @@ use App\Observers\SalesOrderObserver;
 use App\Observers\StockMovementObserver;
 use App\Observers\TextFileObserver;
 use App\Policies\PaymentPolicy;
+use App\Services\Costing\EstimatorRequestContext;
+use App\Services\Costing\SheetLayoutCalculator;
 use App\Services\Dielines\DielineTemplateRegistry;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\CreateAction;
@@ -73,6 +75,8 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->scoped(DielineTemplateRegistry::class);
+        $this->app->scoped(EstimatorRequestContext::class);
+        $this->app->scoped(SheetLayoutCalculator::class);
     }
 
     /**

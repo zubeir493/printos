@@ -99,7 +99,7 @@
                         <td>{{ $item['name'] }}</td>
                         <td>{{ $item['unit'] }}</td>
                         <td class="text-right">{{ $item['quantity'] }}</td>
-                        <td class="text-right">{{ \App\Support\Money::format($item['unit_price']) }}</td>
+                        <td class="text-right">{{ \App\Support\Money::format($item['unit_price'], 4) }}</td>
                         <td class="text-right">{{ \App\Support\Money::format($item['total']) }}</td>
                     </tr>
                 @endforeach

@@ -53,6 +53,7 @@ class CostEstimatesTable
                         'books' => 'Books',
                         'labels' => 'Labels',
                         'packages' => 'Packages',
+                        'stickers' => 'Stickers',
                     ]),
                 SelectFilter::make('status')
                     ->options([

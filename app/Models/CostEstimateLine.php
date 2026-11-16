@@ -18,6 +18,7 @@ class CostEstimateLine extends Model
         'total',
         'snapshot',
         'sort',
+        'machine_id',
     ];
 
     protected function casts(): array
@@ -26,8 +27,8 @@ class CostEstimateLine extends Model
             'id' => 'integer',
             'cost_estimate_id' => 'integer',
             'inventory_item_id' => 'integer',
-            'quantity' => 'decimal:4',
-            'unit_cost' => 'decimal:4',
+            'quantity' => 'decimal:6',
+            'unit_cost' => 'decimal:6',
             'total' => 'decimal:2',
             'snapshot' => 'array',
             'sort' => 'integer',
@@ -42,5 +43,10 @@ class CostEstimateLine extends Model
     public function inventoryItem(): BelongsTo
     {
         return $this->belongsTo(InventoryItem::class);
+    }
+
+    public function machine(): BelongsTo
+    {
+        return $this->belongsTo(Machine::class);
     }
 }

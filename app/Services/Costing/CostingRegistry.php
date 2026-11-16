@@ -31,6 +31,11 @@ class CostingRegistry
                 'calculator' => BookCostCalculator::class,
                 'schema' => BookCostingWizardSchema::class,
             ],
+            'stickers' => [
+                'name' => 'Sticker Printing',
+                'calculator' => LabelCostCalculator::class,
+                'schema' => LabelCostingWizardSchema::class,
+            ],
         ];
     }
 

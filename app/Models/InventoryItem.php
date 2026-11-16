@@ -24,6 +24,10 @@ class InventoryItem extends Model
         'coating' => 'Coating',
         'glue' => 'Glue',
         'packing' => 'Packing',
+        'plate' => 'Printing Plate',
+        'die' => 'Cutting Die',
+        'wire' => 'Binding Wire / Thread',
+        'foil' => 'Foil',
         'other' => 'Other',
     ];
 
@@ -72,6 +76,12 @@ class InventoryItem extends Model
         'width',
         'height',
         'default_waste_percent',
+        'thickness',
+        'grain_direction',
+        'printable_sides',
+        'density_kg_per_litre',
+        'consumption_grams_per_m2',
+        'is_self_adhesive',
     ];
 
     /**
@@ -85,6 +95,14 @@ class InventoryItem extends Model
             'id' => 'integer',
             'is_sellable' => 'boolean',
             'price' => 'decimal:2',
+            'average_cost' => 'decimal:6',
+            'conversion_factor' => 'decimal:6',
+            'thickness' => 'decimal:4',
+            'grain_direction' => 'string',
+            'printable_sides' => 'integer',
+            'density_kg_per_litre' => 'decimal:4',
+            'consumption_grams_per_m2' => 'decimal:4',
+            'is_self_adhesive' => 'boolean',
             'low_stock_threshold' => 'decimal:2',
             'gsm' => 'decimal:2',
             'width' => 'decimal:3',

@@ -12,6 +12,7 @@ use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Notifications\Notification;
+use Livewire\Component;
 
 class CostEstimateActions
 {
@@ -40,8 +41,10 @@ class CostEstimateActions
             ->color('gray')
             ->requiresConfirmation()
             ->visible(fn (CostEstimate $record): bool => $record->status === 'draft')
-            ->action(function (CostEstimate $record): void {
+            ->action(function (CostEstimate $record, Component $livewire): void {
                 app(CostEstimateService::class)->finalize($record);
+                $record->refresh();
+                unset($livewire->estimatorResult, $livewire->estimatorComparisons);
                 Notification::make()->title('Estimate finalized')->success()->send();
             });
     }
@@ -68,8 +71,10 @@ class CostEstimateActions
                     ->afterOrEqual('issue_date')
                     ->required(),
             ])
-            ->action(function (array $data, CostEstimate $record): void {
+            ->action(function (array $data, CostEstimate $record, Component $livewire): void {
                 $proforma = app(CostEstimateService::class)->createProforma($record, $data);
+                $record->refresh();
+                unset($livewire->estimatorResult, $livewire->estimatorComparisons);
 
                 Notification::make()
                     ->title('Proforma created')

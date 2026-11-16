@@ -35,7 +35,17 @@ class CostEstimateResource extends Resource
 
     public static function canEdit($record): bool
     {
-        return $record?->isEditable() ?? true;
+        return static::canAccess() && ($record?->isEditable() ?? true);
+    }
+
+    public static function canCreate(): bool
+    {
+        return static::canAccess();
+    }
+
+    public static function canView($record): bool
+    {
+        return static::canAccess();
     }
 
     public static function form(Schema $schema): Schema

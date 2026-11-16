@@ -71,9 +71,7 @@ class AttendanceSegmentResource extends Resource
             ->columns([
                 TextColumn::make('employee.first_name')->label('Employee')
                     ->formatStateUsing(fn (AttendanceSegment $record): ?string => $record->employee?->full_name)
-                    ->description(fn (AttendanceSegment $record): ?string => $record->employee?->employee_id)
                     ->searchable(['first_name', 'last_name', 'employee_id', 'attendance_device_id'])->sortable(),
-                TextColumn::make('fp_no')->label('AC / FP No.')->searchable(),
                 TextColumn::make('date')->date()->sortable(),
                 TextColumn::make('schedule_name')->label('Schedule')->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('clock_in')->label('In')->formatStateUsing(fn (?string $state): ?string => $state ? substr($state, 0, 5) : null),

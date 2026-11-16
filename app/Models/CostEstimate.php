@@ -37,6 +37,8 @@ class CostEstimate extends Model
         'settings_snapshot',
         'status',
         'finalized_at',
+        'calculation_snapshot',
+        'currency_code',
     ];
 
     protected function casts(): array
@@ -54,10 +56,11 @@ class CostEstimate extends Model
             'vat_rate' => 'decimal:2',
             'tax_amount' => 'decimal:2',
             'total' => 'decimal:2',
-            'unit_price' => 'decimal:4',
+            'unit_price' => 'decimal:6',
             'margin_percent' => 'decimal:2',
             'settings_snapshot' => 'array',
             'finalized_at' => 'datetime',
+            'calculation_snapshot' => 'array',
         ];
     }
 

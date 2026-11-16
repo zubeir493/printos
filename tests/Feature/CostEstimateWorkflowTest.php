@@ -1,6 +1,7 @@
 <?php
 
 use App\Filament\Resources\CostEstimates\Pages\CreateCostEstimate;
+use App\Filament\Resources\CostEstimates\Pages\EditCostEstimate;
 use App\Filament\Resources\CostEstimates\Pages\ViewCostEstimate;
 use App\Filament\Resources\CostEstimates\RelationManagers\CostEstimateLinesRelationManager;
 use App\Filament\Resources\InventoryItems\Pages\CreateInventoryItem;
@@ -332,7 +333,7 @@ it('normalizes purchase unit prices to base unit costs in estimates', function (
         ->and($stockLine['snapshot']['inventory']['price_per_purchase_unit'])->toBe(1000.0);
 });
 
-it('creates a cost estimate from the Filament wizard', function (): void {
+it('saves an incomplete label estimate as a draft in the workspace', function (): void {
     Setting::createDefault();
     Filament::setCurrentPanel(Filament::getPanel('admin'));
 
@@ -353,20 +354,8 @@ it('creates a cost estimate from the Filament wizard', function (): void {
             'job_type' => 'labels',
             'quantity' => 5000,
             'services' => [
-                'label' => [
-                    'width' => 20,
-                    'height' => 18,
-                    'colors' => 4,
-                    'yield' => 3,
-                    'waste_allowance_percent' => 0,
-                ],
-                'material' => [
-                    'material_item_id' => $paper->id,
-                ],
-                'production' => [
-                    'printing_up' => 3,
-                    'diecutting_up' => 1,
-                ],
+                'costing_version' => 'sheetfed-v2',
+                'components' => [['role' => 'stock', 'material_id' => $paper->id, 'width_mm' => 200, 'height_mm' => 180]],
             ],
         ])
         ->call('create')
@@ -376,11 +365,13 @@ it('creates a cost estimate from the Filament wizard', function (): void {
 
     expect($estimate->estimate_number)->toStartWith('CE-')
         ->and($estimate->partner_id)->toBeNull()
-        ->and($estimate->lines)->not->toBeEmpty()
-        ->and($estimate->subtotal)->toBeGreaterThan('0.00');
+        ->and($estimate->status)->toBe('draft')
+        ->and($estimate->formula_version)->toBe('sheetfed-v2')
+        ->and($estimate->calculation_snapshot['diagnostics'])->not->toBeEmpty()
+        ->and((float) $estimate->total)->toBe(0.0);
 });
 
-it('creates a book cost estimate from the Filament wizard', function (): void {
+it('saves an incomplete book estimate without fabricating fallback costs', function (): void {
     Setting::createDefault();
     Filament::setCurrentPanel(Filament::getPanel('admin'));
 
@@ -404,14 +395,9 @@ it('creates a book cost estimate from the Filament wizard', function (): void {
             'job_type' => 'books',
             'quantity' => 1000,
             'services' => [
-                'book' => [
-                    'page_count' => 64,
-                    'size' => 'A5',
-                    'binding' => 'Perfect',
-                ],
-                'material' => [
-                    'text_paper_item_id' => $paper->id,
-                ],
+                'costing_version' => 'sheetfed-v2',
+                'product' => ['page_count' => 64, 'width_mm' => 148, 'height_mm' => 210, 'binding' => 'perfect'],
+                'components' => [['role' => 'text', 'material_id' => $paper->id, 'signature_pages' => 16]],
             ],
         ])
         ->call('create')
@@ -420,8 +406,9 @@ it('creates a book cost estimate from the Filament wizard', function (): void {
     $estimate = CostEstimate::query()->with('lines')->firstOrFail();
 
     expect($estimate->job_type)->toBe('books')
-        ->and($estimate->lines)->not->toBeEmpty()
-        ->and($estimate->subtotal)->toBeGreaterThan('0.00');
+        ->and($estimate->status)->toBe('draft')
+        ->and($estimate->calculation_snapshot['diagnostics'])->not->toBeEmpty()
+        ->and((float) $estimate->total)->toBe(0.0);
 });
 
 it('presents the cost breakdown table with only costed rows and compact quantities', function (): void {
@@ -488,7 +475,7 @@ it('previews a book estimate without material selectors', function (): void {
 
     $this->actingAs(User::factory()->create(['role' => UserRole::Admin]));
 
-    Livewire::test(CreateCostEstimate::class)
+    Livewire::test(EditCostEstimate::class, ['record' => CostEstimate::factory()->create()->id])
         ->fillForm([
             'description' => 'Book job',
             'job_type' => 'books',

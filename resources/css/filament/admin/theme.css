@@ -4,6 +4,56 @@
 @source '../../../../resources/views/filament/**/*';
 @source '../../../../vendor/laraveldaily/filawidgets/resources/views/**/*';
 
+.estimator-summary { align-self: start; min-width: 0; }
+.estimator-summary-panel .fi-section-content { padding: 1.15rem; }
+.estimator-summary-values { font-variant-numeric: tabular-nums; }
+.estimator-money-row { display: flex; justify-content: space-between; gap: .75rem; padding: .6rem 0; font-size: .75rem; color: var(--gray-600); }
+.estimator-money-row strong { color: var(--gray-950); font-weight: 600; text-align: right; white-space: nowrap; }
+.estimator-caption { display: block; color: var(--gray-500); font-size: .68rem; line-height: 1.6; }
+.estimator-cost-total { border-top: 1px solid var(--gray-200); margin-top: .65rem; padding-top: .9rem; }
+.estimator-unit-price { display: flex; flex-direction: column; gap: .4rem; border-block: 1px solid var(--gray-100); padding-block: 1rem; margin-bottom: .5rem; }
+.estimator-unit-price span, .estimator-quote-total span { color: var(--gray-600); font-size: .72rem; }
+.estimator-unit-price strong { color: var(--primary-700); font-size: 1.3rem; letter-spacing: -.04em; }
+.estimator-quote-total { display: flex; flex-direction: column; gap: .5rem; border-top: 1px solid var(--gray-200); padding-top: 1rem; margin-top: .5rem; }
+.estimator-quote-total strong { font-size: 1.2rem; color: var(--gray-950); }
+.estimator-readiness-note { border-left: 2px solid var(--warning-400); background: var(--warning-50); color: var(--warning-900); padding: .7rem; margin-top: 1rem; font-size: .72rem; line-height: 1.65; }
+.estimator-detail { border-top: 1px solid var(--gray-100); padding-top: .85rem; margin-top: 1rem; }
+.estimator-detail summary { cursor: pointer; font-size: .75rem; font-weight: 600; color: var(--gray-700); }
+.estimator-detail summary span { float: right; color: var(--gray-500); }
+.estimator-requirement { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .3rem .75rem; padding-top: .75rem; font-size: .7rem; color: var(--gray-600); }
+.estimator-requirement strong { color: var(--gray-900); font-weight: 500; }
+.estimator-requirement small { flex-basis: 100%; color: var(--warning-700); font-size: .66rem; }
+.estimator-updating { color: var(--primary-600); font-size: .7rem; padding-bottom: .7rem; }
+.estimator-stale { opacity: .4; }
+.estimator-ready-message { color: var(--success-700); font-size: .8rem; line-height: 1.65; }
+.estimator-section-title { color: var(--gray-800); font-size: .8rem; font-weight: 600; }
+.estimator-issues { list-style: disc; padding-left: 1.1rem; margin-top: .65rem; color: var(--gray-600); font-size: .75rem; line-height: 1.8; }
+.estimator-layouts { display: flex; flex-direction: column; gap: 1rem; }
+.estimator-layout-block { border-top: 1px solid var(--gray-200); padding-top: .85rem; }
+.estimator-layout-heading { margin-bottom: .75rem; }
+.estimator-layout-heading h3 { color: var(--gray-800); font-size: .75rem; font-weight: 600; }
+.estimator-layout-heading p { color: var(--gray-500); font-size: .68rem; line-height: 1.6; margin-top: .25rem; }
+.estimator-tabs .fi-fo-table-repeater { max-width: 100%; overflow-x: auto; }
+.estimator-layout-grid { display: flex; flex-wrap: wrap; gap: 1.5rem; align-items: start; }
+.estimator-sheet-preview { flex: 1 1 200px; padding: 1rem; border: 1px solid var(--gray-100); background: var(--gray-50); border-radius: .5rem; }
+.estimator-sheet-preview svg { display: block; width: 100%; max-height: 240px; margin-bottom: .75rem; }
+.estimator-layout-metrics { flex: 1 1 180px; font-size: .75rem; font-variant-numeric: tabular-nums; }
+.estimator-layout-metrics > div { display: flex; justify-content: space-between; gap: 1rem; padding: .45rem 0; border-bottom: 1px solid var(--gray-100); }
+.estimator-layout-metrics dt { color: var(--gray-500); }
+.estimator-layout-metrics dd { color: var(--gray-950); font-weight: 600; }
+.estimator-table-wrap { max-width: 100%; overflow-x: auto; background: white; border: 1px solid var(--gray-200); border-radius: .65rem; }
+.estimator-table { width: 100%; border-collapse: collapse; font-size: .75rem; font-variant-numeric: tabular-nums; }
+.estimator-table caption { text-align: left; padding: 1rem; font-size: .8rem; font-weight: 600; color: var(--gray-900); }
+.estimator-table th { background: var(--gray-50); font-weight: 500; color: var(--gray-500); }
+.estimator-table th, .estimator-table td { padding: .8rem 1rem; text-align: right; border-top: 1px solid var(--gray-100); white-space: nowrap; }
+.estimator-table th:first-child, .estimator-table td:first-child { text-align: left; white-space: normal; min-width: 140px; }
+.estimator-table td small { display: block; font-size: .65rem; color: var(--gray-500); margin-top: .3rem; }
+.estimator-table tfoot { font-weight: 600; }
+.estimator-table .estimator-table-empty { padding: 1.4rem; color: var(--gray-500); text-align: left; }
+.estimator-empty { border: 1px dashed var(--gray-300); border-radius: .65rem; padding: 1.5rem; color: var(--gray-500); font-size: .8rem; line-height: 1.7; }
+@media (min-width: 1280px) { .estimator-summary { position: sticky; top: 1.5rem; } }
+@media (max-width: 1279px) { .estimator-summary { order: -1; } }
+
 .fi-tabs {
     height: 36px;
     border-radius: .5rem;
@@ -1265,7 +1315,13 @@ body:has(.dieline-canvas-shell) .fi-page-content {
     justify-content: center;
     text-align: center;
 }
-
+.estimator-tabs{
+    overflow: clip;
+}
+.estimator-tabs > nav{
+    border-radius: 0 !important;
+    background: white;
+}
 @media screen and (max-width: 1279px) {
     .dieline-canvas-shell {
         gap: 1rem;

@@ -11,6 +11,10 @@ class BookCostCalculator implements CostingCalculator
 
     public function calculate(array $data): CostingResult
     {
+        if (($data['services']['costing_version'] ?? null) === 'sheetfed-v2') {
+            return app(SheetfedCostCalculator::class)->calculate($data);
+        }
+
         $settings = Setting::getSettings();
         $services = $data['services'] ?? [];
         $book = $services['book'] ?? [];

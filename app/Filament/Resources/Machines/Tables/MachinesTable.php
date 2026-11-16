@@ -26,7 +26,10 @@ class MachinesTable
                     ->color('primary'),
                 TextColumn::make('production_speed')
                     ->label('Speed')
-                    ->state(fn ($record): string => number_format((float) $record->production_speed, 2).' units/hr'),
+                    ->state(fn ($record): string => number_format((float) $record->production_speed, 2).' '.str_replace('_per_hour', '/hr', $record->speed_unit ?? 'units_per_hour')),
+                TextColumn::make('costing_configured')->label('Costing')->badge()
+                    ->formatStateUsing(fn (bool $state): string => $state ? 'Verified' : 'Needs setup')
+                    ->color(fn (bool $state): string => $state ? 'success' : 'warning'),
                 TextColumn::make('hourly_cost')
                     ->label('Hourly')
                     ->formatStateUsing(fn ($state): string => Money::format($state, 2)),

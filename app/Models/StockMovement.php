@@ -41,7 +41,7 @@ class StockMovement extends Model
             'warehouse_id' => 'integer',
             'reference_id' => 'integer',
             'quantity' => 'decimal:2',
-            'unit_cost' => 'decimal:2',
+            'unit_cost' => 'decimal:6',
             'total_cost' => 'decimal:2',
             'movement_date' => 'datetime',
         ];

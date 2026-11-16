@@ -13,12 +13,17 @@ class CostEstimateService
 
     public function recalculate(CostEstimate $estimate): CostEstimate
     {
-        $result = $this->registry
-            ->calculator($estimate->job_type)
-            ->calculate($estimate->toArray());
-
-        DB::transaction(function () use ($estimate, $result): void {
-            $estimate->updateQuietly($result->totals());
+        return DB::transaction(function () use ($estimate): CostEstimate {
+            $estimate = CostEstimate::query()->lockForUpdate()->findOrFail($estimate->id);
+            if (! $estimate->isEditable()) {
+                throw ValidationException::withMessages(['status' => 'Finalized estimates are frozen. Create a new estimate to reprice.']);
+            }
+            $result = $this->registry->calculator($estimate->job_type)->calculate($estimate->toArray());
+            $estimate->updateQuietly([
+                ...$result->totals(),
+                'calculation_snapshot' => $result->calculationSnapshot(),
+                'currency_code' => $result->settingsSnapshot['currency_code'] ?? $estimate->currency_code,
+            ]);
 
             $estimate->lines()->delete();
             foreach ($result->lines as $index => $line) {
@@ -29,25 +34,27 @@ class CostEstimateService
             }
 
             $this->syncInputs($estimate);
-        });
 
-        return $estimate->refresh();
+            return $estimate->refresh();
+        });
     }
 
     public function finalize(CostEstimate $estimate): CostEstimate
     {
-        if ($estimate->status !== 'draft') {
-            return $estimate;
-        }
+        return DB::transaction(function () use ($estimate): CostEstimate {
+            $estimate = CostEstimate::query()->lockForUpdate()->findOrFail($estimate->id);
+            if (! $estimate->isEditable()) {
+                return $estimate;
+            }
+            $estimate = $this->recalculate($estimate);
+            $diagnostics = $estimate->calculation_snapshot['diagnostics'] ?? [];
+            if ($diagnostics !== []) {
+                throw ValidationException::withMessages(['services' => implode(' ', $diagnostics)]);
+            }
+            $estimate->update(['status' => 'finalized', 'finalized_at' => now()]);
 
-        $this->recalculate($estimate);
-
-        $estimate->update([
-            'status' => 'finalized',
-            'finalized_at' => now(),
-        ]);
-
-        return $estimate->refresh();
+            return $estimate->refresh();
+        });
     }
 
     /**
@@ -56,7 +63,7 @@ class CostEstimateService
     public function createProforma(CostEstimate $estimate, array $data = []): Proforma
     {
         return DB::transaction(function () use ($estimate, $data): Proforma {
-            $estimate = $estimate->loadMissing(['lines', 'partner']);
+            $estimate = CostEstimate::query()->lockForUpdate()->findOrFail($estimate->id)->loadMissing(['lines', 'partner']);
 
             if ($estimate->status === 'draft') {
                 $estimate = $this->finalize($estimate);
@@ -94,7 +101,7 @@ class CostEstimateService
                 'quantity' => max(1, (int) $estimate->quantity),
                 'size' => $this->sizeLabel($estimate),
                 'unit_price' => $estimate->unit_price,
-                'task_cost' => $estimate->total,
+                'task_cost' => $estimate->formula_version === 'sheetfed-v2' ? $proforma->subtotal : $estimate->total,
                 'paper' => $this->paperSnapshot($estimate),
                 'deliverables' => [],
                 'instructions' => $estimate->remarks,
@@ -111,6 +118,7 @@ class CostEstimateService
 
     private function syncInputs(CostEstimate $estimate): void
     {
+        $estimate->inputs()->whereNotIn('step', array_keys($estimate->services ?? []))->delete();
         foreach (($estimate->services ?? []) as $step => $payload) {
             $estimate->inputs()->updateOrCreate(
                 ['step' => (string) $step],

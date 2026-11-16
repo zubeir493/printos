@@ -3,12 +3,15 @@
 namespace App\Observers;
 
 use App\Models\InventoryBalance;
+use App\Models\InventoryItem;
 use App\Models\JobOrder;
 use App\Models\StockMovement;
 use App\Notifications\ProductionLoggedNotification;
 use App\Notifications\WipReadyForDispatchNotification;
 use App\Support\NotificationRecipients;
 use App\UserRole;
+use Brick\Math\BigDecimal;
+use Brick\Math\RoundingMode;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
 
@@ -16,6 +19,9 @@ class StockMovementObserver
 {
     public function saving(StockMovement $movement): void
     {
+        if ($movement->type === 'purchase') {
+            InventoryItem::query()->whereKey($movement->inventory_item_id)->lockForUpdate()->firstOrFail();
+        }
         $this->lockProductionJob($movement);
     }
 
@@ -41,6 +47,8 @@ class StockMovementObserver
         $quantityChange = (float) $stockMovement->quantity;
         $this->validateBalanceChange($stockMovement->inventory_item_id, $stockMovement->warehouse_id, $quantityChange);
 
+        $this->updatePurchaseAverageCost($stockMovement);
+
         $this->applyBalanceChange($stockMovement->inventory_item_id, $stockMovement->warehouse_id, $quantityChange);
 
         Log::info('Balance updated', [
@@ -51,6 +59,22 @@ class StockMovementObserver
 
         $this->notifyProductionOutput($stockMovement);
         $this->syncProduction($stockMovement);
+    }
+
+    private function updatePurchaseAverageCost(StockMovement $movement): void
+    {
+        if ($movement->type !== 'purchase' || (float) $movement->quantity <= 0 || $movement->unit_cost === null || (float) $movement->unit_cost < 0) {
+            return;
+        }
+        $item = InventoryItem::query()->lockForUpdate()->findOrFail($movement->inventory_item_id);
+        $oldQuantity = InventoryBalance::query()->where('inventory_item_id', $item->id)->orderBy('id')->lockForUpdate()->get()->sum('quantity_on_hand');
+        if ((float) $oldQuantity > 0 && (float) $item->average_cost <= 0) {
+            return;
+        }
+        $oldValue = BigDecimal::of((string) $oldQuantity)->multipliedBy((string) $item->average_cost);
+        $receivedValue = BigDecimal::of((string) $movement->quantity)->multipliedBy((string) $movement->unit_cost);
+        $quantity = BigDecimal::of((string) $oldQuantity)->plus((string) $movement->quantity);
+        $item->update(['average_cost' => (string) $oldValue->plus($receivedValue)->dividedBy($quantity, 6, RoundingMode::HALF_UP)]);
     }
 
     public function updated(StockMovement $stockMovement): void

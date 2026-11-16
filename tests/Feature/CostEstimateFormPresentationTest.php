@@ -2,6 +2,8 @@
 
 use App\Filament\Pages\Settings;
 use App\Filament\Resources\CostEstimates\Pages\CreateCostEstimate;
+use App\Filament\Resources\CostEstimates\Pages\EditCostEstimate;
+use App\Models\CostEstimate;
 use App\Models\InventoryItem;
 use App\Models\Machine;
 use App\Models\Setting;
@@ -23,22 +25,23 @@ beforeEach(function (): void {
 it('renders the live summary as a styled estimator panel', function (): void {
     Livewire::test(CreateCostEstimate::class)
         ->assertSee('Final Price')
-        ->assertSee('Unit Price')
-        ->assertSee('Calculator Type')
+        ->assertSee('Unit selling price')
+        ->assertSee('Product family')
         ->assertDontSee('Service Type')
         ->assertDontSee('Deadline')
         ->assertDontSee('Remarks')
         ->assertDontSee('Material Consumption')
         ->assertSee('Awaiting inputs')
         ->assertDontSee('Warnings')
-        ->assertSeeHtml('cost-summary-metric cost-summary-total')
+        ->assertSeeHtml('estimator-quote-total')
         ->assertDontSeeHtml('cost-summary-alert');
 });
 
 it('switches the wizard to the selected calculator type', function (): void {
-    Livewire::test(CreateCostEstimate::class)
+    Livewire::test(EditCostEstimate::class, ['record' => CostEstimate::factory()->create()->id])
         ->fillForm([
             'job_type' => 'books',
+            'services' => ['costing_version' => 'v1'],
         ])
         ->assertFormFieldIsVisible('services.book.page_count')
         ->assertFormFieldDoesNotExist('services.production.printing_speed')
@@ -48,7 +51,7 @@ it('switches the wizard to the selected calculator type', function (): void {
 });
 
 it('renders the Sheet2 workbook total in the live book preview', function (): void {
-    Livewire::test(CreateCostEstimate::class)
+    Livewire::test(EditCostEstimate::class, ['record' => CostEstimate::factory()->create()->id])
         ->fillForm([
             'description' => 'Sheet2 sample book',
             'job_type' => 'books',
@@ -106,7 +109,7 @@ it('renders inventory and machine snapshots with structured costing details', fu
         'hourly_cost' => 125,
     ]);
 
-    Livewire::test(CreateCostEstimate::class)
+    Livewire::test(EditCostEstimate::class, ['record' => CostEstimate::factory()->create()->id])
         ->fillForm([
             'description' => 'Bottle label',
             'job_type' => 'labels',
@@ -151,7 +154,7 @@ it('shows material consumption when a material-backed estimate is calculable', f
         'average_cost' => 12.5,
     ]);
 
-    Livewire::test(CreateCostEstimate::class)
+    Livewire::test(EditCostEstimate::class, ['record' => CostEstimate::factory()->create()->id])
         ->fillForm([
             'description' => 'Bottle label',
             'job_type' => 'labels',
@@ -173,7 +176,7 @@ it('shows material consumption when a material-backed estimate is calculable', f
 });
 
 it('keeps book material and machine details in the sidebar only', function (): void {
-    Livewire::test(CreateCostEstimate::class)
+    Livewire::test(EditCostEstimate::class, ['record' => CostEstimate::factory()->create()->id])
         ->fillForm([
             'description' => 'Book job',
             'job_type' => 'books',
@@ -212,7 +215,7 @@ it('keeps book material and machine details in the sidebar only', function (): v
 });
 
 it('hides hard cover cover paper inputs and trims noisy settings defaults', function (): void {
-    Livewire::test(CreateCostEstimate::class)
+    Livewire::test(EditCostEstimate::class, ['record' => CostEstimate::factory()->create()->id])
         ->fillForm([
             'description' => 'Hard cover book',
             'job_type' => 'books',

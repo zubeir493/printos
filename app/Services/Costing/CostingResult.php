@@ -25,6 +25,10 @@ class CostingResult
         public array $machineUsage,
         public array $settingsSnapshot,
         public string $formulaVersion = 'v1',
+        public array $diagnostics = [],
+        public array $layouts = [],
+        public array $operations = [],
+        public array $commercial = [],
     ) {}
 
     /**
@@ -40,10 +44,27 @@ class CostingResult
             'vat_rate' => round($this->vatRate, 2),
             'tax_amount' => round($this->taxAmount, 2),
             'total' => round($this->total, 2),
-            'unit_price' => round($this->unitPrice, 4),
+            'unit_price' => round($this->unitPrice, $this->formulaVersion === 'sheetfed-v2' ? 6 : 4),
             'margin_percent' => round($this->marginPercent, 2),
             'formula_version' => $this->formulaVersion,
             'settings_snapshot' => $this->settingsSnapshot,
+        ];
+    }
+
+    public function isComplete(): bool
+    {
+        return $this->diagnostics === [];
+    }
+
+    public function calculationSnapshot(): array
+    {
+        return [
+            'diagnostics' => $this->diagnostics,
+            'layouts' => $this->layouts,
+            'operations' => $this->operations,
+            'commercial' => $this->commercial,
+            'material_consumption' => $this->materialConsumption,
+            'machine_usage' => $this->machineUsage,
         ];
     }
 }

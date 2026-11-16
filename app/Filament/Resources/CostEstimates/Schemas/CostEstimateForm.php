@@ -26,63 +26,70 @@ class CostEstimateForm
 {
     public static function configure(Schema $schema): Schema
     {
-        return $schema
-            ->components([
-                Group::make()
-                    ->schema([
-                        Wizard::make([
-                            self::jobStep(),
-                            ...BookCostingWizardSchema::steps(),
-                            ...LabelCostingWizardSchema::steps(),
-                            ...PackageCostingWizardSchema::steps(),
-                        ])
-                            ->nextAction(fn (Action $action): Action => $action->color(Color::Indigo))
-                            ->columnSpanFull(),
+        $record = $schema->getRecord();
+
+        return $schema->components($record && $record->formula_version !== 'sheetfed-v2'
+            ? self::legacyComponents()
+            : EstimatorWorkspace::components())->columns(7);
+    }
+
+    private static function legacyComponents(): array
+    {
+        return [
+            Group::make()
+                ->schema([
+                    Wizard::make([
+                        self::jobStep(),
+                        ...BookCostingWizardSchema::steps(),
+                        ...LabelCostingWizardSchema::steps(),
+                        ...PackageCostingWizardSchema::steps(),
                     ])
-                    ->columnSpan(5),
-                Section::make()
-                    ->schema([
-                        Placeholder::make('material_consumption')
-                            ->label('Material Consumption')
-                            ->content(fn (Get $get): HtmlString => self::materials($get))
-                            ->hidden(fn (Get $get): bool => ! self::hasMaterialConsumption($get))
-                            ->extraAttributes(['class' => 'cost-summary-block']),
-                        Placeholder::make('machine_usage')
-                            ->label('Machine Usage')
-                            ->content(fn (Get $get): HtmlString => self::machines($get))
-                            ->hidden(fn (Get $get): bool => ! self::hasMachineUsage($get))
-                            ->extraAttributes(['class' => 'cost-summary-block']),
-                        Placeholder::make('unit_price')
-                            ->label('Unit Price')
-                            ->content(fn (Get $get): HtmlString => self::summaryText($get, 'unitPrice'))
-                            ->extraAttributes(['class' => 'cost-summary-metric']),
-                        Placeholder::make('subtotal')
-                            ->label('Subtotal')
-                            ->content(fn (Get $get): HtmlString => self::summaryText($get, 'subtotal', precision: 2, fixedPrecision: true))
-                            ->extraAttributes(['class' => 'cost-summary-metric']),
-                        Placeholder::make('margin')
-                            ->label(fn (Get $get): string => self::marginLabel($get))
-                            ->content(fn (Get $get): HtmlString => self::marginValue($get))
-                            ->extraAttributes(['class' => 'cost-summary-metric']),
-                        Placeholder::make('tax_amount')
-                            ->label(fn (Get $get): string => self::taxLabel($get))
-                            ->content(fn (Get $get): HtmlString => self::summaryText($get, 'taxAmount'))
-                            ->hidden(fn (Get $get): bool => ! self::hasTax($get))
-                            ->extraAttributes(['class' => 'cost-summary-metric']),
-                        Placeholder::make('discount_amount')
-                            ->label('Discount')
-                            ->content(fn (Get $get): HtmlString => self::summaryText($get, 'discountAmount'))
-                            ->extraAttributes(['class' => 'cost-summary-metric']),
-                        Placeholder::make('total')
-                            ->label('Final Price')
-                            ->content(fn (Get $get): HtmlString => self::summaryText($get, 'total', isPrimary: true))
-                            ->extraAttributes(['class' => 'cost-summary-metric cost-summary-total']),
-                    ])
-                    ->extraAttributes(['class' => 'lg:sticky lg:top-6 liveSummary'])
-                    ->hidden(fn (): bool => ! PanelAccess::canSeeMoneyValues())
-                    ->columnSpan(2),
-            ])
-            ->columns(7);
+                        ->nextAction(fn (Action $action): Action => $action->color(Color::Indigo))
+                        ->columnSpanFull(),
+                ])
+                ->columnSpan(5),
+            Section::make()
+                ->schema([
+                    Placeholder::make('material_consumption')
+                        ->label('Material Consumption')
+                        ->content(fn (Get $get): HtmlString => self::materials($get))
+                        ->hidden(fn (Get $get): bool => ! self::hasMaterialConsumption($get))
+                        ->extraAttributes(['class' => 'cost-summary-block']),
+                    Placeholder::make('machine_usage')
+                        ->label('Machine Usage')
+                        ->content(fn (Get $get): HtmlString => self::machines($get))
+                        ->hidden(fn (Get $get): bool => ! self::hasMachineUsage($get))
+                        ->extraAttributes(['class' => 'cost-summary-block']),
+                    Placeholder::make('unit_price')
+                        ->label('Unit Price')
+                        ->content(fn (Get $get): HtmlString => self::summaryText($get, 'unitPrice'))
+                        ->extraAttributes(['class' => 'cost-summary-metric']),
+                    Placeholder::make('subtotal')
+                        ->label('Subtotal')
+                        ->content(fn (Get $get): HtmlString => self::summaryText($get, 'subtotal', precision: 2, fixedPrecision: true))
+                        ->extraAttributes(['class' => 'cost-summary-metric']),
+                    Placeholder::make('margin')
+                        ->label(fn (Get $get): string => self::marginLabel($get))
+                        ->content(fn (Get $get): HtmlString => self::marginValue($get))
+                        ->extraAttributes(['class' => 'cost-summary-metric']),
+                    Placeholder::make('tax_amount')
+                        ->label(fn (Get $get): string => self::taxLabel($get))
+                        ->content(fn (Get $get): HtmlString => self::summaryText($get, 'taxAmount'))
+                        ->hidden(fn (Get $get): bool => ! self::hasTax($get))
+                        ->extraAttributes(['class' => 'cost-summary-metric']),
+                    Placeholder::make('discount_amount')
+                        ->label('Discount')
+                        ->content(fn (Get $get): HtmlString => self::summaryText($get, 'discountAmount'))
+                        ->extraAttributes(['class' => 'cost-summary-metric']),
+                    Placeholder::make('total')
+                        ->label('Final Price')
+                        ->content(fn (Get $get): HtmlString => self::summaryText($get, 'total', isPrimary: true))
+                        ->extraAttributes(['class' => 'cost-summary-metric cost-summary-total']),
+                ])
+                ->extraAttributes(['class' => 'lg:sticky lg:top-6 liveSummary'])
+                ->hidden(fn (): bool => ! PanelAccess::canSeeMoneyValues())
+                ->columnSpan(2),
+        ];
     }
 
     private static function jobStep(): Step

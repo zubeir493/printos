@@ -33,7 +33,7 @@ class ProformaTask extends Model
             'id' => 'integer',
             'proforma_id' => 'integer',
             'quantity' => 'integer',
-            'unit_price' => 'decimal:2',
+            'unit_price' => 'decimal:6',
             'task_cost' => 'decimal:2',
             'paper' => 'array',
             'deliverables' => 'array',

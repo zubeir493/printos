@@ -68,6 +68,9 @@ class InventoryItemForm
                         ->label('GSM')
                         ->numeric()
                         ->hidden(fn ($get) => ! self::isPaperLike($get('type'), $get('category'))),
+                    TextInput::make('average_cost')->label('Average acquisition cost / base unit')->numeric()->minValue(0)->step(0.000001)->default(0)
+                        ->suffix(fn (): string => Money::suffix())->helperText('New purchase receipts update the weighted average. Initialize unknown historic costs from verified records.')
+                        ->hidden(fn ($get): bool => $get('type') !== 'raw_material' || ! PanelAccess::canSeeMoneyValues())->dehydratedWhenHidden(false),
                     TextInput::make('width')
                         ->numeric()
                         ->suffix('cm')
@@ -76,6 +79,18 @@ class InventoryItemForm
                         ->numeric()
                         ->suffix('cm')
                         ->hidden(fn ($get) => ! self::isPaperLike($get('type'), $get('category'))),
+                    TextInput::make('thickness')->label('Caliper')->numeric()->minValue(0)->suffix('mm')
+                        ->hidden(fn ($get) => ! self::isPaperLike($get('type'), $get('category'))),
+                    Select::make('grain_direction')->options(['long' => 'Along longer parent-sheet edge', 'short' => 'Along shorter parent-sheet edge', 'none' => 'No grain restriction'])
+                        ->hidden(fn ($get) => ! self::isPaperLike($get('type'), $get('category'))),
+                    Select::make('printable_sides')->label('Printable sides')->options([0 => 'Unprinted stock', 1 => 'One side', 2 => 'Both sides'])
+                        ->hidden(fn ($get) => ! self::isPaperLike($get('type'), $get('category'))),
+                    Toggle::make('is_self_adhesive')->label('Composite self-adhesive stock')->helperText('Base-unit cost includes face stock, adhesive and liner.')
+                        ->hidden(fn ($get) => ! self::isPaperLike($get('type'), $get('category'))),
+                    TextInput::make('density_kg_per_litre')->label('Density')->numeric()->minValue(0)->suffix('kg/L')
+                        ->visible(fn ($get): bool => $get('type') === 'raw_material' && in_array($get('category'), ['ink', 'coating', 'glue', 'adhesive'], true)),
+                    TextInput::make('consumption_grams_per_m2')->label('Calibrated full-coverage consumption')->numeric()->minValue(0)->suffix('g/m²')
+                        ->visible(fn ($get): bool => $get('type') === 'raw_material' && in_array($get('category'), ['ink', 'coating', 'glue', 'adhesive'], true)),
                     TextInput::make('default_waste_percent')
                         ->numeric()
                         ->suffix('%')

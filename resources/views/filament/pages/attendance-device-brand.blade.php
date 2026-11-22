@@ -1,7 +1,7 @@
 <div>
     <div class="flex h-11 items-center gap-3">
         <x-filament::icon icon="heroicon-o-finger-print" class="h-8 w-8 text-primary-600" />
-        <span class="text-xl font-semibold text-gray-950 dark:text-white">Punch machine</span>
+        <span class="text-xl font-semibold text-gray-950 dark:text-white">ZKTeco punch machine</span>
     </div>
     <div class="py-4">
         <div class="text-sm font-semibold text-gray-950 dark:text-white">Attendance device</div>

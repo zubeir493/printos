@@ -2,11 +2,10 @@
 
 use App\Filament\Finance\Widgets\HighRiskReceivables;
 use App\Filament\Resources\ActivityLogs\ActivityLogResource;
-use App\Filament\Resources\Invoices\Pages\CreateInvoice;
+use App\Filament\Resources\Invoices\InvoiceResource;
 use App\Filament\Resources\Invoices\Pages\EditInvoice;
 use App\Filament\Resources\Invoices\Pages\ListInvoices;
 use App\Mail\CustomerReminderMail;
-use App\Mail\InvoiceGenerated;
 use App\Models\EmailLog;
 use App\Models\Invoice;
 use App\Models\Partner;
@@ -30,52 +29,39 @@ use Livewire\Livewire;
 
 uses(RefreshDatabase::class);
 
-test('creating an invoice with send email enabled records the email and marks it as sent', function (): void {
+test('standalone invoice issuance is unavailable and historical PDFs can still be viewed', function (): void {
     Filament::setCurrentPanel(Filament::getPanel('finance'));
 
     $this->actingAs(User::factory()->create([
         'role' => UserRole::Finance,
     ]));
 
-    config(['filesystems.private_disk' => 'local']);
-    Storage::fake('local');
-    Mail::fake();
-
-    $partner = Partner::create([
-        'name' => 'Walk-In Customer',
-        'email' => 'walkin@example.com',
-        'phone' => '0911111111',
-        'address' => 'Main Street',
-        'is_customer' => true,
+    $invoice = Invoice::create([
+        'invoice_type' => 'sales',
+        'partner_id' => Partner::factory()->create()->id,
+        'invoice_date' => today(),
+        'due_date' => today()->addDays(30),
+        'order_type' => 'sales_order',
+        'order_id' => null,
+        'subtotal' => 100,
+        'tax_amount' => 0,
+        'total_amount' => 100,
+        'status' => 'draft',
+        'filename' => 'historical-invoice.pdf',
+        'file_path' => 'invoices/historical-invoice.pdf',
     ]);
 
-    Livewire::test(CreateInvoice::class)
-        ->fillForm([
-            'invoice_type' => 'sales',
-            'partner_id' => $partner->id,
-            'invoice_date' => now()->toDateString(),
-            'due_date' => now()->addDays(30)->toDateString(),
-            'subtotal' => 100,
-            'tax_amount' => 15,
-            'total_amount' => 115,
-            'send_email' => true,
-            'email_recipient' => 'walkin@example.com',
-        ])
-        ->call('create');
-
-    $invoice = Invoice::query()->latest('id')->firstOrFail();
-
-    Mail::assertSent(InvoiceGenerated::class, function (InvoiceGenerated $mail) use ($partner): bool {
-        return $mail->hasTo($partner->email);
-    });
-
-    expect($invoice->emailed_at)->not->toBeNull()
-        ->and($invoice->email_recipient)->toBe('walkin@example.com')
-        ->and($invoice->status)->toBe('sent')
-        ->and(EmailLog::count())->toBe(1);
+    $this->get(InvoiceResource::getUrl('create'))->assertRedirect('/finance');
+    expect(InvoiceResource::canCreate())->toBeFalse();
+    $this->get(InvoiceResource::getUrl('view', ['record' => $invoice]))->assertSuccessful();
+    Livewire::test(ListInvoices::class)
+        ->assertActionDoesNotExist('create')
+        ->assertTableActionHidden('email', $invoice)
+        ->assertTableActionHidden('mark_sent', $invoice)
+        ->assertTableActionVisible('download', $invoice);
 });
 
-test('creating a manual invoice stores its generated pdf', function (): void {
+test('creating an order-backed invoice stores its generated PDF', function (): void {
     Filament::setCurrentPanel(Filament::getPanel('finance'));
     config(['filesystems.private_disk' => 'local']);
     Storage::fake('local');
@@ -92,25 +78,22 @@ test('creating a manual invoice stores its generated pdf', function (): void {
         'is_customer' => true,
     ]);
 
-    Livewire::test(CreateInvoice::class)
-        ->fillForm([
-            'invoice_type' => 'sales',
-            'partner_id' => $partner->id,
-            'invoice_date' => now()->toDateString(),
-            'due_date' => now()->addDays(30)->toDateString(),
-            'subtotal' => 500,
-            'tax_amount' => 75,
-            'total_amount' => 575,
-            'send_email' => false,
-        ])
-        ->call('create');
-
-    $invoice = Invoice::query()->latest('id')->firstOrFail();
+    $order = SalesOrder::create([
+        'partner_id' => $partner->id,
+        'warehouse_id' => Warehouse::factory()->create()->id,
+        'order_date' => today(),
+        'subtotal' => 500,
+        'tax_amount' => 75,
+        'total' => 575,
+        'status' => SalesOrder::STATUS_SUBMITTED,
+    ]);
+    $invoice = app(InvoiceGeneratorService::class)->generateFromSalesOrder($order)['invoice'];
 
     Storage::disk('local')->assertExists($invoice->file_path);
+    expect($invoice->order_id)->toBe($order->id);
 });
 
-test('creating an invoice with a failed email leaves the invoice unsent and shows a failure notification', function (): void {
+test('an order-backed invoice with a failed email stays unsent and shows a failure notification', function (): void {
     Filament::setCurrentPanel(Filament::getPanel('finance'));
 
     $this->actingAs(User::factory()->create([
@@ -118,38 +101,21 @@ test('creating an invoice with a failed email leaves the invoice unsent and show
     ]));
 
     $this->mock(InvoiceGeneratorService::class, function ($mock): void {
-        $mock->shouldReceive('generateManualInvoicePdf')
-            ->once()
-            ->andReturnTrue();
+        $mock->shouldReceive('getInvoiceDownloadUrl')->andReturn('/invoices/draft-invoice.pdf');
         $mock->shouldReceive('sendInvoiceEmail')
             ->once()
             ->andThrow(new RuntimeException('Mailtrap rejected the message.'));
     });
 
-    $partner = Partner::create([
-        'name' => 'Failure Customer',
+    $invoice = releaseDraftInvoice([
         'email' => 'failure@example.com',
-        'phone' => '0933333333',
-        'address' => 'Main Street',
-        'is_customer' => true,
     ]);
 
-    Livewire::test(CreateInvoice::class)
-        ->fillForm([
-            'invoice_type' => 'sales',
-            'partner_id' => $partner->id,
-            'invoice_date' => now()->toDateString(),
-            'due_date' => now()->addDays(30)->toDateString(),
-            'subtotal' => 100,
-            'tax_amount' => 15,
-            'total_amount' => 115,
-            'send_email' => true,
-            'email_recipient' => 'failure@example.com',
-        ])
-        ->call('create')
+    Livewire::test(ListInvoices::class)
+        ->callTableAction('email', $invoice, ['email' => 'failure@example.com'])
         ->assertNotified('Email Failed');
 
-    $invoice = Invoice::query()->latest('id')->firstOrFail();
+    $invoice->refresh();
 
     expect($invoice->emailed_at)->toBeNull()
         ->and($invoice->email_recipient)->toBeNull()
@@ -173,6 +139,7 @@ test('invoice edit actions transition status without exposing the status field',
     $invoice = Invoice::create([
         'invoice_type' => 'sales',
         'order_type' => 'sales_order',
+        'order_id' => releaseInvoiceOrder($partner)->id,
         'partner_id' => $partner->id,
         'invoice_date' => now(),
         'due_date' => now()->addDays(30),
@@ -222,6 +189,7 @@ test('emailing an invoice from the table marks open invoices as sent', function 
     $invoice = Invoice::create([
         'invoice_type' => 'sales',
         'order_type' => 'sales_order',
+        'order_id' => releaseInvoiceOrder($partner)->id,
         'partner_id' => $partner->id,
         'invoice_date' => now(),
         'due_date' => now()->addDays(30),
@@ -255,6 +223,41 @@ test('invoice download urls use the stored file path when present', function ():
     expect($url)->toContain('custom/manuals/manual-invoice.pdf')
         ->not->toContain('invoices/manual-invoice.pdf');
 });
+
+function releaseInvoiceOrder(Partner $partner): SalesOrder
+{
+    return SalesOrder::create([
+        'partner_id' => $partner->id,
+        'warehouse_id' => Warehouse::factory()->create()->id,
+        'order_date' => today(),
+        'subtotal' => 100,
+        'total' => 100,
+        'status' => SalesOrder::STATUS_SUBMITTED,
+    ]);
+}
+
+/** @param array{email: string} $partnerAttributes */
+function releaseDraftInvoice(array $partnerAttributes): Invoice
+{
+    $partner = Partner::factory()->create($partnerAttributes);
+
+    return Invoice::create([
+        'invoice_type' => 'sales',
+        'partner_id' => $partner->id,
+        'order_type' => 'sales_order',
+        'order_id' => releaseInvoiceOrder($partner)->id,
+        'invoice_date' => today(),
+        'due_date' => today()->addDays(30),
+        'subtotal' => 100,
+        'tax_amount' => 0,
+        'total_amount' => 100,
+        'filename' => 'draft-invoice.pdf',
+        'file_path' => 'invoices/draft-invoice.pdf',
+        'status' => 'draft',
+        'email_recipient' => null,
+        'emailed_at' => null,
+    ]);
+}
 
 test('high risk receivables aggregates multiple order balances without full group by errors', function (): void {
     Filament::setCurrentPanel(Filament::getPanel('finance'));

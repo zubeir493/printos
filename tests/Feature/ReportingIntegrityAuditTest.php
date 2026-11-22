@@ -35,14 +35,14 @@ test('receivables agree across customer balances dashboard and aging and ignore 
     JobOrder::factory()->create(['partner_id' => $partner->id, 'production_mode' => 'make_to_stock', 'status' => 'production', 'total' => 1000]);
     $voidSale = $sale->replicate()->fill(['order_number' => 'SO-VOID', 'status' => 'void']);
     SalesOrder::withoutEvents(fn () => $voidSale->save());
-    foreach ([[$sale, 25, null, null], [$job, 50, null, null], [$job, 40, now(), null], [$job, 30, null, now()]] as [$document, $amount, $voidedAt, $deletedAt]) {
+    foreach ([[$sale, 25, null, null], [$job, 50, null, null], [$job, 40, '2026-02-01', null], [$job, 30, null, '2026-01-12']] as [$document, $amount, $voidedAt, $deletedAt]) {
         Payment::withoutEvents(fn () => Payment::factory()->create(['partner_id' => $partner->id, 'payable_type' => $document::class,
             'payable_id' => $document->id, 'amount' => $amount, 'direction' => 'inbound', 'method' => 'cash',
             'payment_date' => '2026-01-10', 'voided_at' => $voidedAt, 'deleted_at' => $deletedAt]));
     }
     $query = app(ReceivablesQuery::class);
-    expect($query->total('2026-01-31'))->toBe(225.0)
-        ->and((float) $query->customerBalances('2026-01-31')->first()->total_balance)->toBe(225.0);
+    expect($query->total('2026-01-31'))->toBe(185.0)
+        ->and((float) $query->customerBalances('2026-01-31')->first()->total_balance)->toBe(185.0);
     $page = new ReceivablesAgingReport;
     $page->asOfDate = '2026-01-31';
     $rows = $query->documents('2026-01-31')->get();
@@ -50,7 +50,9 @@ test('receivables agree across customer balances dashboard and aging and ignore 
     foreach ($rows as $row) {
         expect((int) $row->age_days)->toBe($page->ageDays($row))->and($row->bucket)->toBe($page->bucket($row));
     }
-    expect($page->report()['total'])->toBe(225.0)->and($query->total('2026-01-05'))->toBe(300.0);
+    expect($page->report()['total'])->toBe(185.0)
+        ->and($query->total('2026-02-01'))->toBe(225.0)
+        ->and($query->total('2026-01-05'))->toBe(300.0);
 });
 
 test('finance cash flow excludes void payments and withholding', function (): void {

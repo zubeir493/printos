@@ -15,7 +15,6 @@ use App\Filament\Resources\Holidays\HolidayResource;
 use App\Filament\Resources\LeaveRequests\LeaveRequestResource;
 use App\Filament\Resources\PayPolicies\PayPolicyResource;
 use App\Filament\Resources\PayrollOvertimeEntries\PayrollOvertimeEntryResource;
-use App\Filament\Resources\PayrollRuns\PayrollRunResource;
 use App\Filament\Resources\Shifts\ShiftResource;
 use App\Filament\Resources\WorkSchedules\WorkScheduleResource;
 use Filament\Enums\ThemeMode;
@@ -65,7 +64,6 @@ class HrPanelProvider extends PanelProvider
                 WorkScheduleResource::class,
                 PayPolicyResource::class,
                 PayrollOvertimeEntryResource::class,
-                PayrollRunResource::class,
             ])
             ->pages([
                 Dashboard::class,

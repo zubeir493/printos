@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Notifications\StockTransferCompletedNotification;
 use App\Support\NotificationRecipients;
 use App\Support\SequentialNumber;
+use App\Support\WarehouseAccess;
 use App\UserRole;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -63,8 +64,11 @@ class StockTransfer extends Model
     public function save(array $options = []): bool
     {
         return DB::transaction(function () use ($options): bool {
+            WarehouseAccess::authorizeRecord($this, 'from_warehouse_id', 'to_warehouse_id');
+
             if ($this->exists) {
                 $current = self::query()->lockForUpdate()->findOrFail($this->id);
+                WarehouseAccess::authorizeRecord($current, 'from_warehouse_id', 'to_warehouse_id');
                 if ($current->status === 'completed' && $this->isDirty()) {
                     throw new \RuntimeException('Completed stock transfers cannot be edited.');
                 }
@@ -78,6 +82,7 @@ class StockTransfer extends Model
     {
         return DB::transaction(function (): ?bool {
             $current = self::query()->lockForUpdate()->findOrFail($this->id);
+            WarehouseAccess::authorizeRecord($current, 'from_warehouse_id', 'to_warehouse_id');
             if ($current->status === 'completed') {
                 throw new \RuntimeException('Completed stock transfers cannot be deleted.');
             }
@@ -115,6 +120,7 @@ class StockTransfer extends Model
     {
         $posted = DB::transaction(function (): bool {
             $this->setRawAttributes(self::query()->lockForUpdate()->findOrFail($this->id)->getAttributes(), true);
+            WarehouseAccess::authorizeRecord($this, 'from_warehouse_id', 'to_warehouse_id');
             $this->load('items.inventoryItem');
             $alreadyPosted = StockMovement::where('reference_type', self::class)
                 ->where('reference_id', $this->id)
@@ -180,7 +186,8 @@ class StockTransfer extends Model
             return;
         }
 
-        $recipients = NotificationRecipients::roles(UserRole::Admin, UserRole::Warehouse, UserRole::Operations);
+        $recipients = NotificationRecipients::roles(UserRole::Admin, UserRole::Operations)
+            ->merge(NotificationRecipients::warehouseStaff($this->from_warehouse_id, $this->to_warehouse_id));
 
         if ($recipients->isNotEmpty()) {
             Notification::send($recipients, new StockTransferCompletedNotification($this->fresh(['toWarehouse'])));

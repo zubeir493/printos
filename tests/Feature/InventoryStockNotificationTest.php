@@ -107,13 +107,15 @@ test('notifications are only sent to users associated with the warehouse', funct
     Notification::assertNotSentTo($user2, LowStockNotification::class);
 });
 
-test('warehouse role users are notified when stock reaches minimum level', function () {
+test('assigned warehouse staff are notified when stock reaches minimum level', function () {
     Notification::fake();
 
     $warehouse = Warehouse::factory()->create();
     $warehouseUser = User::factory()->create([
         'role' => UserRole::Warehouse,
     ]);
+    $warehouseUser->warehouses()->attach($warehouse);
+    $unassignedUser = User::factory()->create(['role' => UserRole::Warehouse]);
 
     $item = InventoryItem::factory()->create(['low_stock_threshold' => 10]);
 
@@ -136,4 +138,5 @@ test('warehouse role users are notified when stock reaches minimum level', funct
             ->toWebPush($warehouseUser, new stdClass)
             ->toArray()['data']['url'] === route('filament.warehouse.resources.inventory-items.view', ['record' => $item])
     );
+    Notification::assertNotSentTo($unassignedUser, LowStockNotification::class);
 });

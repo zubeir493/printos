@@ -10,6 +10,7 @@ use App\Filament\Resources\StockAdjustments\Schemas\StockAdjustmentForm;
 use App\Filament\Resources\StockAdjustments\Tables\StockAdjustmentsTable;
 use App\Filament\Support\PanelAccess;
 use App\Models\StockAdjustment;
+use App\Support\WarehouseAccess;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -28,7 +29,7 @@ class StockAdjustmentResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        $count = static::getModel()::whereNotIn('status', ['posted', 'cancelled'])->count();
+        $count = static::getEloquentQuery()->whereNotIn('status', ['posted', 'cancelled'])->count();
 
         return $count > 0 ? (string) $count : null;
     }
@@ -47,6 +48,7 @@ class StockAdjustmentResource extends Resource
     {
         return $record instanceof StockAdjustment
             && $record->status === 'draft'
+            && WarehouseAccess::allows($record->warehouse_id)
             && static::canViewAny();
     }
 
@@ -58,7 +60,7 @@ class StockAdjustmentResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()->with(['warehouse']);
+        return WarehouseAccess::scope(parent::getEloquentQuery(), 'stock_adjustments.warehouse_id')->with(['warehouse']);
     }
 
     public static function getRelations(): array

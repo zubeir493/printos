@@ -5,9 +5,9 @@ namespace App\Observers;
 use App\Models\GoodsReceipt;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderItem;
-use App\Models\User;
 use App\Notifications\GoodsReceiptPostedNotification;
 use App\Services\InventoryService;
+use App\Support\NotificationRecipients;
 use App\UserRole;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
@@ -108,12 +108,8 @@ class GoodsReceiptObserver
             return;
         }
 
-        $recipients = User::whereIn('role', [
-            UserRole::Admin->value,
-            UserRole::Warehouse->value,
-            UserRole::Finance->value,
-            UserRole::Operations->value,
-        ])->get();
+        $recipients = NotificationRecipients::roles(UserRole::Admin, UserRole::Finance, UserRole::Operations)
+            ->merge(NotificationRecipients::warehouseStaff($receipt->warehouse_id));
 
         if ($recipients->isNotEmpty()) {
             Notification::send($recipients, new GoodsReceiptPostedNotification($receipt->refresh()));

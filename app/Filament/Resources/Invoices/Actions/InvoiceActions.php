@@ -9,6 +9,7 @@ use Filament\Actions\ActionGroup;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
+use Illuminate\Support\Facades\DB;
 
 class InvoiceActions
 {
@@ -46,10 +47,18 @@ class InvoiceActions
             ->label('Mark Sent')
             ->icon('heroicon-o-paper-airplane')
             ->color('gray')
+            ->authorize(fn (Invoice $record): bool => $record->hasSourceDocument())
             ->visible(fn (Invoice $record): bool => in_array($record->status, ['draft', 'unpaid'], true))
             ->action(function (Invoice $record): void {
-                $record->update(['status' => 'sent']);
-                Notification::make()->title('Invoice marked as sent')->success()->send();
+                $changed = DB::transaction(function () use ($record): bool {
+                    $invoice = Invoice::query()->lockForUpdate()->findOrFail($record->id);
+
+                    return in_array($invoice->status, ['draft', 'unpaid'], true)
+                        && $invoice->update(['status' => 'sent']);
+                });
+                if ($changed) {
+                    Notification::make()->title('Invoice marked as sent')->success()->send();
+                }
             });
     }
 
@@ -62,8 +71,15 @@ class InvoiceActions
             ->requiresConfirmation()
             ->visible(fn (Invoice $record): bool => in_array($record->status, ['draft', 'sent', 'unpaid', 'partial', 'overdue'], true))
             ->action(function (Invoice $record): void {
-                $record->update(['status' => 'cancelled']);
-                Notification::make()->title('Invoice cancelled')->success()->send();
+                $changed = DB::transaction(function () use ($record): bool {
+                    $invoice = Invoice::query()->lockForUpdate()->findOrFail($record->id);
+
+                    return ! in_array($invoice->status, ['paid', 'cancelled'], true)
+                        && $invoice->update(['status' => 'cancelled']);
+                });
+                if ($changed) {
+                    Notification::make()->title('Invoice cancelled')->success()->send();
+                }
             });
     }
 
@@ -83,6 +99,7 @@ class InvoiceActions
             ->label('Email Invoice')
             ->icon('heroicon-o-envelope')
             ->color('gray')
+            ->authorize(fn (Invoice $record): bool => $record->hasSourceDocument() && $record->status !== 'cancelled')
             ->form([
                 TextInput::make('email')
                     ->label('Email Address')
@@ -96,6 +113,10 @@ class InvoiceActions
                     ->rows(3),
             ])
             ->action(function (array $data, Invoice $record): void {
+                $record->refresh();
+                if (! $record->hasSourceDocument() || $record->status === 'cancelled') {
+                    return;
+                }
                 try {
                     $invoiceService = app(InvoiceGeneratorService::class);
                     $sent = $invoiceService->sendInvoiceEmail(
@@ -129,16 +150,15 @@ class InvoiceActions
                         return;
                     }
 
-                    $updates = [
-                        'emailed_at' => now(),
-                        'email_recipient' => $data['email'],
-                    ];
-
-                    if (! in_array($record->status, ['paid', 'cancelled'], true)) {
-                        $updates['status'] = 'sent';
-                    }
-
-                    $record->update($updates);
+                    DB::transaction(function () use ($data, $record): void {
+                        $invoice = Invoice::query()->lockForUpdate()->findOrFail($record->id);
+                        $invoice->emailed_at = now();
+                        $invoice->email_recipient = $data['email'];
+                        if (in_array($invoice->status, ['draft', 'unpaid'], true)) {
+                            $invoice->status = 'sent';
+                        }
+                        $invoice->save();
+                    });
 
                     Notification::make()
                         ->title('Invoice Sent')

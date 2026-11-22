@@ -3,6 +3,7 @@
 namespace App\Filament\Warehouse\Widgets;
 
 use App\Models\InventoryBalance;
+use App\Support\WarehouseAccess;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget as BaseWidget;
@@ -19,7 +20,7 @@ class PendingPickListTable extends BaseWidget
     {
         return $table
             ->query(
-                InventoryBalance::query()
+                WarehouseAccess::scope(InventoryBalance::query(), 'inventory_balances.warehouse_id')
                     ->with(['inventoryItem', 'warehouse'])
                     ->where('quantity_on_hand', '>', 0)
                     ->whereHas('inventoryItem', fn ($query) => $query->where('type', 'wip'))

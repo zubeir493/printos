@@ -5,6 +5,7 @@ namespace App\Support;
 use App\Models\User;
 use App\Models\Warehouse;
 use App\UserRole;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
 class NotificationRecipients
@@ -24,12 +25,20 @@ class NotificationRecipients
      */
     public static function inventoryUsers(?Warehouse $warehouse = null): Collection
     {
-        $users = self::roles(UserRole::Warehouse);
+        return $warehouse ? $warehouse->users()->get() : collect();
+    }
 
-        if ($warehouse) {
-            $users = $users->merge($warehouse->users()->get());
+    /**
+     * @return Collection<int, User>
+     */
+    public static function warehouseStaff(int ...$warehouseIds): Collection
+    {
+        $staff = User::query()->where('role', UserRole::Warehouse);
+
+        foreach ($warehouseIds as $warehouseId) {
+            $staff->whereHas('warehouses', fn (Builder $query): Builder => $query->whereKey($warehouseId));
         }
 
-        return $users->unique('id')->values();
+        return $staff->get();
     }
 }

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\JobOrder;
+use App\Support\WarehouseAccess;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
@@ -33,7 +34,9 @@ class ReturnJobMaterials
             }
         }
 
-        return $rows;
+        $warehouseIds = WarehouseAccess::warehouses()->whereKey(array_column($rows, 'warehouse_id'))->pluck('id')->flip();
+
+        return array_values(array_filter($rows, fn (array $row): bool => $warehouseIds->has($row['warehouse_id'])));
     }
 
     /** @param array<int, array<string, mixed>> $items */
@@ -51,6 +54,7 @@ class ReturnJobMaterials
                 }
                 $request = $job->materialRequests()->lockForUpdate()->findOrFail($item['material_request_id']);
                 $warehouseId = (int) ($item['warehouse_id'] ?? 0);
+                WarehouseAccess::authorize($warehouseId);
                 $outstanding = -(float) $job->materialMovements()
                     ->whereIn('type', ['consumption', 'material_return'])
                     ->where('inventory_item_id', $request->inventory_item_id)->where('warehouse_id', $warehouseId)->sum('quantity');

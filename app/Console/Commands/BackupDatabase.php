@@ -6,6 +6,7 @@ use App\Support\RequiredStorage;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Symfony\Component\Process\Process;
 
 class BackupDatabase extends Command
@@ -36,7 +37,8 @@ class BackupDatabase extends Command
 
         try {
             $database = config('database.connections.'.config('database.default').'.database');
-            $filename = 'backups/database/'.$database.'_'.Carbon::now()->format('Y-m-d_H-i-s').'.sql';
+            $databaseName = Str::slug(pathinfo(str_replace('\\', '/', $database), PATHINFO_FILENAME), '_') ?: 'database';
+            $filename = 'backups/database/'.$databaseName.'_'.Carbon::now()->format('Y-m-d_H-i-s').'.sql';
 
             // Determine the dump command based on database type
             $connection = config('database.default');

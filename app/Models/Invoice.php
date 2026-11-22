@@ -138,6 +138,47 @@ class Invoice extends Model
         return $this->morphMany(Payment::class, 'payable');
     }
 
+    public function hasSourceDocument(): bool
+    {
+        return $this->order_id !== null && match ($this->order_type) {
+            'sales_order' => $this->salesOrder !== null,
+            'purchase_order' => $this->purchaseOrder !== null,
+            'job_order' => $this->jobOrder !== null,
+            'payment' => $this->payment !== null,
+            default => false,
+        };
+    }
+
+    public function syncPaymentBalance(float $paidAmount): void
+    {
+        if ($this->status === 'cancelled') {
+            return;
+        }
+
+        $balance = max(0.0, round((float) $this->total_amount - $paidAmount, 2));
+        $hasPaymentStatus = in_array($this->status, ['paid', 'partial'], true);
+        $openStatus = $hasPaymentStatus ? ($this->options['status_before_payment'] ?? 'sent') : $this->status;
+        if ($this->emailed_at && in_array($openStatus, ['draft', 'unpaid'], true)) {
+            $openStatus = 'sent';
+        }
+
+        $status = match (true) {
+            $balance === 0.0 => 'paid',
+            $openStatus === 'overdue' => 'overdue',
+            $paidAmount > 0 => 'partial',
+            default => $openStatus,
+        };
+
+        $this->fill(['balance_due' => $balance, 'status' => $status]);
+        if (! $hasPaymentStatus && in_array($status, ['paid', 'partial'], true)) {
+            $this->options = [...($this->options ?? []), 'status_before_payment' => $openStatus];
+        }
+
+        if ($this->isDirty(['balance_due', 'status', 'options'])) {
+            $this->saveQuietly();
+        }
+    }
+
     /**
      * Get the related order based on order_type.
      */

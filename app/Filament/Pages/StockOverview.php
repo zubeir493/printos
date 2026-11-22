@@ -5,8 +5,8 @@ namespace App\Filament\Pages;
 use App\Filament\Exports\InventoryBalanceExporter;
 use App\Filament\Widgets\StockOverviewStats;
 use App\Models\InventoryBalance;
-use App\Models\Warehouse;
 use App\Support\Money;
+use App\Support\WarehouseAccess;
 use BackedEnum;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\ExportAction;
@@ -37,7 +37,7 @@ class StockOverview extends Page implements HasForms, HasTable
 
     public function mount(): void
     {
-        $this->warehouse_id = Warehouse::where('is_default', true)->value('id');
+        $this->warehouse_id = WarehouseAccess::defaultId();
     }
 
     protected function getHeaderWidgets(): array
@@ -65,8 +65,8 @@ class StockOverview extends Page implements HasForms, HasTable
             ->schema([
                 Select::make('warehouse_id')
                     ->label('Warehouse')
-                    ->options(Warehouse::pluck('name', 'id'))
-                    ->default(fn () => Warehouse::where('is_default', true)->value('id'))
+                    ->options(fn () => WarehouseAccess::warehouses()->orderBy('name')->pluck('name', 'id'))
+                    ->default(fn (): ?int => WarehouseAccess::defaultId())
                     ->required()
                     ->live(),
             ]);
@@ -81,7 +81,7 @@ class StockOverview extends Page implements HasForms, HasTable
                     return InventoryBalance::query()->whereRaw('1 = 0');
                 }
 
-                return InventoryBalance::query()
+                return WarehouseAccess::scope(InventoryBalance::query(), 'inventory_balances.warehouse_id')
                     ->with('inventoryItem')
                     ->where('warehouse_id', $this->warehouse_id)
                     ->where('quantity_on_hand', '>', 0);

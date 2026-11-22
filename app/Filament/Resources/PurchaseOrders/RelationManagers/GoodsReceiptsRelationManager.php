@@ -4,11 +4,13 @@ namespace App\Filament\Resources\PurchaseOrders\RelationManagers;
 
 use App\Filament\Support\PanelAccess;
 use App\Filament\Tables\Filters\DateRangeFilter;
+use App\Support\WarehouseAccess;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class GoodsReceiptsRelationManager extends RelationManager
 {
@@ -32,6 +34,7 @@ class GoodsReceiptsRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn (Builder $query): Builder => WarehouseAccess::scope($query, 'goods_receipts.warehouse_id'))
             ->recordTitleAttribute('receipt_number')
             ->columns([
                 TextColumn::make('receipt_number')

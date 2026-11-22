@@ -134,13 +134,24 @@ test('approval racing recalculation cannot replace posted payroll rows', functio
     Artisan::call('db:seed', ['--class' => PayrollTaxRuleSeeder::class, '--force' => true]);
     $employee = Employee::factory()->create();
     $run = PayrollRun::factory()->create(['attendance_reviewed_at' => now()]);
-    PayrollRunEmployee::withoutEvents(fn () => $run->employees()->create(['employee_id' => $employee->id, 'basic_salary' => 600, 'gross_earning' => 600, 'net_pay' => 600]));
-    runAuditWorkers(['payroll', 'recalculate'], $run->id);
+    seedEmployeePayrollWork($employee);
+    seedPayrollPeriodPunches($employee, $run->period_start->toDateString(), $run->period_end->toDateString());
+    $originalRow = PayrollRunEmployee::withoutEvents(fn () => $run->employees()->create(['employee_id' => $employee->id, 'basic_salary' => 600, 'gross_earning' => 600, 'net_pay' => 600]));
+
+    $results = runAuditWorkers(['payroll', 'recalculate'], $run->id);
+
     $run->refresh();
-    expect($run->employees()->count())->toBe(1);
-    if ($run->status === 'approved') {
-        expect((float) $run->employees()->value('gross_earning'))->toBe(600.0)->and($run->journal_entry_id)->not->toBeNull();
+    expect(collect($results)->pluck('status')->sort()->values()->all())->toBe(['posted', 'rejected'])
+        ->and($run->employees()->sole()->id)->toBe($originalRow->id);
+
+    if ($results[0]['status'] === 'posted') {
+        expect($run->status)->toBe('approved')
+            ->and((float) $originalRow->fresh()->gross_earning)->toBe(600.0)
+            ->and($run->journal_entry_id)->not->toBeNull();
     } else {
-        expect($run->status)->toBe('draft')->and($run->journal_entry_id)->toBeNull();
+        expect($run->status)->toBe('draft')
+            ->and((float) $originalRow->fresh()->gross_earning)->toBeGreaterThan(600.0)
+            ->and($run->attendance_reviewed_at)->toBeNull()
+            ->and($run->journal_entry_id)->toBeNull();
     }
 });

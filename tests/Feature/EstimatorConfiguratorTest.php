@@ -25,6 +25,18 @@ beforeEach(function (): void {
     $this->actingAs(User::factory()->create(['role' => UserRole::Admin]));
 });
 
+it('shows a single save action and presents pricing before the product fields', function (): void {
+    $page = Livewire::test(CreateCostEstimate::class);
+    $html = $page->html();
+
+    expect(substr_count($html, 'Save estimate'))->toBe(1)
+        ->and($html)->not->toContain('<main class="estimator-config-main">');
+    expect(strpos($html, 'Live estimate'))->toBeLessThan(strpos($html, 'What are we printing?'));
+
+    $page->set('estimatorTab', 'materials')->assertSee('Save estimate');
+    expect(substr_count($page->html(), 'Save estimate'))->toBe(1);
+});
+
 it('starts each product from a compact configurator with its required components', function (string $key, string $family, array $roles): void {
     $page = Livewire::test(CreateCostEstimate::class)->call('selectEstimatorProduct', $key)
         ->assertSet('estimatorTab', 'configure')->assertSet('data.job_type', $family)

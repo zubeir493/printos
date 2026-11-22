@@ -181,6 +181,7 @@ class MaterialIssueApprovalWorkflowTest extends TestCase
         $user = User::factory()->create([
             'role' => UserRole::Warehouse,
         ]);
+        $user->warehouses()->attach($warehouse);
 
         return [$materialRequest, $warehouse, $item, $user];
     }

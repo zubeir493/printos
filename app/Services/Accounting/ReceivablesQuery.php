@@ -3,8 +3,10 @@
 namespace App\Services\Accounting;
 
 use App\Models\JobOrder;
+use App\Models\JournalEntry;
 use App\Models\Payment;
 use App\Models\SalesOrder;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Facades\DB;
@@ -20,7 +22,19 @@ class ReceivablesQuery
             default => 'DATEDIFF(?, order_date)',
         };
         $sales = $this->source(SalesOrder::class, 'sales_orders', 'order_number', 'order_date', $asOfDate)
-            ->whereIn('sales_orders.status', [SalesOrder::STATUS_DEPOSIT_RECEIVED, SalesOrder::STATUS_SUBMITTED, SalesOrder::STATUS_COMPLETED]);
+            ->where(function (QueryBuilder $query) use ($asOfDate): void {
+                $afterDate = CarbonImmutable::parse($asOfDate)->startOfDay()->addDay();
+                $reversedLater = JournalEntry::query()->select('source_id')
+                    ->where('source_type', SalesOrder::class)
+                    ->where('status', 'posted')
+                    ->whereNull('reversal_of_journal_entry_id')
+                    ->whereDate('date', '<=', $asOfDate)
+                    ->where('voided_at', '>=', $afterDate);
+
+                $query->whereIn('sales_orders.status', [SalesOrder::STATUS_DEPOSIT_RECEIVED, SalesOrder::STATUS_SUBMITTED, SalesOrder::STATUS_COMPLETED])
+                    ->orWhere(fn (QueryBuilder $query) => $query->where('sales_orders.status', SalesOrder::STATUS_VOID)
+                        ->whereIn('sales_orders.id', $reversedLater));
+            });
         $jobs = $this->source(JobOrder::class, 'job_orders', 'job_order_number', 'submission_date', $asOfDate)
             ->where('job_orders.production_mode', 'make_to_order')
             ->whereIn('job_orders.status', ['design', 'production', 'completed']);
@@ -47,8 +61,8 @@ class ReceivablesQuery
     private function source(string $model, string $table, string $number, string $date, string $asOfDate): QueryBuilder
     {
         $payments = Payment::query()->select('payable_id')->selectRaw('SUM(amount) as paid_amount')
-            ->where('payable_type', $model)->where('direction', 'inbound')->whereNull('voided_at')
-            ->whereDate('payment_date', '<=', $asOfDate)->groupBy('payable_id');
+            ->where('payable_type', $model)->where('direction', 'inbound')
+            ->effectiveOn($asOfDate)->groupBy('payable_id');
         $query = $model::query()->leftJoinSub($payments, 'received_payments', fn ($join) => $join->on('received_payments.payable_id', '=', $table.'.id'))
             ->select([$table.'.partner_id', $table.'.due_date', $table.'.subtotal', $table.'.tax_amount', $table.'.total', $table.'.status', $table.'.created_at', $table.'.updated_at'])
             ->selectRaw("({$table}.id * 2 + ".($model === JobOrder::class ? 1 : 0).") as id, {$table}.id as source_id")

@@ -10,12 +10,17 @@ use App\Models\Payment;
 use App\Models\SalesOrder;
 use App\Models\SalesOrderItem;
 use App\Models\Setting;
+use App\Models\User;
 use App\Models\Warehouse;
+use App\Notifications\InvoiceOverdueNotification;
 use App\Services\Accounting\VoidPaymentJournalEntry;
 use App\Services\InvoiceGeneratorService;
+use App\Services\VoidSalesOrder;
+use App\UserRole;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Notification;
 
 uses(RefreshDatabase::class);
 
@@ -236,6 +241,55 @@ test('update overdue invoices command marks unpaid and partial invoices as overd
     expect($unpaidInvoice->fresh()->status)->toBe('overdue');
     expect($partialInvoice->fresh()->status)->toBe('overdue');
     expect($dueTodayInvoice->fresh()->status)->toBe('unpaid');
+});
+
+test('nightly invoice reconciliation preserves cancellation and alerts only on a new overdue transition', function (): void {
+    Notification::fake();
+    User::factory()->create(['role' => UserRole::Finance]);
+    $customer = Partner::factory()->create();
+    $warehouse = Warehouse::factory()->create();
+    $newOrder = fn (): SalesOrder => SalesOrder::create([
+        'partner_id' => $customer->id,
+        'warehouse_id' => $warehouse->id,
+        'order_date' => today()->subDays(30),
+        'payment_mode' => 'credit',
+        'status' => SalesOrder::STATUS_SUBMITTED,
+        'subtotal' => 500,
+        'total' => 500,
+    ]);
+    $newInvoice = fn (SalesOrder $order, string $status, mixed $dueDate): Invoice => $order->invoices()->create([
+        'order_type' => 'sales_order',
+        'invoice_type' => 'sales',
+        'partner_id' => $customer->id,
+        'invoice_date' => today()->subDays(30),
+        'due_date' => $dueDate,
+        'subtotal' => 500,
+        'tax_amount' => 0,
+        'total_amount' => 500,
+        'status' => $status,
+        'filename' => 'nightly-invoice.pdf',
+        'file_path' => 'invoices/nightly-invoice.pdf',
+    ]);
+
+    $voidedSale = $newOrder();
+    $cancelled = $newInvoice($voidedSale, 'sent', today()->subDay());
+    app(VoidSalesOrder::class)->handle($voidedSale);
+
+    $openSale = $newOrder();
+    $sent = $newInvoice($openSale, 'sent', today()->addDays(5));
+    $draft = $newInvoice($openSale, 'draft', today()->addDays(5));
+    $overdue = $newInvoice($openSale, 'sent', today()->subDay());
+    foreach (range(1, 2) as $night) {
+        $this->artisan('invoices:fix-balances')->assertSuccessful();
+        $this->artisan('invoices:update-overdue')->assertSuccessful();
+    }
+
+    expect($cancelled->fresh()->status)->toBe('cancelled')
+        ->and($cancelled->fresh()->balance_due)->toBe('0.00')
+        ->and($sent->fresh()->status)->toBe('sent')
+        ->and($draft->fresh()->status)->toBe('draft')
+        ->and($overdue->fresh()->status)->toBe('overdue');
+    Notification::assertSentTimes(InvoiceOverdueNotification::class, 1);
 });
 
 test('invoice due dates are overdue only after the selected calendar day', function () {

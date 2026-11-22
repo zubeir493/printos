@@ -10,6 +10,7 @@ use App\Filament\Resources\Dispatches\Schemas\DispatchForm;
 use App\Filament\Resources\Dispatches\Tables\DispatchesTable;
 use App\Filament\Support\PanelAccess;
 use App\Models\Dispatch;
+use App\Support\WarehouseAccess;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -27,7 +28,7 @@ class DispatchResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        $count = static::getModel()::whereNotIn('status', ['completed', 'cancelled'])->count();
+        $count = static::getEloquentQuery()->whereNotIn('status', ['completed', 'cancelled'])->count();
 
         return $count > 0 ? (string) $count : null;
     }
@@ -50,7 +51,7 @@ class DispatchResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()->with(['jobOrder.partner']);
+        return WarehouseAccess::scope(parent::getEloquentQuery(), 'dispatches.warehouse_id')->with(['jobOrder.partner']);
     }
 
     public static function getRelations(): array

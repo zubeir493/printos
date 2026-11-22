@@ -9,6 +9,7 @@ use App\Filament\Resources\StockTransfers\Schemas\StockTransferForm;
 use App\Filament\Resources\StockTransfers\Tables\StockTransfersTable;
 use App\Filament\Support\PanelAccess;
 use App\Models\StockTransfer;
+use App\Support\WarehouseAccess;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -26,14 +27,17 @@ class StockTransferResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        $count = static::getModel()::whereNotIn('status', ['completed', 'cancelled'])->count();
+        $count = static::getEloquentQuery()->whereNotIn('status', ['completed', 'cancelled'])->count();
 
         return $count > 0 ? (string) $count : null;
     }
 
     public static function canEdit($record): bool
     {
-        return PanelAccess::canAccessWarehouseSection() && $record->status === 'draft';
+        return PanelAccess::canAccessWarehouseSection()
+            && $record->status === 'draft'
+            && WarehouseAccess::allows($record->from_warehouse_id)
+            && WarehouseAccess::allows($record->to_warehouse_id);
     }
 
     public static function canDelete($record): bool
@@ -63,7 +67,7 @@ class StockTransferResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()
+        return WarehouseAccess::scope(parent::getEloquentQuery(), 'stock_transfers.from_warehouse_id', 'stock_transfers.to_warehouse_id')
             ->with(['fromWarehouse', 'toWarehouse', 'items.inventoryItem'])
             ->withCount('items');
     }

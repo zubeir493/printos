@@ -3,6 +3,7 @@
 namespace App\Filament\Widgets;
 
 use App\Models\Dispatch;
+use App\Support\WarehouseAccess;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 
@@ -10,10 +11,11 @@ class DispatchesStatsWidget extends BaseWidget
 {
     protected function getStats(): array
     {
-        $totalDispatches = Dispatch::count();
-        $pendingDispatches = Dispatch::whereNull('delivery_date')->count();
-        $deliveredToday = Dispatch::whereDate('delivery_date', today())->count();
-        $lateDispatches = Dispatch::whereNull('delivery_date')
+        $dispatches = WarehouseAccess::scope(Dispatch::query(), 'dispatches.warehouse_id');
+        $totalDispatches = (clone $dispatches)->count();
+        $pendingDispatches = (clone $dispatches)->whereNull('delivery_date')->count();
+        $deliveredToday = (clone $dispatches)->whereDate('delivery_date', today())->count();
+        $lateDispatches = (clone $dispatches)->whereNull('delivery_date')
             ->where('created_at', '<', now()->subDays(3))
             ->count();
 

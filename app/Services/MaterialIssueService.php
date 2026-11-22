@@ -11,6 +11,7 @@ use App\Notifications\MaterialIssueApprovalRequestedNotification;
 use App\Notifications\MaterialIssueDecisionNotification;
 use App\Notifications\MaterialsIssuedNotification;
 use App\Support\NotificationRecipients;
+use App\Support\WarehouseAccess;
 use App\UserRole;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -25,6 +26,8 @@ class MaterialIssueService
 
     public function issue(MaterialRequest $materialRequest, int $warehouseId, float $quantity, ?User $actor = null): array
     {
+        WarehouseAccess::authorize($warehouseId, $actor);
+
         return DB::transaction(function () use ($materialRequest, $warehouseId, $quantity, $actor) {
             $job = $this->lockActiveJob($materialRequest->job_order_id, $actor);
             $materialRequest = MaterialRequest::query()

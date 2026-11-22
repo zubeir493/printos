@@ -3,6 +3,7 @@
 namespace App\Filament\Warehouse\Widgets;
 
 use App\Models\InventoryBalance;
+use App\Support\WarehouseAccess;
 use LaravelDaily\FilaWidgets\Data\BreakdownWidgetData;
 use LaravelDaily\FilaWidgets\Widgets\BreakdownWidget;
 
@@ -25,7 +26,7 @@ class WipAvailabilityWidget extends BreakdownWidget
     protected function getData(): BreakdownWidgetData
     {
         return BreakdownWidgetData::fromCollection(
-            InventoryBalance::query()
+            WarehouseAccess::scope(InventoryBalance::query(), 'inventory_balances.warehouse_id')
                 ->join('inventory_items', 'inventory_balances.inventory_item_id', '=', 'inventory_items.id')
                 ->join('warehouses', 'inventory_balances.warehouse_id', '=', 'warehouses.id')
                 ->where('inventory_items.type', 'wip')

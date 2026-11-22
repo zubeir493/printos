@@ -2,7 +2,6 @@
 
 use App\Filament\Finance\Pages\GeneralLedgerReport;
 use App\Filament\Resources\BankTransfers\Pages\EditBankTransfer;
-use App\Filament\Resources\Invoices\Pages\CreateInvoice;
 use App\Filament\Resources\PurchaseOrderItems\Pages\EditPurchaseOrderItem;
 use App\Filament\Resources\PurchaseOrderItems\PurchaseOrderItemResource;
 use App\Filament\Resources\PurchaseOrders\Pages\ListPurchaseOrders;
@@ -38,6 +37,7 @@ use App\Services\Accounting\VoidPaymentJournalEntry;
 use App\Services\Hr\GeneratePayrollPayments;
 use App\Services\Hr\PostPayrollRun;
 use App\Services\Hr\RepayEmployeeLoan;
+use App\Services\InvoiceGeneratorService;
 use App\Services\VoidSalesOrder;
 use App\UserRole;
 use Database\Seeders\PayrollTaxRuleSeeder;
@@ -211,8 +211,13 @@ it('bonds cannot be recovered again from a stale snapshot', function (): void {
 it('invoices do not charge VAT when disabled', function (): void {
     workflowFinance();
     Setting::getSettings()->update(['vat_enabled' => false, 'vat_rate' => 15]);
-    Livewire::test(CreateInvoice::class)
-        ->set('data.subtotal', 100)->assertFormSet(['tax_amount' => 0.0, 'total_amount' => 100.0]);
+    [$sale] = workflowSale([10]);
+    config(['filesystems.private_disk' => 'local']);
+    Storage::fake('local');
+
+    $invoice = app(InvoiceGeneratorService::class)->generateFromSalesOrder($sale)['invoice'];
+
+    expect($invoice->tax_amount)->toBe('0.00')->and($invoice->total_amount)->toBe('100.00');
 });
 
 it('manual payroll deductions post a balanced journal', function (): void {
@@ -241,6 +246,7 @@ it('completed stock transfer cannot be reassigned', function (): void {
     $transfer->post();
     Filament::setCurrentPanel(Filament::getPanel('warehouse'));
     $this->actingAs(User::factory()->create(['role' => UserRole::Warehouse]));
+    auth()->user()->warehouses()->attach([$from->id, $to->id, $other->id]);
     Livewire::test(EditStockTransfer::class, ['record' => $transfer->id])
         ->assertRedirect();
     expect(fn () => $transfer->update(['to_warehouse_id' => $other->id]))->toThrow(RuntimeException::class);
@@ -291,6 +297,7 @@ it('warehouse users can receive purchases through their own panel', function ():
     [$po, $line, $warehouse] = workflowPurchase();
     Filament::setCurrentPanel(Filament::getPanel('warehouse'));
     $this->actingAs(User::factory()->create(['role' => UserRole::Warehouse]));
+    auth()->user()->warehouses()->attach($warehouse);
     expect(Route::has('filament.warehouse.resources.purchase-orders.view'))->toBeTrue();
     Livewire::test(ListPurchaseOrders::class)
         ->assertActionVisible(TestAction::make('receive')->table($po))
@@ -399,8 +406,14 @@ it('invalid adjustment posting rolls back its status and inventory', function ()
 it('enabled invoice VAT is rounded to currency precision', function (): void {
     workflowFinance();
     Setting::getSettings()->update(['vat_enabled' => true, 'vat_rate' => 15]);
-    Livewire::test(CreateInvoice::class)
-        ->set('data.subtotal', 0.11)->assertFormSet(['tax_amount' => 0.02, 'total_amount' => 0.13]);
+    [$sale] = workflowSale([1]);
+    $sale->salesOrderItems()->sole()->update(['unit_price' => 0.11, 'total' => 0.11]);
+    config(['filesystems.private_disk' => 'local']);
+    Storage::fake('local');
+
+    $invoice = app(InvoiceGeneratorService::class)->generateFromSalesOrder($sale->refresh())['invoice'];
+
+    expect($invoice->tax_amount)->toBe('0.02')->and($invoice->total_amount)->toBe('0.13');
 });
 
 function workflowFinance(): void

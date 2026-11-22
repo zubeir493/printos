@@ -5,9 +5,9 @@ namespace App\Filament\Resources\StockAdjustments\Schemas;
 use App\Models\InventoryBalance;
 use App\Models\InventoryItem;
 use App\Models\StockAdjustment;
-use App\Models\Warehouse;
 use App\Services\StockAdjustmentItemImportService;
 use App\Support\StockTransferQuantity;
+use App\Support\WarehouseAccess;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
@@ -22,6 +22,7 @@ use Filament\Schemas\Components\Section as ComponentsSection;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\HtmlString;
 use Livewire\Features\SupportFileUploads\FileUploadConfiguration;
@@ -48,8 +49,8 @@ class StockAdjustmentForm
                             ->readOnly()
                             ->dehydrated(false),
                         Select::make('warehouse_id')
-                            ->relationship('warehouse', 'name')
-                            ->default(fn () => Warehouse::where('is_default', true)->value('id'))
+                            ->relationship('warehouse', 'name', modifyQueryUsing: fn (Builder $query): Builder => WarehouseAccess::scope($query, 'warehouses.id'))
+                            ->default(fn (): ?int => WarehouseAccess::defaultId())
                             ->required()
                             ->reactive()
                             ->afterStateUpdated(fn ($set) => $set('items', []))
@@ -97,6 +98,7 @@ class StockAdjustmentForm
                                         return;
                                     }
 
+                                    WarehouseAccess::authorize((int) $warehouseId);
                                     $file = $data['import_file'];
                                     $path = is_array($file) ? array_key_first($file) : $file;
 
@@ -161,7 +163,7 @@ class StockAdjustmentForm
                             ->afterStateUpdated(function ($state, Set $set, Get $get): void {
                                 $warehouseId = $get('../../warehouse_id');
 
-                                if ($state && $warehouseId) {
+                                if ($state && $warehouseId && WarehouseAccess::allows((int) $warehouseId)) {
                                     $item = InventoryItem::find($state);
                                     $balance = InventoryBalance::where('inventory_item_id', $state)
                                         ->where('warehouse_id', $warehouseId)

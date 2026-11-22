@@ -2,8 +2,7 @@
 
 namespace Database\Factories;
 
-use App\Models\FromWarehouse;
-use App\Models\ToWarehouse;
+use App\Models\Warehouse;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 class StockTransferFactory extends Factory
@@ -15,8 +14,8 @@ class StockTransferFactory extends Factory
     {
         return [
             'transfer_number' => 'ST-TEST-'.fake()->unique()->numerify('########'),
-            'from_warehouse_id' => FromWarehouse::factory(),
-            'to_warehouse_id' => ToWarehouse::factory(),
+            'from_warehouse_id' => Warehouse::factory(),
+            'to_warehouse_id' => Warehouse::factory(),
             'transfer_date' => fake()->date(),
             'status' => fake()->randomElement(['draft', 'completed', 'cancelled']),
         ];

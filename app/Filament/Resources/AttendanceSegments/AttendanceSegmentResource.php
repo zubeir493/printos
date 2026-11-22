@@ -84,6 +84,7 @@ class AttendanceSegmentResource extends Resource
                 TextColumn::make('status')->badge(),
                 TextColumn::make('correction_reason')->label('Reason')->limit(32)->toggleable(isToggledHiddenByDefault: true),
             ])
+            ->searchable(['fp_no'])
             ->searchPlaceholder('Search name, employee ID or FP number')
             ->filters([
                 SelectFilter::make('employee')->relationship('employee', 'first_name')

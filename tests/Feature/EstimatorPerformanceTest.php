@@ -29,12 +29,15 @@ it('renders only the active panel without repeated database work', function (): 
     $queries = DB::getQueryLog();
     DB::disableQueryLog();
     $count = preg_match_all('/<(?:input|select|textarea)\b/', $html);
+    $document = new DOMDocument;
+    $document->loadHTML($html, LIBXML_NOERROR | LIBXML_NOWARNING);
+    $renderedPanels = (new DOMXPath($document))->query('//*[@role="tabpanel"][*]');
     fwrite(STDOUT, json_encode(['estimator_profile' => ['milliseconds' => round((microtime(true) - $started) * 1000), 'queries' => count($queries), 'controls' => $count, 'html_bytes' => strlen($html)]]).PHP_EOL);
     $page->assertSee('Text pages (excludes cover)');
     expect($page->instance()->estimatorResult->isComplete())->toBeTrue()
         ->and(count($queries))->toBeLessThan(25)->and($count)->toBeLessThan(25)
         ->and(strlen($html))->toBeLessThan(200000)
-        ->and(substr_count($html, 'role="tabpanel"'))->toBe(1);
+        ->and($renderedPanels?->length)->toBe(1);
     $page->set('estimatorTab', 'production')->assertSeeHtml('fi-fo-table-repeater')->assertSee('Calculated machine time');
     $page->set('estimatorTab', 'materials')->assertSee('I have verified this layout, grain, folding and finishing allowances');
 });

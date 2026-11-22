@@ -9,9 +9,9 @@ use App\Models\GoodsReceipt;
 use App\Models\Payment;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderItem;
-use App\Models\Warehouse;
 use App\Support\Money;
 use App\Support\PaymentMethod;
+use App\Support\WarehouseAccess;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
@@ -71,8 +71,8 @@ class PurchaseOrderActions
                 Grid::make(2)->schema([
                     Select::make('warehouse_id')
                         ->label('Receiving Warehouse')
-                        ->options(fn (): array => Warehouse::query()->orderBy('name')->pluck('name', 'id')->all())
-                        ->default(fn () => Warehouse::where('is_default', true)->value('id'))
+                        ->options(fn (): array => WarehouseAccess::warehouses()->orderBy('name')->pluck('name', 'id')->all())
+                        ->default(fn (): ?int => WarehouseAccess::defaultId())
                         ->searchable()
                         ->preload()
                         ->required(),

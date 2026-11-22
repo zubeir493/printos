@@ -55,7 +55,7 @@ class StockTransferQuantity
 
     public static function availableDisplayQuantity(?int $inventoryItemId, ?int $warehouseId): ?float
     {
-        if (! $inventoryItemId || ! $warehouseId) {
+        if (! $inventoryItemId || ! $warehouseId || ! WarehouseAccess::allows($warehouseId)) {
             return null;
         }
 

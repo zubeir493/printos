@@ -6,7 +6,7 @@ use App\Models\InventoryBalance;
 use App\Models\InventoryItem;
 use App\Models\JobOrder;
 use App\Models\MaterialRequest;
-use App\Models\Warehouse;
+use App\Support\WarehouseAccess;
 use Closure;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
@@ -23,8 +23,8 @@ class MaterialRequestActionForms
     {
         return Select::make('warehouse_id')
             ->label('Warehouse')
-            ->options(fn (): array => Warehouse::query()->orderBy('name')->pluck('name', 'id')->all())
-            ->default(fn () => Warehouse::where('is_default', true)->value('id'))
+            ->options(fn (): array => WarehouseAccess::warehouses()->orderBy('name')->pluck('name', 'id')->all())
+            ->default(fn (): ?int => WarehouseAccess::defaultId())
             ->required()
             ->searchable()
             ->live();
@@ -229,7 +229,7 @@ class MaterialRequestActionForms
 
     protected static function availableStock(int $warehouseId, int $inventoryItemId): float
     {
-        if (! $warehouseId || ! $inventoryItemId) {
+        if (! $warehouseId || ! $inventoryItemId || ! WarehouseAccess::allows($warehouseId)) {
             return 0.0;
         }
 

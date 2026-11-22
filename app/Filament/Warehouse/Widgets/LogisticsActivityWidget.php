@@ -5,6 +5,7 @@ namespace App\Filament\Warehouse\Widgets;
 use App\Filament\Widgets\Concerns\HasFilaWidgetMetrics;
 use App\Models\Dispatch;
 use App\Models\GoodsReceipt;
+use App\Support\WarehouseAccess;
 use LaravelDaily\FilaWidgets\Data\HeatmapCalendarWidgetData;
 use LaravelDaily\FilaWidgets\Widgets\HeatmapCalendarWidget;
 
@@ -22,8 +23,10 @@ class LogisticsActivityWidget extends HeatmapCalendarWidget
 
     protected function getData(): HeatmapCalendarWidgetData
     {
-        $entries = collect($this->heatmap(GoodsReceipt::query(), dateColumn: 'receipt_date', precision: 0))
-            ->mergeRecursive($this->heatmap(Dispatch::query(), dateColumn: 'delivery_date', precision: 0))
+        $receipts = WarehouseAccess::scope(GoodsReceipt::query(), 'goods_receipts.warehouse_id');
+        $dispatches = WarehouseAccess::scope(Dispatch::query(), 'dispatches.warehouse_id');
+        $entries = collect($this->heatmap($receipts, dateColumn: 'receipt_date', precision: 0))
+            ->mergeRecursive($this->heatmap($dispatches, dateColumn: 'delivery_date', precision: 0))
             ->map(fn ($value): float => (float) collect($value)->sum())
             ->all();
 

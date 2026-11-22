@@ -3,7 +3,10 @@
 namespace App\Filament\Finance\Pages;
 
 use App\Filament\Exports\PayablesAgingExporter;
+use App\Models\Account;
 use App\Models\Invoice;
+use App\Models\JournalItem;
+use App\Models\Payment;
 use App\Models\PurchaseOrder;
 use App\Support\Money;
 use BackedEnum;
@@ -23,6 +26,7 @@ use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Query\JoinClause;
 use UnitEnum;
 
 class PayablesAgingReport extends Page implements HasForms, HasTable
@@ -110,47 +114,57 @@ class PayablesAgingReport extends Page implements HasForms, HasTable
 
     protected function agingQuery(): Builder
     {
-        $invoiceQuery = Invoice::query()
-            ->selectRaw('invoices.id as id')
-            ->selectRaw('invoices.invoice_number as po_number')
-            ->selectRaw('invoices.partner_id as partner_id')
-            ->selectRaw('invoices.invoice_date as order_date')
-            ->selectRaw('invoices.due_date as due_date')
-            ->selectRaw("'received' as status")
-            ->selectRaw('invoices.created_at as created_at')
-            ->selectRaw('invoices.updated_at as updated_at')
-            ->selectRaw('invoices.subtotal as subtotal')
-            ->selectRaw('invoices.tax_amount as tax_amount')
-            ->selectRaw('invoices.total_amount as total')
-            ->selectRaw('invoices.balance_due as balance')
+        $invoices = $this->withPostedPayable(Invoice::query(), Invoice::class)
+            ->selectRaw('invoices.id * 2 + 1 as id, invoices.invoice_number as po_number')
+            ->addSelect('invoices.partner_id', 'invoices.due_date', 'invoices.status', 'invoices.created_at', 'invoices.updated_at', 'invoices.subtotal', 'invoices.tax_amount')
+            ->selectRaw('invoices.invoice_date as order_date, posted_payable.amount as total')
+            ->selectRaw('posted_payable.amount - COALESCE(disbursements.paid_amount, 0) as balance')
             ->where('invoices.invoice_type', 'purchase')
-            ->whereNotIn('invoices.status', ['cancelled', 'paid'])
-            ->where('invoices.balance_due', '>', 0)
-            ->where(function ($query): void {
-                $query->whereNull('invoices.order_type')
-                    ->orWhere('invoices.order_type', '!=', 'purchase_order')
-                    ->orWhereNull('invoices.order_id');
-            })
-            ->when($this->asOfDate, fn ($query) => $query->whereDate('invoices.invoice_date', '<=', Carbon::parse($this->asOfDate)->toDateString()));
+            ->where(fn (Builder $query) => $query->whereNull('invoices.order_type')
+                ->orWhere('invoices.order_type', '!=', 'purchase_order')
+                ->orWhereNull('invoices.order_id'))
+            ->whereDate('invoices.invoice_date', '<=', $this->asOfDate);
+
+        $orders = $this->withPostedPayable(PurchaseOrder::query(), PurchaseOrder::class)
+            ->selectRaw('purchase_orders.id * 2 as id, purchase_orders.po_number')
+            ->addSelect('purchase_orders.partner_id', 'purchase_orders.due_date', 'purchase_orders.status', 'purchase_orders.created_at', 'purchase_orders.updated_at', 'purchase_orders.subtotal', 'purchase_orders.tax_amount')
+            ->selectRaw('purchase_orders.order_date, posted_payable.amount as total')
+            ->selectRaw('posted_payable.amount - COALESCE(disbursements.paid_amount, 0) as balance')
+            ->where('purchase_orders.status', 'received')
+            ->whereDate('purchase_orders.order_date', '<=', $this->asOfDate);
 
         return PurchaseOrder::query()
+            ->fromSub($orders->toBase()->unionAll($invoices->toBase()), 'purchase_orders')
+            ->select('purchase_orders.*')
+            ->where('balance', '>', 0)
             ->with('partner')
-            ->selectRaw('purchase_orders.id as id')
-            ->selectRaw('purchase_orders.po_number as po_number')
-            ->selectRaw('purchase_orders.partner_id as partner_id')
-            ->selectRaw('purchase_orders.order_date as order_date')
-            ->selectRaw('purchase_orders.due_date as due_date')
-            ->selectRaw('purchase_orders.status as status')
-            ->selectRaw('purchase_orders.created_at as created_at')
-            ->selectRaw('purchase_orders.updated_at as updated_at')
-            ->selectRaw('purchase_orders.subtotal as subtotal')
-            ->selectRaw('purchase_orders.tax_amount as tax_amount')
-            ->selectRaw('purchase_orders.total as total')
-            ->selectRaw('(COALESCE(purchase_orders.total, 0) - COALESCE((SELECT SUM(payments.amount) FROM payments WHERE payments.payable_type = ? AND payments.payable_id = purchase_orders.id AND payments.payment_date <= ? AND payments.voided_at IS NULL), 0)) as balance', [PurchaseOrder::class, $this->asOfDate])
-            ->whereRaw('(COALESCE(purchase_orders.total, 0) - COALESCE((SELECT SUM(payments.amount) FROM payments WHERE payments.payable_type = ? AND payments.payable_id = purchase_orders.id AND payments.payment_date <= ? AND payments.voided_at IS NULL), 0)) > 0', [PurchaseOrder::class, $this->asOfDate])
-            ->when($this->asOfDate, fn ($query) => $query->whereDate('purchase_orders.order_date', '<=', Carbon::parse($this->asOfDate)->toDateString()))
-            ->unionAll($invoiceQuery)
             ->orderByDesc('order_date');
+    }
+
+    /** @param class-string<Invoice|PurchaseOrder> $model */
+    private function withPostedPayable(Builder $query, string $model): Builder
+    {
+        $afterDate = Carbon::parse($this->asOfDate)->startOfDay()->addDay();
+        $postedPayable = JournalItem::query()
+            ->join('journal_entries', 'journal_entries.id', '=', 'journal_items.journal_entry_id')
+            ->join('accounts', 'accounts.id', '=', 'journal_items.account_id')
+            ->where('accounts.code', Account::CODE_AP)
+            ->where('journal_entries.source_type', $model)
+            ->where('journal_entries.status', 'posted')
+            ->whereNull('journal_entries.reversal_of_journal_entry_id')
+            ->whereDate('journal_entries.date', '<=', $this->asOfDate)
+            ->where(fn (Builder $query) => $query->whereNull('journal_entries.posted_at')->orWhere('journal_entries.posted_at', '<', $afterDate))
+            ->where(fn (Builder $query) => $query->whereNull('journal_entries.voided_at')->orWhere('journal_entries.voided_at', '>=', $afterDate))
+            ->select('journal_entries.source_id')->selectRaw('SUM(journal_items.credit - journal_items.debit) as amount')
+            ->groupBy('journal_entries.source_id');
+        $payments = Payment::query()->where('payable_type', $model)->where('direction', 'outbound')
+            ->effectiveOn($this->asOfDate)
+            ->select('payable_id')->selectRaw('SUM(amount) as paid_amount')->groupBy('payable_id');
+        $key = $query->getModel()->getQualifiedKeyName();
+
+        return $query
+            ->joinSub($postedPayable, 'posted_payable', fn (JoinClause $join) => $join->on('posted_payable.source_id', '=', $key))
+            ->leftJoinSub($payments, 'disbursements', fn (JoinClause $join) => $join->on('disbursements.payable_id', '=', $key));
     }
 
     public function ageDays($record): int

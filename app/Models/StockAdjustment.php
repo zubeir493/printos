@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Support\SequentialNumber;
+use App\Support\WarehouseAccess;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -81,13 +82,23 @@ class StockAdjustment extends Model
 
     public function save(array $options = []): bool
     {
+        WarehouseAccess::authorizeRecord($this, 'warehouse_id');
+
         return DB::transaction(fn (): bool => parent::save($options));
+    }
+
+    public function delete(): ?bool
+    {
+        WarehouseAccess::authorizeRecord($this, 'warehouse_id');
+
+        return parent::delete();
     }
 
     public function post(): void
     {
         DB::transaction(function (): void {
             $this->setRawAttributes(self::query()->lockForUpdate()->findOrFail($this->id)->getAttributes(), true);
+            WarehouseAccess::authorizeRecord($this, 'warehouse_id');
             $this->load('items.inventoryItem');
             if ($this->posted_at !== null) {
                 return;

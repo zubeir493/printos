@@ -22,7 +22,8 @@ class DispatchObserver
 
     public function created(Dispatch $dispatch): void
     {
-        $recipients = NotificationRecipients::roles(UserRole::Warehouse, UserRole::Operations, UserRole::Sales);
+        $recipients = NotificationRecipients::roles(UserRole::Operations, UserRole::Sales)
+            ->merge(NotificationRecipients::warehouseStaff($dispatch->warehouse_id));
 
         if ($recipients->isNotEmpty()) {
             Notification::send($recipients, new DispatchCreatedNotification($dispatch));
@@ -43,8 +44,7 @@ class DispatchObserver
             UserRole::Admin,
             UserRole::Sales,
             UserRole::Operations,
-            UserRole::Warehouse,
-        );
+        )->merge(NotificationRecipients::warehouseStaff($dispatch->warehouse_id));
 
         if ($recipients->isNotEmpty()) {
             Notification::send($recipients, new DispatchStatusChangedNotification($dispatch->loadMissing('jobOrder')));

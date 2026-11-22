@@ -10,6 +10,7 @@ use App\Filament\Resources\StockMovements\Schemas\StockMovementInfolist;
 use App\Filament\Resources\StockMovements\Tables\StockMovementsTable;
 use App\Filament\Support\PanelAccess;
 use App\Models\StockMovement;
+use App\Support\WarehouseAccess;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -48,12 +49,13 @@ class StockMovementResource extends Resource
     public static function table(Table $table): Table
     {
         return StockMovementsTable::configure($table)
-            ->recordUrl(fn($record) => static::getUrl('view', ['record' => $record]));
+            ->recordUrl(fn ($record) => static::getUrl('view', ['record' => $record]));
     }
 
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()->with(['inventoryItem', 'warehouse']);
+        return WarehouseAccess::scope(parent::getEloquentQuery(), 'stock_movements.warehouse_id')
+            ->with(['inventoryItem', 'warehouse']);
     }
 
     public static function getRelations(): array

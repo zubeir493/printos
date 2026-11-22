@@ -30,6 +30,7 @@ it('creates dispatch stock movement while lazy loading is prevented', function (
     $warehouse = Warehouse::factory()->create([
         'is_default' => true,
     ]);
+    auth()->user()->warehouses()->attach($warehouse);
 
     $jobOrder = JobOrder::factory()->create([
         'partner_id' => Partner::factory(),
@@ -70,12 +71,16 @@ it('creates dispatch stock movement while lazy loading is prevented', function (
 
     try {
         Livewire::test(CreateDispatch::class)
+            ->assertSee('Quantity to dispatch')
+            ->assertSee('Select a job and warehouse to see the quantity available.')
             ->fillForm([
                 'job_order_id' => $jobOrder->id,
                 'warehouse_id' => $warehouse->id,
                 'delivery_date' => now()->toDateString(),
                 'quantity' => 10,
             ])
+            ->assertSee('Remaining produced: 50. In this warehouse: 50. Available to dispatch: 50.')
+            ->assertSee('Saving updates stock immediately.')
             ->call('create')
             ->assertHasNoFormErrors();
     } finally {
@@ -111,6 +116,7 @@ it('halts dispatch creation with a notification when stock is insufficient', fun
     $warehouse = Warehouse::factory()->create([
         'is_default' => true,
     ]);
+    auth()->user()->warehouses()->attach($warehouse);
 
     $jobOrder = JobOrder::factory()->create([
         'partner_id' => Partner::factory(),
@@ -184,6 +190,7 @@ it('halts dispatch editing with a notification when the increase exceeds availab
     $warehouse = Warehouse::factory()->create([
         'is_default' => true,
     ]);
+    auth()->user()->warehouses()->attach($warehouse);
 
     $jobOrder = JobOrder::factory()->create([
         'partner_id' => Partner::factory(),
@@ -258,8 +265,10 @@ it('updates dispatch status from table actions', function (string $action, strin
         'role' => UserRole::Warehouse,
     ]));
 
+    $warehouse = Warehouse::factory()->create();
+    auth()->user()->warehouses()->attach($warehouse);
     $dispatch = Dispatch::factory()->create([
-        'warehouse_id' => Warehouse::factory(),
+        'warehouse_id' => $warehouse->id,
         'job_order_id' => JobOrder::factory([
             'partner_id' => Partner::factory(),
             'status' => 'production',

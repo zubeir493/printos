@@ -1,5 +1,6 @@
 <?php
 
+use App\Filament\Pages\Settings;
 use App\Filament\Resources\OvertimeRules\OvertimeRuleResource;
 use App\Filament\Resources\PayPolicies\Pages\ManagePayPolicies;
 use App\Filament\Resources\PayrollRuns\Pages\CreatePayrollRun;
@@ -55,8 +56,9 @@ beforeEach(function (): void {
     });
 });
 
-it('registers payroll run resource routes only in the finance panel', function (): void {
+it('registers payroll run resource routes in finance and admin but not HR', function (): void {
     expect(Route::has('filament.finance.resources.payroll-runs.index'))->toBeTrue()
+        ->and(Route::has('filament.admin.resources.payroll-runs.index'))->toBeTrue()
         ->and(Route::has('filament.hr.resources.payroll-runs.index'))->toBeFalse();
 });
 
@@ -1035,7 +1037,12 @@ it('replaces standalone overtime rules with shared versioned pay policies', func
     $this->actingAs(User::factory()->create(['role' => UserRole::Finance]));
     expect(OvertimeRuleResource::canAccess())->toBeFalse()->and(OvertimeRuleResource::shouldRegisterNavigation())->toBeFalse();
     $this->seed(HrWorkSetupSeeder::class);
-    Livewire::test(ManagePayPolicies::class)->assertSee('Standard monthly pay')->assertActionVisible('create');
+    Livewire::test(ManagePayPolicies::class)
+        ->assertRedirect(Settings::getUrl(panel: 'finance', parameters: ['section' => 'payroll']));
+    Livewire::test(Settings::class)
+        ->assertSee('Current pay policy')
+        ->assertSee('Standard monthly pay')
+        ->assertFormSet(['pay_rules.monthly_day_divisor' => 30]);
 });
 
 it('exports the policy payroll formula with separate employee and employer pension', function (): void {

@@ -6,9 +6,11 @@ use App\Models\Dispatch;
 use App\Models\InventoryBalance;
 use App\Models\InventoryItem;
 use App\Models\PurchaseOrder;
+use App\Support\WarehouseAccess;
 use Carbon\Carbon;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
+use Illuminate\Database\Eloquent\Builder;
 
 class WarehouseHealthStats extends BaseWidget
 {
@@ -18,19 +20,20 @@ class WarehouseHealthStats extends BaseWidget
     {
         // 1. Dead Stock Risk
         // Items with positive balance but NO movements in 90 days
-        $deadStockCount = InventoryItem::whereHas('inventoryBalances', function ($q) {
-            $q->where('quantity_on_hand', '>', 0);
+        $deadStockCount = InventoryItem::whereHas('inventoryBalances', function (Builder $query): void {
+            WarehouseAccess::scope($query, 'inventory_balances.warehouse_id')->where('quantity_on_hand', '>', 0);
         })
-            ->whereDoesntHave('stockMovements', function ($q) {
-                $q->where('movement_date', '>=', now()->subDays(90));
+            ->whereDoesntHave('stockMovements', function (Builder $query): void {
+                WarehouseAccess::scope($query, 'stock_movements.warehouse_id')->where('movement_date', '>=', now()->subDays(90));
             })
             ->count();
 
         // 2. Dispatch Throughput Today
-        $dispatchesToday = Dispatch::whereDate('created_at', Carbon::today())->count();
+        $dispatchesToday = WarehouseAccess::scope(Dispatch::query(), 'dispatches.warehouse_id')
+            ->whereDate('created_at', Carbon::today())->count();
 
         // 3. Low Stock Items
-        $lowStockCount = InventoryBalance::query()
+        $lowStockCount = WarehouseAccess::scope(InventoryBalance::query(), 'inventory_balances.warehouse_id')
             ->select('inventory_item_id')
             ->groupBy('inventory_item_id')
             ->havingRaw('SUM(quantity_on_hand) < 10')

@@ -1,6 +1,6 @@
 <?php
 
-use Filament\Notifications\Livewire\Notifications;
+use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Route;
 use Livewire\Livewire;
 use Tests\Support\ExceptionRenderingTestComponent;
@@ -64,17 +64,10 @@ it('turns stale livewire actions into a record not found notification', function
 
 it('turns offline private storage upload failures into actionable notifications', function (): void {
     Livewire::test(ExceptionRenderingTestComponent::class)
-        ->call('storageOffline');
-
-    $notifications = new Notifications;
-    $notifications->mount();
-
-    $notification = $notifications->notifications
-        ->first(fn ($notification): bool => $notification->getTitle() === 'File upload failed');
-
-    $body = (string) $notification?->getBody();
-
-    expect($notification)->not->toBeNull()
-        ->and(str_contains($body, 'storage service is unreachable'))->toBeTrue()
-        ->and(str_contains($body, 'switch private uploads to local storage'))->toBeTrue();
+        ->call('storageOffline')
+        ->assertNotified(Notification::make()
+            ->title('File upload failed')
+            ->body('The file could not be uploaded because the storage service is unreachable. Check your internet connection and try again. If you are working locally or offline, switch private uploads to local storage.')
+            ->danger()
+            ->persistent());
 });

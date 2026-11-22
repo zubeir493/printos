@@ -6,6 +6,7 @@ use App\Models\Dispatch;
 use App\Models\InventoryBalance;
 use App\Models\JobOrder;
 use App\Models\StockMovement;
+use App\Support\WarehouseAccess;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -15,6 +16,7 @@ class SaveDispatch
     {
         DB::transaction(function () use ($dispatch, $quantity): void {
             $lockedDispatch = Dispatch::query()->lockForUpdate()->findOrFail($dispatch->id);
+            WarehouseAccess::authorizeRecord($lockedDispatch, 'warehouse_id');
             $job = JobOrder::query()->lockForUpdate()->findOrFail($lockedDispatch->job_order_id);
             if ($quantity < 0 || $quantity != floor($quantity)) {
                 throw ValidationException::withMessages(['data.quantity' => 'Dispatch quantity must be a nonnegative whole number.']);

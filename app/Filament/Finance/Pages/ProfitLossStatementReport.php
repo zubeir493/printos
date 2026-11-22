@@ -118,7 +118,7 @@ class ProfitLossStatementReport extends Page implements HasForms, HasTable
     protected function accountQuery(): Builder
     {
         return Account::query()
-            ->select('accounts.*')
+            ->select('accounts.id', 'accounts.code', 'accounts.name', 'accounts.type')
             ->leftJoin('journal_items', 'journal_items.account_id', '=', 'accounts.id')
             ->leftJoin('journal_entries', function ($join): void {
                 $join->on('journal_entries.id', '=', 'journal_items.journal_entry_id')

@@ -56,6 +56,7 @@ it('shows a validation error when issuing more than available stock', function (
     ]));
 
     [$materialRequest, $warehouse] = makeMaterialIssueScenario(stock: 10);
+    auth()->user()->warehouses()->attach($warehouse);
 
     Livewire::test(ManageMaterialRequests::class)
         ->callAction(TestAction::make('issue')->table($materialRequest), data: [
@@ -93,6 +94,7 @@ it('shows a validation error when the issue materials popup exceeds available st
     ]));
 
     [$materialRequest, $warehouse, $item, $task] = makeMaterialIssueScenario(stock: 10);
+    auth()->user()->warehouses()->attach($warehouse);
 
     Livewire::test(ListJobOrders::class)
         ->assertActionExists(

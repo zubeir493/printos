@@ -4,8 +4,8 @@ namespace App\Filament\Resources\StockTransfers\Schemas;
 
 use App\Models\InventoryItem;
 use App\Models\StockTransfer;
-use App\Models\Warehouse;
 use App\Support\StockTransferQuantity;
+use App\Support\WarehouseAccess;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
@@ -13,6 +13,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Group;
 use Filament\Schemas\Schema;
+use Illuminate\Database\Eloquent\Builder;
 
 class StockTransferForm
 {
@@ -44,21 +45,21 @@ class StockTransferForm
                         Hidden::make('status')
                             ->default('draft'),
                         Select::make('from_warehouse_id')
-                            ->relationship('fromWarehouse', 'name')
-                            ->default(fn () => Warehouse::where('is_default', true)->value('id'))
+                            ->relationship('fromWarehouse', 'name', modifyQueryUsing: fn (Builder $query): Builder => WarehouseAccess::scope($query, 'warehouses.id'))
+                            ->default(fn (): ?int => WarehouseAccess::defaultId())
                             ->required()
                             ->reactive()
                             ->columnSpan(3),
                         Select::make('to_warehouse_id')
-                            ->relationship('toWarehouse', 'name')
+                            ->relationship('toWarehouse', 'name', modifyQueryUsing: fn (Builder $query): Builder => WarehouseAccess::scope($query, 'warehouses.id'))
                             ->required()
                             ->options(function (callable $get) {
                                 $fromWarehouseId = $get('from_warehouse_id');
                                 if (! $fromWarehouseId) {
-                                    return Warehouse::pluck('name', 'id');
+                                    return WarehouseAccess::warehouses()->pluck('name', 'id');
                                 }
 
-                                return Warehouse::where('id', '!=', $fromWarehouseId)->pluck('name', 'id');
+                                return WarehouseAccess::warehouses()->whereKeyNot($fromWarehouseId)->pluck('name', 'id');
                             })
                             ->columnSpan(3)
                             ->reactive(),

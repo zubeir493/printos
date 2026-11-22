@@ -34,6 +34,11 @@ class InvoiceResource extends Resource
         return PanelAccess::canAccessFinanceSection();
     }
 
+    public static function canCreate(): bool
+    {
+        return false;
+    }
+
     public static function getGloballySearchableAttributes(): array
     {
         return ['invoice_number', 'partner.name'];

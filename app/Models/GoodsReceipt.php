@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Observers\GoodsReceiptObserver;
 use App\Support\SequentialNumber;
+use App\Support\WarehouseAccess;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -59,6 +60,8 @@ class GoodsReceipt extends Model
 
     public function save(array $options = []): bool
     {
+        WarehouseAccess::authorizeRecord($this, 'warehouse_id');
+
         return DB::transaction(fn (): bool => parent::save($options));
     }
 

@@ -4,6 +4,7 @@ namespace App\Filament\Warehouse\Widgets;
 
 use App\Filament\Widgets\Concerns\HasFilaWidgetMetrics;
 use App\Models\StockMovement;
+use App\Support\WarehouseAccess;
 use LaravelDaily\FilaWidgets\Data\SparklineTableRowData;
 use LaravelDaily\FilaWidgets\Data\SparklineTableWidgetData;
 use LaravelDaily\FilaWidgets\Widgets\SparklineTableWidget;
@@ -23,9 +24,10 @@ class StockMovementPulseWidget extends SparklineTableWidget
     protected function getData(): SparklineTableWidgetData
     {
         $periods = $this->comparisonPeriods();
-        $inbound = StockMovement::query()->where('quantity', '>', 0);
-        $outbound = StockMovement::query()->where('quantity', '<', 0);
-        $transfers = StockMovement::query()->where('type', 'transfer');
+        $movements = WarehouseAccess::scope(StockMovement::query(), 'stock_movements.warehouse_id');
+        $inbound = (clone $movements)->where('quantity', '>', 0);
+        $outbound = (clone $movements)->where('quantity', '<', 0);
+        $transfers = (clone $movements)->where('type', 'transfer');
 
         return SparklineTableWidgetData::fromRows(
             new SparklineTableRowData('Inbound', $this->sumDuring($inbound, $periods['current'], 'quantity', 'movement_date'), $this->sumDuring($inbound, $periods['previous'], 'quantity', 'movement_date'), $this->sparkline($inbound, 'SUM(quantity)', 'movement_date', 0), 'number', 0, color: 'success'),

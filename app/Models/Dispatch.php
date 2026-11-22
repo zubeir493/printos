@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\WarehouseAccess;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -54,11 +55,15 @@ class Dispatch extends Model
 
     public function save(array $options = []): bool
     {
+        WarehouseAccess::authorizeRecord($this, 'warehouse_id');
+
         return DB::transaction(fn (): bool => parent::save($options));
     }
 
     public function delete(): ?bool
     {
+        WarehouseAccess::authorizeRecord($this, 'warehouse_id');
+
         return DB::transaction(fn (): ?bool => parent::delete());
     }
 

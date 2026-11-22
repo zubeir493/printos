@@ -134,6 +134,7 @@ it('returns materials to their respective source warehouses', function (): void 
     $item = InventoryItem::factory()->create(['type' => 'raw_material']);
     $first = Warehouse::factory()->create();
     $second = Warehouse::factory()->create();
+    auth()->user()->warehouses()->attach([$first->id, $second->id]);
     foreach ([$first, $second] as $warehouse) {
         InventoryBalance::create(['inventory_item_id' => $item->id, 'warehouse_id' => $warehouse->id, 'quantity_on_hand' => 100]);
     }

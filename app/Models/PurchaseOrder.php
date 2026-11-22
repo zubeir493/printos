@@ -92,6 +92,10 @@ class PurchaseOrder extends Model
 
     public function getBalanceAttribute(): float
     {
+        if (array_key_exists('balance', $this->getAttributes())) {
+            return (float) $this->getRawOriginal('balance');
+        }
+
         return (float) (($this->total ?? 0) - $this->paid_amount);
     }
 

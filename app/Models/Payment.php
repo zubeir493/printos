@@ -8,6 +8,8 @@ use App\Notifications\InvoiceStatusChangedNotification;
 use App\Support\NotificationRecipients;
 use App\Support\SequentialNumber;
 use App\UserRole;
+use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -151,6 +153,14 @@ class Payment extends Model
         return $this->morphTo();
     }
 
+    public function scopeEffectiveOn(Builder $query, string $asOfDate): Builder
+    {
+        $afterDate = CarbonImmutable::parse($asOfDate)->startOfDay()->addDay();
+
+        return $query->whereDate('payment_date', '<=', $asOfDate)
+            ->where(fn (Builder $query) => $query->whereNull('voided_at')->orWhere('voided_at', '>=', $afterDate));
+    }
+
     public function setCustomerPartnerIdAttribute($value)
     {
         $this->attributes['partner_id'] = $value;
@@ -230,7 +240,14 @@ class Payment extends Model
         }
 
         if ($payable instanceof Invoice) {
-            $this->syncInvoiceBalance($payable->refresh());
+            DB::transaction(function () use ($payable): void {
+                $invoice = Invoice::query()->lockForUpdate()->findOrFail($payable->id);
+                $paidAmount = (float) $invoice->payments()
+                    ->where('direction', $invoice->invoice_type === 'purchase' ? 'outbound' : 'inbound')
+                    ->whereNull('voided_at')
+                    ->sum('amount');
+                $this->syncInvoiceBalance($invoice, $paidAmount);
+            });
         }
     }
 
@@ -278,44 +295,29 @@ class Payment extends Model
 
     private function syncInvoicesForDocument(SalesOrder|JobOrder|PurchaseOrder $document): void
     {
-        $paidAmount = (float) $document->payments()
-            ->whereNull('voided_at')
-            ->sum('amount');
+        DB::transaction(function () use ($document): void {
+            $invoices = $document->invoices()->orderBy('id')->lockForUpdate()->get();
+            if ($invoices->isEmpty()) {
+                return;
+            }
 
-        $document->invoices()->get()->each(function (Invoice $invoice) use ($document, $paidAmount): void {
-            $this->syncInvoiceBalance($invoice, (float) $document->total, $paidAmount);
+            $paidAmount = (float) $document->payments()
+                ->where('direction', $document instanceof PurchaseOrder ? 'outbound' : 'inbound')
+                ->whereNull('voided_at')
+                ->sum('amount');
+
+            foreach ($invoices as $invoice) {
+                $this->syncInvoiceBalance($invoice, $paidAmount);
+            }
         });
     }
 
-    private function syncInvoiceBalance(Invoice $invoice, ?float $totalAmount = null, ?float $paidAmount = null): void
+    private function syncInvoiceBalance(Invoice $invoice, float $paidAmount): void
     {
-        if ($invoice->status === 'cancelled') {
-            return;
-        }
-
-        $totalAmount ??= (float) $invoice->total_amount;
-        $paidAmount ??= (float) $invoice->payments()
-            ->whereNull('voided_at')
-            ->sum('amount');
-
-        $balanceDue = max(0, round($totalAmount - $paidAmount, 2));
-
         $previousStatus = $invoice->status;
-        $status = $previousStatus;
-        if ($balanceDue <= 0.001) {
-            $status = 'paid';
-        } elseif ($paidAmount > 0) {
-            $status = 'partial';
-        } elseif ($status === 'paid' || $status === 'partial') {
-            $status = 'sent';
-        }
+        $invoice->syncPaymentBalance($paidAmount);
 
-        $invoice->updateQuietly([
-            'balance_due' => $balanceDue,
-            'status' => $status,
-        ]);
-
-        if ($previousStatus !== $status && in_array($status, ['sent', 'paid'], true)) {
+        if ($previousStatus !== $invoice->status && in_array($invoice->status, ['sent', 'paid'], true)) {
             $recipients = NotificationRecipients::roles(UserRole::Admin, UserRole::Finance, UserRole::Sales, UserRole::Operations);
 
             if ($recipients->isNotEmpty()) {

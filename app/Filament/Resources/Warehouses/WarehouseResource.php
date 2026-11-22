@@ -10,11 +10,15 @@ use App\Filament\Resources\Warehouses\RelationManagers\StockMovementsRelationMan
 use App\Filament\Resources\Warehouses\Schemas\WarehouseForm;
 use App\Filament\Resources\Warehouses\Tables\WarehousesTable;
 use App\Models\Warehouse;
+use App\Support\WarehouseAccess;
+use App\UserRole;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 
 class WarehouseResource extends Resource
 {
@@ -27,6 +31,31 @@ class WarehouseResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return WarehouseForm::configure($schema);
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        return WarehouseAccess::scope(parent::getEloquentQuery(), 'warehouses.id');
+    }
+
+    public static function canCreate(): bool
+    {
+        return auth()->user()?->role !== UserRole::Warehouse && parent::canCreate();
+    }
+
+    public static function canEdit(Model $record): bool
+    {
+        return auth()->user()?->role !== UserRole::Warehouse && parent::canEdit($record);
+    }
+
+    public static function canDelete(Model $record): bool
+    {
+        return auth()->user()?->role !== UserRole::Warehouse && parent::canDelete($record);
+    }
+
+    public static function canDeleteAny(): bool
+    {
+        return auth()->user()?->role !== UserRole::Warehouse && parent::canDeleteAny();
     }
 
     public static function table(Table $table): Table

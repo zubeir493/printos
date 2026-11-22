@@ -22,7 +22,7 @@ class UpdateOverdueInvoices extends Command
 
         $overdueInvoices = Invoice::overdue()
             ->where('status', '!=', 'overdue')
-            ->get();
+            ->lazyById();
 
         $recipients = User::whereIn('role', [
             UserRole::Admin->value,
@@ -33,11 +33,15 @@ class UpdateOverdueInvoices extends Command
         $updatedCount = 0;
 
         foreach ($overdueInvoices as $invoice) {
-            if ($invoice->isPaid()) {
+            $updated = Invoice::overdue()->whereKey($invoice->id)
+                ->where('status', '!=', 'overdue')
+                ->update(['status' => 'overdue']);
+
+            if (! $updated) {
                 continue;
             }
 
-            $invoice->update(['status' => 'overdue']);
+            $invoice->refresh();
             $updatedCount++;
 
             $this->line("Invoice {$invoice->invoice_number} marked as overdue");

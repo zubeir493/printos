@@ -29,6 +29,7 @@ use Filament\Forms\Components\TimePicker;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
+use Filament\Infolists\Components\TextEntry;
 use Filament\Notifications\Notification;
 use Filament\Pages\Concerns\HasUnsavedDataChangesAlert;
 use Filament\Pages\Page;
@@ -383,6 +384,9 @@ class Settings extends Page implements HasForms
     private function payrollSettingsSchema(): array
     {
         return [
+            TextEntry::make('current_pay_policy')
+                ->label('Current pay policy')
+                ->state(fn (): string => PayPolicy::forDate(today()->toDateString())?->name ?? 'No active policy'),
             Group::make()->statePath('pay_rules')->schema(PayrollSettingsForm::fields()),
             Grid::make(4)->schema([DatePicker::make('pay_rules_from')->label('Apply rule changes from')->default(today())->minDate(today())->required()]),
             Group::make()
@@ -422,9 +426,11 @@ class Settings extends Page implements HasForms
     /** @return array<string, mixed> */
     private function payRuleState(): array
     {
+        $latestPolicy = PayPolicy::where('is_active', true)->latest('id')->first();
+
         return [
-            'pay_rules' => (PayPolicy::where('is_active', true)->latest('id')->first() ?? new PayPolicy(['name' => 'Company pay rules', 'code' => 'STANDARD']))->attributesToArray(),
-            'pay_rules_from' => max(today()->toDateString(), PayPolicy::where('is_active', true)->latest('id')->value('effective_from') ?? today()->toDateString()),
+            'pay_rules' => ($latestPolicy ?? new PayPolicy(['name' => 'Company pay rules', 'code' => 'STANDARD']))->attributesToArray(),
+            'pay_rules_from' => max(today()->toDateString(), $latestPolicy?->effective_from ?? today()->toDateString()),
         ];
     }
 

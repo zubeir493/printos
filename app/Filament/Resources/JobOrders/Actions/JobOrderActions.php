@@ -13,7 +13,6 @@ use App\Models\JobOrder;
 use App\Models\Partner;
 use App\Models\Payment;
 use App\Models\PurchaseOrder;
-use App\Models\Warehouse;
 use App\Services\InvoiceGeneratorService;
 use App\Services\JobOrders\DuplicateJobOrder;
 use App\Services\JobOrders\JobOrderWorkflow;
@@ -21,6 +20,7 @@ use App\Services\MaterialIssueService;
 use App\Services\ReturnJobMaterials;
 use App\Support\Money;
 use App\Support\PaymentMethod;
+use App\Support\WarehouseAccess;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
@@ -405,7 +405,7 @@ class JobOrderActions
                         Select::make('inventory_item_id')->label('Material')
                             ->options(fn () => InventoryItem::pluck('name', 'id'))->disabled()->dehydrated(),
                         Select::make('warehouse_id')->label('Source Warehouse')
-                            ->options(fn () => Warehouse::pluck('name', 'id'))->disabled()->dehydrated()->required(),
+                            ->options(fn () => WarehouseAccess::warehouses()->pluck('name', 'id'))->disabled()->dehydrated()->required(),
                         TextInput::make('quantity')->label('Quantity to Return')->numeric()->minValue(0)->required()
                             ->hint(fn (callable $get): string => 'Available to return: '.($get('returnable_quantity') ?? 0)),
                     ])->columns(3)

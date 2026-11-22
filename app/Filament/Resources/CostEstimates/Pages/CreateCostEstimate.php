@@ -6,6 +6,7 @@ use App\Filament\Resources\CostEstimates\CostEstimateResource;
 use App\Filament\Resources\CostEstimates\Pages\Concerns\HasEstimatorWorkspace;
 use App\Filament\Resources\Pages\CreateRecord;
 use App\Services\Costing\CostEstimateService;
+use Filament\Actions\Action;
 
 class CreateCostEstimate extends CreateRecord
 {
@@ -14,6 +15,12 @@ class CreateCostEstimate extends CreateRecord
     protected ?bool $hasDatabaseTransactions = true;
 
     protected static string $resource = CostEstimateResource::class;
+
+    protected function getCreateFormAction(): Action
+    {
+        return parent::getCreateFormAction()->label('Save estimate')
+            ->visible(fn (): bool => $this->estimatorTab !== 'configure');
+    }
 
     protected function afterCreate(): void
     {

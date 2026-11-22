@@ -4,7 +4,7 @@ namespace App\Filament\Resources\StockAdjustments\Tables;
 
 use App\Filament\Resources\StockAdjustments\Actions\StockAdjustmentActions;
 use App\Filament\Tables\Filters\DateRangeFilter;
-use App\Models\Warehouse;
+use App\Support\WarehouseAccess;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Tables\Columns\TextColumn;
@@ -43,7 +43,7 @@ class StockAdjustmentsTable
                     ]),
                 SelectFilter::make('warehouse_id')
                     ->label('Warehouse')
-                    ->options(Warehouse::pluck('name', 'id')->toArray()),
+                    ->options(fn (): array => WarehouseAccess::warehouses()->pluck('name', 'id')->all()),
             ])
             ->defaultSort('adjustment_date', 'desc')
             ->recordActions([

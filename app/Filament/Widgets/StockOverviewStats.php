@@ -3,8 +3,9 @@
 namespace App\Filament\Widgets;
 
 use App\Models\InventoryBalance;
-use App\Models\Warehouse;
 use App\Support\Money;
+use App\Support\WarehouseAccess;
+use App\UserRole;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 
@@ -14,7 +15,7 @@ class StockOverviewStats extends BaseWidget
 
     protected function getStats(): array
     {
-        $query = InventoryBalance::query();
+        $query = WarehouseAccess::scope(InventoryBalance::query(), 'inventory_balances.warehouse_id');
 
         if ($this->warehouse_id) {
             $query->where('warehouse_id', $this->warehouse_id);
@@ -44,7 +45,9 @@ class StockOverviewStats extends BaseWidget
                 ->whereColumn('inventory_balances.quantity_on_hand', '<=', 'inventory_items.low_stock_threshold'))->count();
         $outOfStockCount = (clone $query)->where('quantity_on_hand', '=', 0)->count();
 
-        $warehouseName = $this->warehouse_id ? Warehouse::find($this->warehouse_id)?->name : 'All Warehouses';
+        $warehouseName = $this->warehouse_id
+            ? (WarehouseAccess::warehouses()->whereKey($this->warehouse_id)->value('name') ?? 'Warehouse unavailable')
+            : (auth()->user()?->role === UserRole::Warehouse ? 'Assigned Warehouses' : 'All Warehouses');
 
         return [
             Stat::make('Total SKU count ('.$warehouseName.')', $totalItems)

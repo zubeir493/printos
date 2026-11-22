@@ -117,13 +117,19 @@ class SheetfedCostCalculator implements CostingCalculator
     /** @return array<int, array<string, mixed>> */
     public function suggestPresses(array $component, array $product = []): array
     {
+        return $this->suggestLayoutMachines($component, $product, 'printing');
+    }
+
+    /** @return array<int, array<string, mixed>> */
+    public function suggestLayoutMachines(array $component, array $product = [], string $operation = 'printing'): array
+    {
         $stock = $this->sources->item($component['material_id'] ?? null);
         if (! $stock) {
             return [];
         }
         $spec = $this->componentSpec($component, $product, (int) ($component['signature_pages'] ?? 16));
 
-        return $this->sources->machines()->filter(fn (Machine $machine): bool => $machine->operation_type === 'printing' && $machine->is_active && $machine->costing_configured && $this->materialFitsMachine($stock, $machine))
+        return $this->sources->machines()->filter(fn (Machine $machine): bool => $machine->operation_type === $operation && $machine->speed_unit === 'sheets_per_hour' && $machine->is_active && $machine->costing_configured && $this->materialFitsMachine($stock, $machine))
             ->map(function (Machine $machine) use ($stock, $spec): ?array {
                 $layout = $this->layouts->candidates($stock->toArray(), $machine->toArray(), $spec)[0] ?? null;
 
@@ -539,6 +545,12 @@ class SheetfedCostCalculator implements CostingCalculator
         $requiredRoles = $type === 'books'
             ? (($product['binding'] ?? 'perfect') === 'hardcover' ? ['text', 'case', 'board', 'endsheet'] : ['text', 'cover'])
             : ['stock'];
+        foreach ($components as $component) {
+            $role = $component['role'] ?? 'stock';
+            if (($component['product_review_confirmed'] ?? true) === false) {
+                $context['diagnostics'][] = 'Review the retained '.$role.' component from the previous product. Remove it or approve keeping it in component options.';
+            }
+        }
         foreach ($requiredRoles as $role) {
             if (! $roles->contains($role)) {
                 $context['diagnostics'][] = 'Add the '.str_replace('_', ' ', $role).' component.';
@@ -555,6 +567,12 @@ class SheetfedCostCalculator implements CostingCalculator
             default => [($product['shape'] ?? 'rectangle') === 'rectangle' ? 'cutting' : 'die_cutting'],
         };
         $selected = collect($finishing)->map(fn (array $row): ?string => $machines->get($row['machine_id'] ?? null)?->operation_type);
+        foreach ($finishing as $row) {
+            $operation = $machines->get($row['machine_id'] ?? null)?->operation_type ?? ($row['name'] ?? 'finishing');
+            if (($row['product_review_confirmed'] ?? true) === false) {
+                $context['diagnostics'][] = 'Review the retained '.str_replace('_', ' ', $operation).' operation from the previous binding. Remove it or approve keeping it in production route options.';
+            }
+        }
         foreach ($requiredOperations as $operation) {
             if (! $selected->contains($operation)) {
                 $context['diagnostics'][] = 'Add a '.str_replace('_', ' ', $operation).' machine to the production route.';

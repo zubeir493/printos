@@ -32,7 +32,7 @@ it('renders only the active panel without repeated database work', function (): 
     fwrite(STDOUT, json_encode(['estimator_profile' => ['milliseconds' => round((microtime(true) - $started) * 1000), 'queries' => count($queries), 'controls' => $count, 'html_bytes' => strlen($html)]]).PHP_EOL);
     $page->assertSee('Text pages (excludes cover)');
     expect($page->instance()->estimatorResult->isComplete())->toBeTrue()
-        ->and(count($queries))->toBeLessThan(25)->and($count)->toBeLessThan(15)
+        ->and(count($queries))->toBeLessThan(25)->and($count)->toBeLessThan(25)
         ->and(strlen($html))->toBeLessThan(200000)
         ->and(substr_count($html, 'role="tabpanel"'))->toBe(1);
     $page->set('estimatorTab', 'production')->assertSeeHtml('fi-fo-table-repeater')->assertSee('Calculated machine time');

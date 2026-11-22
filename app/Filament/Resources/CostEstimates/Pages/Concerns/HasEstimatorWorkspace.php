@@ -2,15 +2,116 @@
 
 namespace App\Filament\Resources\CostEstimates\Pages\Concerns;
 
-use App\Filament\Resources\CostEstimates\Schemas\EstimatorWorkspace;
+use App\Filament\Resources\CostEstimates\CostEstimateResource;
+use App\Filament\Resources\CostEstimates\Pages\ViewCostEstimate;
 use App\Models\CostEstimate;
 use App\Services\Costing\CostingResult;
+use App\Services\Costing\EstimatorRecipe;
+use App\Services\Costing\EstimatorRequestContext;
 use App\Services\Costing\SheetfedCostCalculator;
 use Livewire\Attributes\Computed;
 
 trait HasEstimatorWorkspace
 {
-    public string $estimatorTab = 'specifications';
+    public string $estimatorTab = 'configure';
+
+    public function estimatorCanEdit(): bool
+    {
+        return ! $this instanceof ViewCostEstimate && CostEstimateResource::canEdit($this->record ?? null);
+    }
+
+    #[Computed]
+    public function estimatorConfigurator(): array
+    {
+        $sources = app(EstimatorRequestContext::class);
+        $key = app(EstimatorRecipe::class)->productKey($this->data ?? []);
+
+        return [
+            'key' => $key, 'preset' => EstimatorRecipe::PRODUCTS[$key], 'products' => EstimatorRecipe::PRODUCTS,
+            'materials' => $sources->materialOptions(['paper', 'board', 'liner']),
+            'customers' => $sources->customerOptions(),
+            'components' => $this->data['services']['components'] ?? [],
+            'route' => collect($this->data['services']['finishing'] ?? [])->map(fn (array $row): array => [
+                'label' => $row['name'] ?? 'Finishing',
+                'machine' => $sources->machine($row['machine_id'] ?? null)?->name,
+            ])->all(),
+            'editable' => $this->estimatorCanEdit(),
+        ];
+    }
+
+    public function selectEstimatorProduct(string $key): void
+    {
+        abort_unless($this->estimatorCanEdit(), 403);
+        abort_unless(isset(EstimatorRecipe::PRODUCTS[$key]), 422);
+        $this->data = app(EstimatorRecipe::class)->apply($this->data ?? [], $key);
+        $this->estimatorTab = 'configure';
+        $this->clearEstimatorPreview();
+        $this->dispatch('close-modal', id: 'estimator-product-picker');
+    }
+
+    public function addEstimatorFinish(string $operation): void
+    {
+        abort_unless($this->estimatorCanEdit(), 403);
+        abort_unless(in_array($operation, ['laminating', 'foiling', 'embossing', 'coating'], true), 422);
+        $this->data = app(EstimatorRecipe::class)->addFinish($this->data, $operation);
+        $this->clearEstimatorPreview();
+        $this->dispatch('close-modal', id: 'estimator-finish-picker');
+    }
+
+    public function updatedData(mixed $value, string $key): void
+    {
+        if (! $this->estimatorCanEdit()) {
+            return;
+        }
+        $geometryChange = in_array($key, ['services.product.width_mm', 'services.product.height_mm', 'services.product.page_count', 'services.product.shape'], true);
+        if ($geometryChange) {
+            foreach ($this->data['services']['components'] ?? [] as $rowKey => $component) {
+                $this->data['services']['components'][$rowKey]['layout_confirmed'] = false;
+                $this->data['services']['components'][$rowKey]['layout_key'] = null;
+                if (in_array($this->data['job_type'] ?? '', ['labels', 'stickers'], true) && ($component['role'] ?? '') === 'stock' && (str_ends_with($key, 'width_mm') || str_ends_with($key, 'height_mm'))) {
+                    $dimension = str_ends_with($key, 'width_mm') ? 'width_mm' : 'height_mm';
+                    $this->data['services']['components'][$rowKey][$dimension] = $value;
+                }
+            }
+        }
+        if (str_starts_with($key, 'services.consumables.') || str_starts_with($key, 'services.finishing.')) {
+            $this->data['services']['product']['consumables_confirmed'] = false;
+        }
+        if (preg_match('/^services\.components\.([^.]+)\.(material_id|front_colors|back_colors)$/', $key, $matches)) {
+            $recipe = app(EstimatorRecipe::class);
+            if ($matches[2] === 'material_id') {
+                $this->data = $recipe->apply($this->data, $recipe->productKey($this->data));
+            }
+            $component = $this->data['services']['components'][$matches[1]];
+            $component['layout_confirmed'] = false;
+            $component['layout_key'] = null;
+            $this->data['services']['components'][$matches[1]] = $recipe->prepareComponent(
+                $component, $this->data['services']['product'] ?? [], $this->data['job_type'] ?? 'labels',
+            );
+        }
+        $this->clearEstimatorPreview();
+    }
+
+    private function clearEstimatorPreview(): void
+    {
+        unset($this->estimatorResult, $this->estimatorComparisons, $this->estimatorConfigurator);
+    }
+
+    public function estimatorIssueTarget(string $message): string
+    {
+        $message = strtolower($message);
+        if (str_contains($message, 'margin') || str_contains($message, 'discount') || str_contains($message, 'overhead')) {
+            return 'pricing';
+        }
+        if (str_contains($message, 'quantity between') || str_contains($message, 'product family')) {
+            return 'specifications';
+        }
+        if (str_contains($message, 'consum') || str_contains($message, 'tooling') || str_contains($message, 'production route') || str_contains($message, 'binding glue') || str_contains($message, 'binding wire')) {
+            return 'production';
+        }
+
+        return 'materials';
+    }
 
     #[Computed]
     public function estimatorResult(): CostingResult
@@ -60,17 +161,18 @@ trait HasEstimatorWorkspace
 
     public function applyEstimatorTemplate(string $type, string $binding = 'perfect'): void
     {
+        abort_unless($this->estimatorCanEdit(), 403);
         if (! in_array($type, ['books', 'labels', 'packages', 'stickers'], true)) {
             return;
         }
-        $template = EstimatorWorkspace::template($type, $binding);
-        $this->data['job_type'] = $type;
-        $this->data['services']['costing_version'] = 'sheetfed-v2';
-        $this->data['services']['product']['binding'] = $binding;
+        $key = app(EstimatorRecipe::class)->productKey(['job_type' => $type, 'services' => ['product' => ['binding' => $binding]]]);
+        $this->data = app(EstimatorRecipe::class)->apply($this->data ?? [], $key, productChanged: true);
         $this->data['services']['product']['consumables_confirmed'] = false;
-        $this->data['services']['components'] = $template['components'];
-        $this->data['services']['finishing'] = $template['finishing'];
-        $this->data['services']['consumables'] = [];
-        unset($this->estimatorResult, $this->estimatorComparisons);
+        foreach ($this->data['services']['components'] as &$component) {
+            $component['layout_confirmed'] = false;
+            $component['layout_key'] = null;
+        }
+        unset($component);
+        $this->clearEstimatorPreview();
     }
 }

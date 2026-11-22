@@ -1,6 +1,13 @@
-<div class="estimator-layouts">
+<div class="estimator-layouts" @if ($compact ?? false) x-data="{ active: 0 }" @endif>
+    @if (($compact ?? false) && count($result->layouts) > 1)
+        <div class="estimator-preview-switch" aria-label="Preview component">
+            @foreach ($result->layouts as $index => $layout)
+                <button type="button" x-on:click="active = {{ $index }}" x-bind:aria-pressed="active === {{ $index }}">{{ $layout['label'] }}</button>
+            @endforeach
+        </div>
+    @endif
     @forelse ($result->layouts as $layout)
-        <div class="estimator-layout-block">
+        <div class="estimator-layout-block" @if ($compact ?? false) x-show="active === {{ $loop->index }}" @if (! $loop->first) x-cloak @endif @endif>
             <div class="estimator-layout-heading">
                 <h3>{{ $layout['label'] }} · sheet layout</h3>
                 <p>{{ $layout['machine_name'] }} · {{ $layout['sheet_width_mm'] }} × {{ $layout['sheet_height_mm'] }} mm press sheet · {{ $layout['parent_width_mm'] }} × {{ $layout['parent_height_mm'] }} mm parent</p>
@@ -27,7 +34,7 @@
                     <span class="estimator-caption">{{ isset($layout['placements']) ? 'Saved dieline nesting' : 'Rectangular grid · includes bleed and spacing' }}{{ $layout['ups'] > 180 ? ' · preview abbreviated' : '' }}</span>
                 </div>
                 <dl class="estimator-layout-metrics">
-                    @foreach (['ups' => 'Copies / press sheet', 'forms' => 'Distinct forms', 'net_press_sheets' => 'Net press sheets', 'gross_press_sheets' => 'Gross press sheets', 'waste_sheets' => 'Press spoilage sheets', 'parent_sheets' => 'Parent sheets to consume', 'plates' => 'Printing plates', 'passes' => 'Passes / form'] as $key => $label)
+                    @foreach (($compact ?? false) ? ['ups' => 'Copies / press sheet', 'parent_sheets' => 'Parent sheets', 'waste_sheets' => 'Press spoilage'] : ['ups' => 'Copies / press sheet', 'forms' => 'Distinct forms', 'net_press_sheets' => 'Net press sheets', 'gross_press_sheets' => 'Gross press sheets', 'waste_sheets' => 'Press spoilage sheets', 'parent_sheets' => 'Parent sheets to consume', 'plates' => 'Printing plates', 'passes' => 'Passes / form'] as $key => $label)
                         <div><dt>{{ $label }}</dt><dd>{{ number_format($layout[$key]) }}</dd></div>
                     @endforeach
                     <div><dt>Area utilization</dt><dd>{{ number_format($layout['utilization_percent'], 1) }}%</dd></div>

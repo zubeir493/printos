@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\CostEstimates\Schemas;
 
+use App\Services\Costing\EstimatorRecipe;
 use App\Services\Costing\EstimatorRequestContext;
 use App\Services\Costing\SheetfedCostCalculator;
 use App\Support\Money;
@@ -38,7 +39,7 @@ class EstimatorWorkspace
         return Repeater::make('services.finishing')->label('Finishing')->helperText('Sheet operations first, then assembly. Use row options for setup, speed and rate overrides.')
             ->table([TableColumn::make('Machine')->width('220px'), TableColumn::make('Basis')->width('130px'), TableColumn::make('Component')->width('130px')])->compact()
             ->schema([
-                ...self::hiddenFields(['name', ...self::MACHINE_OVERRIDE_FIELDS]),
+                ...self::hiddenFields(['name', 'product_review_confirmed', ...self::MACHINE_OVERRIDE_FIELDS]),
                 Select::make('machine_id')->label('Machine')->options(fn (): array => self::sources()->machineOptions(finishingOnly: true))->searchable()->live()
                     ->afterStateUpdated(function (Set $set, mixed $state): void {
                         $machine = self::sources()->machine($state);
@@ -48,7 +49,7 @@ class EstimatorWorkspace
                 Select::make('basis')->label('Quantity basis')->options(['sheets' => 'Press sheets', 'products' => 'Finished pieces'])->default('products')->live(),
                 Select::make('component_role')->label('Component')->options(self::ROLES)->default('stock')->disabled(fn (Get $get): bool => $get('basis') !== 'sheets')->dehydrated()->live(),
             ])->default(self::template('labels')['finishing'])->addActionLabel('Add operation')->reorderableWithButtons()
-            ->extraItemActions([self::itemOptions('operationOptions', 'Operation options', [TextInput::make('name')->label('Operation label')->maxLength(120), ...self::machineOverrides()])])->columnSpanFull();
+            ->extraItemActions([self::itemOptions('operationOptions', 'Operation options', [TextInput::make('name')->label('Operation label')->maxLength(120), Toggle::make('product_review_confirmed')->label('Keep this operation for the selected product')->default(true), ...self::machineOverrides()])])->columnSpanFull();
     }
 
     private static function consumablesRepeater(): Repeater
@@ -75,6 +76,7 @@ class EstimatorWorkspace
     {
         return [
             TextInput::make('name')->label('Component name')->maxLength(100),
+            Toggle::make('product_review_confirmed')->label('Keep this component for the selected product')->default(true),
             self::number('units_per_product', 'Pieces / finished product', 0.000001)->default(1),
             self::number('bleed_mm', 'Bleed / edge')->suffix('mm')->default(3),
             self::number('gap_mm', 'Gap between blanks')->suffix('mm')->default(2),
@@ -100,7 +102,7 @@ class EstimatorWorkspace
 
         return Action::make($name)->label('Options')->tooltip($heading)->icon(Heroicon::OutlinedAdjustmentsHorizontal)
             ->disabled(fn (Repeater $component): bool => $component->isDisabled())
-            ->modalHeading($heading)->modalSubmitActionLabel('Apply options')->modalWidth('4xl')->schema([Group::make($fields)->columns(2)])
+            ->slideOver()->modalHeading($heading)->modalSubmitActionLabel('Apply options')->modalWidth('4xl')->schema([Group::make($fields)->columns(2)])
             ->fillForm(fn (array $arguments, Repeater $component): array => $component->getRawItemState($arguments['item']))
             ->action(function (array $data, array $arguments, Repeater $component) use ($name): void {
                 self::updateItem($component, $arguments['item'], $name === 'componentOptions' ? [...$data, 'layout_confirmed' => false, 'layout_key' => null] : $data);
@@ -147,7 +149,7 @@ class EstimatorWorkspace
                 default => ['nullable', 'numeric', 'min:0'],
             };
 
-            return Hidden::make($name)->rules($rules);
+            return Hidden::make($name)->rules($rules)->default($name === 'product_review_confirmed' ? true : null);
         }, $names);
     }
 
@@ -156,15 +158,22 @@ class EstimatorWorkspace
         return [
             Group::make()->schema([
                 Hidden::make('services.costing_version')->default('sheetfed-v2'),
-                Group::make()->schema([
-                    TextInput::make('description')->label('Product name')->required()->maxLength(255)->columnSpan(2),
-                    Select::make('job_type')->label('Product family')->options(['books' => 'Books', 'labels' => 'Labels', 'packages' => 'Folding cartons', 'stickers' => 'Stickers'])->default('labels')->required()->live()
-                        ->afterStateUpdated(fn (Component $livewire, ?string $state) => $livewire->applyEstimatorTemplate($state ?? 'labels')),
-                    TextInput::make('quantity')->integer()->minValue(1)->maxValue(100000000)->default(1000)->required()->live(onBlur: true),
-                    Select::make('partner_id')->label('Customer (optional)')->options(fn (): array => self::sources()->customerOptions())->searchable()->columnSpan(2),
-                ])->columns(3)->columnSpanFull(),
                 Tabs::make('estimator-workspace')->livewireProperty('estimatorTab')->tabs([
-                    'specifications' => Tab::make('Specifications')->key('specifications')->schema(self::specifications()),
+                    'configure' => Tab::make('Configurator')->key('configure')->schema([
+                        View::make('filament.resources.cost-estimates.workspace-configurator')->viewData(fn (Component $livewire): array => [
+                            'configurator' => $livewire->estimatorConfigurator, 'result' => $livewire->estimatorResult,
+                        ])->columnSpanFull(),
+                    ]),
+                    'specifications' => Tab::make('Product details')->key('specifications')->schema([
+                        Group::make()->schema([
+                            TextInput::make('description')->label('Product name')->required()->maxLength(255)->columnSpan(2),
+                            Select::make('job_type')->label('Product family')->options(['books' => 'Books', 'labels' => 'Labels', 'packages' => 'Folding cartons', 'stickers' => 'Stickers'])->default('labels')->required()->live()
+                                ->afterStateUpdated(fn (Component $livewire, ?string $state) => $livewire->applyEstimatorTemplate($state ?? 'labels')),
+                            TextInput::make('quantity')->integer()->minValue(1)->maxValue(100000000)->default(1000)->required()->live(onBlur: true),
+                            Select::make('partner_id')->label('Customer (optional)')->options(fn (): array => self::sources()->customerOptions())->searchable()->columnSpan(2),
+                        ])->columns(3)->columnSpanFull(),
+                        ...self::specifications(),
+                    ]),
                     'materials' => Tab::make('Material & layout')->key('materials')->schema([
                         Repeater::make('services.components')->hiddenLabel()->schema(self::componentFields())->default(self::template('labels')['components'])
                             ->itemLabel(fn (array $state): string => $state['name'] ?? self::ROLES[$state['role'] ?? 'stock'])->addActionLabel('Add component')->columns(3)->compact()->collapsible()->extraItemActions([
@@ -192,9 +201,9 @@ class EstimatorWorkspace
                         TextInput::make('services.comparison_quantities')->label('Compare quantities')->placeholder('500, 1000, 2500')->helperText('Up to three additional quantities, plus the current quantity. The same stock, route and pricing policy are recalculated for each.')->regex('/^\s*\d+(?:\s*,\s*\d+){0,2}\s*$/')->live(onBlur: true)->maxLength(100),
                         self::view('quantities'),
                     ]),
-                ])->extraAttributes(['class' => 'estimator-tabs'])->columnSpanFull(),
-            ])->columnSpan(['default' => 7, 'xl' => 5]),
-            Group::make()->schema([self::view('summary')])->extraAttributes(['class' => 'estimator-summary'])->columnSpan(['default' => 7, 'xl' => 2]),
+                ])->contained(false)->extraAttributes(fn (Component $livewire): array => ['class' => 'estimator-tabs'.($livewire->estimatorTab === 'configure' ? ' estimator-configuring' : '')])->columnSpanFull(),
+            ])->columnSpan(fn (Component $livewire): array => ['default' => 7, 'xl' => $livewire->estimatorTab === 'configure' ? 7 : 5]),
+            Group::make()->schema([self::view('summary')])->visible(fn (Component $livewire): bool => $livewire->estimatorTab !== 'configure')->extraAttributes(['class' => 'estimator-summary'])->columnSpan(['default' => 7, 'xl' => 2]),
         ];
     }
 
@@ -206,7 +215,7 @@ class EstimatorWorkspace
                 self::number('services.product.height_mm', 'Trim height')->suffix('mm')->default(210),
                 self::number('services.product.page_count', 'Text pages (excludes cover)')->integer()->default(64)->visible(fn (Get $get): bool => $get('job_type') === 'books'),
                 Select::make('services.product.binding')->options(['saddle' => 'Saddle stitch', 'perfect' => 'Perfect binding', 'hardcover' => 'Hardcover'])->default('perfect')->live()
-                    ->helperText('Changing binding rebuilds the components and finishing route.')
+                    ->helperText('Changing binding adds the required components and preserves existing selections for review.')
                     ->visible(fn (Get $get): bool => $get('job_type') === 'books')
                     ->afterStateUpdated(fn (Component $livewire, ?string $state) => $livewire->applyEstimatorTemplate('books', $state ?? 'perfect')),
                 Select::make('services.product.shape')->options(['rectangle' => 'Rectangle', 'round' => 'Round', 'oval' => 'Oval', 'custom' => 'Custom'])->default('rectangle')->live()
@@ -222,7 +231,7 @@ class EstimatorWorkspace
         $resetLayout = fn (Set $set) => $set('layout_confirmed', false);
 
         return [
-            ...self::hiddenFields(['name', 'units_per_product', 'bleed_mm', 'gap_mm', 'page_gap_mm', 'precut_machine_id', 'material_waste_percent', 'unit_cost_override', 'override_reason', 'plate_cost_override', 'plate_override_reason', 'ink_grams_per_m2', 'dieline_imposition_id', 'blank_dimensions_confirmed', ...self::MACHINE_OVERRIDE_FIELDS]),
+            ...self::hiddenFields(['name', 'product_review_confirmed', 'units_per_product', 'bleed_mm', 'gap_mm', 'page_gap_mm', 'precut_machine_id', 'material_waste_percent', 'unit_cost_override', 'override_reason', 'plate_cost_override', 'plate_override_reason', 'ink_grams_per_m2', 'dieline_imposition_id', 'blank_dimensions_confirmed', ...self::MACHINE_OVERRIDE_FIELDS]),
             Select::make('role')->options(self::ROLES)->default('stock')->live()->afterStateUpdated($resetLayout),
             Select::make('material_id')->label('Paper / board')->options(fn (): array => self::sources()->materialOptions(['paper', 'board']))->searchable()->live()->afterStateUpdated($resetLayout),
             Select::make('machine_id')->label('Press / layout machine')->options(fn (): array => self::sources()->machineOptions(['printing', 'cutting']))->searchable()->live()->afterStateUpdated($resetLayout),
@@ -288,29 +297,6 @@ class EstimatorWorkspace
 
     public static function template(string $type, string $binding = 'perfect'): array
     {
-        $base = ['front_colors' => 4, 'back_colors' => 0, 'bleed_mm' => 3, 'gap_mm' => 2, 'grain_axis' => 'any', 'units_per_product' => 1, 'layout_confirmed' => false];
-        if ($type !== 'books') {
-            $route = match ($type) {
-                'packages' => [['name' => 'Die cutting', 'basis' => 'sheets', 'component_role' => 'stock'], ['name' => 'Folder gluer', 'basis' => 'products']],
-                'stickers' => [['name' => 'Kiss cutting', 'basis' => 'sheets', 'component_role' => 'stock']],
-                default => [['name' => 'Cutting', 'basis' => 'sheets', 'component_role' => 'stock']],
-            };
-
-            return ['components' => [[...$base, 'role' => 'stock', 'name' => match ($type) {
-                'packages' => 'Carton board', 'stickers' => 'Self-adhesive stock', default => 'Label stock'
-            }]], 'finishing' => $route];
-        }
-        $roles = $binding === 'hardcover' ? ['text', 'case', 'board', 'endsheet'] : ['text', 'cover'];
-        $components = array_map(fn (string $role): array => [...$base, 'role' => $role, 'name' => self::ROLES[$role], 'front_colors' => in_array($role, ['board', 'endsheet'], true) ? 0 : ($role === 'text' ? 1 : 4), 'back_colors' => $role === 'text' ? 1 : 0, 'signature_pages' => 16, 'grain_axis' => 'height', 'units_per_product' => in_array($role, ['board', 'endsheet'], true) ? 2 : 1], $roles);
-
-        $route = [['name' => 'Folding', 'basis' => 'sheets', 'component_role' => 'text'], ['name' => 'Collating', 'basis' => 'products']];
-        foreach (match ($binding) {
-            'saddle' => ['Stitching'], 'hardcover' => ['Case making', 'Hard cover gluing'], default => ['Perfect binding']
-        } as $operation) {
-            $route[] = ['name' => $operation, 'basis' => 'products'];
-        }
-        $route[] = ['name' => 'Final trimming', 'basis' => 'products'];
-
-        return ['components' => $components, 'finishing' => $route];
+        return EstimatorRecipe::template($type, $binding);
     }
 }

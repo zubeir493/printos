@@ -25,11 +25,11 @@ beforeEach(function (): void {
     $this->actingAs(User::factory()->create(['role' => UserRole::Admin]));
 });
 
-it('presents the approved section workspace and honest incomplete pricing', function (): void {
+it('presents the product configurator with honest incomplete pricing and accessible production details', function (): void {
     Livewire::test(CreateCostEstimate::class)
-        ->assertSee('Specifications')->assertSee('Material &amp; layout', escape: false)
+        ->assertSee('What are we printing?')->assertSee('Material &amp; layout', escape: false)
         ->assertSee('Production route')->assertSee('Pricing')->assertSee('Quantities')
-        ->assertSee('Incomplete')->assertSee('Awaiting inputs')->assertSee('Machine rates include shop overhead.')
+        ->assertSee('Awaiting review')->assertSee('Known costs so far')->assertSee('Machine rates include shop overhead.')
         ->assertDontSee('Calculated machine time')
         ->set('estimatorTab', 'materials')->assertFormFieldExists('materials.services.components')
         ->set('estimatorTab', 'production')->assertFormFieldExists('production.services.finishing')

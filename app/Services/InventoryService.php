@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\InventoryBalance;
 use App\Models\InventoryItem;
 use App\Models\JobOrder;
+use App\Models\MaintenanceStoreEntry;
 use App\Models\StockMovement;
 use App\Models\Warehouse;
 
@@ -128,8 +129,8 @@ class InventoryService
     private function resolveSignedQuantity(string $type, float $quantity): float
     {
         return match ($type) {
-            'purchase', 'transfer_in', 'material_return', 'production_output' => abs($quantity),
-            'consumption', 'transfer_out', 'sale' => -abs($quantity),
+            'purchase', 'transfer_in', 'material_return', 'production_output', MaintenanceStoreEntry::MOVEMENT_TOOL_RETURN => abs($quantity),
+            'consumption', 'transfer_out', 'sale', MaintenanceStoreEntry::TYPE_TOOL_CHECKOUT, MaintenanceStoreEntry::TYPE_SPARE_PART_ISSUE => -abs($quantity),
             'adjustment' => $quantity, // Preserve sign for manual adjustments
             default => $quantity,
         };

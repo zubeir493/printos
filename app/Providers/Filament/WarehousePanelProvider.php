@@ -9,6 +9,7 @@ use App\Filament\Resources\Dispatches\DispatchResource;
 use App\Filament\Resources\GoodsReceipts\GoodsReceiptResource;
 use App\Filament\Resources\InventoryItems\InventoryItemResource;
 use App\Filament\Resources\JobOrders\JobOrderResource;
+use App\Filament\Resources\MaintenanceStoreEntries\MaintenanceStoreEntryResource;
 use App\Filament\Resources\MaterialRequests\MaterialRequestResource;
 use App\Filament\Resources\PurchaseOrders\PurchaseOrderResource;
 use App\Filament\Resources\StockAdjustments\StockAdjustmentResource;
@@ -69,6 +70,7 @@ class WarehousePanelProvider extends PanelProvider
                 StockTransferResource::class,
                 StockAdjustmentResource::class,
                 MaterialRequestResource::class,
+                MaintenanceStoreEntryResource::class,
             ])
             ->pages([
                 Dashboard::class,

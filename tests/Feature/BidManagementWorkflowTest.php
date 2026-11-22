@@ -15,8 +15,10 @@ use App\Models\JournalEntry;
 use App\Models\Partner;
 use App\Models\Payment;
 use App\Models\User;
+use App\Support\Money;
 use App\UserRole;
 use Filament\Facades\Filament;
+use Filament\Notifications\Notification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 
@@ -413,6 +415,39 @@ test('bid resource can send and return bid bond from bid actions', function (): 
         ->and($bond->fresh()->recoveryPayment->method)->toBe('cpo')
         ->and((float) $bank->fresh()->current_balance)->toBe(10000.0);
 });
+
+test('rejected bid bond submissions explain the funding issue and can be retried', function (string $page): void {
+    Filament::setCurrentPanel(Filament::getPanel('admin'));
+    $this->actingAs(User::factory()->create(['role' => UserRole::Admin]));
+
+    $underfundedBank = createBidManagementBank(100);
+    $fundedBank = createBidManagementBank(5000);
+    $bid = Bid::factory()->create(['status' => Bid::STATUS_DRAFT, 'bid_bond_amount' => 1500]);
+    $component = match ($page) {
+        EditBid::class => Livewire::test($page, ['record' => $bid->id])->mountAction('send_bond'),
+        ListBids::class => Livewire::test($page)->mountTableAction('send_bond', $bid),
+    };
+
+    $component->fillForm(['method' => 'bank', 'bank_id' => $underfundedBank->id, 'payment_date' => today()->toDateString()])
+        ->callMountedAction()
+        ->assertNotified(Notification::make()->title('Bond could not be saved')
+            ->body("Insufficient balance in {$underfundedBank->name}. Available: ".Money::format(100).'.')
+            ->danger()->persistent());
+
+    expect($bid->refresh()->status)->toBe(Bid::STATUS_DRAFT)
+        ->and($bid->currentBidBond())->toBeNull()
+        ->and((float) $underfundedBank->fresh()->current_balance)->toBe(100.0);
+
+    $component->fillForm(['bank_id' => $fundedBank->id])
+        ->callMountedAction()
+        ->assertNotified('Bid bond sent');
+
+    expect($bid->refresh()->status)->toBe(Bid::STATUS_SUBMITTED)
+        ->and((float) $fundedBank->fresh()->current_balance)->toBe(3500.0);
+})->with([
+    'edit page' => [EditBid::class],
+    'table' => [ListBids::class],
+]);
 
 test('bid table can send and return bid bond', function (): void {
     Filament::setCurrentPanel(Filament::getPanel('admin'));

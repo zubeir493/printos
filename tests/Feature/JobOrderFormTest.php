@@ -29,22 +29,53 @@ it('uses compact table repeaters and four columns for the specification fields',
         ->assertFormFieldExists('paper', fn (Repeater $component): bool => $component->isTable() && $component->isCompact() && count($component->getTableColumns()) === 3)
         ->assertFormFieldExists('deliverables', fn (Repeater $component): bool => $component->isTable() && $component->isCompact() && count($component->getTableColumns()) === 2)
         ->assertFormFieldExists('unit_price', fn (TextInput $component): bool => $component->getContainer()->getParentComponent()->getColumns('xl') === 4)
-        ->assertFormComponentActionExists('paper', 'add_paper')
-        ->assertFormComponentActionExists('deliverables', 'add_deliverable');
+        ->assertFormComponentActionExists('paper', 'add')
+        ->assertFormComponentActionExists('deliverables', 'add');
 });
 
-it('adds rows with the custom repeater actions and can restart an empty repeater', function (): void {
+it('can add multiple material and deliverable rows starting from an empty form', function (): void {
     $component = Livewire::test(CreateJobOrder::class);
-    $paperKey = array_key_first($component->get('data.paper'));
-    $deliverableKey = array_key_first($component->get('data.deliverables'));
-    $component->callFormComponentAction('paper', 'add_paper', arguments: ['item' => $paperKey])
-        ->callFormComponentAction('deliverables', 'add_deliverable', arguments: ['item' => $deliverableKey]);
+    expect($component->get('data.paper'))->toBe([])
+        ->and($component->get('data.deliverables'))->toBe([]);
+
+    $component->callFormComponentAction('paper', 'add')
+        ->callFormComponentAction('paper', 'add')
+        ->callFormComponentAction('deliverables', 'add')
+        ->callFormComponentAction('deliverables', 'add');
     expect($component->get('data.paper'))->toHaveCount(2)
         ->and($component->get('data.deliverables'))->toHaveCount(2);
-    $component->set('data.paper', [])->callFormComponentAction('paper', 'add')
-        ->set('data.deliverables', [])->callFormComponentAction('deliverables', 'add');
-    expect($component->get('data.paper'))->toHaveCount(1)
-        ->and($component->get('data.deliverables'))->toHaveCount(1);
+});
+
+it('creates a draft without adding any material or file requirements', function (): void {
+    Livewire::test(CreateJobOrder::class)
+        ->fillForm([...jobOrderFormData(), 'unit_price' => 5])
+        ->call('create')->assertHasNoFormErrors();
+
+    $job = JobOrder::query()->sole();
+    expect((string) $job->status)->toBe('draft')
+        ->and($job->paper)->toBe([])
+        ->and($job->deliverables)->toBe([]);
+});
+
+it('clears customer billing fields when a draft becomes an internal job', function (): void {
+    $job = JobOrder::factory()->create([
+        'production_mode' => 'make_to_order',
+        'job_type' => 'packages',
+        'partner_id' => Partner::factory()->create(['is_customer' => true])->id,
+        'due_date' => today()->addDays(30),
+        'status' => 'draft',
+    ]);
+    Storage::disk('s3')->put($job->cost_calc_file, 'cost');
+
+    Livewire::test(EditJobOrder::class, ['record' => $job->id])
+        ->set('data.production_mode', 'make_to_stock')
+        ->assertFormFieldIsHidden('partner_id')
+        ->assertFormFieldIsHidden('due_date')
+        ->call('save')->assertHasNoFormErrors();
+
+    expect($job->fresh()->production_mode)->toBe('make_to_stock')
+        ->and($job->fresh()->partner_id)->toBeNull()
+        ->and($job->fresh()->due_date)->toBeNull();
 });
 
 it('updates the summary and saves quantity times unit price with the configured VAT', function (bool $vatEnabled, float $tax, float $total): void {
@@ -103,7 +134,7 @@ function jobOrderFormData(): array
     return [
         'production_mode' => 'make_to_order', 'partner_id' => Partner::factory()->create(['is_customer' => true])->id,
         'job_type' => 'packages', 'submission_date' => today()->toDateString(), 'due_date' => today()->addDays(30)->toDateString(),
-        'name' => 'Carton', 'quantity' => 1, 'paper' => [], 'deliverables' => [],
+        'name' => 'Carton', 'quantity' => 1,
         'cost_calc_file' => UploadedFile::fake()->create('cost.csv', 1, 'text/csv'),
     ];
 }

@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Bids\Pages\Concerns;
 
 use App\Filament\Resources\Bids\BidResource;
+use App\Filament\Support\BondActionFeedback;
 use App\Filament\Support\PanelAccess;
 use App\Models\Bank;
 use App\Models\Bid;
@@ -21,7 +22,6 @@ use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Grid;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\ValidationException;
 use RuntimeException;
 
 trait InteractsWithBidActions
@@ -117,7 +117,10 @@ trait InteractsWithBidActions
                 && blank($this->record->currentBidBond()?->issue_payment_id)
                 && PanelAccess::canManageBidBonds())
             ->schema($this->bidBondPaymentSchema())
-            ->action(fn (array $data): mixed => $this->handleBidBondAction(
+            ->modalDescription('This records the bond payment and marks the bid as submitted.')
+            ->modalSubmitActionLabel('Send bond')
+            ->action(fn (array $data, Action $action): mixed => $this->handleBidBondAction(
+                $action,
                 fn () => DB::transaction(function () use ($data): void {
                     $this->record->prepareBidBond()->issue(
                         paymentDate: $data['payment_date'],
@@ -143,7 +146,8 @@ trait InteractsWithBidActions
                 && blank($this->record->currentBidBond()?->recovery_payment_id)
                 && PanelAccess::canManageBidBonds())
             ->schema(fn (): array => $this->bidBondPaymentSchema($this->record->currentBidBond()))
-            ->action(fn (array $data): mixed => $this->handleBidBondAction(
+            ->action(fn (array $data, Action $action): mixed => $this->handleBidBondAction(
+                $action,
                 fn () => DB::transaction(function () use ($data): void {
                     $bond = $this->record->currentBidBond();
 
@@ -167,7 +171,9 @@ trait InteractsWithBidActions
                 && blank($this->record->activePerformanceBond())
                 && PanelAccess::canManageBidBonds())
             ->schema($this->performanceBondPaymentSchema())
-            ->action(fn (array $data): mixed => $this->handleBidBondAction(
+            ->modalSubmitActionLabel('Send bond')
+            ->action(fn (array $data, Action $action): mixed => $this->handleBidBondAction(
+                $action,
                 fn () => DB::transaction(function () use ($data): void {
                     $this->record->preparePerformanceBond(
                         amount: (float) $data['amount'],
@@ -195,7 +201,8 @@ trait InteractsWithBidActions
                 && filled($this->record->activePerformanceBond())
                 && PanelAccess::canManageBidBonds())
             ->schema(fn (): array => $this->bidBondPaymentSchema($this->record->activePerformanceBond()))
-            ->action(fn (array $data): mixed => $this->handleBidBondAction(
+            ->action(fn (array $data, Action $action): mixed => $this->handleBidBondAction(
+                $action,
                 fn () => DB::transaction(function () use ($data): void {
                     $bond = $this->record->activePerformanceBond();
 
@@ -221,6 +228,7 @@ trait InteractsWithBidActions
                 TextInput::make('amount')
                     ->label('Performance Bond Amount')
                     ->numeric()
+                    ->minValue(0.01)
                     ->required()
                     ->suffix(fn (): string => Money::suffix()),
                 ...$this->bondPaymentFields(includeReference: false),
@@ -311,7 +319,7 @@ trait InteractsWithBidActions
         ];
     }
 
-    protected function handleBidBondAction(callable $callback, string $message): null
+    protected function handleBidBondAction(Action $action, callable $callback, string $message): null
     {
         try {
             $callback();
@@ -319,9 +327,7 @@ trait InteractsWithBidActions
 
             Notification::make()->title($message)->success()->send();
         } catch (RuntimeException $exception) {
-            throw ValidationException::withMessages([
-                'data.bid_bond_amount' => $exception->getMessage(),
-            ]);
+            BondActionFeedback::fail($action, $exception);
         }
 
         return null;

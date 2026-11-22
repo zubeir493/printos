@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Bids\Tables;
 
 use App\Filament\Resources\Bids\BidResource;
+use App\Filament\Support\BondActionFeedback;
 use App\Filament\Support\PanelAccess;
 use App\Filament\Tables\Filters\DateRangeFilter;
 use App\Models\Bank;
@@ -26,7 +27,6 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\ValidationException;
 use RuntimeException;
 
 class BidsTable
@@ -86,7 +86,10 @@ class BidsTable
                             && blank($record->currentBidBond()?->issue_payment_id)
                             && PanelAccess::canManageBidBonds())
                         ->schema(self::bidBondPaymentSchema())
-                        ->action(fn (Bid $record, array $data): mixed => self::handleBidBondAction(
+                        ->modalDescription('This records the bond payment and marks the bid as submitted.')
+                        ->modalSubmitActionLabel('Send bond')
+                        ->action(fn (Bid $record, array $data, Action $action): mixed => self::handleBidBondAction(
+                            $action,
                             fn () => DB::transaction(function () use ($record, $data): void {
                                 $record->prepareBidBond()->issue(
                                     paymentDate: $data['payment_date'],
@@ -120,7 +123,8 @@ class BidsTable
                             && blank($record->currentBidBond()?->recovery_payment_id)
                             && PanelAccess::canManageBidBonds())
                         ->schema(fn (Bid $record): array => self::bidBondPaymentSchema($record->currentBidBond()))
-                        ->action(fn (Bid $record, array $data): mixed => self::handleBidBondAction(
+                        ->action(fn (Bid $record, array $data, Action $action): mixed => self::handleBidBondAction(
+                            $action,
                             fn () => DB::transaction(function () use ($record, $data): void {
                                 $bond = $record->currentBidBond();
 
@@ -162,7 +166,9 @@ class BidsTable
                             && blank($record->activePerformanceBond())
                             && PanelAccess::canManageBidBonds())
                         ->schema(self::performanceBondPaymentSchema())
-                        ->action(fn (Bid $record, array $data): mixed => self::handleBidBondAction(
+                        ->modalSubmitActionLabel('Send bond')
+                        ->action(fn (Bid $record, array $data, Action $action): mixed => self::handleBidBondAction(
+                            $action,
                             fn () => DB::transaction(function () use ($record, $data): void {
                                 $record->preparePerformanceBond(
                                     amount: (float) $data['amount'],
@@ -186,7 +192,8 @@ class BidsTable
                             && filled($record->activePerformanceBond())
                             && PanelAccess::canManageBidBonds())
                         ->schema(fn (Bid $record): array => self::bidBondPaymentSchema($record->activePerformanceBond()))
-                        ->action(fn (Bid $record, array $data): mixed => self::handleBidBondAction(
+                        ->action(fn (Bid $record, array $data, Action $action): mixed => self::handleBidBondAction(
+                            $action,
                             fn () => DB::transaction(function () use ($record, $data): void {
                                 $bond = $record->activePerformanceBond();
 
@@ -220,6 +227,7 @@ class BidsTable
                 TextInput::make('amount')
                     ->label('Performance Bond Amount')
                     ->numeric()
+                    ->minValue(0.01)
                     ->required()
                     ->suffix(fn (): string => Money::suffix()),
                 ...self::bondPaymentFields(includeReference: false),
@@ -310,16 +318,14 @@ class BidsTable
         ];
     }
 
-    private static function handleBidBondAction(callable $callback, string $message): null
+    private static function handleBidBondAction(Action $action, callable $callback, string $message): null
     {
         try {
             $callback();
 
             Notification::make()->title($message)->success()->send();
         } catch (RuntimeException $exception) {
-            throw ValidationException::withMessages([
-                'data.bid_bond_amount' => $exception->getMessage(),
-            ]);
+            BondActionFeedback::fail($action, $exception);
         }
 
         return null;

@@ -4,6 +4,7 @@ namespace App\Filament\Resources\StockMovements\Tables;
 
 use App\Filament\Exports\StockMovementExporter;
 use App\Filament\Tables\Filters\DateRangeFilter;
+use App\Models\MaintenanceStoreEntry;
 use App\Support\DateTimeDisplay;
 use App\Support\StockTransferQuantity;
 use Filament\Actions\BulkActionGroup;
@@ -11,6 +12,7 @@ use Filament\Actions\ExportBulkAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Support\Str;
 
 class StockMovementsTable
 {
@@ -26,9 +28,10 @@ class StockMovementsTable
                     ->sortable(),
                 TextColumn::make('type')
                     ->badge()
+                    ->formatStateUsing(fn (string $state): string => Str::headline($state))
                     ->color(fn (string $state): string => match ($state) {
-                        'purchase', 'transfer_in', 'material_return', 'production_output' => 'success',
-                        'transfer_out', 'consumption' => 'danger',
+                        'purchase', 'transfer_in', 'material_return', 'production_output', MaintenanceStoreEntry::MOVEMENT_TOOL_RETURN => 'success',
+                        'transfer_out', 'consumption', MaintenanceStoreEntry::TYPE_TOOL_CHECKOUT, MaintenanceStoreEntry::TYPE_SPARE_PART_ISSUE => 'danger',
                         'dispatch' => 'warning',
                         'adjustment' => 'primary',
                         default => 'gray',
@@ -56,6 +59,9 @@ class StockMovementsTable
                         'adjustment' => 'Adjustment',
                         'material_return' => 'Material Return',
                         'production_output' => 'Production Output',
+                        MaintenanceStoreEntry::TYPE_TOOL_CHECKOUT => 'Tool Checkout',
+                        MaintenanceStoreEntry::MOVEMENT_TOOL_RETURN => 'Tool Return',
+                        MaintenanceStoreEntry::TYPE_SPARE_PART_ISSUE => 'Spare Part Issue',
                     ]),
             ])
             ->recordActions([])

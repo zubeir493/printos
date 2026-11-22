@@ -8,7 +8,6 @@ use App\Models\JobOrder;
 use App\Models\Setting;
 use App\Support\Money;
 use App\Support\PrivateStorage;
-use Filament\Actions\Action;
 use Filament\Forms\Components\BaseFileUpload;
 use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\CheckboxList;
@@ -31,7 +30,6 @@ use Filament\Schemas\Components\Utilities\Set as UtilitiesSet;
 use Filament\Schemas\Schema;
 use Illuminate\Support\HtmlString;
 use Illuminate\Support\Number;
-use Illuminate\Support\Str;
 
 class JobOrderForm
 {
@@ -98,7 +96,9 @@ class JobOrderForm
                                     ->preload()
                                     ->searchable()
                                     ->required(fn (UtilitiesGet $get) => $get('production_mode') !== 'make_to_stock')
-                                    ->hidden(fn (UtilitiesGet $get) => $get('production_mode') === 'make_to_stock'),
+                                    ->hidden(fn (UtilitiesGet $get) => $get('production_mode') === 'make_to_stock')
+                                    ->dehydratedWhenHidden()
+                                    ->dehydrateStateUsing(fn (mixed $state, UtilitiesGet $get): mixed => $get('production_mode') === 'make_to_stock' ? null : $state),
                                 Select::make('job_type')
                                     ->options([
                                         'books' => 'Books',
@@ -116,7 +116,10 @@ class JobOrderForm
                                 DatePicker::make('due_date')
                                     ->label('Payment Due Date')
                                     ->default(fn () => now()->addDays(30))
-                                    ->required(),
+                                    ->required(fn (UtilitiesGet $get) => $get('production_mode') !== 'make_to_stock')
+                                    ->hidden(fn (UtilitiesGet $get) => $get('production_mode') === 'make_to_stock')
+                                    ->dehydratedWhenHidden()
+                                    ->dehydrateStateUsing(fn (mixed $state, UtilitiesGet $get): mixed => $get('production_mode') === 'make_to_stock' ? null : $state),
                                 FileUpload::make('cost_calc_file')
                                     ->imagePreviewHeight(36)
                                     ->label('Cost Calculation File')
@@ -178,19 +181,8 @@ class JobOrderForm
                                     TextInput::make('required_quantity')->numeric()->minValue(0)->required()->default(0),
                                     TextInput::make('reserve_quantity')->numeric()->minValue(0)->default(0),
                                 ])
-                                ->defaultItems(1)->columnSpanFull()->reorderable(false)
-                                ->addable(fn (Repeater $component): bool => empty($component->getState()))
-                                ->addActionLabel('Add Material')
-                                ->extraItemActions([
-                                    Action::make('add_paper')->label('Add Material')->icon('heroicon-o-plus')
-                                        ->action(function (Repeater $component): void {
-                                            $state = $component->getState() ?? [];
-                                            $state[(string) Str::uuid()] = [
-                                                'inventory_item_id' => null, 'required_quantity' => 0, 'reserve_quantity' => 0,
-                                            ];
-                                            $component->state($state);
-                                        }),
-                                ]),
+                                ->defaultItems(0)->columnSpanFull()->reorderable(false)
+                                ->addActionLabel('Add Material'),
                             Repeater::make('deliverables')->label('Required Files')
                                 ->table([
                                     TableColumn::make('Deliverable')->alignLeft(),
@@ -201,17 +193,8 @@ class JobOrderForm
                                     TextInput::make('label')->label('Deliverable')->required(),
                                     Select::make('type')->options(['artwork' => 'Artwork', 'text_file' => 'Text File'])->default('artwork')->required(),
                                 ])
-                                ->defaultItems(1)->columnSpanFull()->reorderable(false)
-                                ->addable(fn (Repeater $component): bool => empty($component->getState()))
-                                ->addActionLabel('Add Deliverable')
-                                ->extraItemActions([
-                                    Action::make('add_deliverable')->label('Add Deliverable')->icon('heroicon-o-plus')
-                                        ->action(function (Repeater $component): void {
-                                            $state = $component->getState() ?? [];
-                                            $state[(string) Str::uuid()] = ['label' => '', 'type' => 'artwork'];
-                                            $component->state($state);
-                                        }),
-                                ]),
+                                ->defaultItems(0)->columnSpanFull()->reorderable(false)
+                                ->addActionLabel('Add Deliverable'),
                         ])->columns(['default' => 1, 'sm' => 2, 'xl' => 4])->columnSpanFull(),
                         Grid::make(2)
                             ->schema([

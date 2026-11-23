@@ -133,15 +133,22 @@
             <tr>
                 <td>Created</td>
                 <td>{{ $jobOrderPrint['created_at'] ?? 'Not set' }}</td>
-                <td>Submission Date</td>
+                <td>{{ $jobOrderPrint['uses_production_ticket'] ? 'Job received' : 'Submission Date' }}</td>
                 <td>{{ $jobOrderPrint['submission_date'] ?? 'Not set' }}</td>
             </tr>
             <tr>
-                <td>Deadline</td>
-                <td>{{ $jobOrderPrint['due_date'] ?? 'Not set' }}</td>
-                <td>Client</td>
+                <td>{{ $jobOrderPrint['uses_production_ticket'] ? 'Production due' : 'Deadline' }}</td>
+                <td>{{ ($jobOrderPrint['uses_production_ticket'] ? $jobOrderPrint['production_due_date'] : $jobOrderPrint['due_date']) ?? 'Not set' }}</td>
+                <td>{{ $jobOrderPrint['uses_production_ticket'] && $jobOrderPrint['internal'] ? 'Job source' : 'Client' }}</td>
                 <td>{{ $jobOrderPrint['client']['name'] }}</td>
             </tr>
+            @if($jobOrderPrint['proof_due_date'])
+                <tr>
+                    <td>Proof due</td>
+                    <td colspan="3">{{ $jobOrderPrint['proof_due_date'] }}</td>
+                </tr>
+            @endif
+            @unless($jobOrderPrint['uses_production_ticket'] && $jobOrderPrint['internal'])
             <tr>
                 <td>Client Contact</td>
                 <td colspan="3">
@@ -154,6 +161,7 @@
                     @endif
                 </td>
             </tr>
+            @endunless
         </table>
 
         <h2>Tasks And Required Materials</h2>

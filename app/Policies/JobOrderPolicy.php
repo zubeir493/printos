@@ -32,7 +32,20 @@ class JobOrderPolicy
 
     public function update(User $user, JobOrder $jobOrder): bool
     {
-        return $this->create($user) && (string) $jobOrder->status === 'draft' && blank($jobOrder->proforma_task_id);
+        return $this->create($user) && ($jobOrder->uses_production_ticket
+            ? in_array((string) $jobOrder->status, ['draft', 'design'], true)
+            : (string) $jobOrder->status === 'draft' && blank($jobOrder->proforma_task_id));
+    }
+
+    public function editCostWorksheet(User $user, JobOrder $jobOrder): bool
+    {
+        return $jobOrder->uses_production_ticket && ! $jobOrder->stock_received_at
+            && in_array($user->role, [UserRole::Admin, UserRole::Operations, UserRole::Finance], true);
+    }
+
+    public function reviewProductionCost(User $user, JobOrder $jobOrder): bool
+    {
+        return $jobOrder->uses_production_ticket && in_array($user->role, [UserRole::Admin, UserRole::Finance], true);
     }
 
     public function manageWorkflow(User $user, JobOrder $jobOrder): bool
@@ -60,7 +73,7 @@ class JobOrderPolicy
 
     public function returnMaterials(User $user, JobOrder $jobOrder): bool
     {
-        return in_array($user->role, [UserRole::Admin, UserRole::Operations, UserRole::Warehouse], true);
+        return ! $jobOrder->stock_received_at && in_array($user->role, [UserRole::Admin, UserRole::Operations, UserRole::Warehouse], true);
     }
 
     public function delete(User $user, JobOrder $jobOrder): bool

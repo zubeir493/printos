@@ -7,6 +7,7 @@ use App\Filament\Resources\JobOrders\Pages\EditJobOrder;
 use App\Filament\Resources\JobOrders\Pages\ListJobOrders;
 use App\Filament\Resources\JobOrders\RelationManagers\PaymentsRelationManager;
 use App\Filament\Resources\JobOrders\Schemas\JobOrderForm;
+use App\Filament\Resources\JobOrders\Schemas\JobOrderTicket;
 use App\Filament\Resources\JobOrders\Tables\JobOrdersTable;
 use App\Filament\Support\PanelAccess;
 use App\Models\JobOrder;
@@ -20,6 +21,7 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Gate;
 
 class JobOrderResource extends Resource
 {
@@ -50,7 +52,7 @@ class JobOrderResource extends Resource
 
     public static function canEdit($record): bool
     {
-        return PanelAccess::canManageJobOrders() && (string) $record->status === 'draft' && blank($record->proforma_task_id);
+        return PanelAccess::canManageJobOrders() && Gate::allows('update', $record);
     }
 
     public static function getNavigationBadge(): ?string
@@ -63,6 +65,11 @@ class JobOrderResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return JobOrderForm::configure($schema);
+    }
+
+    public static function infolist(Schema $schema): Schema
+    {
+        return JobOrderTicket::configure($schema);
     }
 
     public static function table(Table $table): Table
@@ -110,16 +117,16 @@ class JobOrderResource extends Resource
 
     public static function getGlobalSearchResultDetails($record): array
     {
-        return [
+        return array_filter([
             'Customer' => $record->partner?->name,
             'Status' => ucfirst((string) $record->status),
-            'Total' => Money::format($record->total),
-        ];
+            'Total' => $record->isInternal() ? null : Money::format($record->total),
+        ]);
     }
 
     public static function getEloquentQuery(): Builder
     {
-        $query = parent::getEloquentQuery()->with(['partner', 'designer', 'typist', 'proforma'])->withSum('productionMovements', 'quantity')->withSum(['payments' => fn ($query) => $query->whereNull('voided_at')], 'amount');
+        $query = parent::getEloquentQuery()->with(['partner', 'designer', 'typist', 'proforma', 'costEstimate', 'outputInventoryItem', 'productionWarehouse'])->withSum('productionMovements', 'quantity')->withSum(['payments' => fn ($query) => $query->whereNull('voided_at')], 'amount');
         $panel = Filament::getCurrentPanel()?->getId();
         if ($panel === 'design') {
             $query->where('designer_id', auth()->id())->whereNotIn('status', ['draft', 'cancelled']);

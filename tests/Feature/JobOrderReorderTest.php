@@ -53,7 +53,7 @@ it('duplicates a job order with tasks as a fresh draft reorder', function (): vo
         ->and($duplicate->job_order_number)->not->toBe($jobOrder->job_order_number)
         ->and((string) $duplicate->status)->toBe('draft')
         ->and($duplicate->submission_date->isToday())->toBeTrue()
-        ->and($duplicate->due_date->isToday())->toBeTrue()
+        ->and($duplicate->due_date)->toBeNull()
         ->and((float) $duplicate->advance_amount)->toBe(0.0)
         ->and($duplicate->advance_paid)->toBeFalse()
         ->and($duplicate->production_started_at)->toBeNull()

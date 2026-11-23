@@ -5,7 +5,6 @@
 @source '../../../../vendor/laraveldaily/filawidgets/resources/views/**/*';
 
 .estimator-summary { align-self: start; min-width: 0; }
-.estimator-configuring > .fi-tabs { display: none; }
 .estimator-configurator { display: grid; grid-template-columns: minmax(250px, 300px) minmax(0, 1fr); grid-template-areas: "sidebar overview" "sidebar details"; grid-template-rows: auto 1fr; gap: 1.25rem 2rem; align-items: start; }
 .estimator-config-sidebar { grid-area: sidebar; display: flex; flex-direction: column; gap: 1rem; background: white; border: 1px solid var(--gray-200); border-radius: .85rem; padding: 1.25rem; }
 .estimator-config-overview { grid-area: overview; }
@@ -1010,6 +1009,112 @@ html:has(.dieline-canvas-shell),
 body:has(.dieline-canvas-shell) {
     block-size: 100%;
     overflow: hidden;
+}
+
+html:has(.estimator-canvas-shell),
+body:has(.estimator-canvas-shell) {
+    block-size: 100%;
+    overflow: hidden;
+}
+
+body:has(.estimator-canvas-shell) .fi-topbar-ctn,
+body:has(.estimator-canvas-shell) .fi-main-sidebar,
+body:has(.estimator-canvas-shell) .fi-sidebar-close-overlay,
+body:has(.estimator-canvas-shell) .fi-layout-sidebar-toggle-btn-ctn {
+    display: none;
+}
+
+body:has(.estimator-canvas-shell) .fi-main-ctn {
+    display: flex;
+    inset: 0;
+    block-size: 100dvh;
+    inline-size: 100%;
+    overflow: hidden;
+}
+
+body:has(.estimator-canvas-shell) .fi-main {
+    block-size: 100dvh;
+    inline-size: 100%;
+    max-inline-size: none;
+    overflow: hidden;
+    padding: 0;
+}
+
+body:has(.estimator-canvas-shell) .fi-page,
+body:has(.estimator-canvas-shell) .fi-page-header-main-ctn,
+body:has(.estimator-canvas-shell) .fi-page-main {
+    block-size: 100dvh;
+    margin: 0;
+    overflow: hidden;
+    padding: 0;
+}
+
+body:has(.estimator-canvas-shell) .fi-page-header-main-ctn {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+body:has(.estimator-canvas-shell) .fi-page-header-main-ctn > .fi-header {
+    padding: .5rem 1.25rem 0;
+}
+
+body:has(.estimator-canvas-shell) .fi-page-main {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-block-size: 0;
+    block-size: auto;
+}
+
+body:has(.estimator-canvas-shell) .fi-page-content {
+    flex: 1 1 auto;
+    min-block-size: 0;
+    overflow: auto;
+    padding: 0;
+}
+
+.estimator-canvas-shell {
+    background: var(--gray-50);
+    block-size: 100%;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    inline-size: 100%;
+    min-block-size: 0;
+    overflow: hidden;
+}
+
+.estimator-canvas-content {
+    flex: 1 1 auto;
+    min-block-size: 0;
+    overflow: auto;
+    padding: 1.25rem;
+    scrollbar-gutter: stable;
+}
+
+@media (min-width: 1024px) {
+    .estimator-canvas-shell .estimator-config-sidebar {
+        top: 0;
+        max-height: calc(100dvh - 2.5rem);
+    }
+}
+
+.estimator-back-link {
+    display: flex;
+    justify-content: flex-start;
+    margin-block-end: .75rem;
+    text-decoration: none;
+}
+
+.estimator-config-sidebar .estimator-back-link {
+    flex: 0 0 auto;
+}
+
+@media (max-width: 767px) {
+    .estimator-canvas-content {
+        padding: .75rem;
+    }
 }
 
 body:has(.dieline-canvas-shell) .fi-topbar-ctn,

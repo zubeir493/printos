@@ -42,6 +42,7 @@ class JobOrderActions
     public static function make(bool $includeDelete = true): ActionGroup
     {
         return ActionGroup::make(array_filter([
+            self::edit(),
             self::reorder(),
             self::print(),
             self::activate(),
@@ -50,6 +51,12 @@ class JobOrderActions
             JobOrderWorkflowActions::sendToProduction(),
             JobOrderWorkflowActions::requestMaterials(),
             JobOrderWorkflowActions::logProduction(),
+            JobOrderCostActions::worksheet(),
+            JobOrderCostActions::linkEstimate(),
+            JobOrderCostActions::approveEstimate(),
+            JobOrderCostActions::worksheet(actual: true),
+            JobOrderCostActions::receive(),
+            JobOrderCostActions::productTax(),
             self::complete(),
             self::cancel(),
             self::issueMaterials(),
@@ -183,9 +190,18 @@ class JobOrderActions
                     ->rows(3),
             ])
             ->modalHeading('Cancel Job Order')
-            ->action(function ($record, array $data) {
-                $record->update(['remarks' => trim(($record->remarks ? $record->remarks."\n\n" : '').'Cancelled: '.$data['cancel_reason'])]);
-                $record->cancel();
+            ->action(function (JobOrder $record, array $data): void {
+                try {
+                    DB::transaction(function () use ($record, $data): void {
+                        $record->cancel();
+                        $record->update(['remarks' => trim(($record->remarks ? $record->remarks."\n\n" : '').'Cancelled: '.$data['cancel_reason'])]);
+                    });
+                } catch (ValidationException $exception) {
+                    Notification::make()->title('Job cannot be cancelled')->body(collect($exception->errors())->flatten()->implode(' '))
+                        ->danger()->persistent()->send();
+
+                    return;
+                }
                 Notification::make()->title('Job order cancelled')->danger()->send();
             });
     }

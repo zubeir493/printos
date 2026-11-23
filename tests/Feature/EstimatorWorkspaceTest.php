@@ -27,12 +27,15 @@ beforeEach(function (): void {
 
 it('presents the product configurator with honest incomplete pricing and accessible production details', function (): void {
     Livewire::test(CreateCostEstimate::class)
-        ->assertSee('What are we printing?')->assertSee('Material &amp; layout', escape: false)
+        ->assertSee('Change product')->assertSee('Material &amp; layout', escape: false)
         ->assertSee('Production route')->assertSee('Pricing')->assertSee('Quantities')
         ->assertSee('Awaiting review')->assertSee('Known costs so far')->assertSee('Machine rates include shop overhead.')
         ->assertDontSee('Calculated machine time')
-        ->set('estimatorTab', 'materials')->assertFormFieldExists('materials.services.components')
-        ->set('estimatorTab', 'production')->assertFormFieldExists('production.services.finishing')
+        ->call('openEstimatorDetails', 'materials')->assertDispatched('open-modal', id: 'estimator-details')
+        ->assertSet('estimatorTab', 'materials')->assertFormFieldExists('materials.services.components')
+        ->assertSee('Done')->assertSee('Change product')
+        ->call('openEstimatorDetails', 'production')->assertSet('estimatorTab', 'production')
+        ->assertFormFieldExists('production.services.finishing')
         ->assertSeeHtml('fi-fo-table-repeater')
         ->assertFormSet(['services.costing_version' => 'sheetfed-v2']);
 });
@@ -70,6 +73,10 @@ it('applies row options and preserves inactive panels when saving a draft', func
     $repeater = collect($page->instance()->form->getFlatComponents(withHidden: true))
         ->first(fn ($component): bool => $component instanceof Repeater && $component->getName() === 'services.finishing');
     $rowKey = array_key_first($page->get('data.services.finishing'));
+    $initialRowCount = count($page->get('data.services.finishing'));
+    $page->callAction(TestAction::make('addRow')->schemaComponent($repeater->getKey(), schema: '')->arguments(['item' => $rowKey]))
+        ->assertHasNoActionErrors();
+    expect($page->get('data.services.finishing'))->toHaveCount($initialRowCount + 1);
     $action = TestAction::make('operationOptions')->schemaComponent($repeater->getKey(), schema: '')->arguments(['item' => $rowKey]);
     $page->mountAction($action)->assertActionMounted($action)->setActionData([
         'name' => 'Calibrated folding', 'hourly_rate_override' => 300, 'speed_override' => 2000,

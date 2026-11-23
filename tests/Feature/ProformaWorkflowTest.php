@@ -6,7 +6,6 @@ use App\Filament\Resources\Proformas\Pages\CreateProforma;
 use App\Filament\Resources\Proformas\Pages\ListProformas;
 use App\Mail\ProformaGenerated;
 use App\Models\Bank;
-use App\Models\InventoryItem;
 use App\Models\JobOrder;
 use App\Models\Partner;
 use App\Models\Proforma;
@@ -50,7 +49,8 @@ it('creates one linked job order from an approved proforma', function (): void {
 
     $jobOrder = app(ProformaWorkflowService::class)->createJobOrders($proforma)->first();
 
-    expect($jobOrder->cost_calc_file)->toContain('proforma-'.$proforma->id)
+    expect($jobOrder->cost_calc_file)->toBeNull()
+        ->and($jobOrder->uses_production_ticket)->toBeTrue()
         ->and($jobOrder->partner_id)->toBe($customer->id)
         ->and(collect([$jobOrder]))->toHaveCount(1)
         ->and($jobOrder->deliverables[0]['label'])->toBe('Dieline')
@@ -365,7 +365,7 @@ it('renders the proforma list without lazy loading the partner relation', functi
     }
 });
 
-it('restores the required cost calculation file and removes proforma id from job orders', function (): void {
+it('saves a manual draft without a cost attachment and retains the proforma link for converted jobs', function (): void {
     Filament::setCurrentPanel(Filament::getPanel('admin'));
 
     $this->actingAs(User::factory()->create([
@@ -376,10 +376,6 @@ it('restores the required cost calculation file and removes proforma id from job
         ->and(Schema::hasColumn('job_orders', 'proforma_id'))->toBeTrue();
 
     $customer = Partner::factory()->create(['is_customer' => true]);
-    $paper = InventoryItem::factory()->create([
-        'type' => 'raw_material',
-        'category' => 'paper',
-    ]);
     $undoRepeaterFake = Repeater::fake();
 
     try {
@@ -393,7 +389,8 @@ it('restores the required cost calculation file and removes proforma id from job
                 'name' => 'Carton', 'quantity' => 100, 'unit_price' => 10, 'paper' => [], 'deliverables' => [],
             ])
             ->call('create')
-            ->assertHasFormErrors(['cost_calc_file' => 'required']);
+            ->assertHasNoFormErrors();
+        expect(JobOrder::query()->sole()->cost_calc_file)->toBeNull();
     } finally {
         $undoRepeaterFake();
     }

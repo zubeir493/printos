@@ -15,7 +15,7 @@ use Livewire\Livewire;
 
 uses(RefreshDatabase::class);
 
-it('renders only the active panel without repeated database work', function (): void {
+it('defers detail panels until opened without repeated database work', function (): void {
     $this->seed(CostingDemoSeeder::class);
     Filament::setCurrentPanel(Filament::getPanel('admin'));
     $this->actingAs(User::factory()->create(['role' => UserRole::Admin]));
@@ -37,8 +37,10 @@ it('renders only the active panel without repeated database work', function (): 
     expect($page->instance()->estimatorResult->isComplete())->toBeTrue()
         ->and(count($queries))->toBeLessThan(25)->and($count)->toBeLessThan(25)
         ->and(strlen($html))->toBeLessThan(200000)
-        ->and($renderedPanels?->length)->toBe(1);
-    $page->set('estimatorTab', 'production')->assertSeeHtml('fi-fo-table-repeater')->assertSee('Calculated machine time');
+        ->and($renderedPanels?->length)->toBe(0);
+    $page->call('openEstimatorDetails', 'production')->assertSeeHtml('fi-fo-table-repeater')->assertSee('Calculated machine time');
+    $document->loadHTML($page->html(), LIBXML_NOERROR | LIBXML_NOWARNING);
+    expect((new DOMXPath($document))->query('//*[@role="tabpanel"][*]')?->length)->toBe(1);
     $page->set('estimatorTab', 'materials')->assertSee('I have verified this layout, grain, folding and finishing allowances');
 });
 

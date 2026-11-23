@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Observers\JobOrderObserver;
 use App\Services\JobOrders\JobOrderWorkflow;
 use App\States\JobOrder\JobOrderState;
+use App\Support\WarehouseAccess;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Builder;
@@ -15,6 +16,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\ModelStates\HasStates;
@@ -49,6 +51,8 @@ class JobOrder extends Model
         'partner_id',
         'job_type',
         'production_mode',
+        'uses_production_ticket', 'production_due_date', 'proof_due_date', 'production_warehouse_id',
+        'cost_estimate_id', 'estimated_production_costs', 'actual_production_costs',
         'services',
         'submission_date',
         'due_date',
@@ -72,6 +76,12 @@ class JobOrder extends Model
             'partner_id' => 'integer',
             'submission_date' => 'date',
             'due_date' => 'date',
+            'uses_production_ticket' => 'boolean',
+            'production_due_date' => 'date', 'proof_due_date' => 'date',
+            'cost_estimate_id' => 'integer', 'production_warehouse_id' => 'integer',
+            'recorded_output_quantity' => 'integer',
+            'estimated_production_costs' => 'array', 'actual_production_costs' => 'array',
+            'cost_reviewed_at' => 'datetime', 'stock_received_at' => 'datetime',
             'advance_amount' => 'decimal:2',
             'subtotal' => 'decimal:2',
             'tax_amount' => 'decimal:2',
@@ -111,6 +121,34 @@ class JobOrder extends Model
     public function outputInventoryItem(): BelongsTo
     {
         return $this->belongsTo(InventoryItem::class, 'output_inventory_item_id');
+    }
+
+    public function costEstimate(): BelongsTo
+    {
+        return $this->belongsTo(CostEstimate::class);
+    }
+
+    public function productionWarehouse(): BelongsTo
+    {
+        return $this->belongsTo(Warehouse::class, 'production_warehouse_id');
+    }
+
+    public function isInternal(): bool
+    {
+        return $this->production_mode === 'make_to_stock';
+    }
+
+    public function requiresCostedStockReceipt(): bool
+    {
+        return $this->uses_production_ticket && $this->isInternal();
+    }
+
+    public function pricingIsLocked(): bool
+    {
+        $status = (string) $this->getRawOriginal('status');
+
+        return filled($this->proforma_task_id) || ($status !== 'draft'
+            && (! $this->uses_production_ticket || $status !== 'design' || $this->payments()->exists() || $this->invoices()->exists()));
     }
 
     public function dispatchItems(): HasMany
@@ -213,7 +251,7 @@ class JobOrder extends Model
         $date ??= today();
 
         return $query
-            ->whereDate('submission_date', '<', $date)
+            ->whereDate(DB::raw('COALESCE(production_due_date, CASE WHEN uses_production_ticket = 0 THEN submission_date END)'), '<', $date)
             ->whereNotIn('status', ['completed', 'cancelled']);
     }
 
@@ -322,11 +360,15 @@ class JobOrder extends Model
 
     public function canComplete(): bool
     {
-        return $this->productionIsComplete() && ($this->production_mode === 'make_to_stock' || $this->isFullyPaid());
+        return $this->productionIsComplete() && ($this->isInternal() ? (! $this->requiresCostedStockReceipt() || filled($this->stock_received_at)) : $this->isFullyPaid());
     }
 
     public function getProducedQuantityAttribute(): float
     {
+        if ($this->requiresCostedStockReceipt()) {
+            return (float) $this->recorded_output_quantity;
+        }
+
         if ($this->relationLoaded('productionMovements')) {
             return (float) $this->productionMovements->sum('quantity');
         }
@@ -383,6 +425,40 @@ class JobOrder extends Model
         return (string) $this->status === 'design' && $this->isReadyForProduction();
     }
 
+    /** @return list<string> */
+    public function productionReleaseIssues(): array
+    {
+        $issues = [];
+        if (filled($this->deliverables) && ! $this->isReadyForProduction()) {
+            $issues[] = 'Approve all required artwork and text files.';
+        }
+        if (! $this->uses_production_ticket) {
+            return $issues;
+        }
+        if (blank($this->production_due_date)) {
+            $issues[] = 'Set the production due date.';
+        }
+        if (blank($this->size)) {
+            $issues[] = 'Enter the finished size in Specifications.';
+        }
+        if ($this->job_type === 'books' && (blank(data_get($this->services, 'binding_type')) || (int) data_get($this->services, 'page_no') < 1)) {
+            $issues[] = 'Enter the page count and binding type in Specifications.';
+        }
+        if (! $this->isInternal() && ! $this->proforma_task_id) {
+            if (! $this->partner_id) {
+                $issues[] = 'Select the customer in Job details.';
+            }
+            if ($this->estimated_production_costs === null || ! $this->cost_reviewed_at) {
+                $issues[] = 'Have Finance or Admin approve the estimated production cost.';
+            }
+            if ((float) $this->subtotal <= 0) {
+                $issues[] = 'Enter the agreed customer price in Billing.';
+            }
+        }
+
+        return $issues;
+    }
+
     public function cancel(): void
     {
         app(JobOrderWorkflow::class)->transition($this, 'cancelled');
@@ -399,6 +475,10 @@ class JobOrder extends Model
 
         // 1. Bulk fetch all relevant Inventory Items
         $items = InventoryItem::whereIn('id', $uniqueMaterialIds)->get()->keyBy('id');
+        $stock = InventoryBalance::query()->whereIn('inventory_item_id', $uniqueMaterialIds)
+            ->whereIn('warehouse_id', WarehouseAccess::warehouses()->select('warehouses.id'))
+            ->selectRaw('inventory_item_id, SUM(quantity_on_hand) as available')
+            ->groupBy('inventory_item_id')->pluck('available', 'inventory_item_id');
 
         // 2. Bulk fetch all relevant Stock Movements for this JO
         $movements = StockMovement::where(function ($query) {
@@ -438,6 +518,8 @@ class JobOrder extends Model
                 'required' => $required,
                 'issued' => $issued,
                 'remaining' => $remaining,
+                'available' => (float) ($stock[$itemId] ?? 0),
+                'shortage' => max(0, $required - $issued - (float) ($stock[$itemId] ?? 0)),
                 'overconsumed' => $overconsumed,
                 'completion' => round($completion, 2),
                 // Purchase-unit display fields

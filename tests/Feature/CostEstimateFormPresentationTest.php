@@ -26,7 +26,7 @@ it('renders the live summary as a styled estimator panel', function (): void {
     Livewire::test(CreateCostEstimate::class)
         ->assertSee('Selling price')
         ->assertSee('Per piece')
-        ->assertSee('What are we printing?')
+        ->assertSee('Change product')
         ->assertDontSee('Service Type')
         ->assertDontSee('Deadline')
         ->assertDontSee('Remarks')

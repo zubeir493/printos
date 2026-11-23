@@ -9,11 +9,38 @@ use App\Services\Costing\CostingResult;
 use App\Services\Costing\EstimatorRecipe;
 use App\Services\Costing\EstimatorRequestContext;
 use App\Services\Costing\SheetfedCostCalculator;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 
 trait HasEstimatorWorkspace
 {
     public string $estimatorTab = 'configure';
+
+    public function openEstimatorDetails(string $tab): void
+    {
+        abort_unless(in_array($tab, ['specifications', 'materials', 'production', 'pricing', 'quantities'], true), 422);
+
+        $this->estimatorTab = $tab;
+        $this->dispatch('open-modal', id: 'estimator-details');
+    }
+
+    protected function onValidationError(ValidationException $exception): void
+    {
+        parent::onValidationError($exception);
+
+        if (($this->record ?? null) instanceof CostEstimate && $this->record->formula_version !== 'sheetfed-v2') {
+            return;
+        }
+
+        $field = array_key_first($exception->errors());
+        $this->openEstimatorDetails(match (true) {
+            str_starts_with($field ?? '', 'data.services.components') => 'materials',
+            str_starts_with($field ?? '', 'data.services.finishing'), str_starts_with($field ?? '', 'data.services.consumables') => 'production',
+            str_starts_with($field ?? '', 'data.services.commercial') => 'pricing',
+            $field === 'data.services.comparison_quantities' => 'quantities',
+            default => 'specifications',
+        });
+    }
 
     public function estimatorCanEdit(): bool
     {

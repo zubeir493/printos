@@ -4,6 +4,7 @@ namespace App\Filament\Resources\JobOrders\Actions;
 
 use App\Filament\Support\MaterialRequestActionForms;
 use App\Models\InventoryItem;
+use App\Models\JobOrder;
 use App\Models\User;
 use App\Models\Warehouse;
 use App\Services\JobOrders\JobOrderWorkflow;
@@ -16,6 +17,7 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\ValidationException;
 
 class JobOrderWorkflowActions
 {
@@ -96,12 +98,19 @@ class JobOrderWorkflowActions
             ->color('gray')
             ->visible(fn ($record): bool => in_array(Filament::getCurrentPanel()?->getId(), ['admin', 'operations'], true)
                 && (string) $record->status === 'design'
-                && (empty($record->deliverables) || $record->isReadyForProduction())
+                && $record->productionReleaseIssues() === []
             )
             ->requiresConfirmation()
             ->modalDescription('Move this job order to production once the required files are ready?')
             ->action(function ($record): void {
-                app(JobOrderWorkflow::class)->transition($record, 'production');
+                try {
+                    app(JobOrderWorkflow::class)->transition($record, 'production');
+                } catch (ValidationException $exception) {
+                    Notification::make()->title('Job cannot be released')->body(collect($exception->errors())->flatten()->implode(' '))
+                        ->danger()->persistent()->send();
+
+                    return;
+                }
 
                 Notification::make()
                     ->title('Job order sent to production')
@@ -118,17 +127,25 @@ class JobOrderWorkflowActions
                 && (empty($record->deliverables) || $record->isReadyForProduction())
                 && in_array(Filament::getCurrentPanel()?->getId(), ['admin', 'operations', 'production'], true))
             ->schema([
-                Select::make('warehouse_id')->options(fn () => Warehouse::pluck('name', 'id'))->required(),
-                TextInput::make('quantity')->numeric()->minValue(0.0001)->required()
+                Select::make('warehouse_id')->label('Output warehouse')->options(fn () => Warehouse::orderBy('name')->pluck('name', 'id'))
+                    ->visible(fn (JobOrder $record): bool => ! $record->requiresCostedStockReceipt())->required(),
+                TextInput::make('quantity')->label('Good copies or pieces')->integer()->minValue(1)->required()
                     ->default(fn ($record) => $record->remaining_production_quantity),
                 Select::make('existing_inventory_item_id')->label('Finished Good')
                     ->options(fn () => InventoryItem::where('type', 'finished_good')->pluck('name', 'id'))
-                    ->searchable()->visible(fn ($record): bool => $record->production_mode === 'make_to_stock')
+                    ->searchable()->visible(fn (JobOrder $record): bool => $record->isInternal() && ! $record->requiresCostedStockReceipt())
                     ->disabled(fn ($record): bool => filled($record->output_inventory_item_id))
                     ->default(fn ($record) => $record->output_inventory_item_id),
             ])
             ->action(function (array $data, $record): void {
-                app(LogJobOrderProduction::class)->handle($record, (int) $data['warehouse_id'], (float) $data['quantity'], isset($data['existing_inventory_item_id']) ? (int) $data['existing_inventory_item_id'] : null);
+                try {
+                    app(LogJobOrderProduction::class)->handle($record, isset($data['warehouse_id']) ? (int) $data['warehouse_id'] : null, (float) $data['quantity'], isset($data['existing_inventory_item_id']) ? (int) $data['existing_inventory_item_id'] : null);
+                } catch (ValidationException $exception) {
+                    Notification::make()->title('Production could not be recorded')->body(collect($exception->errors())->flatten()->implode(' '))
+                        ->danger()->persistent()->send();
+
+                    return;
+                }
                 Notification::make()->title('Production logged')->success()->send();
             });
     }

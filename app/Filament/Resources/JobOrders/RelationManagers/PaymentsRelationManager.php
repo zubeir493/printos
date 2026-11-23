@@ -24,7 +24,7 @@ class PaymentsRelationManager extends RelationManager
 
     public static function canViewForRecord($ownerRecord, string $pageClass): bool
     {
-        return PanelAccess::canAccessFinanceSection();
+        return ! $ownerRecord->isInternal() && PanelAccess::canAccessFinanceSection();
     }
 
     public function form(Schema $schema): Schema

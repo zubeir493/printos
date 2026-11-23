@@ -8,6 +8,7 @@ use App\Models\JobOrder;
 use App\Models\MaintenanceStoreEntry;
 use App\Models\StockMovement;
 use App\Models\Warehouse;
+use Illuminate\Validation\ValidationException;
 
 class InventoryService
 {
@@ -109,11 +110,14 @@ class InventoryService
             throw new \Exception("Insufficient stock for {$item->name} in the selected warehouse.");
         }
 
-        $unitCost = $item->hasPurchaseUnit()
-            ? ((float) ($item->average_cost ?? 0) > 0
-                ? (float) $item->average_cost
-                : (float) ($item->price ?? 0) / (float) $item->conversion_factor)
-            : (float) ($item->average_cost > 0 ? $item->average_cost : ($item->price ?? 0));
+        $costedJob = $referenceType === JobOrder::class && JobOrder::query()->whereKey($referenceId)->where('uses_production_ticket', true)->exists();
+        if ($costedJob && (float) $item->average_cost <= 0) {
+            throw ValidationException::withMessages(['quantity' => "Enter a verified acquisition cost for {$item->name} before issuing it to this job."]);
+        }
+        $unitCost = (float) $item->average_cost;
+        if ($unitCost <= 0) {
+            $unitCost = (float) ($item->price ?? 0) / ($item->hasPurchaseUnit() ? (float) $item->conversion_factor : 1);
+        }
 
         return $this->createMovement(
             $item,

@@ -6,6 +6,7 @@ use App\Filament\Support\PanelAccess;
 use App\Models\InventoryItem;
 use App\Support\Money;
 use App\Support\PrivateStorage;
+use App\UserRole;
 use Filament\Forms\Components\BaseFileUpload;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
@@ -71,6 +72,9 @@ class InventoryItemForm
                     TextInput::make('average_cost')->label('Average acquisition cost / base unit')->numeric()->minValue(0)->step(0.000001)->default(0)
                         ->suffix(fn (): string => Money::suffix())->helperText('New purchase receipts update the weighted average. Initialize unknown historic costs from verified records.')
                         ->hidden(fn ($get): bool => $get('type') !== 'raw_material' || ! PanelAccess::canSeeMoneyValues())->dehydratedWhenHidden(false),
+                    Select::make('sales_tax_code')->label('Sales tax code')->options(InventoryItem::salesTaxOptions())->default('standard')
+                        ->visible(fn ($get): bool => $get('type') === 'finished_good' && in_array(auth()->user()?->role, [UserRole::Admin, UserRole::Finance], true))
+                        ->required(),
                     TextInput::make('width')
                         ->numeric()
                         ->suffix('cm')

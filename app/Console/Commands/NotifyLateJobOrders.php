@@ -13,7 +13,7 @@ class NotifyLateJobOrders extends Command
 {
     protected $signature = 'job-orders:notify-late';
 
-    protected $description = 'Notify admin and operations users about job orders past their submission date';
+    protected $description = 'Notify admin and operations users about job orders past their production due date';
 
     public function handle(): int
     {

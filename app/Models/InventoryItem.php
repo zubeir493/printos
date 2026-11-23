@@ -71,6 +71,7 @@ class InventoryItem extends Model
         'is_sellable',
         'price',
         'average_cost',
+        'sales_tax_code',
         'low_stock_threshold',
         'gsm',
         'width',
@@ -96,6 +97,7 @@ class InventoryItem extends Model
             'is_sellable' => 'boolean',
             'price' => 'decimal:2',
             'average_cost' => 'decimal:6',
+            'production_valued' => 'boolean',
             'conversion_factor' => 'decimal:6',
             'thickness' => 'decimal:4',
             'grain_direction' => 'string',
@@ -114,6 +116,12 @@ class InventoryItem extends Model
     public function stockOnHand(): float
     {
         return (float) $this->inventoryBalances()->sum('quantity_on_hand');
+    }
+
+    /** @return array<string, string> */
+    public static function salesTaxOptions(): array
+    {
+        return ['standard' => 'Standard VAT', 'zero_rated' => 'Zero-rated', 'exempt' => 'Exempt'];
     }
 
     public function scopeRawMaterials(Builder $query): Builder

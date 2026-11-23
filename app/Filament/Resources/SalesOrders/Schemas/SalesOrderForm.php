@@ -2,11 +2,11 @@
 
 namespace App\Filament\Resources\SalesOrders\Schemas;
 
-use App\Filament\Support\Calculations;
 use App\Models\Bank;
 use App\Models\InventoryItem;
 use App\Models\Partner;
-use App\Models\Setting;
+use App\Models\SalesOrder;
+use App\Models\SalesOrderItem;
 use App\Models\Warehouse;
 use App\Services\SalesOrderItemImportService;
 use App\Support\Money;
@@ -189,14 +189,7 @@ class SalesOrderForm
 
                                                 $set('salesOrderItems', $rows);
 
-                                                $subtotal = collect($rows)->sum('total');
-                                                $taxRate = Setting::getSettings()->vat_enabled
-                                                    ? (float) Setting::getSettings()->vat_rate / 100
-                                                    : 0.0;
-                                                $tax = round($subtotal * $taxRate, 2);
-                                                $set('subtotal', $subtotal);
-                                                $set('tax_amount', $tax);
-                                                $set('total', $subtotal + $tax);
+                                                self::updateTotals($get, $set);
 
                                                 Notification::make()
                                                     ->title(count($imported).' item(s) imported')
@@ -300,11 +293,9 @@ class SalesOrderForm
                                         $set('unit_label', $unit);
                                         $set('unit_price', $price);
                                         $set('total', round($qty * $price, 2));
+                                        $set('sales_tax_code', $item->sales_tax_code);
 
-                                        // Selecting an item updates the row values programmatically, so
-                                        // recalculate the form-level totals here as well as on manual edits.
-                                        Calculations::updateSubtotal($get, $set, '../../salesOrderItems', '../../subtotal');
-                                        Calculations::updateTaxedTotal($get, $set, '../../subtotal', '../../tax_amount', '../../total');
+                                        self::updateTotals($get, $set, '../../');
                                     }),
                                 TextInput::make('quantity')
                                     ->numeric()
@@ -315,14 +306,7 @@ class SalesOrderForm
                                     ->live()
                                     ->afterStateUpdated(function (Set $set, Get $get, $state) {
                                         $set('total', round((float) ($state ?? 0) * (float) ($get('unit_price') ?? 0), 2));
-                                        Calculations::updateSubtotal($get, $set, '../../salesOrderItems', '../../subtotal');
-                                        $subtotal = (float) $get('../../subtotal');
-                                        $taxRate = Setting::getSettings()->vat_enabled
-                                            ? (float) Setting::getSettings()->vat_rate / 100
-                                            : 0.0;
-                                        $tax = round($subtotal * $taxRate, 2);
-                                        $set('../../tax_amount', $tax);
-                                        $set('../../total', $subtotal + $tax);
+                                        self::updateTotals($get, $set, '../../');
                                     }),
                                 TextInput::make('unit_price')
                                     ->numeric()
@@ -333,14 +317,7 @@ class SalesOrderForm
                                     ->live(onBlur: true)
                                     ->afterStateUpdated(function (Set $set, Get $get, $state) {
                                         $set('total', round((float) ($state ?? 0) * (float) ($get('quantity') ?? 0), 2));
-                                        Calculations::updateSubtotal($get, $set, '../../salesOrderItems', '../../subtotal');
-                                        $subtotal = (float) $get('../../subtotal');
-                                        $taxRate = Setting::getSettings()->vat_enabled
-                                            ? (float) Setting::getSettings()->vat_rate / 100
-                                            : 0.0;
-                                        $tax = round($subtotal * $taxRate, 2);
-                                        $set('../../tax_amount', $tax);
-                                        $set('../../total', $subtotal + $tax);
+                                        self::updateTotals($get, $set, '../../');
                                     }),
                                 TextInput::make('total')
                                     ->numeric()
@@ -349,9 +326,10 @@ class SalesOrderForm
                                     ->suffix(fn (): string => Money::suffix())
                                     ->afterStateHydrated(function (Set $set, Get $get) {
                                         $set('total', round((float) ($get('quantity') ?? 0) * (float) ($get('unit_price') ?? 0), 2));
-                                        Calculations::updateSubtotal($get, $set, '../../salesOrderItems', '../../subtotal');
-                                        Calculations::updateTaxedTotal($get, $set, '../../subtotal', '../../tax_amount', '../../total');
+                                        self::updateTotals($get, $set, '../../');
                                     }),
+                                Hidden::make('sales_tax_code')->dehydrated(false)
+                                    ->afterStateHydrated(fn (Hidden $component, ?SalesOrderItem $record) => $component->state($record?->sales_tax_code)),
                                 Hidden::make('unit_label')
                                     ->default('unit')
                                     ->dehydrated()
@@ -387,21 +365,9 @@ class SalesOrderForm
                                     }),
                             ])
                             ->live()
-                            ->afterStateUpdated(function (Get $get, Set $set) {
-                                Calculations::updateSubtotal($get, $set, 'salesOrderItems', 'subtotal');
-                                Calculations::updateTaxedTotal($get, $set, 'subtotal', 'tax_amount', 'total');
-                            })
+                            ->afterStateUpdated(fn (Get $get, Set $set) => self::updateTotals($get, $set))
                             ->deleteAction(
-                                fn ($action) => $action->after(function (Get $get, Set $set) {
-                                    Calculations::updateSubtotal($get, $set, 'salesOrderItems', 'subtotal');
-                                    $subtotal = (float) $get('subtotal');
-                                    $taxRate = Setting::getSettings()->vat_enabled
-                                        ? (float) Setting::getSettings()->vat_rate / 100
-                                        : 0.0;
-                                    $tax = round($subtotal * $taxRate, 2);
-                                    $set('tax_amount', $tax);
-                                    $set('total', $subtotal + $tax);
-                                })
+                                fn ($action) => $action->after(fn (Get $get, Set $set) => self::updateTotals($get, $set))
                             ),
                     ])
                     ->columnSpan(3),
@@ -470,6 +436,19 @@ class SalesOrderForm
         }
 
         return $rows->values()->toArray();
+    }
+
+    private static function updateTotals(Get $get, Set $set, string $path = ''): void
+    {
+        $rows = collect($get($path.'salesOrderItems') ?? []);
+        $unclassified = $rows->whereNull('sales_tax_code')->pluck('inventory_item_id')->filter()->unique();
+        $taxCodes = $unclassified->isEmpty() ? [] : InventoryItem::query()->whereKey($unclassified->all())->pluck('sales_tax_code', 'id')->all();
+        $totals = SalesOrder::calculateLineTotals($rows->map(fn (array $line): array => [
+            ...$line, 'sales_tax_code' => $line['sales_tax_code'] ?? $taxCodes[$line['inventory_item_id'] ?? ''] ?? 'standard',
+        ]));
+        foreach ($totals as $key => $amount) {
+            $set($path.$key, $amount);
+        }
     }
 
     private static function summaryValue(mixed $amount, bool $isPrimary = false): HtmlString

@@ -31,7 +31,7 @@ it('shows a single save action and presents pricing before the product fields', 
 
     expect(substr_count($html, 'Save estimate'))->toBe(1)
         ->and($html)->not->toContain('<main class="estimator-config-main">');
-    expect(strpos($html, 'Live estimate'))->toBeLessThan(strpos($html, 'What are we printing?'));
+    expect(strpos($html, 'Live estimate'))->toBeLessThan(strpos($html, 'Change product'));
 
     $page->set('estimatorTab', 'materials')->assertSee('Save estimate');
     expect(substr_count($page->html(), 'Save estimate'))->toBe(1);
@@ -40,7 +40,7 @@ it('shows a single save action and presents pricing before the product fields', 
 it('starts each product from a compact configurator with its required components', function (string $key, string $family, array $roles): void {
     $page = Livewire::test(CreateCostEstimate::class)->call('selectEstimatorProduct', $key)
         ->assertSet('estimatorTab', 'configure')->assertSet('data.job_type', $family)
-        ->assertSee('What are we printing?')->assertSee('Production details')->assertDontSee('Calculated machine time');
+        ->assertSee('Change product')->assertSee('Production details')->assertDontSee('Calculated machine time');
     expect(array_column(array_values($page->get('data.services.components')), 'role'))->toBe($roles);
 })->with([
     ['booklet', 'books', ['text', 'cover']], ['paperback', 'books', ['text', 'cover']],

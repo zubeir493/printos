@@ -20,6 +20,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 
 class InvoiceGeneratorService
 {
@@ -259,6 +260,10 @@ class InvoiceGeneratorService
      */
     public function generateFromJobOrder(JobOrder $order, array $options = []): array
     {
+        if ($order->isInternal()) {
+            throw ValidationException::withMessages(['order' => 'Customer invoices are only generated for client jobs.']);
+        }
+
         // Idempotency guard — never create two invoices for the same order
         $existing = Invoice::where('order_id', $order->id)
             ->where('order_type', 'job_order')

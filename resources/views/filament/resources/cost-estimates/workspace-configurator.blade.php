@@ -8,7 +8,22 @@
 @endphp
 <div class="estimator-configurator">
     <section class="estimator-config-overview" aria-labelledby="estimate-overview-heading">
-        <div class="estimator-config-toolbar"><div><span class="estimator-eyebrow">YOUR ESTIMATE</span><h2 id="estimate-overview-heading">{{ data_get($this->data, 'description') ?: $configurator['preset']['name'] }}</h2><p>{{ number_format((int) data_get($this->data, 'quantity', 0)) }} pieces · {{ $product['width_mm'] ?? '—' }} × {{ $product['height_mm'] ?? '—' }} mm @if ($family === 'books') · {{ $product['page_count'] ?? '—' }} pages @endif</p></div><div class="flex flex-wrap gap-2"><x-filament::button color="gray" icon="heroicon-o-adjustments-horizontal" wire:click="$set('estimatorTab', 'materials')">Production details</x-filament::button>@if ($editable)<x-filament::button type="submit" :key-bindings="['mod+s']" wire:loading.attr="disabled">Save estimate</x-filament::button>@endif</div></div>
+        <div class="estimator-config-toolbar">
+            <div>
+                <span class="estimator-eyebrow">YOUR ESTIMATE</span>
+                <h2 id="estimate-overview-heading">{{ data_get($this->data, 'description') ?: $configurator['preset']['name'] }}</h2>
+                <p>{{ number_format((int) data_get($this->data, 'quantity', 0)) }} pieces · {{ $product['width_mm'] ?? '—' }} × {{ $product['height_mm'] ?? '—' }} mm @if ($family === 'books') · {{ $product['page_count'] ?? '—' }} pages @endif</p>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+                <x-filament::button color="gray" icon="heroicon-o-adjustments-horizontal" wire:click="openEstimatorDetails('materials')" aria-haspopup="dialog">Production details</x-filament::button>
+                @if ($editable)
+                    <x-filament::button type="submit" :key-bindings="['mod+s']" wire:loading.attr="disabled">Save estimate</x-filament::button>
+                @endif
+                @if ($actions)
+                    <x-filament::actions :actions="$actions" />
+                @endif
+            </div>
+        </div>
 
         <section class="estimator-price-strip" aria-label="Live estimate" aria-live="polite">
             <div wire:loading.delay class="estimator-updating" role="status">Recalculating…</div>
@@ -18,14 +33,21 @@
                 <div><span>{{ $result->isComplete() ? 'Production cost' : 'Known costs so far' }}</span><strong>{{ $money($result->subtotal + $result->overheadAmount) }}</strong></div>
                 <div><span>Gross margin</span><strong>{{ $result->isComplete() ? number_format($result->marginPercent, 1).'%' : '—' }}</strong></div>
             </div>
-            <div class="estimator-price-links"><span class="estimator-caption">Machine rates include shop overhead.</span><button type="button" class="estimator-text-action" wire:click="$set('estimatorTab', 'pricing')">Cost breakdown</button><button type="button" class="estimator-text-action" wire:click="$set('estimatorTab', 'quantities')">Compare quantities</button></div>
+            <div class="estimator-price-links"><span class="estimator-caption">Machine rates include shop overhead.</span><button type="button" class="estimator-text-action" wire:click="openEstimatorDetails('pricing')">Cost breakdown</button><button type="button" class="estimator-text-action" wire:click="openEstimatorDetails('quantities')">Compare quantities</button></div>
         </section>
 
         @include('filament.resources.cost-estimates.workspace-readiness', ['actionable' => true])
     </section>
 
     <aside class="estimator-config-sidebar">
-        <div class="estimator-config-heading"><span class="estimator-eyebrow">PRODUCT CONFIGURATOR</span><h2>What are we printing?</h2></div>
+        @if (method_exists($this, 'backUrl'))
+            <a href="{{ $this->backUrl() }}" class="estimator-back-link inline-flex w-full items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600">
+                <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true">
+                    <path d="m11.5 4.5-5 5.5 5 5.5M7 10h8" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" />
+                </svg>
+                <span>{{ $this->backLabel() }}</span>
+            </a>
+        @endif
         <button type="button" class="estimator-product-trigger" x-on:click="$dispatch('open-modal', { id: 'estimator-product-picker' })" @disabled(! $editable) aria-haspopup="dialog">
             <x-filament::icon :icon="'heroicon-o-'.$configurator['preset']['icon']" class="size-6" />
             <span><strong>{{ $configurator['preset']['name'] }}</strong><small>Change product</small></span>
@@ -43,7 +65,7 @@
         @elseif (in_array($family, ['labels', 'stickers'], true))
             <x-estimator-input path="data.services.product.shape" label="Shape" type="select" :options="['rectangle' => 'Rectangle', 'round' => 'Round', 'oval' => 'Oval', 'custom' => 'Custom']" :disabled="! $editable" />
         @else
-            <button type="button" class="estimator-text-action" wire:click="$set('estimatorTab', 'materials')">Choose dieline &amp; blank dimensions <span aria-hidden="true">↗</span></button>
+            <button type="button" class="estimator-text-action" wire:click="openEstimatorDetails('materials')">Choose dieline &amp; blank dimensions <span aria-hidden="true">↗</span></button>
         @endif
 
         <div class="estimator-config-divider"><h3>Paper &amp; printing</h3></div>
@@ -66,18 +88,17 @@
         <p class="estimator-caption">The product prepares its required route. Add optional finishes here.</p>
         <div class="estimator-finish-tags">
             @foreach ($configurator['route'] as $step)
-                <button type="button" wire:click="$set('estimatorTab', 'production')">{{ $step['label'] }}</button>
+                <button type="button" wire:click="openEstimatorDetails('production')">{{ $step['label'] }}</button>
             @endforeach
         </div>
         <x-estimator-input path="data.services.commercial.profit_percent" :label="($commercial['pricing_mode'] ?? 'margin') === 'markup' ? 'Target markup' : 'Target gross margin'" suffix="%" :max="($commercial['pricing_mode'] ?? 'margin') === 'markup' ? 1000 : 99" :disabled="! $editable" />
-        <button type="button" class="estimator-text-action" wire:click="$set('estimatorTab', 'pricing')">Discounts, overhead &amp; pricing settings <span aria-hidden="true">↗</span></button>
-        <details class="estimator-detail"><summary>Customer</summary><x-estimator-input path="data.partner_id" label="Customer (optional)" type="select" :options="['' => 'No customer'] + $configurator['customers']" :disabled="! $editable" /></details>
+        <button type="button" class="estimator-text-action" wire:click="openEstimatorDetails('pricing')">Discounts, overhead &amp; pricing settings <span aria-hidden="true">↗</span></button>
     </aside>
 
     <div class="estimator-config-main">
-        <section class="estimator-production-story" aria-label="Production plan"><div class="estimator-config-divider"><h3>How it will be made</h3><button type="button" class="estimator-text-action" wire:click="$set('estimatorTab', 'production')">Edit route</button></div><div class="estimator-route-flow"><button type="button" wire:click="$set('estimatorTab', 'materials')"><strong>Print</strong><small>Paper, press &amp; layout</small></button>@foreach ($configurator['route'] as $step)<span aria-hidden="true">→</span><button type="button" wire:click="$set('estimatorTab', 'production')"><strong>{{ $step['label'] }}</strong><small>{{ $step['machine'] ? 'Machine selected' : 'Choose machine' }}</small></button>@endforeach</div></section>
+        <section class="estimator-production-story" aria-label="Production plan"><div class="estimator-config-divider"><h3>How it will be made</h3><button type="button" class="estimator-text-action" wire:click="openEstimatorDetails('production')">Edit route</button></div><div class="estimator-route-flow"><button type="button" wire:click="openEstimatorDetails('materials')"><strong>Print</strong><small>Paper, press &amp; layout</small></button>@foreach ($configurator['route'] as $step)<span aria-hidden="true">→</span><button type="button" wire:click="openEstimatorDetails('production')"><strong>{{ $step['label'] }}</strong><small>{{ $step['machine'] ? 'Machine selected' : 'Choose machine' }}</small></button>@endforeach</div></section>
 
-        <div class="estimator-config-divider"><h3>Sheet preview</h3><button type="button" class="estimator-text-action" wire:click="$set('estimatorTab', 'materials')">Review layouts</button></div>
+        <div class="estimator-config-divider"><h3>Sheet preview</h3><button type="button" class="estimator-text-action" wire:click="openEstimatorDetails('materials')">Review layouts</button></div>
         @include('filament.resources.cost-estimates.workspace-layouts', ['compact' => true])
         @if ($result->materialConsumption !== [])
             <details class="estimator-detail"><summary>Material requirements &amp; stock availability</summary>

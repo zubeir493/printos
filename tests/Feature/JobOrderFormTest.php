@@ -2,6 +2,7 @@
 
 use App\Filament\Resources\JobOrders\Pages\CreateJobOrder;
 use App\Filament\Resources\JobOrders\Pages\EditJobOrder;
+use App\Models\CostEstimate;
 use App\Models\InventoryItem;
 use App\Models\JobOrder;
 use App\Models\Partner;
@@ -12,36 +13,35 @@ use Filament\Facades\Filament;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\TextInput;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
-    Storage::fake('s3');
     Filament::setCurrentPanel(Filament::getPanel('operations'));
     $this->actingAs(User::factory()->create(['role' => UserRole::Operations]));
 });
 
-it('uses compact table repeaters and four columns for the specification fields', function (): void {
-    Livewire::test(CreateJobOrder::class)
+it('uses two sections with the custom compact repeaters and cost estimator selector', function (): void {
+    $component = Livewire::test(CreateJobOrder::class)
         ->assertFormFieldExists('paper', fn (Repeater $component): bool => $component->isTable() && $component->isCompact() && count($component->getTableColumns()) === 3)
         ->assertFormFieldExists('deliverables', fn (Repeater $component): bool => $component->isTable() && $component->isCompact() && count($component->getTableColumns()) === 2)
-        ->assertFormFieldExists('unit_price', fn (TextInput $component): bool => $component->getContainer()->getParentComponent()->getColumns('xl') === 4)
-        ->assertFormComponentActionExists('paper', 'add')
-        ->assertFormComponentActionExists('deliverables', 'add');
+        ->assertFormFieldExists('unit_price', fn (TextInput $component): bool => $component->getContainer()->getParentComponent()->getHeading() === 'Dates and costing')
+        ->assertFormFieldExists('production_due_date')
+        ->assertFormFieldExists('cost_estimate_id')
+        ->assertFormFieldDoesNotExist('cost_calc_file')
+        ->assertFormComponentActionExists('paper', 'add_paper')
+        ->assertFormComponentActionExists('deliverables', 'add_deliverable');
+    expect($component->instance()->getSchema('form')->getComponents())->toHaveCount(2);
 });
 
-it('can add multiple material and deliverable rows starting from an empty form', function (): void {
+it('can add material and deliverable rows using the initial row actions', function (): void {
     $component = Livewire::test(CreateJobOrder::class);
-    expect($component->get('data.paper'))->toBe([])
-        ->and($component->get('data.deliverables'))->toBe([]);
+    expect($component->get('data.paper'))->toHaveCount(1)
+        ->and($component->get('data.deliverables'))->toHaveCount(1);
 
-    $component->callFormComponentAction('paper', 'add')
-        ->callFormComponentAction('paper', 'add')
-        ->callFormComponentAction('deliverables', 'add')
-        ->callFormComponentAction('deliverables', 'add');
+    $component->callFormComponentAction('paper', 'add_paper', arguments: ['item' => array_key_first($component->get('data.paper'))])
+        ->callFormComponentAction('deliverables', 'add_deliverable', arguments: ['item' => array_key_first($component->get('data.deliverables'))]);
     expect($component->get('data.paper'))->toHaveCount(2)
         ->and($component->get('data.deliverables'))->toHaveCount(2);
 });
@@ -65,7 +65,6 @@ it('clears customer billing fields when a draft becomes an internal job', functi
         'due_date' => today()->addDays(30),
         'status' => 'draft',
     ]);
-    Storage::disk('s3')->put($job->cost_calc_file, 'cost');
 
     Livewire::test(EditJobOrder::class, ['record' => $job->id])
         ->set('data.production_mode', 'make_to_stock')
@@ -92,7 +91,6 @@ it('updates the summary and saves quantity times unit price with the configured 
 it('loads the effective unit price for an existing job and recalculates when quantity changes', function (): void {
     Setting::getSettings()->update(['vat_enabled' => true, 'vat_rate' => 15]);
     $job = JobOrder::factory()->create(['quantity' => 4, 'subtotal' => 100, 'tax_amount' => 15, 'partner_id' => Partner::factory()->create(['is_customer' => true])->id, 'due_date' => today()->addDays(30), 'job_type' => 'packages']);
-    Storage::disk('s3')->put($job->cost_calc_file, 'cost');
     Livewire::test(EditJobOrder::class, ['record' => $job->id])
         ->assertFormSet(['unit_price' => 25.0, 'subtotal' => 100])
         ->set('data.quantity', 8)
@@ -104,7 +102,6 @@ it('loads the effective unit price for an existing job and recalculates when qua
 it('preserves the stored subtotal when the effective unit price is recurring', function (): void {
     Setting::getSettings()->update(['vat_enabled' => false]);
     $job = JobOrder::factory()->create(['quantity' => 3, 'subtotal' => 10, 'tax_amount' => 0, 'partner_id' => Partner::factory()->create(['is_customer' => true])->id, 'due_date' => today()->addDays(30), 'job_type' => 'packages']);
-    Storage::disk('s3')->put($job->cost_calc_file, 'cost');
     Livewire::test(EditJobOrder::class, ['record' => $job->id])->call('save')->assertHasNoFormErrors();
     expect((float) $job->fresh()->subtotal)->toBe(10.0);
 });
@@ -128,6 +125,36 @@ it('rejects negative unit prices', function (): void {
     expect(JobOrder::count())->toBe(0);
 });
 
+it('links a finalized estimate directly on the job form and clears it when unselected', function (): void {
+    $formData = jobOrderFormData();
+    $estimate = CostEstimate::factory()->create([
+        'status' => 'finalized', 'job_type' => 'packages', 'quantity' => 1,
+        'partner_id' => $formData['partner_id'], 'overhead_amount' => 12,
+    ]);
+    $estimate->lines()->create(['category' => 'Machine', 'label' => 'Press', 'quantity' => 1, 'unit_cost' => 30, 'total' => 30, 'unit' => 'hour']);
+    Livewire::test(CreateJobOrder::class)->fillForm($formData)->set('data.cost_estimate_id', $estimate->id)
+        ->call('create')->assertHasNoFormErrors();
+    $job = JobOrder::query()->sole();
+    expect($job->cost_estimate_id)->toBe($estimate->id)
+        ->and($job->estimated_production_costs['press'])->toEqual(30)
+        ->and($job->cost_calc_file)->toBeNull();
+
+    Livewire::test(EditJobOrder::class, ['record' => $job->id])->set('data.cost_estimate_id', null)
+        ->call('save')->assertHasNoFormErrors();
+    expect($job->refresh()->cost_estimate_id)->toBeNull()
+        ->and($job->estimated_production_costs)->toBeNull();
+});
+
+it('rejects an estimate for a different run quantity', function (): void {
+    $formData = jobOrderFormData();
+    $estimate = CostEstimate::factory()->create([
+        'status' => 'finalized', 'job_type' => 'packages', 'quantity' => 2, 'partner_id' => $formData['partner_id'],
+    ]);
+    Livewire::test(CreateJobOrder::class)->fillForm($formData)->set('data.cost_estimate_id', $estimate->id)
+        ->call('create')->assertHasFormErrors(['cost_estimate_id']);
+    expect(JobOrder::count())->toBe(0);
+});
+
 /** @return array<string, mixed> */
 function jobOrderFormData(): array
 {
@@ -135,6 +162,5 @@ function jobOrderFormData(): array
         'production_mode' => 'make_to_order', 'partner_id' => Partner::factory()->create(['is_customer' => true])->id,
         'job_type' => 'packages', 'submission_date' => today()->toDateString(), 'due_date' => today()->addDays(30)->toDateString(),
         'name' => 'Carton', 'quantity' => 1,
-        'cost_calc_file' => UploadedFile::fake()->create('cost.csv', 1, 'text/csv'),
     ];
 }

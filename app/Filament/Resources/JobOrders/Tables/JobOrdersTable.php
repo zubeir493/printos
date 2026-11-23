@@ -24,7 +24,7 @@ class JobOrdersTable
             ->columns([
                 TextColumn::make('job_order_number')
                     ->label('Job Order')
-                    ->description(fn ($record) => $record->partner?->name ?? 'Internal Order')
+                    ->description(fn ($record) => $record->isInternal() ? 'Internal job' : ($record->partner?->name ?? 'Client job'))
                     ->weight('bold')
                     ->color('primary')
                     ->searchable()
@@ -42,20 +42,22 @@ class JobOrdersTable
                     })
                     ->weight(FontWeight::SemiBold)
                     ->formatStateUsing(fn ($state) => ucfirst($state))
-                    ->description(fn ($record) => $record->production_completed_at && (string) $record->status === 'production' ? 'Awaiting payment' : null),
-                TextColumn::make('submission_date')
-                    ->label('Submission Date')
+                    ->description(fn ($record) => $record->production_completed_at && (string) $record->status === 'production'
+                        ? ($record->isInternal() ? 'Awaiting stock receipt' : 'Awaiting payment') : null),
+                TextColumn::make('production_due_date')
+                    ->label('Production due')
+                    ->state(fn ($record) => $record->production_due_date ?? ($record->uses_production_ticket ? null : $record->submission_date))
                     ->date()
                     ->sortable()
-                    ->color(fn ($record) => $record->submission_date && $record->submission_date->isBefore(today()) && ! in_array($record->status, ['completed', 'cancelled']) ? 'danger' : null)
-                    ->description(fn ($record) => $record->submission_date && $record->submission_date->isBefore(today()) && ! in_array($record->status, ['completed', 'cancelled']) ? 'Late' : null),
+                    ->color(fn ($record, $state) => $state?->isBefore(today()) && ! in_array((string) $record->status, ['completed', 'cancelled']) ? 'danger' : null),
                 TextColumn::make('total')
                     ->label('Payment Progress')
                     ->weight('bold')
-                    ->formatStateUsing(fn ($record) => Money::format($record->paid_amount).'/'.Money::format($record->total))
-                    ->description(fn ($record) => $record->balance > 0
+                    ->state(fn ($record) => $record->isInternal() ? null : Money::format($record->paid_amount).'/'.Money::format($record->total))
+                    ->placeholder('—')
+                    ->description(fn ($record) => $record->isInternal() ? null : ($record->balance > 0
                         ? 'Balance: '.Money::format($record->balance)
-                        : 'Paid in full')
+                        : 'Paid in full'))
                     ->color(fn ($record): string => match (true) {
                         $record->balance <= 0 => 'success',
                         $record->paid_amount > 0 => 'warning',
@@ -64,23 +66,23 @@ class JobOrdersTable
                     ->weight(fn ($record): FontWeight => $record->balance <= 0
                         ? FontWeight::Bold
                         : FontWeight::SemiBold)
-                    ->visible(fn ($record) => is_object($record)
-                        && PanelAccess::canSeeMoneyValues()
-                        && ($record->production_mode ?? null) !== 'make_to_stock')
+                    ->visible(fn (): bool => PanelAccess::canSeeMoneyValues())
                     ->sortable(),
             ])
             ->filters([
                 SelectFilter::make('proforma_id')->relationship('proforma', 'proforma_number')->searchable()->preload(),
+                SelectFilter::make('production_mode')->label('Job source')->options(['make_to_order' => 'Client job', 'make_to_stock' => 'Internal job']),
                 DateRangeFilter::make('submission_date_range', 'submission_date', 'Submission date'),
 
                 TernaryFilter::make('payment_status')
+                    ->visible(fn (): bool => PanelAccess::canSeeMoneyValues())
                     ->label('Payment Status')
                     ->placeholder('All')
                     ->trueLabel('Pending Payments')
                     ->falseLabel('Fully Paid')
                     ->queries(
-                        true: fn ($query) => $query->pendingPayment(),
-                        false: fn ($query) => $query->fullyPaid(),
+                        true: fn ($query) => $query->where('production_mode', 'make_to_order')->pendingPayment(),
+                        false: fn ($query) => $query->where('production_mode', 'make_to_order')->fullyPaid(),
                     ),
                 SelectFilter::make('status')
                     ->options([

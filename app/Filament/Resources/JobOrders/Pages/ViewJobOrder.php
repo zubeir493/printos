@@ -4,6 +4,7 @@ namespace App\Filament\Resources\JobOrders\Pages;
 
 use App\Filament\Resources\Dispatches\DispatchResource;
 use App\Filament\Resources\JobOrders\Actions\JobOrderActions;
+use App\Filament\Resources\JobOrders\Actions\JobOrderCostActions;
 use App\Filament\Resources\JobOrders\Actions\JobOrderWorkflowActions;
 use App\Filament\Resources\JobOrders\JobOrderResource;
 use App\Filament\Support\PanelAccess;
@@ -35,9 +36,13 @@ class ViewJobOrder extends ViewRecord
         $record = $this->getRecord();
         $primary = match (true) {
             (string) $record->status === 'draft' && Gate::allows('manageWorkflow', $record) => JobOrderActions::activate(),
-            (string) $record->status === 'design' && (empty($record->deliverables) || $record->isReadyForProduction()) && Gate::allows('manageWorkflow', $record) => JobOrderWorkflowActions::sendToProduction(),
+            (string) $record->status === 'design' && $record->productionReleaseIssues() === [] && Gate::allows('manageWorkflow', $record) => JobOrderWorkflowActions::sendToProduction(),
             (string) $record->status === 'design' && filled($record->deliverables) && ! $record->isReadyForProduction() && in_array(auth()->user()?->role, [UserRole::Admin, UserRole::Operations, UserRole::Design, UserRole::Typist], true) => Action::make('review_files')->label('Review required files')->icon('heroicon-o-document-check')->url('#job-order-files'),
             (string) $record->status === 'production' && ! $record->production_completed_at && (empty($record->deliverables) || $record->isReadyForProduction()) && Gate::allows('logProduction', $record) => JobOrderWorkflowActions::logProduction(),
+            $record->requiresCostedStockReceipt() && $record->production_completed_at && ! $record->stock_received_at
+                && (string) $record->status === 'production' && Gate::allows('reviewProductionCost', $record) => $record->actual_production_costs
+                    ? JobOrderCostActions::receive()
+                    : JobOrderCostActions::worksheet(actual: true),
             PanelAccess::canAccessFinanceSection() && $record->balance > 0 && Gate::allows('recordPayment', $record) => JobOrderActions::pay(),
             PanelAccess::canAccessWarehouseSection() && in_array((string) $record->status, ['production', 'completed'], true) && $record->production_mode === 'make_to_order' && $record->remaining_quantity > 0 => Action::make('create_dispatch')
                 ->label('Create dispatch')->icon('heroicon-o-truck')

@@ -52,16 +52,20 @@ class VoidSalesOrder
                 $original->update(['voided_at' => now()]);
             }
             $movements = StockMovement::query()->where('reference_type', SalesOrder::class)->where('reference_id', $sale->id)
-                ->whereIn('type', ['sale', 'sale_return'])->get()->groupBy(fn (StockMovement $movement): string => $movement->warehouse_id.':'.$movement->inventory_item_id);
+                ->whereIn('type', ['sale', 'sale_return'])->orderBy('inventory_item_id')->get()->groupBy(fn (StockMovement $movement): string => $movement->warehouse_id.':'.$movement->inventory_item_id);
             foreach ($movements as $group) {
                 $quantity = -(float) $group->sum('quantity');
                 if ($quantity <= 0) {
                     continue;
                 }
+                $costedSales = $group->where('type', 'sale')->whereNotNull('unit_cost');
+                $cost = $costedSales->sum('total_cost') - $group->where('type', 'sale_return')->sum('total_cost');
                 StockMovement::create([
                     'inventory_item_id' => $group->first()->inventory_item_id, 'warehouse_id' => $group->first()->warehouse_id,
                     'type' => 'sale_return', 'reference_type' => SalesOrder::class, 'reference_id' => $sale->id,
                     'quantity' => $quantity, 'movement_date' => now(),
+                    'unit_cost' => $costedSales->isNotEmpty() ? round($cost / $quantity, 6) : null,
+                    'total_cost' => $costedSales->isNotEmpty() ? $cost : null,
                 ]);
             }
             $sale->update(['status' => SalesOrder::STATUS_VOID]);

@@ -32,9 +32,25 @@ class JobOrderObserver
 
     public function saving(JobOrder $jobOrder): void
     {
-        if ($jobOrder->exists && ((string) $jobOrder->getRawOriginal('status') !== 'draft' || $jobOrder->proforma_task_id)
-            && $jobOrder->isDirty(['subtotal', 'tax_amount', 'quantity', 'name', 'production_mode'])) {
+        if ($jobOrder->exists && (
+            ($jobOrder->pricingIsLocked() && $jobOrder->isDirty(['subtotal', 'tax_amount']))
+            || (((string) $jobOrder->getRawOriginal('status') !== 'draft' || $jobOrder->proforma_task_id)
+                && $jobOrder->isDirty(['quantity', 'name', 'production_mode', 'job_type', 'partner_id']))
+        )) {
             throw ValidationException::withMessages(['subtotal' => 'Started jobs and accepted quotation specifications cannot be repriced.']);
+        }
+        if ($jobOrder->uses_production_ticket && $jobOrder->isInternal()) {
+            $jobOrder->forceFill([
+                'partner_id' => null, 'due_date' => null, 'subtotal' => 0, 'tax_amount' => 0,
+                'total' => 0, 'advance_amount' => 0, 'advance_paid' => false,
+            ]);
+        }
+        if ($jobOrder->uses_production_ticket && $jobOrder->exists && ! $jobOrder->proforma_task_id
+            && $jobOrder->isDirty(['quantity', 'job_type', 'size', 'services', 'paper', 'production_mode', 'partner_id'])) {
+            $jobOrder->forceFill(['cost_reviewed_at' => null, 'cost_reviewed_by' => null]);
+            if ($jobOrder->isDirty(['quantity', 'job_type', 'production_mode', 'partner_id']) && $jobOrder->cost_estimate_id) {
+                $jobOrder->forceFill(['cost_estimate_id' => null, 'estimated_production_costs' => null]);
+            }
         }
         if ($jobOrder->isDirty('subtotal') && ! $jobOrder->proforma_task_id && ! $jobOrder->isDirty('tax_amount')) {
             $settings = Setting::getSettings();
@@ -45,9 +61,14 @@ class JobOrderObserver
         }
         if ($jobOrder->isDirty('status')) {
             $status = (string) $jobOrder->status;
+            if ($status === 'cancelled' && $jobOrder->exists && $jobOrder->requiresCostedStockReceipt()
+                && ($jobOrder->recorded_output_quantity > 0 || $jobOrder->issuedBalanceByWarehouse()->flatten(1)->contains(fn ($line): bool => (float) $line->net_quantity !== 0.0))) {
+                throw ValidationException::withMessages(['status' => 'Return outstanding materials before cancelling. A run with logged good output must be reconciled before cancellation.']);
+            }
             if ($status === 'production') {
-                if ((string) $jobOrder->getRawOriginal('status') !== 'completed' && filled($jobOrder->deliverables) && ! $jobOrder->isReadyForProduction()) {
-                    throw ValidationException::withMessages(['status' => 'Required deliverables must be approved.']);
+                $issues = $jobOrder->productionReleaseIssues();
+                if ((string) $jobOrder->getRawOriginal('status') !== 'completed' && $issues !== []) {
+                    throw ValidationException::withMessages(['status' => $issues]);
                 }
                 $jobOrder->production_started_at ??= now();
                 if ((string) $jobOrder->getRawOriginal('status') === 'completed') {

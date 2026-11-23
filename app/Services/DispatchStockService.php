@@ -14,7 +14,7 @@ class DispatchStockService
             return 'Select a job order and warehouse.';
         }
         $job = JobOrder::find($jobOrderId);
-        if (! $job || ! in_array((string) $job->status, ['production', 'completed'], true)) {
+        if (! $job || $job->requiresCostedStockReceipt() || ! in_array((string) $job->status, ['production', 'completed'], true)) {
             return 'Select a job with production output available for dispatch.';
         }
         $qty = (float) $quantity;

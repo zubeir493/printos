@@ -134,22 +134,25 @@ class SalesOrder extends Model
 
     public function recalculateTotals(): void
     {
-        $subtotal = (float) $this->salesOrderItems()->sum('total');
-        $taxRate = $this->getTaxRate();
-        $taxAmount = round($subtotal * $taxRate, 2);
-
-        $this->updateQuietly([
-            'subtotal' => $subtotal,
-            'tax_amount' => $taxAmount,
-            'total' => $subtotal + $taxAmount,
-        ]);
+        $this->updateQuietly(self::calculateLineTotals($this->salesOrderItems()->get(['total', 'sales_tax_code'])));
     }
 
-    private function getTaxRate(): float
+    /** @param iterable<array|SalesOrderItem> $lines @return array{subtotal: float, tax_amount: float, total: float} */
+    public static function calculateLineTotals(iterable $lines): array
     {
         $settings = Setting::getSettings();
+        $subtotal = 0.0;
+        $taxable = 0.0;
+        foreach ($lines as $line) {
+            $amount = (float) ($line['total'] ?? 0);
+            $subtotal += $amount;
+            if (($line['sales_tax_code'] ?? 'standard') === 'standard') {
+                $taxable += $amount;
+            }
+        }
+        $tax = $settings->vat_enabled ? round($taxable * (float) $settings->vat_rate / 100, 2) : 0.0;
 
-        return $settings->vat_enabled ? (float) $settings->vat_rate / 100 : 0.0;
+        return ['subtotal' => round($subtotal, 2), 'tax_amount' => $tax, 'total' => round($subtotal + $tax, 2)];
     }
 
     public function isCashSale(): bool
@@ -225,6 +228,11 @@ class SalesOrder extends Model
                 }
                 $salesOrder->load('salesOrderItems.inventoryItem');
                 $requirements = $salesOrder->salesOrderItems->groupBy('inventory_item_id');
+                $inventory = InventoryItem::query()->whereKey($requirements->keys()->all())->orderBy('id')->lockForUpdate()->get()->keyBy('id');
+                foreach ($salesOrder->salesOrderItems as $line) {
+                    $line->setRelation('inventoryItem', $inventory->get($line->inventory_item_id));
+                }
+                $requirements = $requirements->sortKeys();
                 foreach ($requirements as $inventoryItemId => $items) {
                     $requiredBase = $items->sum(fn (SalesOrderItem $item): float => $item->baseQuantityForStockMovement());
                     $balance = InventoryBalance::where('inventory_item_id', $inventoryItemId)
@@ -255,6 +263,8 @@ class SalesOrder extends Model
                             continue;
                         }
                         $baseQty = $items->sum(fn (SalesOrderItem $item): float => $item->baseQuantityForStockMovement());
+                        $product = $items->first()->inventoryItem;
+                        $unitCost = $product?->production_valued ? (float) $product->average_cost : null;
                         StockMovement::create([
                             'inventory_item_id' => $inventoryItemId,
                             'warehouse_id' => $salesOrder->warehouse_id,
@@ -262,6 +272,8 @@ class SalesOrder extends Model
                             'reference_type' => self::class,
                             'reference_id' => $salesOrder->id,
                             'quantity' => -abs($baseQty),
+                            'unit_cost' => $unitCost,
+                            'total_cost' => $unitCost !== null ? round($baseQty * $unitCost, 2) : null,
                             'movement_date' => now(),
                         ]);
                     }

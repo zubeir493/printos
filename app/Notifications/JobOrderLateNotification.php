@@ -24,9 +24,10 @@ class JobOrderLateNotification extends Notification implements ShouldQueueAfterC
     protected function webPushBody(): string
     {
         $partner = $this->jobOrder->partner?->name ?? 'Internal';
-        $daysLate = now()->diffInDays($this->jobOrder->submission_date);
+        $deadline = $this->jobOrder->production_due_date ?? $this->jobOrder->submission_date;
+        $daysLate = (int) $deadline->diffInDays(today());
 
-        return "Job order {$this->jobOrder->job_order_number} for {$partner} is {$daysLate} day(s) past its submission date and is still not completed.";
+        return "Job order {$this->jobOrder->job_order_number} for {$partner} is {$daysLate} day(s) past its production due date.";
     }
 
     protected function notificationUrl(object $notifiable): string

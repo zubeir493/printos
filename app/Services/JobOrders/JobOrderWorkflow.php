@@ -4,6 +4,7 @@ namespace App\Services\JobOrders;
 
 use App\Models\JobOrder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 
 class JobOrderWorkflow
@@ -15,8 +16,11 @@ class JobOrderWorkflow
             if ((string) $locked->status === $status) {
                 return;
             }
-            if ($status === 'production' && filled($locked->deliverables) && ! $locked->isReadyForProduction()) {
-                throw ValidationException::withMessages(['status' => 'Approve every required deliverable before production.']);
+            if (auth()->check()) {
+                Gate::authorize('manageWorkflow', $locked);
+            }
+            if ($status === 'production' && ($issues = $locked->productionReleaseIssues()) !== []) {
+                throw ValidationException::withMessages(['status' => $issues]);
             }
             if ($status === 'completed' && ! $locked->canComplete()) {
                 throw ValidationException::withMessages(['status' => 'Finish production and settle the client job balance before completion.']);
@@ -30,7 +34,7 @@ class JobOrderWorkflow
     {
         $completed = DB::transaction(function () use ($jobOrder): bool {
             $locked = JobOrder::query()->lockForUpdate()->find($jobOrder->id);
-            if (! $locked || (string) $locked->status === 'cancelled') {
+            if (! $locked || (string) $locked->status === 'cancelled' || ((string) $locked->status === 'completed' && $locked->stock_received_at)) {
                 return false;
             }
             $status = (string) $locked->status;
@@ -48,7 +52,7 @@ class JobOrderWorkflow
                 $locked->status->transitionTo('design');
                 $status = 'design';
             }
-            if ($status === 'design' && $locked->isReadyForProduction()) {
+            if ($status === 'design' && ! $locked->uses_production_ticket && $locked->isReadyForProduction()) {
                 $locked->status->transitionTo('production');
                 $status = 'production';
             }

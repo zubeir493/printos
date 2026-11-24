@@ -6,9 +6,6 @@ use App\Filament\Resources\EmailLogs\Pages\ManageEmailLogs;
 use App\Filament\Tables\Filters\DateRangeFilter;
 use App\Models\EmailLog;
 use BackedEnum;
-use Filament\Forms\Components\DateTimePicker;
-use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\TextInput;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -16,6 +13,7 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
 
 class EmailLogResource extends Resource
 {
@@ -29,22 +27,24 @@ class EmailLogResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'recipient_email';
 
-    public static function form(Schema $schema): Schema
+    public static function canCreate(): bool
     {
-        return $schema
-            ->components([
-                TextInput::make('recipient_email')
-                    ->email()
-                    ->required(),
-                TextInput::make('subject'),
-                Textarea::make('message')
-                    ->columnSpanFull(),
-                TextInput::make('artwork_id')
-                    ->numeric(),
-                TextInput::make('sent_by')
-                    ->numeric(),
-                DateTimePicker::make('sent_at'),
-            ]);
+        return false;
+    }
+
+    public static function canEdit(Model $record): bool
+    {
+        return false;
+    }
+
+    public static function canDelete(Model $record): bool
+    {
+        return false;
+    }
+
+    public static function canDeleteAny(): bool
+    {
+        return false;
     }
 
     public static function infolist(Schema $schema): Schema

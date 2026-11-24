@@ -19,6 +19,7 @@ use App\Filament\Resources\MaterialRequests\MaterialRequestResource;
 use App\Filament\Resources\Partners\PartnerResource;
 use App\Filament\Resources\ProductionPlans\ProductionPlanResource;
 use App\Filament\Resources\ProductionReports\ProductionReportResource;
+use App\Filament\Resources\Proformas\ProformaResource;
 use App\Filament\Resources\PurchaseOrderItems\PurchaseOrderItemResource;
 use App\Filament\Resources\PurchaseOrders\PurchaseOrderResource;
 use App\Filament\Resources\Warehouses\WarehouseResource;
@@ -67,6 +68,7 @@ class OperationsPanelProvider extends PanelProvider
                 EmailLogResource::class,
                 GoodsReceiptResource::class,
                 PartnerResource::class,
+                ProformaResource::class,
                 JobOrderResource::class,
                 InventoryItemResource::class,
                 WarehouseResource::class,

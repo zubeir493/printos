@@ -104,10 +104,11 @@ class PaymentsRelationManager extends RelationManager
                     })
                     ->after(function (): void {
                         $jobOrder = $this->getOwnerRecord()->refresh();
-                        $jobOrder->updateQuietly([
-                            'advance_paid' => $jobOrder->paid_amount > 0,
-                            'advance_amount' => $jobOrder->paid_amount,
-                        ]);
+                        $advance = ['advance_paid' => $jobOrder->paid_amount > 0];
+                        if (! $jobOrder->legacy_job_order_group_id) {
+                            $advance['advance_amount'] = $jobOrder->paid_amount;
+                        }
+                        $jobOrder->updateQuietly($advance);
                         $jobOrder->syncCompletionStatus();
                     }),
             ])

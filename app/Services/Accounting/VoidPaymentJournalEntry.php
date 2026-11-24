@@ -77,12 +77,21 @@ class VoidPaymentJournalEntry
             $this->restoreRelatedDocuments($payment);
 
             if ($payment->payable instanceof JobOrder) {
-                $jobOrder = $payment->payable->refresh();
-                $jobOrder->updateQuietly([
-                    'advance_paid' => $jobOrder->paid_amount > 0,
-                    'advance_amount' => $jobOrder->paid_amount,
-                ]);
-                $jobOrder->syncCompletionStatus();
+                $allocatedJobOrderIds = DB::table('legacy_job_order_payment_allocations')
+                    ->where('payment_id', $payment->id)->pluck('job_order_id')->all();
+                $jobOrders = $allocatedJobOrderIds === []
+                    ? collect([$payment->payable])
+                    : JobOrder::query()->whereIn('id', $allocatedJobOrderIds)->get();
+
+                foreach ($jobOrders as $jobOrder) {
+                    $jobOrder->refresh();
+                    $advance = ['advance_paid' => $jobOrder->paid_amount > 0];
+                    if (! $jobOrder->legacy_job_order_group_id) {
+                        $advance['advance_amount'] = $jobOrder->paid_amount;
+                    }
+                    $jobOrder->updateQuietly($advance);
+                    $jobOrder->syncCompletionStatus();
+                }
             }
 
             if ($payment->bank_id && PaymentMethod::requiresBank($payment->method)) {

@@ -63,6 +63,28 @@ class ReceivablesQuery
         $payments = Payment::query()->select('payable_id')->selectRaw('SUM(amount) as paid_amount')
             ->where('payable_type', $model)->where('direction', 'inbound')
             ->effectiveOn($asOfDate)->groupBy('payable_id');
+
+        if ($model === JobOrder::class) {
+            $allocations = DB::table('legacy_job_order_payment_allocations as allocations')
+                ->join('payments', 'payments.id', '=', 'allocations.payment_id')
+                ->selectRaw('allocations.job_order_id as payable_id')
+                ->selectRaw('SUM(allocations.amount) as paid_amount')
+                ->where('payments.direction', 'inbound')
+                ->whereNull('payments.deleted_at')
+                ->whereDate('payments.payment_date', '<=', $asOfDate)
+                ->where(fn (QueryBuilder $query) => $query->whereNull('payments.voided_at')
+                    ->orWhere('payments.voided_at', '>=', CarbonImmutable::parse($asOfDate)->startOfDay()->addDay()))
+                ->groupBy('allocations.job_order_id');
+            $directPayments = Payment::query()->select('payable_id')->selectRaw('SUM(amount) as paid_amount')
+                ->where('payable_type', $model)->where('direction', 'inbound')
+                ->whereNotIn('id', DB::table('legacy_job_order_payment_allocations')->select('payment_id'))
+                ->effectiveOn($asOfDate)->groupBy('payable_id')->toBase();
+            $paymentShares = $directPayments->unionAll($allocations);
+            $payments = DB::query()->fromSub($paymentShares, 'payment_shares')
+                ->select('payable_id')->selectRaw('SUM(paid_amount) as paid_amount')
+                ->groupBy('payable_id');
+        }
+
         $query = $model::query()->leftJoinSub($payments, 'received_payments', fn ($join) => $join->on('received_payments.payable_id', '=', $table.'.id'))
             ->select([$table.'.partner_id', $table.'.due_date', $table.'.subtotal', $table.'.tax_amount', $table.'.total', $table.'.status', $table.'.created_at', $table.'.updated_at'])
             ->selectRaw("({$table}.id * 2 + ".($model === JobOrder::class ? 1 : 0).") as id, {$table}.id as source_id")

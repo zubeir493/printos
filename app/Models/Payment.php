@@ -202,12 +202,23 @@ class Payment extends Model
         $payable = $this->payable;
 
         if ($payable instanceof JobOrder) {
+            $allocatedJobOrderIds = DB::table('legacy_job_order_payment_allocations')
+                ->where('payment_id', $this->id)->pluck('job_order_id')->all();
+            $jobOrders = $allocatedJobOrderIds === []
+                ? collect([$payable])
+                : JobOrder::query()->whereIn('id', $allocatedJobOrderIds)->get();
+
+            foreach ($jobOrders as $jobOrder) {
+                $jobOrder->refresh();
+                $advance = ['advance_paid' => $jobOrder->paid_amount > 0];
+                if (! $jobOrder->legacy_job_order_group_id) {
+                    $advance['advance_amount'] = $jobOrder->paid_amount;
+                }
+                $jobOrder->updateQuietly($advance);
+                $jobOrder->syncCompletionStatus();
+            }
+
             $jobOrder = $payable->refresh();
-            $jobOrder->updateQuietly([
-                'advance_paid' => $jobOrder->paid_amount > 0,
-                'advance_amount' => $jobOrder->paid_amount,
-            ]);
-            $jobOrder->syncCompletionStatus();
             $this->syncInvoicesForDocument($jobOrder);
         }
 

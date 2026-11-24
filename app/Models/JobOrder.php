@@ -108,6 +108,16 @@ class JobOrder extends Model
         return $this->belongsTo(ProformaTask::class);
     }
 
+    public function legacyGroup(): BelongsTo
+    {
+        return $this->belongsTo(LegacyJobOrderGroup::class, 'legacy_job_order_group_id');
+    }
+
+    public function legacyPaymentAllocations(): HasMany
+    {
+        return $this->hasMany(LegacyJobOrderPaymentAllocation::class, 'job_order_id');
+    }
+
     public function designer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'designer_id');
@@ -224,11 +234,23 @@ class JobOrder extends Model
 
     public function getPaidAmountAttribute(): float
     {
-        if (array_key_exists('payments_sum_amount', $this->getAttributes())) {
+        if (! $this->legacy_job_order_group_id && array_key_exists('payments_sum_amount', $this->getAttributes())) {
             return (float) $this->getAttribute('payments_sum_amount');
         }
 
-        return (float) $this->payments()->whereNull('voided_at')->sum('amount');
+        $allocationTable = 'legacy_job_order_payment_allocations';
+        $allocated = DB::table($allocationTable.' as allocations')
+            ->join('payments', 'payments.id', '=', 'allocations.payment_id')
+            ->where('allocations.job_order_id', $this->id)
+            ->whereNull('payments.voided_at')
+            ->whereNull('payments.deleted_at')
+            ->sum('allocations.amount');
+
+        $directPayments = $this->payments()->whereNull('voided_at')
+            ->whereNotIn('payments.id', DB::table($allocationTable)->select('payment_id'))
+            ->sum('payments.amount');
+
+        return round((float) $allocated + (float) $directPayments, 2);
     }
 
     public function getBalanceAttribute(): float
@@ -238,12 +260,34 @@ class JobOrder extends Model
 
     public function scopePendingPayment($query)
     {
-        return $query->whereRaw('total > (SELECT COALESCE(SUM(amount), 0) FROM payments WHERE payable_id = job_orders.id AND payable_type = ? AND voided_at IS NULL)', [self::class]);
+        return $query->whereRaw('job_orders.total > '.$this->paidAmountSql(), [self::class]);
     }
 
     public function scopeFullyPaid($query)
     {
-        return $query->whereRaw('total <= (SELECT COALESCE(SUM(amount), 0) FROM payments WHERE payable_id = job_orders.id AND payable_type = ? AND voided_at IS NULL)', [self::class]);
+        return $query->whereRaw('job_orders.total <= '.$this->paidAmountSql(), [self::class]);
+    }
+
+    private function paidAmountSql(): string
+    {
+        return <<<'SQL'
+            (
+                SELECT COALESCE(SUM(p.amount), 0)
+                FROM payments p
+                WHERE p.payable_id = job_orders.id
+                    AND p.payable_type = ?
+                    AND p.voided_at IS NULL
+                    AND p.deleted_at IS NULL
+                    AND NOT EXISTS (SELECT 1 FROM legacy_job_order_payment_allocations a WHERE a.payment_id = p.id)
+            ) + (
+                SELECT COALESCE(SUM(a.amount), 0)
+                FROM legacy_job_order_payment_allocations a
+                INNER JOIN payments p ON p.id = a.payment_id
+                WHERE a.job_order_id = job_orders.id
+                    AND p.voided_at IS NULL
+                    AND p.deleted_at IS NULL
+            )
+            SQL;
     }
 
     public function scopeLate($query, CarbonInterface|string|null $date = null)

@@ -206,13 +206,6 @@ it('counts design and production jobs in operations health stats', function (): 
     expect($widget->activeCount())->toBe(2);
 });
 
-it('refuses consolidation on a populated database without altering records', function (): void {
-    $job = JobOrder::factory()->create();
-    $migration = require database_path('migrations/2026_10_13_121614_consolidate_job_order_tasks.php');
-    expect(fn () => $migration->up())->toThrow(RuntimeException::class, 'requires an empty database');
-    expect($job->fresh()->name)->toBe($job->name)->and(JobOrder::count())->toBe(1);
-});
-
 it('values material returns at their consumption cost rather than the purchase unit price', function (): void {
     $job = JobOrder::factory()->create(['status' => 'production']);
     $item = InventoryItem::factory()->create(['type' => 'raw_material', 'price' => 1000, 'purchase_unit' => 'pack', 'conversion_factor' => 100, 'average_cost' => 10]);

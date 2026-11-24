@@ -6,6 +6,7 @@ use App\Models\InventoryBalance;
 use App\Models\InventoryItem;
 use App\Models\JobOrder;
 use App\Models\JournalEntry;
+use App\Models\LegacyJobOrderGroup;
 use App\Models\Payment;
 use App\Models\Proforma;
 use App\Models\ProformaTask;
@@ -21,6 +22,8 @@ use App\Services\Proformas\ProformaWorkflowService;
 use App\Services\SaveDispatch;
 use App\UserRole;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
@@ -172,4 +175,90 @@ it('reopens a fully paid job after payment voiding and does not duplicate its sa
     Payment::factory()->create($attributes);
     expect((string) $job->fresh()->status)->toBe('completed')
         ->and(JournalEntry::where('source_type', JobOrder::class)->where('source_id', $job->id)->count())->toBe(1);
+});
+
+it('converts legacy tasks while retaining parent billing and task references', function (): void {
+    $job = JobOrder::factory()->create([
+        'subtotal' => 100,
+        'tax_amount' => 15,
+        'total' => 115,
+        'advance_amount' => 10,
+        'advance_paid' => true,
+    ]);
+    $tasklessParent = JobOrder::factory()->create(['subtotal' => 25, 'tax_amount' => 0, 'total' => 25]);
+
+    if (Schema::hasTable('legacy_job_order_tasks')) {
+        Schema::disableForeignKeyConstraints();
+        Schema::drop('legacy_job_order_tasks');
+        Schema::enableForeignKeyConstraints();
+    }
+
+    Schema::create('job_order_tasks', function (Blueprint $table): void {
+        $table->id();
+        $table->foreignId('job_order_id')->constrained()->cascadeOnDelete();
+        $table->string('name');
+        $table->integer('quantity');
+        $table->decimal('task_cost', 12, 2);
+        $table->json('paper')->nullable();
+        $table->json('deliverables')->nullable();
+        $table->string('status')->default('draft');
+        $table->string('size')->nullable();
+        $table->text('instructions')->nullable();
+        $table->foreignId('designer_id')->nullable()->constrained('users')->nullOnDelete();
+        $table->foreignId('typist_id')->nullable()->constrained('users')->nullOnDelete();
+        $table->timestamps();
+    });
+
+    $firstTaskId = DB::table('job_order_tasks')->insertGetId([
+        'job_order_id' => $job->id, 'name' => 'Cover design', 'quantity' => 1, 'task_cost' => 40,
+        'status' => 'design', 'size' => 'A4', 'created_at' => now(), 'updated_at' => now(),
+    ]);
+    $secondTaskId = DB::table('job_order_tasks')->insertGetId([
+        'job_order_id' => $job->id, 'name' => 'Book printing', 'quantity' => 500, 'task_cost' => 60,
+        'status' => 'production', 'size' => 'A4', 'created_at' => now(), 'updated_at' => now(),
+    ]);
+
+    $dispatch = Dispatch::factory()->create([
+        'job_order_id' => $job->id,
+        'warehouse_id' => Warehouse::factory()->create()->id,
+    ]);
+    $dispatchItemId = DB::table('dispatch_items')->insertGetId([
+        'dispatch_id' => $dispatch->id, 'job_order_id' => $job->id, 'legacy_job_order_task_id' => $secondTaskId,
+        'quantity' => 1, 'created_at' => now(), 'updated_at' => now(),
+    ]);
+
+    $artworkId = DB::table('artworks')->insertGetId([
+        'job_order_id' => $job->id, 'legacy_job_order_task_id' => $secondTaskId,
+        'filename' => 'legacy-cover.pdf', 'is_approved' => true, 'created_at' => now(), 'updated_at' => now(),
+    ]);
+
+    $payment = Payment::factory()->create([
+        'partner_id' => $job->partner_id,
+        'amount' => 30,
+        'direction' => 'inbound',
+    ]);
+    DB::table('payments')->where('id', $payment->id)->update([
+        'payable_type' => JobOrder::class,
+        'payable_id' => $job->id,
+    ]);
+
+    $migration = require database_path('migrations/2026_10_13_121614_consolidate_job_order_tasks.php');
+    $migration->up();
+
+    $group = LegacyJobOrderGroup::query()->where('legacy_parent_id', $job->id)->firstOrFail();
+    $jobs = JobOrder::query()->where('legacy_job_order_group_id', $group->id)->orderBy('id')->get();
+    $convertedSecondTask = JobOrder::query()->where('name', 'Book printing')->firstOrFail();
+    expect($jobs)->toHaveCount(2)
+        ->and($convertedSecondTask->id)->not->toBe($secondTaskId)
+        ->and($convertedSecondTask->quantity)->toBe(500)
+        ->and((float) $jobs->sum('subtotal'))->toBe(100.0)
+        ->and((float) $jobs->sum('tax_amount'))->toBe(15.0)
+        ->and((float) $jobs->sum('paid_amount'))->toBe(30.0)
+        ->and($group->original_data['total'])->toBe(115)
+        ->and(DB::table('legacy_job_order_items')->where('legacy_task_id', $firstTaskId)->value('job_order_id'))->toBe($job->id)
+        ->and(DB::table('dispatch_items')->where('id', $dispatchItemId)->value('job_order_id'))->toBe($convertedSecondTask->id)
+        ->and(DB::table('artworks')->where('id', $artworkId)->value('job_order_id'))->toBe($convertedSecondTask->id)
+        ->and(Schema::hasTable('job_order_tasks'))->toBeFalse()
+        ->and(Schema::hasTable('legacy_job_order_tasks'))->toBeTrue()
+        ->and(JobOrder::findOrFail($tasklessParent->id)->name)->toBe('Legacy order '.$tasklessParent->job_order_number);
 });

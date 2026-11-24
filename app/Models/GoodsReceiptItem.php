@@ -10,6 +10,8 @@ class GoodsReceiptItem extends Model
     protected $fillable = [
         'goods_receipt_id',
         'purchase_order_item_id',
+        'inventory_item_id',
+        'unit_cost',
         'quantity_received',
     ];
 
@@ -18,6 +20,8 @@ class GoodsReceiptItem extends Model
         return [
             'goods_receipt_id' => 'integer',
             'purchase_order_item_id' => 'integer',
+            'inventory_item_id' => 'integer',
+            'unit_cost' => 'decimal:6',
             'quantity_received' => 'decimal:2',
         ];
     }
@@ -30,5 +34,10 @@ class GoodsReceiptItem extends Model
     public function purchaseOrderItem(): BelongsTo
     {
         return $this->belongsTo(PurchaseOrderItem::class);
+    }
+
+    public function inventoryItem(): BelongsTo
+    {
+        return $this->belongsTo(InventoryItem::class);
     }
 }

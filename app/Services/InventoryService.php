@@ -8,6 +8,7 @@ use App\Models\JobOrder;
 use App\Models\MaintenanceStoreEntry;
 use App\Models\StockMovement;
 use App\Models\Warehouse;
+use DateTimeInterface;
 use Illuminate\Validation\ValidationException;
 
 class InventoryService
@@ -73,7 +74,8 @@ class InventoryService
         float $quantity,
         ?float $unitCost = null,
         ?string $referenceType = null,
-        ?int $referenceId = null
+        ?int $referenceId = null,
+        ?DateTimeInterface $movementDate = null,
     ) {
         $signedQty = $this->resolveSignedQuantity($type, $quantity);
 
@@ -86,7 +88,7 @@ class InventoryService
             'total_cost' => $unitCost ? abs($quantity) * $unitCost : null,
             'reference_type' => $referenceType,
             'reference_id' => $referenceId,
-            'movement_date' => now(),
+            'movement_date' => $movementDate ?? now(),
         ]);
     }
 

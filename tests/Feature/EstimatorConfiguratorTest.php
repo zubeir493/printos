@@ -25,27 +25,30 @@ beforeEach(function (): void {
     $this->actingAs(User::factory()->create(['role' => UserRole::Admin]));
 });
 
-it('shows a single save action and presents pricing before the product fields', function (): void {
+it('shows a single native save action and the live estimate summary', function (): void {
     $page = Livewire::test(CreateCostEstimate::class);
     $html = $page->html();
 
     expect(substr_count($html, 'Save estimate'))->toBe(1)
-        ->and($html)->not->toContain('<main class="estimator-config-main">');
-    expect(strpos($html, 'Live estimate'))->toBeLessThan(strpos($html, 'Change product'));
+        ->and($html)->not->toContain('estimator-canvas-shell');
+    $page->assertSee('Estimate summary')->assertSee('Product family');
 
-    $page->set('estimatorTab', 'materials')->assertSee('Save estimate');
+    $page->call('reviewEstimatorStep', 'materials')->assertDispatched('go-to-wizard-step');
     expect(substr_count($page->html(), 'Save estimate'))->toBe(1);
 });
 
-it('starts each product from a compact configurator with its required components', function (string $key, string $family, array $roles): void {
-    $page = Livewire::test(CreateCostEstimate::class)->call('selectEstimatorProduct', $key)
-        ->assertSet('estimatorTab', 'configure')->assertSet('data.job_type', $family)
-        ->assertSee('Change product')->assertSee('Production details')->assertDontSee('Calculated machine time');
+it('starts each product in the wizard with its required components', function (?string $binding, string $family, array $roles): void {
+    $page = Livewire::test(CreateCostEstimate::class)->set('data.job_type', $family);
+    if ($binding !== null) {
+        $page->set('data.services.product.binding', $binding);
+    }
+
+    $page->assertSet('data.job_type', $family)->assertSee('Product family')->assertDontSee('Calculated machine time');
     expect(array_column(array_values($page->get('data.services.components')), 'role'))->toBe($roles);
 })->with([
-    ['booklet', 'books', ['text', 'cover']], ['paperback', 'books', ['text', 'cover']],
-    ['hardcover', 'books', ['text', 'case', 'board', 'endsheet']], ['labels', 'labels', ['stock']],
-    ['stickers', 'stickers', ['stock']], ['carton', 'packages', ['stock']],
+    ['saddle', 'books', ['text', 'cover']], ['perfect', 'books', ['text', 'cover']],
+    ['hardcover', 'books', ['text', 'case', 'board', 'endsheet']], [null, 'labels', ['stock']],
+    [null, 'stickers', ['stock']], [null, 'packages', ['stock']],
 ]);
 
 it('preserves manual selections zero overrides custom rows and pricing across recipe changes', function (): void {
@@ -68,7 +71,7 @@ it('preserves manual selections zero overrides custom rows and pricing across re
         ->and(implode(' ', $result->diagnostics))->toContain('retained perfect binding');
 });
 
-it('saves a complete estimate from the simplified screen without dropping advanced state', function (): void {
+it('saves a complete estimate from the wizard without dropping advanced state', function (): void {
     $this->seed(CostingDemoSeeder::class);
     $estimate = CostEstimate::where('estimate_number', 'DEMO-CE-PERFECT')->firstOrFail();
     $page = Livewire::test(EditCostEstimate::class, ['record' => $estimate->id]);
@@ -94,7 +97,7 @@ it('invalidates verified layouts when finished geometry changes and keeps label 
 
 it('prepares a single compatible press plate and ink when choosing paper', function (): void {
     $this->seed(CostingDemoSeeder::class);
-    $page = Livewire::test(CreateCostEstimate::class)->call('selectEstimatorProduct', 'labels');
+    $page = Livewire::test(CreateCostEstimate::class);
     $key = array_key_first($page->get('data.services.components'));
     $page->set('data.services.components.'.$key.'.material_id', InventoryItem::where('sku', 'DEMO-COST-TEXT')->value('id'));
     $row = $page->get('data.services.components')[$key];
@@ -154,7 +157,7 @@ it('rejects product and finishing mutations from a read only page', function ():
     $estimate = CostEstimate::where('estimate_number', 'DEMO-CE-PERFECT')->firstOrFail();
     $page = Livewire::test(ViewCostEstimate::class, ['record' => $estimate->id]);
     expect($page->instance()->estimatorCanEdit())->toBeFalse();
-    expect(fn () => $page->instance()->selectEstimatorProduct('hardcover'))->toThrow(HttpException::class);
+    expect(fn () => $page->instance()->applyEstimatorTemplate('books', 'hardcover'))->toThrow(HttpException::class);
     expect(fn () => $page->instance()->addEstimatorFinish('laminating'))->toThrow(HttpException::class);
 });
 

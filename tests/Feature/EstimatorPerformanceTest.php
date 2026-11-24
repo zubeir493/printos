@@ -29,19 +29,20 @@ it('defers detail panels until opened without repeated database work', function 
     $queries = DB::getQueryLog();
     DB::disableQueryLog();
     $count = preg_match_all('/<(?:input|select|textarea)\b/', $html);
-    $document = new DOMDocument;
-    $document->loadHTML($html, LIBXML_NOERROR | LIBXML_NOWARNING);
-    $renderedPanels = (new DOMXPath($document))->query('//*[@role="tabpanel"][*]');
     fwrite(STDOUT, json_encode(['estimator_profile' => ['milliseconds' => round((microtime(true) - $started) * 1000), 'queries' => count($queries), 'controls' => $count, 'html_bytes' => strlen($html)]]).PHP_EOL);
     $page->assertSee('Text pages (excludes cover)');
     expect($page->instance()->estimatorResult->isComplete())->toBeTrue()
         ->and(count($queries))->toBeLessThan(25)->and($count)->toBeLessThan(25)
-        ->and(strlen($html))->toBeLessThan(200000)
-        ->and($renderedPanels?->length)->toBe(0);
-    $page->call('openEstimatorDetails', 'production')->assertSeeHtml('fi-fo-table-repeater')->assertSee('Calculated machine time');
-    $document->loadHTML($page->html(), LIBXML_NOERROR | LIBXML_NOWARNING);
-    expect((new DOMXPath($document))->query('//*[@role="tabpanel"][*]')?->length)->toBe(1);
-    $page->set('estimatorTab', 'materials')->assertSee('I have verified this layout, grain, folding and finishing allowances');
+        ->and(strlen($html))->toBeLessThan(200000);
+    $page->assertDontSee('Calculated machine time')->assertSeeHtml('fi-sc-loading');
+    $wizard = $page->instance()->form->getComponent('estimator-wizard');
+    $production = $wizard->getChildSchema()->getComponent('production')->getChildSchema()->getKey();
+    $materials = $wizard->getChildSchema()->getComponent('materials')->getChildSchema()->getKey();
+
+    $page->call('loadLazySchema', $production)->call('$refresh')
+        ->assertSeeHtml('fi-fo-table-repeater')->assertSee('Calculated machine time');
+    $page->call('loadLazySchema', $materials)->call('$refresh')
+        ->assertSee('I have verified this layout, grain, folding and finishing allowances');
 });
 
 it('reuses selected sources for quantity previews and refreshes rates for authoritative calculations', function (): void {

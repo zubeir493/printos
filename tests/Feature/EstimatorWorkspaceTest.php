@@ -25,18 +25,15 @@ beforeEach(function (): void {
     $this->actingAs(User::factory()->create(['role' => UserRole::Admin]));
 });
 
-it('presents the product configurator with honest incomplete pricing and accessible production details', function (): void {
+it('presents the wizard with incomplete pricing and reachable production steps', function (): void {
     Livewire::test(CreateCostEstimate::class)
-        ->assertSee('Change product')->assertSee('Material &amp; layout', escape: false)
+        ->assertSee('Product family')->assertSee('Material &amp; layout', escape: false)
         ->assertSee('Production route')->assertSee('Pricing')->assertSee('Quantities')
-        ->assertSee('Awaiting review')->assertSee('Known costs so far')->assertSee('Machine rates include shop overhead.')
+        ->assertSee('Awaiting inputs')->assertSee('Known costs so far')->assertSee('Machine rates include shop overhead.')
         ->assertDontSee('Calculated machine time')
-        ->call('openEstimatorDetails', 'materials')->assertDispatched('open-modal', id: 'estimator-details')
-        ->assertSet('estimatorTab', 'materials')->assertFormFieldExists('materials.services.components')
-        ->assertSee('Done')->assertSee('Change product')
-        ->call('openEstimatorDetails', 'production')->assertSet('estimatorTab', 'production')
-        ->assertFormFieldExists('production.services.finishing')
-        ->assertSeeHtml('fi-fo-table-repeater')
+        ->call('reviewEstimatorStep', 'materials')->assertDispatched('go-to-wizard-step')
+        ->assertFormFieldExists('estimator-wizard.materials.services.components')
+        ->assertFormFieldExists('estimator-wizard.production.services.finishing')
         ->assertFormSet(['services.costing_version' => 'sheetfed-v2']);
 });
 
@@ -69,7 +66,7 @@ it('keeps costing inaccessible in a panel without financial access', function ()
 it('applies row options and preserves inactive panels when saving a draft', function (): void {
     $this->seed(CostingDemoSeeder::class);
     $estimate = CostEstimate::where('estimate_number', 'DEMO-CE-PERFECT')->firstOrFail();
-    $page = Livewire::test(EditCostEstimate::class, ['record' => $estimate->id])->set('estimatorTab', 'production');
+    $page = Livewire::test(EditCostEstimate::class, ['record' => $estimate->id]);
     $repeater = collect($page->instance()->form->getFlatComponents(withHidden: true))
         ->first(fn ($component): bool => $component instanceof Repeater && $component->getName() === 'services.finishing');
     $rowKey = array_key_first($page->get('data.services.finishing'));
@@ -89,17 +86,17 @@ it('applies row options and preserves inactive panels when saving a draft', func
     $page->callAction(TestAction::make('consumableOptions')->schemaComponent($consumableRepeater->getKey(), schema: '')->arguments(['item' => $consumableKey]), data: [
         'unit_cost_override' => 400, 'override_reason' => 'Supplier test rate',
     ])->assertHasNoActionErrors();
-    $page->set('estimatorTab', 'materials');
     $componentRepeater = collect($page->instance()->form->getFlatComponents(withHidden: true))
         ->first(fn ($component): bool => $component instanceof Repeater && $component->getName() === 'services.components');
     $componentKey = array_key_first($page->get('data.services.components'));
+    $page->assertActionDoesNotExist(TestAction::make('suggestPress')->schemaComponent($componentRepeater->getKey(), schema: '')->arguments(['item' => $componentKey]));
     $page->callAction(TestAction::make('componentOptions')->schemaComponent($componentRepeater->getKey(), schema: '')->arguments(['item' => $componentKey]), data: [
         'unit_cost_override' => 9, 'override_reason' => 'Sample material quote',
     ])->assertHasNoActionErrors();
     expect($page->get('data.services.components')[$componentKey]['layout_confirmed'])->toBeFalse();
     $components = array_values($page->get('data.services.components'));
     $consumables = array_values($page->get('data.services.consumables'));
-    $page->set('estimatorTab', 'specifications')->call('save')->assertHasNoFormErrors();
+    $page->call('save')->assertHasNoFormErrors();
     $saved = $estimate->refresh()->services;
     expect($saved['finishing'][0]['name'])->toBe('Calibrated folding')
         ->and((float) $saved['finishing'][0]['hourly_rate_override'])->toBe(300.0)

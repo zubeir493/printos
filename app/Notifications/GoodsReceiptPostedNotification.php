@@ -38,7 +38,8 @@ class GoodsReceiptPostedNotification extends Notification implements ShouldQueue
         return (new MailMessage)
             ->subject('Goods Receipt Posted: '.$this->goodsReceipt->receipt_number)
             ->line('The goods receipt '.$this->goodsReceipt->receipt_number.' has been posted.')
-            ->line('Purchase Order: '.($this->goodsReceipt->purchaseOrder?->po_number ?? 'N/A'))
+            ->line('Source: '.$this->goodsReceipt->sourceLabel())
+            ->line('Reference: '.($this->goodsReceipt->purchaseOrder?->po_number ?? $this->goodsReceipt->source_reference))
             ->line('Warehouse: '.($this->goodsReceipt->warehouse?->name ?? 'N/A'))
             ->action('View Goods Receipt', $this->notificationUrl($notifiable))
             ->line('Thank you for using our application!');
@@ -67,6 +68,6 @@ class GoodsReceiptPostedNotification extends Notification implements ShouldQueue
 
     protected function notificationUrl(object $notifiable): string
     {
-        return $this->resourceUrl($notifiable, 'goods-receipts', 'view', ['record' => $this->goodsReceipt]);
+        return $this->resourceUrl($notifiable, 'goods-receipts', 'index');
     }
 }

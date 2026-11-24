@@ -465,7 +465,7 @@ it('shows a waiting state in live summary until core estimate fields are filled'
     $this->actingAs(User::factory()->create(['role' => UserRole::Admin]));
 
     Livewire::test(CreateCostEstimate::class)
-        ->assertSee('Awaiting review')
+        ->assertSee('Awaiting inputs')
         ->assertDontSee('Warnings');
 });
 

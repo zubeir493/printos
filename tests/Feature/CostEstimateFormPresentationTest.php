@@ -24,16 +24,16 @@ beforeEach(function (): void {
 
 it('renders the live summary as a styled estimator panel', function (): void {
     Livewire::test(CreateCostEstimate::class)
-        ->assertSee('Selling price')
-        ->assertSee('Per piece')
-        ->assertSee('Change product')
+        ->assertSee('Estimate summary')
+        ->assertSee('Unit selling price')
+        ->assertSee('Product family')
         ->assertDontSee('Service Type')
         ->assertDontSee('Deadline')
         ->assertDontSee('Remarks')
         ->assertDontSee('Material Consumption')
-        ->assertSee('Awaiting review')
+        ->assertSee('Awaiting inputs')
         ->assertDontSee('Warnings')
-        ->assertSeeHtml('estimator-price-strip')
+        ->assertSeeHtml('estimator-summary-panel')
         ->assertDontSeeHtml('cost-summary-alert');
 });
 

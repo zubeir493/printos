@@ -6,10 +6,8 @@ use App\Filament\Resources\CostEstimates\Actions\CostEstimateActions;
 use App\Filament\Resources\CostEstimates\CostEstimateResource;
 use App\Filament\Resources\CostEstimates\Pages\Concerns\HasEstimatorWorkspace;
 use App\Services\Costing\CostEstimateService;
+use Filament\Actions\Action;
 use Filament\Resources\Pages\EditRecord;
-use Filament\Support\Enums\Width;
-use Illuminate\Contracts\Support\Htmlable;
-use Illuminate\Contracts\View\View;
 
 class EditCostEstimate extends EditRecord
 {
@@ -17,42 +15,11 @@ class EditCostEstimate extends EditRecord
 
     protected ?bool $hasDatabaseTransactions = true;
 
-    protected string $view = 'filament.resources.cost-estimates.pages.estimator-workspace';
-
-    protected Width|string|null $maxContentWidth = Width::Full;
-
     protected static string $resource = CostEstimateResource::class;
 
-    public function getHeading(): string|Htmlable|null
+    protected function getSaveFormAction(): Action
     {
-        return null;
-    }
-
-    public function getBreadcrumbs(): array
-    {
-        return [];
-    }
-
-    public function backUrl(): string
-    {
-        return CostEstimateResource::getUrl('view', ['record' => $this->record]);
-    }
-
-    public function backLabel(): string
-    {
-        return 'Back to estimate';
-    }
-
-    public function getHeader(): ?View
-    {
-        return view('filament.resources.cost-estimates.pages.estimator-edit-header');
-    }
-
-    protected function getFormActions(): array
-    {
-        return $this->record->formula_version === 'sheetfed-v2'
-            ? []
-            : [$this->getSaveFormAction()->label('Save estimate')];
+        return parent::getSaveFormAction()->label('Save estimate');
     }
 
     protected function getHeaderActions(): array

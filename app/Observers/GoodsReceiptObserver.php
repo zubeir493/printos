@@ -8,6 +8,7 @@ use App\Models\PurchaseOrderItem;
 use App\Notifications\GoodsReceiptPostedNotification;
 use App\Services\InventoryService;
 use App\Support\NotificationRecipients;
+use App\Support\WarehouseAccess;
 use App\UserRole;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
@@ -23,7 +24,7 @@ class GoodsReceiptObserver
         $processed = DB::transaction(function () use ($receipt): bool {
             // Re-fetch inside the transaction with a row lock so concurrent
             // requests cannot both pass the posted_at guard simultaneously.
-            $locked = GoodsReceipt::with(['items.purchaseOrderItem'])->lockForUpdate()->find($receipt->id);
+            $locked = GoodsReceipt::with(['items.purchaseOrderItem', 'items.inventoryItem', 'warehouse'])->lockForUpdate()->find($receipt->id);
 
             if (! $locked || ! is_null($locked->posted_at)) {
                 // Already processed by a concurrent request — bail out safely.
@@ -34,12 +35,22 @@ class GoodsReceiptObserver
                 throw new \Exception("Warehouse ID not selected for Goods Receipt ID: {$locked->id}");
             }
 
+            WarehouseAccess::authorize((int) $locked->warehouse_id);
+
+            if ($locked->items->isEmpty()) {
+                throw new \RuntimeException('A receipt must contain at least one item.');
+            }
+
+            if ($locked->purchase_order_id === null) {
+                $this->postDirectReceipt($locked);
+                $locked->updateQuietly(['posted_at' => now()]);
+
+                return true;
+            }
+
             $purchaseOrder = PurchaseOrder::query()->lockForUpdate()->findOrFail($locked->purchase_order_id);
             if ($purchaseOrder->status !== 'approved') {
                 throw new \RuntimeException('Only approved purchase orders can receive stock.');
-            }
-            if ($locked->items->isEmpty()) {
-                throw new \RuntimeException('A receipt must contain at least one item.');
             }
             $received = [];
             foreach ($locked->items as $item) {
@@ -113,6 +124,32 @@ class GoodsReceiptObserver
 
         if ($recipients->isNotEmpty()) {
             Notification::send($recipients, new GoodsReceiptPostedNotification($receipt->refresh()));
+        }
+    }
+
+    private function postDirectReceipt(GoodsReceipt $receipt): void
+    {
+        if (blank($receipt->source_reference)) {
+            throw new \RuntimeException('A direct receipt must have a source reference.');
+        }
+
+        $inventory = app(InventoryService::class);
+
+        foreach ($receipt->items->sortBy('inventory_item_id') as $line) {
+            if ($line->purchase_order_item_id !== null || ! $line->inventoryItem || (float) $line->quantity_received <= 0) {
+                throw new \RuntimeException('Each direct receipt line requires an inventory item and a positive quantity.');
+            }
+
+            $inventory->createMovement(
+                $line->inventoryItem,
+                $receipt->warehouse,
+                GoodsReceipt::DIRECT_MOVEMENT,
+                (float) $line->quantity_received,
+                null,
+                GoodsReceipt::class,
+                $receipt->id,
+                $receipt->receipt_date,
+            );
         }
     }
 }

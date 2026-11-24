@@ -18,10 +18,12 @@ class GoodsReceipt extends Model
 {
     use LogsActivity;
 
+    public const string DIRECT_MOVEMENT = 'direct_receipt';
+
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly(['receipt_number', 'purchase_order_id', 'warehouse_id', 'receipt_date', 'status', 'posted_at'])
+            ->logOnly(['receipt_number', 'purchase_order_id', 'supplier_id', 'source_reference', 'warehouse_id', 'receipt_date', 'status', 'posted_at'])
             ->logOnlyDirty()
             ->useLogName('goods_receipt');
     }
@@ -29,6 +31,8 @@ class GoodsReceipt extends Model
     protected $fillable = [
         'receipt_number',
         'purchase_order_id',
+        'supplier_id',
+        'source_reference',
         'warehouse_id',
         'receipt_date',
         'status',
@@ -46,6 +50,20 @@ class GoodsReceipt extends Model
     public function purchaseOrder(): BelongsTo
     {
         return $this->belongsTo(PurchaseOrder::class);
+    }
+
+    public function supplier(): BelongsTo
+    {
+        return $this->belongsTo(Partner::class, 'supplier_id');
+    }
+
+    public function sourceLabel(): string
+    {
+        return match (true) {
+            $this->purchase_order_id !== null => 'Purchase order',
+            $this->supplier_id !== null => 'Direct supplier receipt',
+            default => 'Opening stock',
+        };
     }
 
     public function warehouse(): BelongsTo

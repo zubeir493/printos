@@ -7,21 +7,25 @@ use App\Filament\Resources\CostEstimates\Pages\ViewCostEstimate;
 use App\Models\CostEstimate;
 use App\Services\Costing\CostingResult;
 use App\Services\Costing\EstimatorRecipe;
-use App\Services\Costing\EstimatorRequestContext;
 use App\Services\Costing\SheetfedCostCalculator;
+use Filament\Schemas\Components\Wizard;
+use Filament\Schemas\Components\Wizard\Step;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 
 trait HasEstimatorWorkspace
 {
-    public string $estimatorTab = 'configure';
-
-    public function openEstimatorDetails(string $tab): void
+    public function reviewEstimatorStep(string $key): void
     {
-        abort_unless(in_array($tab, ['specifications', 'materials', 'production', 'pricing', 'quantities'], true), 422);
+        $wizard = $this->form->getComponent('estimator-wizard');
 
-        $this->estimatorTab = $tab;
-        $this->dispatch('open-modal', id: 'estimator-details');
+        if ($wizard instanceof Wizard) {
+            $step = $wizard->getChildSchema()->getComponent($key);
+
+            if ($step instanceof Step) {
+                $wizard->goToStep($step->getKey());
+            }
+        }
     }
 
     protected function onValidationError(ValidationException $exception): void
@@ -33,7 +37,7 @@ trait HasEstimatorWorkspace
         }
 
         $field = array_key_first($exception->errors());
-        $this->openEstimatorDetails(match (true) {
+        $this->reviewEstimatorStep(match (true) {
             str_starts_with($field ?? '', 'data.services.components') => 'materials',
             str_starts_with($field ?? '', 'data.services.finishing'), str_starts_with($field ?? '', 'data.services.consumables') => 'production',
             str_starts_with($field ?? '', 'data.services.commercial') => 'pricing',
@@ -47,42 +51,12 @@ trait HasEstimatorWorkspace
         return ! $this instanceof ViewCostEstimate && CostEstimateResource::canEdit($this->record ?? null);
     }
 
-    #[Computed]
-    public function estimatorConfigurator(): array
-    {
-        $sources = app(EstimatorRequestContext::class);
-        $key = app(EstimatorRecipe::class)->productKey($this->data ?? []);
-
-        return [
-            'key' => $key, 'preset' => EstimatorRecipe::PRODUCTS[$key], 'products' => EstimatorRecipe::PRODUCTS,
-            'materials' => $sources->materialOptions(['paper', 'board', 'liner']),
-            'customers' => $sources->customerOptions(),
-            'components' => $this->data['services']['components'] ?? [],
-            'route' => collect($this->data['services']['finishing'] ?? [])->map(fn (array $row): array => [
-                'label' => $row['name'] ?? 'Finishing',
-                'machine' => $sources->machine($row['machine_id'] ?? null)?->name,
-            ])->all(),
-            'editable' => $this->estimatorCanEdit(),
-        ];
-    }
-
-    public function selectEstimatorProduct(string $key): void
-    {
-        abort_unless($this->estimatorCanEdit(), 403);
-        abort_unless(isset(EstimatorRecipe::PRODUCTS[$key]), 422);
-        $this->data = app(EstimatorRecipe::class)->apply($this->data ?? [], $key);
-        $this->estimatorTab = 'configure';
-        $this->clearEstimatorPreview();
-        $this->dispatch('close-modal', id: 'estimator-product-picker');
-    }
-
     public function addEstimatorFinish(string $operation): void
     {
         abort_unless($this->estimatorCanEdit(), 403);
         abort_unless(in_array($operation, ['laminating', 'foiling', 'embossing', 'coating'], true), 422);
         $this->data = app(EstimatorRecipe::class)->addFinish($this->data, $operation);
         $this->clearEstimatorPreview();
-        $this->dispatch('close-modal', id: 'estimator-finish-picker');
     }
 
     public function updatedData(mixed $value, string $key): void
@@ -121,7 +95,7 @@ trait HasEstimatorWorkspace
 
     private function clearEstimatorPreview(): void
     {
-        unset($this->estimatorResult, $this->estimatorComparisons, $this->estimatorConfigurator);
+        unset($this->estimatorResult, $this->estimatorComparisons);
     }
 
     public function estimatorIssueTarget(string $message): string

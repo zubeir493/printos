@@ -4,6 +4,7 @@ namespace App\Filament\Resources\StockMovements\Tables;
 
 use App\Filament\Exports\StockMovementExporter;
 use App\Filament\Tables\Filters\DateRangeFilter;
+use App\Models\GoodsReceipt;
 use App\Models\MaintenanceStoreEntry;
 use App\Support\DateTimeDisplay;
 use App\Support\StockTransferQuantity;
@@ -30,7 +31,7 @@ class StockMovementsTable
                     ->badge()
                     ->formatStateUsing(fn (string $state): string => Str::headline($state))
                     ->color(fn (string $state): string => match ($state) {
-                        'purchase', 'transfer_in', 'material_return', 'production_output', MaintenanceStoreEntry::MOVEMENT_TOOL_RETURN => 'success',
+                        'purchase', GoodsReceipt::DIRECT_MOVEMENT, 'transfer_in', 'material_return', 'production_output', MaintenanceStoreEntry::MOVEMENT_TOOL_RETURN => 'success',
                         'transfer_out', 'consumption', MaintenanceStoreEntry::TYPE_TOOL_CHECKOUT, MaintenanceStoreEntry::TYPE_SPARE_PART_ISSUE => 'danger',
                         'dispatch' => 'warning',
                         'adjustment' => 'primary',
@@ -52,6 +53,7 @@ class StockMovementsTable
                 SelectFilter::make('type')
                     ->options([
                         'purchase' => 'Purchase',
+                        GoodsReceipt::DIRECT_MOVEMENT => 'Direct receipt',
                         'consumption' => 'Consumption',
                         'transfer_in' => 'Transfer In',
                         'transfer_out' => 'Transfer Out',

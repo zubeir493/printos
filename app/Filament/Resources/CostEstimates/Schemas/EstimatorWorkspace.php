@@ -3,7 +3,6 @@
 namespace App\Filament\Resources\CostEstimates\Schemas;
 
 use App\Filament\Forms\Components\MinimalRepeater;
-use App\Filament\Resources\CostEstimates\Pages\EditCostEstimate;
 use App\Services\Costing\EstimatorRecipe;
 use App\Services\Costing\EstimatorRequestContext;
 use App\Services\Costing\SheetfedCostCalculator;
@@ -17,11 +16,12 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Group;
-use Filament\Schemas\Components\Tabs;
-use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Components\View;
+use Filament\Schemas\Components\Wizard;
+use Filament\Schemas\Components\Wizard\Step;
+use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Livewire\Component;
 
@@ -111,24 +111,6 @@ class EstimatorWorkspace
             });
     }
 
-    private static function suggestPressAction(): Action
-    {
-        return Action::make('suggestPress')->icon(Heroicon::OutlinedSparkles)->label('Suggest press')->tooltip('Compare compatible presses')
-            ->disabled(fn (Repeater $component): bool => $component->isDisabled())
-            ->modalHeading('Compatible printing presses')->modalSubmitActionLabel('Use press')->schema([
-                Select::make('machine_id')->label('Printing press')->required()->options(function (array $arguments, Repeater $component): array {
-                    $livewire = $component->getLivewire();
-                    $suggestions = app(SheetfedCostCalculator::class)->suggestPresses($component->getRawItemState($arguments['item']), [
-                        ...($livewire->data['services']['product'] ?? []), 'family' => $livewire->data['job_type'] ?? 'labels',
-                    ]);
-
-                    return collect($suggestions)->mapWithKeys(fn (array $suggestion): array => [$suggestion['machine_id'] => $suggestion['name'].' · '.$suggestion['layout']['ups'].' up · '.$suggestion['layout']['utilization_percent'].'% utilization'])->all();
-                })->helperText('Suggestions respect stock size, material limits and grain. Configure a compatible press if no options appear.'),
-            ])->action(function (array $data, array $arguments, Repeater $component): void {
-                self::updateItem($component, $arguments['item'], [...$data, 'layout_key' => null, 'layout_confirmed' => false]);
-            });
-    }
-
     private static function updateItem(Repeater $component, string $key, array $data): void
     {
         $state = $component->getRawState();
@@ -160,55 +142,65 @@ class EstimatorWorkspace
         return [
             Group::make()->schema([
                 Hidden::make('services.costing_version')->default('sheetfed-v2'),
-                View::make('filament.resources.cost-estimates.workspace-configurator')->viewData(fn (Component $livewire): array => [
-                    'configurator' => $livewire->estimatorConfigurator,
-                    'result' => $livewire->estimatorResult,
-                    'actions' => $livewire instanceof EditCostEstimate ? $livewire->getCachedHeaderActions() : [],
-                ])->columnSpanFull(),
-                View::make('filament.resources.cost-estimates.workspace-details-modal')->schema([
-                    Tabs::make('estimator-workspace')->livewireProperty('estimatorTab')->tabs([
-                        'specifications' => Tab::make('Product details')->key('specifications')->schema([
-                            Group::make()->schema([
-                                TextInput::make('description')->label('Product name')->required()->maxLength(255)->columnSpan(2),
-                                Select::make('job_type')->label('Product family')->options(['books' => 'Books', 'labels' => 'Labels', 'packages' => 'Folding cartons', 'stickers' => 'Stickers'])->default('labels')->required()->live()
-                                    ->afterStateUpdated(fn (Component $livewire, ?string $state) => $livewire->applyEstimatorTemplate($state ?? 'labels')),
-                                TextInput::make('quantity')->integer()->minValue(1)->maxValue(100000000)->default(1000)->required()->live(onBlur: true),
-                                Select::make('partner_id')->label('Customer (optional)')->options(fn (): array => self::sources()->customerOptions())->searchable()->columnSpan(2),
-                            ])->columns(3)->columnSpanFull(),
-                            ...self::specifications(),
-                        ]),
-                        'materials' => Tab::make('Material & layout')->key('materials')->schema([
-                            MinimalRepeater::make('services.components')->hiddenLabel()->schema(self::componentFields())->default(self::template('labels')['components'])
-                                ->itemLabel(fn (array $state): string => $state['name'] ?? self::ROLES[$state['role'] ?? 'stock'])->columns(3)->collapsible()->inlineAdd('Add component', actions: [
-                                    self::itemOptions('componentOptions', 'Component options', self::componentOptions()),
-                                    self::suggestPressAction(),
-                                ])->columnSpanFull(),
-                        ]),
-                        'production' => Tab::make('Production route')->key('production')->schema([
-                            self::finishingRepeater(),
-                            self::view('route'),
-                            self::consumablesRepeater(),
-                            Toggle::make('services.product.consumables_confirmed')->label('All required glue, wire, dies, film and packing are included')->default(false)->live()->columnSpanFull(),
-                        ]),
-                        'pricing' => Tab::make('Pricing')->key('pricing')->schema([
-                            Group::make()->schema([
-                                Select::make('services.commercial.pricing_mode')->label('Profit method')->options(['margin' => 'Gross margin on selling price', 'markup' => 'Markup on production cost'])->default('margin')->live(),
-                                self::number('services.commercial.profit_percent', 'Target profit')->default(20)->suffix('%')->maxValue(fn (Get $get): int => $get('services.commercial.pricing_mode') === 'markup' ? 1000 : 99),
-                                self::number('services.commercial.discount_percent', 'Discount')->default(0)->maxValue(99)->suffix('%'),
-                                self::number('services.commercial.overhead_fixed', 'Additional overhead · fixed')->default(0)->suffix(fn (): string => self::sources()->currencySuffix()),
-                                self::number('services.commercial.overhead_percent', 'Additional overhead · percent')->default(0)->suffix('%'),
-                            ])->columns(3)->columnSpanFull(),
-                            self::view('breakdown'),
-                        ]),
-                        'quantities' => Tab::make('Quantities')->key('quantities')->schema([
-                            TextInput::make('services.comparison_quantities')->label('Compare quantities')->placeholder('500, 1000, 2500')->helperText('Up to three additional quantities, plus the current quantity. The same stock, route and pricing policy are recalculated for each.')->regex('/^\s*\d+(?:\s*,\s*\d+){0,2}\s*$/')->live(onBlur: true)->maxLength(100),
-                            self::view('quantities'),
-                        ]),
-                    ])->contained(false)->extraAttributes(['class' => 'estimator-tabs'])->columnSpanFull(),
-                    self::view('summary')->visible(fn (Component $livewire): bool => $livewire->estimatorTab === 'pricing')->columnSpanFull(),
-                ])->columnSpanFull(),
-            ])->columnSpanFull(),
+                Wizard::make([
+                    Step::make('Product details')->key('specifications')->schema([
+                        Group::make()->schema([
+                            TextInput::make('description')->label('Product name')->required()->maxLength(255)->columnSpan(2),
+                            Select::make('job_type')->label('Product family')->options(['books' => 'Books', 'labels' => 'Labels', 'packages' => 'Folding cartons', 'stickers' => 'Stickers'])->default('labels')->required()->live()
+                                ->afterStateUpdated(fn (Component $livewire, ?string $state) => $livewire->applyEstimatorTemplate($state ?? 'labels')),
+                            TextInput::make('quantity')->integer()->minValue(1)->maxValue(100000000)->default(1000)->required()->live(onBlur: true),
+                            Select::make('partner_id')->label('Customer (optional)')->options(fn (): array => self::sources()->customerOptions())->searchable()->columnSpan(2),
+                        ])->columns(3)->columnSpanFull(),
+                        ...self::specifications(),
+                    ]),
+                    Step::make('Material & layout')->key('materials')->schema(Schema::make()->components([
+                        MinimalRepeater::make('services.components')->hiddenLabel()->schema(self::componentFields())->default(self::template('labels')['components'])
+                            ->itemLabel(fn (array $state): string => $state['name'] ?? self::ROLES[$state['role'] ?? 'stock'])->columns(3)->collapsible()->inlineAdd('Add component', actions: [
+                                self::itemOptions('componentOptions', 'Component options', self::componentOptions()),
+                            ])->columnSpanFull(),
+                    ])->deferLoading()),
+                    Step::make('Production route')->key('production')->schema(Schema::make()->components([
+                        self::addFinishAction(),
+                        self::finishingRepeater(),
+                        self::view('route'),
+                        self::consumablesRepeater(),
+                        Toggle::make('services.product.consumables_confirmed')->label('All required glue, wire, dies, film and packing are included')->default(false)->live()->columnSpanFull(),
+                    ])->deferLoading()),
+                    Step::make('Pricing')->key('pricing')->schema(Schema::make()->components([
+                        Group::make()->schema([
+                            Select::make('services.commercial.pricing_mode')->label('Profit method')->options(['margin' => 'Gross margin on selling price', 'markup' => 'Markup on production cost'])->default('margin')->live(),
+                            self::number('services.commercial.profit_percent', 'Target profit')->default(20)->suffix('%')->maxValue(fn (Get $get): int => $get('services.commercial.pricing_mode') === 'markup' ? 1000 : 99),
+                            self::number('services.commercial.discount_percent', 'Discount')->default(0)->maxValue(99)->suffix('%'),
+                            self::number('services.commercial.overhead_fixed', 'Additional overhead · fixed')->default(0)->suffix(fn (): string => self::sources()->currencySuffix()),
+                            self::number('services.commercial.overhead_percent', 'Additional overhead · percent')->default(0)->suffix('%'),
+                        ])->columns(3)->columnSpanFull(),
+                        self::view('breakdown'),
+                    ])->deferLoading()),
+                    Step::make('Quantities')->key('quantities')->schema(Schema::make()->components([
+                        TextInput::make('services.comparison_quantities')->label('Compare quantities')->placeholder('500, 1000, 2500')->helperText('Up to three additional quantities, plus the current quantity. The same stock, route and pricing policy are recalculated for each.')->regex('/^\s*\d+(?:\s*,\s*\d+){0,2}\s*$/')->live(onBlur: true)->maxLength(100),
+                        self::view('quantities'),
+                    ])->deferLoading()),
+                ])->key('estimator-wizard')->skippable()->extraAttributes(['class' => 'estimator-wizard'])->columnSpanFull(),
+            ])->columnSpan(['default' => 7, 'xl' => 5]),
+            self::view('summary')->extraAttributes(['class' => 'estimator-summary'])->columnSpan(['default' => 7, 'xl' => 2]),
         ];
+    }
+
+    private static function addFinishAction(): Action
+    {
+        return Action::make('addFinish')
+            ->label('Add standard finish')
+            ->icon(Heroicon::OutlinedPlus)
+            ->visible(fn (Component $livewire): bool => $livewire->estimatorCanEdit())
+            ->schema([
+                Select::make('operation')->options([
+                    'laminating' => 'Lamination',
+                    'foiling' => 'Foil stamping',
+                    'embossing' => 'Embossing',
+                    'coating' => 'Coating',
+                ])->required(),
+            ])
+            ->action(fn (array $data, Component $livewire) => $livewire->addEstimatorFinish($data['operation']));
     }
 
     private static function specifications(): array

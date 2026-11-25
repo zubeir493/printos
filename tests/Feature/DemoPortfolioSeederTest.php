@@ -51,3 +51,20 @@ test('bank seeder reconciles existing banks by account number', function (): voi
     expect(Bank::query()->where('account_number', '1000000001')->count())->toBe(1)
         ->and(Bank::query()->where('account_number', '1000000001')->value('code'))->toBe('BOAN');
 });
+
+test('user seeder can be rerun without overwriting existing accounts', function (): void {
+    $this->seed(UserSeeder::class);
+
+    DB::table('users')->where('email', 'root@filament.site')->update([
+        'name' => 'Production administrator',
+        'role' => 'operations',
+    ]);
+    $passwordHash = DB::table('users')->where('email', 'root@filament.site')->value('password');
+
+    $this->seed(UserSeeder::class);
+
+    expect(DB::table('users')->where('email', 'root@filament.site')->count())->toBe(1)
+        ->and(DB::table('users')->where('email', 'root@filament.site')->value('name'))->toBe('Production administrator')
+        ->and(DB::table('users')->where('email', 'root@filament.site')->value('role'))->toBe('operations')
+        ->and(DB::table('users')->where('email', 'root@filament.site')->value('password'))->toBe($passwordHash);
+});

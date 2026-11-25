@@ -15,12 +15,14 @@ it('exposes the favicon as the PWA icon', function () {
         flags: JSON_THROW_ON_ERROR,
     );
 
-    expect($manifest['icons'])->toContain([
-        'src' => '/images/favicon.svg',
-        'sizes' => 'any',
-        'type' => 'image/svg+xml',
-        'purpose' => 'any',
-    ]);
+    expect($manifest['name'])->toBe('PrintOS')
+        ->and($manifest['short_name'])->toBe('PrintOS')
+        ->and($manifest['icons'])->toContain([
+            'src' => '/images/favicon.svg',
+            'sizes' => 'any',
+            'type' => 'image/svg+xml',
+            'purpose' => 'any',
+        ]);
 });
 
 it('links the manifest and favicon from the panel head', function () {

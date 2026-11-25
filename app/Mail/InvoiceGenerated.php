@@ -46,7 +46,7 @@ class InvoiceGenerated extends Mailable
     public function content(): Content
     {
         $companyInfo = array_merge([
-            'name' => config('app.name', 'Packledge'),
+            'name' => config('app.name', 'PrintOS'),
             'address' => '',
             'phone' => '',
             'email' => '',

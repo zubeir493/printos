@@ -654,7 +654,7 @@ function createBidManagementBank(float $currentBalance): Bank
         'name' => 'Bid Bond Bank',
         'code' => fake()->unique()->bothify('BBB-####'),
         'account_number' => fake()->unique()->numerify('##########'),
-        'account_holder_name' => 'Packledge',
+        'account_holder_name' => 'PrintOS',
         'bank_name' => 'Bid Bond Bank',
         'branch' => 'Main',
         'current_balance' => $currentBalance,

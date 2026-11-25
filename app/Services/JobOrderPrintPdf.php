@@ -102,7 +102,7 @@ class JobOrderPrintPdf
             'uses_production_ticket' => (bool) $jobOrder->uses_production_ticket,
             'internal' => $jobOrder->isInternal(),
             'due_date' => $jobOrder->due_date?->format('Y-m-d'),
-            'app_name' => config('app.name', 'Packledge'),
+            'app_name' => config('app.name', 'PrintOS'),
             'company' => [
                 'name' => $companyInfo['name'] ?? null,
                 'phone' => $companyInfo['phone'] ?? null,

@@ -12,12 +12,30 @@ use Livewire\Livewire;
 
 uses(RefreshDatabase::class);
 
+test('login and dashboard use the current public logo with a content version', function (string $page): void {
+    if ($page === 'dashboard') {
+        $this->actingAs(User::factory()->create(['role' => UserRole::Admin]));
+    }
+
+    $logoUrl = asset('images/logo.svg').'?v='.hash_file('sha256', public_path('images/logo.svg'));
+
+    $this->get(route($page === 'dashboard' ? 'filament.admin.pages.dashboard' : 'filament.admin.auth.login'))
+        ->assertSuccessful()
+        ->assertSee('src="'.$logoUrl.'"', escape: false);
+})->with(['login', 'dashboard']);
+
+test('every panel uses the public application logo', function (): void {
+    foreach (Filament::getPanels() as $panel) {
+        expect($panel->getBrandLogo())->toBe(asset('images/logo.svg'));
+    }
+});
+
 test('company logo uses a local file path for invoice rendering and a public url for previews', function (): void {
     Storage::fake('public');
     Storage::disk('public')->put('logos/company.png', 'logo image contents');
 
     $settings = Setting::create([
-        'company_name' => 'Packledge',
+        'company_name' => 'PrintOS',
         'company_logo' => 'logos/company.png',
     ]);
 
@@ -45,7 +63,7 @@ test('invoice templates use embedded logo data when available', function (): voi
             ],
             'items' => [],
             'company_info' => [
-                'name' => 'Packledge',
+                'name' => 'PrintOS',
                 'address' => null,
                 'phone' => null,
                 'email' => null,
@@ -74,7 +92,7 @@ test('proforma pdf template uses embedded logo data when available', function ()
             'proforma_number' => 'PRO-2026-000001',
             'issue_date' => '2026-05-16',
             'company_info' => [
-                'name' => 'Packledge',
+                'name' => 'PrintOS',
                 'phone' => null,
                 'email' => null,
                 'tax_id' => null,

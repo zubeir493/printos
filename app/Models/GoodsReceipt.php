@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Facades\DB;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
@@ -20,10 +21,12 @@ class GoodsReceipt extends Model
 
     public const string DIRECT_MOVEMENT = 'direct_receipt';
 
+    public const string REVERSAL_MOVEMENT = 'direct_receipt_reversal';
+
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly(['receipt_number', 'purchase_order_id', 'supplier_id', 'source_reference', 'warehouse_id', 'receipt_date', 'status', 'posted_at'])
+            ->logOnly(['receipt_number', 'purchase_order_id', 'supplier_id', 'source_reference', 'warehouse_id', 'receipt_date', 'status', 'posted_at', 'reversed_at', 'reversed_by', 'reversal_reason'])
             ->logOnlyDirty()
             ->useLogName('goods_receipt');
     }
@@ -33,6 +36,7 @@ class GoodsReceipt extends Model
         'purchase_order_id',
         'supplier_id',
         'source_reference',
+        'direct_reference_key',
         'warehouse_id',
         'receipt_date',
         'status',
@@ -44,6 +48,7 @@ class GoodsReceipt extends Model
         return [
             'receipt_date' => 'date',
             'posted_at' => 'datetime',
+            'reversed_at' => 'datetime',
         ];
     }
 
@@ -55,6 +60,11 @@ class GoodsReceipt extends Model
     public function supplier(): BelongsTo
     {
         return $this->belongsTo(Partner::class, 'supplier_id');
+    }
+
+    public function supplierBill(): HasOne
+    {
+        return $this->hasOne(Invoice::class);
     }
 
     public function sourceLabel(): string

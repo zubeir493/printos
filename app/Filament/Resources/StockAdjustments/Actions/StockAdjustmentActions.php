@@ -8,6 +8,7 @@ use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Notifications\Notification;
+use Illuminate\Validation\ValidationException;
 
 class StockAdjustmentActions
 {
@@ -36,7 +37,13 @@ class StockAdjustmentActions
             ->requiresConfirmation()
             ->visible(fn (StockAdjustment $record): bool => $record->status === 'draft')
             ->action(function (StockAdjustment $record): void {
-                $record->post();
+                try {
+                    $record->post();
+                } catch (ValidationException $exception) {
+                    Notification::make()->danger()->title($exception->getMessage())->send();
+
+                    return;
+                }
 
                 Notification::make()
                     ->title('Adjustment Posted Successfully')

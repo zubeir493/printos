@@ -17,6 +17,7 @@ class StockAdjustmentItem extends Model
         'adjustment_quantity',
         'new_quantity',
         'difference',
+        'is_imported_count',
     ];
 
     protected static function booted()
@@ -37,6 +38,7 @@ class StockAdjustmentItem extends Model
             'adjustment_quantity' => 'decimal:2',
             'new_quantity' => 'decimal:2',
             'difference' => 'decimal:2',
+            'is_imported_count' => 'boolean',
         ];
     }
 

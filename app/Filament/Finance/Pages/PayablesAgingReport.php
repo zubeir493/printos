@@ -127,7 +127,8 @@ class PayablesAgingReport extends Page implements HasForms, HasTable
 
         $orders = $this->withPostedPayable(PurchaseOrder::query(), PurchaseOrder::class)
             ->selectRaw('purchase_orders.id * 2 as id, purchase_orders.po_number')
-            ->addSelect('purchase_orders.partner_id', 'purchase_orders.due_date', 'purchase_orders.status', 'purchase_orders.created_at', 'purchase_orders.updated_at', 'purchase_orders.subtotal', 'purchase_orders.tax_amount')
+            ->addSelect('purchase_orders.partner_id', 'purchase_orders.due_date', 'purchase_orders.status', 'purchase_orders.created_at', 'purchase_orders.updated_at')
+            ->selectRaw('COALESCE(purchase_orders.short_close_subtotal, purchase_orders.subtotal) as subtotal, COALESCE(purchase_orders.short_close_tax, purchase_orders.tax_amount) as tax_amount')
             ->selectRaw('purchase_orders.order_date, posted_payable.amount as total')
             ->selectRaw('posted_payable.amount - COALESCE(disbursements.paid_amount, 0) as balance')
             ->where('purchase_orders.status', 'received')

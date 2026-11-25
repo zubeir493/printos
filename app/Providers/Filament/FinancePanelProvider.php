@@ -28,6 +28,7 @@ use App\Filament\Resources\CashDeposits\CashDepositResource;
 use App\Filament\Resources\EmployeeLoans\EmployeeLoanResource;
 use App\Filament\Resources\Expenses\ExpenseResource;
 use App\Filament\Resources\ExpenseTrackingItems\ExpenseTrackingItemResource;
+use App\Filament\Resources\GoodsReceipts\GoodsReceiptResource;
 use App\Filament\Resources\Invoices\InvoiceResource;
 use App\Filament\Resources\JobOrders\JobOrderResource;
 use App\Filament\Resources\JournalEntries\JournalEntryResource;
@@ -91,6 +92,7 @@ class FinancePanelProvider extends PanelProvider
                 BidResource::class,
                 ExpenseTrackingItemResource::class,
                 InvoiceResource::class,
+                GoodsReceiptResource::class,
                 EmployeeLoanResource::class,
                 PayrollRunResource::class,
                 PayPolicyResource::class,

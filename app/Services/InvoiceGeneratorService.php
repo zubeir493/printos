@@ -182,9 +182,9 @@ class InvoiceGeneratorService
         $invoiceNumber = $this->generateInvoiceNumber('PURCHASE');
         $settings = Setting::getSettings();
 
-        $taxAmount = (float) $order->tax_amount;
-        $subtotal = (float) $order->subtotal;
-        $totalAmount = (float) $order->total;
+        $taxAmount = (float) ($order->short_close_tax ?? $order->tax_amount);
+        $subtotal = (float) ($order->short_close_subtotal ?? $order->subtotal);
+        $totalAmount = $order->payableTotal();
         $taxCalculations = [
             'total_tax' => $taxAmount,
             'breakdown' => $taxAmount > 0 ? ['VAT' => $taxAmount] : [],
@@ -195,7 +195,14 @@ class InvoiceGeneratorService
             'invoice_date' => Carbon::now()->format('Y-m-d'),
             'due_date' => $order->due_date ? $order->due_date->format('Y-m-d') : Carbon::now()->addDays($settings->invoice_due_days ?? 30)->format('Y-m-d'),
             'order' => $order,
-            'items' => $order->purchaseOrderItems,
+            'items' => $order->short_close_subtotal === null ? $order->purchaseOrderItems
+                : $order->purchaseOrderItems->where('received_quantity', '>', 0)->map(function ($item) {
+                    $line = clone $item;
+                    $line->quantity = $item->received_quantity;
+                    $line->total = round((float) $line->quantity * (float) $line->unit_price, 2);
+
+                    return $line;
+                }),
             'payments' => $order->payments,
             'company_info' => $this->loadCompanyInformation(),
             'tax_calculations' => $taxCalculations,

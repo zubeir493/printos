@@ -34,6 +34,7 @@ class Invoice extends Model
     protected $fillable = [
         'invoice_number',
         'invoice_type', // sales, purchase, service, receipt
+        'goods_receipt_id',
         'order_id',
         'order_type', // sales_order, purchase_order, job_order, payment
         'partner_id',
@@ -108,6 +109,11 @@ class Invoice extends Model
     public function partner(): BelongsTo
     {
         return $this->belongsTo(Partner::class);
+    }
+
+    public function goodsReceipt(): BelongsTo
+    {
+        return $this->belongsTo(GoodsReceipt::class);
     }
 
     /**

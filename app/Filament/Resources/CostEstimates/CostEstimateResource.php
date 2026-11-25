@@ -16,7 +16,6 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use UnitEnum;
 
 class CostEstimateResource extends Resource
 {
@@ -24,11 +23,7 @@ class CostEstimateResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-calculator';
 
-    protected static string|UnitEnum|null $navigationGroup = 'Sales';
-
     protected static ?int $navigationSort = 10;
-
-    protected static bool $shouldRegisterNavigation = false;
 
     public static function canAccess(): bool
     {

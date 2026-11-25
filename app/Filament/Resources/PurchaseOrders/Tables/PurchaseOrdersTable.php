@@ -31,7 +31,7 @@ class PurchaseOrdersTable
                 TextColumn::make('payment_progress')
                     ->label('Payment Progress')
                     ->getStateUsing(function ($record) {
-                        $total = $record->total ?? 0;
+                        $total = $record->payableTotal();
                         $paid = $record->paid_amount ?? 0;
 
                         if ($total == 0) {
@@ -48,7 +48,7 @@ class PurchaseOrdersTable
                         return $balance > 0 ? 'Balance: '.Money::format($balance) : 'Paid in full';
                     })
                     ->color(function ($record) {
-                        $total = $record->total ?? 0;
+                        $total = $record->payableTotal();
                         $paid = $record->paid_amount ?? 0;
 
                         if ($total == 0) {

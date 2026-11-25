@@ -116,6 +116,27 @@ class MaintenanceStoreActions
             ));
     }
 
+    public static function reportToolDisposition(): Action
+    {
+        return Action::make('reportToolDisposition')->label('Report lost or damaged')
+            ->icon('heroicon-o-exclamation-triangle')
+            ->authorize(fn (MaintenanceStoreEntry $record): bool => MaintenanceStoreEntryResource::canViewAny()
+                && WarehouseAccess::allows($record->warehouse_id))
+            ->visible(fn (MaintenanceStoreEntry $record): bool => $record->type === MaintenanceStoreEntry::TYPE_TOOL_CHECKOUT
+                && $record->outstandingQuantity() > 0)
+            ->schema([
+                Select::make('disposition')->options(['lost' => 'Lost', 'damaged' => 'Damaged'])->required(),
+                TextInput::make('quantity')->integer()->minValue(1)
+                    ->maxValue(fn (MaintenanceStoreEntry $record): float => $record->outstandingQuantity())->required(),
+                TextInput::make('reason')->required()->maxLength(1000),
+            ])
+            ->successNotificationTitle('Tool closeout recorded')
+            ->action(fn (array $data, MaintenanceStoreEntry $record, Schema $schema) => self::save(
+                $schema,
+                fn () => app(MaintenanceStore::class)->disposeTool($record, (float) $data['quantity'], $data['disposition'], $data['reason']),
+            ));
+    }
+
     /** @return list<Select|TextInput> */
     private static function stockFields(string $type, string $label): array
     {

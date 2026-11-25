@@ -36,7 +36,7 @@ class MaintenanceStoreEntry extends Model
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly(['type', 'inventory_item_id', 'warehouse_id', 'employee_id', 'machine_id', 'quantity', 'returned_quantity', 'due_date', 'reference'])
+            ->logOnly(['type', 'inventory_item_id', 'warehouse_id', 'employee_id', 'machine_id', 'quantity', 'returned_quantity', 'lost_quantity', 'damaged_quantity', 'due_date', 'reference'])
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs()
             ->useLogName('maintenance_store');
@@ -75,7 +75,7 @@ class MaintenanceStoreEntry extends Model
     public function outstandingQuantity(): float
     {
         return $this->type === self::TYPE_TOOL_CHECKOUT
-            ? round((float) $this->quantity - (float) $this->returned_quantity, 2)
+            ? round((float) $this->quantity - (float) $this->returned_quantity - (float) $this->lost_quantity - (float) $this->damaged_quantity, 2)
             : 0.0;
     }
 }

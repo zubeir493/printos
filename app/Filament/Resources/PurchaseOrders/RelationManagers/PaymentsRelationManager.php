@@ -110,6 +110,6 @@ class PaymentsRelationManager extends RelationManager
         $owner = $this->getOwnerRecord();
         $currentAmount = $record ? (float) $record->amount : 0.0;
 
-        return max(0, (float) $owner->total - ((float) $owner->paid_amount - $currentAmount));
+        return max(0, $owner->payableTotal() - ((float) $owner->paid_amount - $currentAmount));
     }
 }

@@ -83,6 +83,29 @@ class MaintenanceStore
         }, attempts: 3);
     }
 
+    public function disposeTool(MaintenanceStoreEntry $entry, float $quantity, string $disposition, string $reason): void
+    {
+        $actor = $this->authorize($entry->warehouse_id);
+        Validator::validate(compact('quantity', 'disposition', 'reason'), [
+            'quantity' => ['required', 'integer', 'min:1', 'max:9999999999999'],
+            'disposition' => ['required', 'in:lost,damaged'],
+            'reason' => ['required', 'string', 'max:1000'],
+        ]);
+
+        DB::transaction(function () use ($entry, $quantity, $disposition, $reason, $actor): void {
+            $checkout = MaintenanceStoreEntry::query()->lockForUpdate()->findOrFail($entry->id);
+            $this->authorize($checkout->warehouse_id);
+            if ($checkout->type !== MaintenanceStoreEntry::TYPE_TOOL_CHECKOUT || $quantity > $checkout->outstandingQuantity()) {
+                throw ValidationException::withMessages(['quantity' => 'The quantity exceeds the tools still checked out.']);
+            }
+            $field = $disposition === 'lost' ? 'lost_quantity' : 'damaged_quantity';
+            $checkout->forceFill([$field => (float) $checkout->{$field} + $quantity])->saveQuietly();
+            activity('maintenance_store')->performedOn($checkout)->causedBy($actor)
+                ->withProperties(['quantity' => $quantity, 'disposition' => $disposition, 'reason' => $reason])
+                ->log('Tool reported '.$disposition);
+        }, 3);
+    }
+
     /** @param array{type: string, employee_id?: int, machine_id?: int, due_date?: ?string, reference?: ?string, notes?: ?string} $details */
     private function recordOutflow(User $actor, int $inventoryItemId, int $warehouseId, float $quantity, string $itemType, array $details): MaintenanceStoreEntry
     {

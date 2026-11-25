@@ -26,6 +26,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Grid;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class PurchaseOrderActions
 {
@@ -164,18 +165,24 @@ class PurchaseOrderActions
     public static function markReceived(): Action
     {
         return Action::make('mark_received')
-            ->label('Mark as Received')
+            ->label('Close remaining quantity')
             ->icon('heroicon-o-check-circle')
             ->color('gray')
             ->visible(fn (PurchaseOrder $record): bool => $record->status === 'approved'
                 && PanelAccess::canManagePurchaseOrders()
-                && $record->goodsReceipts()->exists())
+                && $record->goodsReceipts()->whereNotNull('posted_at')->exists())
             ->requiresConfirmation()
-            ->modalHeading('Mark Purchase Order as Received')
-            ->modalDescription('Manually mark this purchase order as received? Use this if you want to close the PO even if quantities are not fully received.')
+            ->modalHeading('Close remaining quantity')
+            ->modalDescription('Close the unreceived balance. The payable and inventory journal will use the quantities already received.')
             ->action(function (PurchaseOrder $record): void {
-                $record->update(['status' => 'received']);
-                Notification::make()->title('Purchase order marked as received')->success()->send();
+                try {
+                    $record->closeRemainingQuantity();
+                } catch (ValidationException $exception) {
+                    Notification::make()->danger()->title($exception->getMessage())->send();
+
+                    return;
+                }
+                Notification::make()->title('Remaining quantity closed')->success()->send();
             });
     }
 
@@ -185,7 +192,8 @@ class PurchaseOrderActions
             ->label('Cancel')
             ->icon('heroicon-o-x-circle')
             ->color('gray')
-            ->visible(fn (PurchaseOrder $record): bool => in_array($record->status, ['draft', 'approved'], true) && PanelAccess::canManagePurchaseOrders())
+            ->visible(fn (PurchaseOrder $record): bool => in_array($record->status, ['draft', 'approved'], true) && PanelAccess::canManagePurchaseOrders()
+                && ! $record->goodsReceipts()->whereNotNull('posted_at')->exists() && $record->paid_amount <= 0)
             ->requiresConfirmation()
             ->modalHeading('Cancel Purchase Order')
             ->modalDescription('Cancel this purchase order? This action cannot be undone.')

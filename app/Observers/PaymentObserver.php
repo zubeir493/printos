@@ -8,6 +8,7 @@ use App\Models\JournalEntry;
 use App\Models\Partner;
 use App\Models\Payment;
 use App\Models\PayrollRun;
+use App\Models\PurchaseOrder;
 use App\Notifications\PaymentReceivedNotification;
 use App\Notifications\PaymentVoidedNotification;
 use App\Services\Accounting\CreatePaymentJournalEntry;
@@ -35,6 +36,13 @@ class PaymentObserver
         $payment->transaction_type = $transactionType;
         $payment->direction = PaymentTransactionType::tryFrom($transactionType)?->direction()
             ?? PaymentTransactionType::from($this->legacyTransactionType($payment->payment_type, $payment->direction))->direction();
+
+        if ($payment->payable_type === PurchaseOrder::class && $transactionType === PaymentTransactionType::SUPPLIER_PAYMENT->value) {
+            $order = PurchaseOrder::query()->lockForUpdate()->findOrFail($payment->payable_id);
+            if ($order->short_close_subtotal !== null && round((float) $payment->amount, 2) > round($order->balance, 2)) {
+                throw ValidationException::withMessages(['data.amount' => 'Payment exceeds the balance for the quantities received.']);
+            }
+        }
 
         if (array_key_exists($transactionType, RecordPayrollRemittance::COLUMNS)) {
             $run = PayrollRun::query()->lockForUpdate()->findOrFail($payment->payable_id);

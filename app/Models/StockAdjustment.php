@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 
@@ -134,6 +135,15 @@ class StockAdjustment extends Model
             ->lockForUpdate()
             ->get()
             ->keyBy('inventory_item_id');
+
+        foreach ($this->items->where('is_imported_count', true) as $item) {
+            $current = (float) ($balances->get($item->inventory_item_id)?->quantity_on_hand ?? 0);
+            if (round($current, 2) !== round((float) $item->system_quantity, 2)) {
+                throw ValidationException::withMessages([
+                    'items' => 'Stock changed for '.$item->inventoryItem->name.' after the count was imported. Reconcile the movements and re-import the updated count before posting.',
+                ]);
+            }
+        }
 
         foreach ($this->items as $item) {
             if ((float) $item->adjustment_quantity >= 0.0) {

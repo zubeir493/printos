@@ -35,7 +35,7 @@ class ListGoodsReceipts extends ListRecords
                 ->modalSubmitActionLabel('Post receipt')
                 ->schema([Grid::make(2)->schema([
                     Select::make('source')->label('Receipt source')->options([
-                        'supplier' => 'Supplier delivery without a purchase order',
+                        'supplier' => 'Supplier delivery',
                         'opening_stock' => 'Opening stock',
                     ])->default('supplier')->required()->live(),
                     Select::make('supplier_id')->label('Supplier')

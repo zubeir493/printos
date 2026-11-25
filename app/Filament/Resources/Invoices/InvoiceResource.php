@@ -39,6 +39,11 @@ class InvoiceResource extends Resource
         return false;
     }
 
+    public static function canEdit(Model $record): bool
+    {
+        return $record->goods_receipt_id === null && ! isset($record->options['unmatched_receipt_id']) && parent::canEdit($record);
+    }
+
     public static function getGloballySearchableAttributes(): array
     {
         return ['invoice_number', 'partner.name'];

@@ -39,7 +39,11 @@ class StockAdjustmentItemImportService
                     continue;
                 }
 
-                $rows[] = $mapped;
+                if (isset($rows[$mapped['inventory_item_id']])) {
+                    $reader->close();
+                    throw new \RuntimeException('Each SKU must appear only once in a stock count.');
+                }
+                $rows[$mapped['inventory_item_id']] = $mapped;
             }
 
             break;
@@ -51,7 +55,7 @@ class StockAdjustmentItemImportService
             throw new \RuntimeException('No valid stock adjustment items were found in the uploaded file.');
         }
 
-        return $rows;
+        return array_values($rows);
     }
 
     /**
@@ -84,6 +88,9 @@ class StockAdjustmentItemImportService
             throw new \RuntimeException('Every imported row must include a `new_quantity` value.');
         }
 
+        if (! is_numeric($row['new_quantity']) || (float) $row['new_quantity'] < 0) {
+            throw new \RuntimeException("Enter a non-negative count for SKU {$sku}.");
+        }
         $newQuantity = (float) $row['new_quantity'];
         $adjustmentQuantity = $newQuantity - $systemQuantity;
 
@@ -93,6 +100,7 @@ class StockAdjustmentItemImportService
             'adjustment_quantity' => $adjustmentQuantity,
             'new_quantity' => $systemQuantity + $adjustmentQuantity,
             'difference' => $adjustmentQuantity,
+            'is_imported_count' => true,
         ];
     }
 

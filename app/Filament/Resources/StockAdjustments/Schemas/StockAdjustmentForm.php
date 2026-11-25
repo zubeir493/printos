@@ -211,6 +211,7 @@ class StockAdjustmentForm
                         Hidden::make('difference')
                             ->default(0)
                             ->required(),
+                        Hidden::make('is_imported_count')->default(false),
                     ])
                     ->defaultItems(1)
                     ->minItems(1)
@@ -271,6 +272,11 @@ class StockAdjustmentForm
             );
 
             if ($matchIndex !== false) {
+                if ($newRow['is_imported_count'] ?? false) {
+                    $rows[$matchIndex] = $newRow;
+
+                    continue;
+                }
                 $merged = $rows[$matchIndex];
                 $merged['adjustment_quantity'] = (float) ($merged['adjustment_quantity'] ?? 0) + (float) ($newRow['adjustment_quantity'] ?? 0);
                 $merged['system_quantity'] = (float) ($merged['system_quantity'] ?? $newRow['system_quantity'] ?? 0);

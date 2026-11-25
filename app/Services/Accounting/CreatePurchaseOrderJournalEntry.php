@@ -17,7 +17,11 @@ class CreatePurchaseOrderJournalEntry
 
         $purchaseOrder->load('purchaseOrderItems');
 
-        $total = (float) $purchaseOrder->total;
+        $total = $purchaseOrder->payableTotal();
+
+        if ($purchaseOrder->short_close_subtotal !== null && $total <= 0) {
+            return;
+        }
 
         if ($total <= 0) {
             $total = $purchaseOrder->purchaseOrderItems->sum(function ($item) {
@@ -29,7 +33,7 @@ class CreatePurchaseOrderJournalEntry
             $total = (float) $purchaseOrder->subtotal;
         }
 
-        $inventoryTotal = $purchaseOrder->purchaseOrderItems->sum(function ($item) {
+        $inventoryTotal = $purchaseOrder->short_close_subtotal ?? $purchaseOrder->purchaseOrderItems->sum(function ($item) {
             return (float) $item->quantity * (float) $item->unit_price;
         });
 

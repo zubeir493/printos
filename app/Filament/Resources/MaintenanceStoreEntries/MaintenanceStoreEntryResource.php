@@ -59,10 +59,12 @@ class MaintenanceStoreEntryResource extends Resource
                     ->state(fn (MaintenanceStoreEntry $record): ?string => $record->type === MaintenanceStoreEntry::TYPE_TOOL_CHECKOUT
                         ? self::quantityWithUnit($record->outstandingQuantity(), $record)
                         : null)
-                    ->description(fn (MaintenanceStoreEntry $record): ?string => $record->type === MaintenanceStoreEntry::TYPE_TOOL_CHECKOUT
-                        && (float) $record->returned_quantity > 0
-                        ? self::quantityWithUnit((float) $record->returned_quantity, $record).' returned'
-                        : null)
+                    ->description(fn (MaintenanceStoreEntry $record): string => collect([
+                        'returned' => $record->returned_quantity,
+                        'lost' => $record->lost_quantity,
+                        'damaged' => $record->damaged_quantity,
+                    ])->filter(fn ($quantity): bool => (float) $quantity > 0)
+                        ->map(fn ($quantity, string $label): string => self::quantityWithUnit((float) $quantity, $record).' '.$label)->implode(' · '))
                     ->placeholder('—'),
                 TextColumn::make('due_date')->label('Due back')->date()->sortable()
                     ->description(fn (MaintenanceStoreEntry $record): ?string => $record->due_date?->lt(today()) && $record->outstandingQuantity() > 0 ? 'Overdue' : null)
@@ -77,10 +79,11 @@ class MaintenanceStoreEntryResource extends Resource
                     ->options(fn () => WarehouseAccess::warehouses()->orderBy('name')->pluck('name', 'id')),
                 Filter::make('outstanding')->label('Tools still out')
                     ->query(fn (Builder $query): Builder => $query->where('type', MaintenanceStoreEntry::TYPE_TOOL_CHECKOUT)
-                        ->whereColumn('returned_quantity', '<', 'quantity')),
+                        ->whereRaw('returned_quantity + lost_quantity + damaged_quantity < quantity')),
             ])
             ->recordActions([
                 MaintenanceStoreActions::returnTool(),
+                MaintenanceStoreActions::reportToolDisposition(),
             ])
             ->defaultSort('created_at', 'desc')
             ->emptyStateHeading('No maintenance stock activity')

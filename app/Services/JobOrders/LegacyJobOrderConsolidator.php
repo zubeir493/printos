@@ -304,6 +304,7 @@ class LegacyJobOrderConsolidator
                 });
             }
 
+            $this->renameConflictingLegacyTaskIndex($table);
             $this->ensureLegacyTaskReferenceNullable($table);
 
             $nullable = $table === 'dielines';
@@ -334,6 +335,7 @@ class LegacyJobOrderConsolidator
                 });
             }
 
+            $this->renameConflictingLegacyTaskIndex('artworks');
             $this->ensureLegacyTaskReferenceNullable('artworks');
 
             if (! Schema::hasColumn('artworks', 'job_order_id')) {
@@ -419,6 +421,29 @@ class LegacyJobOrderConsolidator
                 $blueprint->unsignedBigInteger('legacy_job_order_task_id')->nullable()->change();
             });
         }
+    }
+
+    private function renameConflictingLegacyTaskIndex(string $table): void
+    {
+        if (! Schema::hasColumn($table, 'legacy_job_order_task_id')) {
+            return;
+        }
+
+        $indexes = collect(Schema::getIndexes($table));
+        $oldIndexName = $table.'_job_order_id_foreign';
+        $oldIndex = $indexes->firstWhere('name', $oldIndexName);
+        if (! $oldIndex || ($oldIndex['columns'] ?? []) === ['job_order_id']) {
+            return;
+        }
+
+        $legacyIndexName = $table.'_legacy_job_order_task_id_index';
+        if ($indexes->contains(fn (array $index): bool => ($index['name'] ?? null) === $legacyIndexName)) {
+            Schema::table($table, fn (Blueprint $blueprint) => $blueprint->dropIndex($oldIndexName));
+
+            return;
+        }
+
+        Schema::table($table, fn (Blueprint $blueprint) => $blueprint->renameIndex($oldIndexName, $legacyIndexName));
     }
 
     private function archiveLegacyTaskTable(): void

@@ -23,12 +23,12 @@ it('renders invoice mailable when company contact fields are missing', function 
             'balance_due' => 100,
             'order' => (object) ['partner' => (object) ['name' => 'Acme']],
             'company_info' => [
-                'name' => 'Packledge',
+                'name' => 'PrintOS',
             ],
         ],
     ]);
 
     $html = $mailable->render();
 
-    expect($html)->toContain('Packledge');
+    expect($html)->toContain('PrintOS');
 });

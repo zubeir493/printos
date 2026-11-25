@@ -617,7 +617,7 @@ class Settings extends Page implements HasForms
                 ->required(),
             Placeholder::make('default_mapping')
                 ->label('Account mapping default')
-                ->content('Exports use each Packledge account code as the Peachtree Account ID unless an override is set.'),
+                ->content('Exports use each PrintOS account code as the Peachtree Account ID unless an override is set.'),
             Placeholder::make('mapping_status')
                 ->label('Override mappings')
                 ->content(function (): HtmlString {

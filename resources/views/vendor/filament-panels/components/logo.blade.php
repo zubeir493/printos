@@ -1,6 +1,10 @@
 @php
     $brandName = filament()->getBrandName();
     $brandLogo = filament()->getBrandLogo();
+    if ($brandLogo === asset('images/logo.svg')) {
+        $brandLogo .= '?v=' . hash_file('sha256', public_path('images/logo.svg'));
+    }
+
     $brandLogoHeight = filament()->getBrandLogoHeight() ?? '1.5rem';
     $darkModeBrandLogo = filament()->getDarkModeBrandLogo();
     $hasDarkModeBrandLogo = filled($darkModeBrandLogo);

@@ -10,7 +10,7 @@ uses(TestCase::class);
 it('uses configured private disk for signed urls', function () {
     config()->set('filesystems.private_disk', 'b2');
 
-    URL::forceRootUrl('http://packledge.test');
+    URL::forceRootUrl('http://printos.test');
 
     $url = PrivateStorage::downloadUrl('artworks/example.pdf', now()->addMinutes(5));
 

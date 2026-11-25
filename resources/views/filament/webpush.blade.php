@@ -107,10 +107,6 @@
                     detail: nextStatus,
                 }));
 
-                window.dispatchEvent(new CustomEvent('packledge-webpush-status', {
-                    detail: nextStatus,
-                }));
-
                 showPromptNotification(nextStatus);
             };
 
@@ -207,7 +203,6 @@
             };
 
             window.PrintOsWebPush = webPush;
-            window.PackledgeWebPush = webPush;
 
             window.addEventListener('printos-webpush-enable-requested', () => {
                 isPromptNotificationDismissed = true;
@@ -215,7 +210,7 @@
                 subscribe();
             });
 
-            window.addEventListener('packledge-webpush-enable', () => {
+            window.addEventListener('printos-webpush-enable', () => {
                 subscribe();
             });
 
@@ -236,7 +231,6 @@
             }
 
             window.dispatchEvent(new CustomEvent('printos-webpush-ready'));
-            window.dispatchEvent(new CustomEvent('packledge-webpush-ready'));
         })();
     </script>
 @endif

@@ -69,16 +69,18 @@ class InvoiceActions
             ->icon('heroicon-o-x-circle')
             ->color('gray')
             ->requiresConfirmation()
-            ->visible(fn (Invoice $record): bool => in_array($record->status, ['draft', 'sent', 'unpaid', 'partial', 'overdue'], true))
+            ->visible(fn (Invoice $record): bool => $record->canBeCancelled())
             ->action(function (Invoice $record): void {
                 $changed = DB::transaction(function () use ($record): bool {
                     $invoice = Invoice::query()->lockForUpdate()->findOrFail($record->id);
 
-                    return ! in_array($invoice->status, ['paid', 'cancelled'], true)
+                    return $invoice->canBeCancelled()
                         && $invoice->update(['status' => 'cancelled']);
                 });
                 if ($changed) {
                     Notification::make()->title('Invoice cancelled')->success()->send();
+                } else {
+                    Notification::make()->title('Invoice can no longer be cancelled')->warning()->send();
                 }
             });
     }

@@ -59,6 +59,10 @@ class ReadZktecoAttendance
 
     protected function device(?array $settings = null): ZkDevice
     {
+        if (! config('attendance_device.network_enabled')) {
+            throw new RuntimeException('Device access is disabled on this server. Enable it after configuring the private network route.');
+        }
+
         $settings ??= AttendanceDeviceSettings::all();
 
         return ZkDevice::fromArray($settings, $settings['id']);

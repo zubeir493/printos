@@ -4,6 +4,7 @@ use Illuminate\Support\Str;
 use Pdo\Mysql;
 
 return [
+    'backup_mysql_binary' => env('DB_BACKUP_MYSQL_BINARY', 'mariadb-dump'),
 
     /*
     |--------------------------------------------------------------------------

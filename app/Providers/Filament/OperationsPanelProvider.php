@@ -9,6 +9,7 @@ use App\Filament\Operations\Widgets\PriorityJobValueWidget;
 use App\Filament\Pages\Auth\EditProfile;
 use App\Filament\Resources\Artworks\ArtworkResource;
 use App\Filament\Resources\Bids\BidResource;
+use App\Filament\Resources\CostEstimates\CostEstimateResource;
 use App\Filament\Resources\Dispatches\DispatchResource;
 use App\Filament\Resources\EmailLogs\EmailLogResource;
 use App\Filament\Resources\GoodsReceipts\GoodsReceiptResource;
@@ -64,6 +65,7 @@ class OperationsPanelProvider extends PanelProvider
             ->resources([
                 ArtworkResource::class,
                 BidResource::class,
+                CostEstimateResource::class,
                 DispatchResource::class,
                 EmailLogResource::class,
                 GoodsReceiptResource::class,

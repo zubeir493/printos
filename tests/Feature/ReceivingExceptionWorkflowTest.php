@@ -1,5 +1,6 @@
 <?php
 
+use App\Filament\Resources\GoodsReceipts\Pages\ListGoodsReceipts;
 use App\Models\GoodsReceipt;
 use App\Models\InventoryBalance;
 use App\Models\InventoryItem;
@@ -15,10 +16,16 @@ use App\Services\MaintenanceStore;
 use App\Services\PostDirectGoodsReceipt;
 use App\Support\PrivateStorage;
 use App\UserRole;
+use Filament\Actions\ActionGroup;
+use Filament\Actions\Testing\TestAction;
+use Filament\Facades\Filament;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
+use Livewire\Livewire;
 
 uses(RefreshDatabase::class);
 
@@ -106,6 +113,66 @@ it('lets Finance match a supplier bill without receiving stock again', function 
     expect($receipt->supplierBill()->exists())->toBeFalse()
         ->and($invoice->refresh()->options['unmatched_receipt_id'])->toBe($receipt->id)
         ->and($invoice->status)->toBe('cancelled');
+});
+
+it('opens the supplier bill upload in strict mode and matches only a new PDF', function (): void {
+    $receipt = app(PostDirectGoodsReceipt::class)->handle(exceptionReceiptInput());
+    $this->actingAs(User::factory()->create(['role' => UserRole::Finance]));
+    Filament::setCurrentPanel(Filament::getPanel('finance'));
+    $disk = Storage::fake(PrivateStorage::diskName());
+    $existingDocument = 'invoices/supplier-bills/existing.pdf';
+    $disk->put($existingDocument, '%PDF-existing');
+    $action = TestAction::make('matchSupplierBill')->table($receipt);
+    $data = [
+        'bill_number' => 'BILL-UI', 'invoice_date' => today()->toDateString(), 'due_date' => today()->addDays(30)->toDateString(),
+        'subtotal' => 400, 'tax_amount' => 60,
+    ];
+
+    $wasPreventingMissingAttributes = Model::preventsAccessingMissingAttributes();
+    Model::preventAccessingMissingAttributes();
+    try {
+        Livewire::test(ListGoodsReceipts::class)
+            ->mountAction($action)
+            ->assertActionMounted($action)
+            ->call('callSchemaComponentMethod', 'mountedActionSchema0.document', 'getUploadedFiles')
+            ->assertReturned([]);
+
+        Livewire::test(ListGoodsReceipts::class)
+            ->callAction($action, data: [...$data, 'document' => [$existingDocument]])
+            ->assertHasActionErrors(['document']);
+
+        Livewire::test(ListGoodsReceipts::class)
+            ->callAction($action, data: [...$data, 'document' => UploadedFile::fake()->create('bill.pdf', 1, 'application/pdf')])
+            ->assertHasNoActionErrors()
+            ->assertNotified('Supplier bill matched');
+    } finally {
+        Model::preventAccessingMissingAttributes($wasPreventingMissingAttributes);
+    }
+
+    $invoice = $receipt->supplierBill()->sole();
+    $disk->assertExists($invoice->file_path);
+    expect($invoice->file_path)->not->toBe($existingDocument)
+        ->and($invoice->status)->toBe('draft')
+        ->and(StockMovement::count())->toBe(1)
+        ->and(JournalEntry::count())->toBe(0);
+
+    Livewire::test(ListGoodsReceipts::class)
+        ->callAction(TestAction::make('unmatchSupplierBill')->table($receipt), data: ['reason' => 'Wrong bill'])
+        ->assertHasNoActionErrors()
+        ->assertNotified('Supplier bill unmatched');
+
+    expect($invoice->refresh()->status)->toBe('cancelled')
+        ->and($receipt->supplierBill()->exists())->toBeFalse();
+});
+
+it('keeps all receipt row actions in a single dropdown', function (): void {
+    Filament::setCurrentPanel(Filament::getPanel('admin'));
+    $actions = Livewire::test(ListGoodsReceipts::class)->instance()->getTable()->getRecordActions();
+
+    expect($actions)->toHaveCount(1)
+        ->and($actions[0])->toBeInstanceOf(ActionGroup::class)
+        ->and(array_keys($actions[0]->getFlatActions()))
+        ->toBe(['viewReceipt', 'matchSupplierBill', 'unmatchSupplierBill', 'reverseDirectReceipt']);
 });
 
 it('protects imported counts from stale posting and closes lost tools without restocking', function (): void {

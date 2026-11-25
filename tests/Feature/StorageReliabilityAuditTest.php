@@ -55,6 +55,37 @@ test('backup streams a verifiable dump before retention runs', function (): void
     expect($restore->query("SELECT name FROM sqlite_master WHERE name = 'restore_probe'")->fetchColumn())->toBe('restore_probe');
 });
 
+test('backup uses the resolved connection URL and configured storage disk', function (): void {
+    Storage::fake('local');
+    $defaultConnection = config('database.default');
+    config([
+        'database.default' => 'backup_source',
+        'database.connections.backup_source' => [
+            'url' => 'mysql://dump-user:test-password@database.example:3307/production_data',
+        ],
+        'filesystems.backup_disk' => 'local',
+    ]);
+    $this->app->instance(BackupDatabase::class, new class extends BackupDatabase
+    {
+        protected function dumpProcess(array $command, array $environment): Process
+        {
+            expect($command)->toContain('--host=database.example', '--port=3307', '--user=dump-user', 'production_data')
+                ->and($command[1])->toStartWith('--defaults-file=')
+                ->and(file_get_contents(substr($command[1], strlen('--defaults-file='))))->toContain('password="test-password"')
+                ->and($environment)->toBeEmpty();
+
+            return new Process([PHP_BINARY, '-r', 'echo "CREATE TABLE restore_probe (id INTEGER);";']);
+        }
+    });
+
+    try {
+        $this->artisan('backup:database')->assertSuccessful();
+    } finally {
+        config(['database.default' => $defaultConnection]);
+    }
+    expect(Storage::disk('local')->files('backups/database'))->toHaveCount(1);
+});
+
 test('failed invoice storage does not create a successful invoice record', function (): void {
     config()->set('filesystems.private_disk', 's3');
     $job = JobOrder::factory()->create();

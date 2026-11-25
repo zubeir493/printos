@@ -1,0 +1,132 @@
+x-app: &app
+  image: printos:vps
+  pull_policy: never
+  env_file: .env.production
+  environment:
+    APP_ENV: production
+    APP_DEBUG: "false"
+    APP_KEY: ${APP_KEY:?Set APP_KEY in .env.production}
+    TRUSTED_PROXIES: 172.31.245.2
+  volumes:
+    - app-storage:/var/www/html/storage/app
+  restart: unless-stopped
+  logging:
+    options:
+      max-size: "20m"
+      max-file: "5"
+
+x-app-dependencies: &app-dependencies
+  migrate:
+    condition: service_completed_successfully
+
+services:
+  app:
+    <<: *app
+    build: .
+    depends_on: *app-dependencies
+    networks: [default, proxy]
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1/up"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  migrate:
+    <<: *app
+    user: www-data
+    command: ["php", "artisan", "migrate", "--force", "--no-interaction"]
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker:
+    <<: *app
+    user: www-data
+    command: ["php", "artisan", "queue:work", "--queue=default", "--sleep=2", "--tries=3", "--timeout=120"]
+    stop_grace_period: 140s
+    depends_on: *app-dependencies
+
+  dielines:
+    <<: *app
+    user: www-data
+    command: ["php", "artisan", "queue:work", "--queue=dielines", "--sleep=2", "--tries=3", "--timeout=120"]
+    stop_grace_period: 140s
+    depends_on: *app-dependencies
+
+  attendance:
+    <<: *app
+    user: www-data
+    command: ["/bin/sh", "-c", 'exec php artisan queue:work "$${ATTENDANCE_DEVICE_QUEUE_CONNECTION:-redis}" --queue="$${ATTENDANCE_DEVICE_QUEUE:-attendance}" --sleep=2 --tries=3 --timeout=90']
+    stop_grace_period: 110s
+    depends_on: *app-dependencies
+
+  scheduler:
+    <<: *app
+    user: www-data
+    command: ["php", "artisan", "schedule:work", "--no-interaction"]
+    stop_grace_period: 31m
+    depends_on: *app-dependencies
+
+  db:
+    image: mariadb:11.4
+    restart: unless-stopped
+    environment:
+      MARIADB_DATABASE: ${DB_DATABASE:?Set DB_DATABASE in .env.production}
+      MARIADB_USER: ${DB_USERNAME:?Set DB_USERNAME in .env.production}
+      MARIADB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env.production}
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?Set DB_ROOT_PASSWORD in .env.production}
+    volumes:
+      - database:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory-policy", "noeviction"]
+    volumes:
+      - redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  proxy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:?Set APP_DOMAIN in .env.production}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks:
+      proxy:
+        ipv4_address: 172.31.245.2
+    depends_on:
+      app:
+        condition: service_healthy
+
+networks:
+  proxy:
+    ipam:
+      config:
+        - subnet: 172.31.245.0/24
+
+volumes:
+  app-storage:
+  database:
+  redis:
+  caddy-data:
+  caddy-config:

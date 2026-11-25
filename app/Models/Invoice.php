@@ -155,6 +155,12 @@ class Invoice extends Model
         };
     }
 
+    public function canBeCancelled(): bool
+    {
+        return in_array($this->status, ['draft', 'sent', 'unpaid', 'overdue'], true)
+            && (float) $this->balance_due >= (float) $this->total_amount;
+    }
+
     public function syncPaymentBalance(float $paidAmount): void
     {
         if ($this->status === 'cancelled') {

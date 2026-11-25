@@ -4,7 +4,6 @@ use App\Filament\Resources\JobOrders\Pages\ViewJobOrder;
 use App\Models\InventoryItem;
 use App\Models\JobOrder;
 use App\Models\User;
-use App\Support\Money;
 use App\UserRole;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -24,7 +23,7 @@ beforeEach(function (): void {
 test('job detail explains blockers and promotes the next action without duplicating it', function (): void {
     $job = JobOrder::factory()->create(['status' => 'draft']);
     $component = Livewire::test(ViewJobOrder::class, ['record' => $job->id])
-        ->assertSee('Workflow readiness')->assertSee('Confirm the specifications, then start the job.')
+        ->assertSee('Production readiness')->assertSee('Start the job when you are ready to assign and prepare it.')
         ->assertActionVisible('activate');
     $actions = $component->instance()->getCachedHeaderActions();
     expect($actions[0])->toBeInstanceOf(Action::class)->and($actions[0]->getName())->toBe('activate')
@@ -38,8 +37,8 @@ test('material readiness distinguishes the base requirement reserve and units', 
         'inventory_item_id' => $item->id, 'required_quantity' => 100, 'reserve_quantity' => 20,
     ]]]);
     Livewire::test(ViewJobOrder::class, ['record' => $job->id])
-        ->assertSee('Required file approval pending')->assertSee('Book Paper')->assertSee('sheets')
-        ->assertSee('Reserve allowance')->assertSee('Remaining incl. reserve');
+        ->assertSee('Approve all required artwork and text files.')->assertSee('Book Paper')->assertSee('sheets')
+        ->assertSee('Reserve allowance')->assertSee('Short incl. reserve');
     expect($job->materials_summary[0])->toMatchArray(['planned' => 100.0, 'reserved' => 20.0, 'required' => 120.0, 'remaining' => 120.0]);
 });
 
@@ -48,7 +47,7 @@ test('production users do not receive financial readiness details', function ():
     $this->actingAs(User::factory()->create(['role' => UserRole::Production]));
     $job = JobOrder::factory()->create(['status' => 'production']);
     Livewire::test(ViewJobOrder::class, ['record' => $job->id])
-        ->assertSee('Workflow readiness')->assertDontSee('Remaining payment: '.Money::format($job->balance, 2));
+        ->assertSee('Production readiness')->assertDontSee('Client billing')->assertDontSee('Production costing');
 });
 
 test('design review action points to the file tabs', function (): void {

@@ -482,7 +482,8 @@ class Settings extends Page implements HasForms
                         ->fillForm(fn (): array => AttendanceDeviceSettings::formState())
                         ->schema([
                             Grid::make(2)->schema([
-                                Toggle::make('enabled')->label('Automatic sync'),
+                                Toggle::make('enabled')->label('Automatic sync')
+                                    ->helperText(fn (): ?string => config('attendance_device.network_enabled') ? null : 'Device access is paused on this server.'),
                                 Toggle::make('processing_enabled')->label('Import attendance'),
                             ]),
                             Grid::make(2)->schema([
@@ -503,11 +504,12 @@ class Settings extends Page implements HasForms
                         ])
                         ->action(function (array $data): void {
                             AttendanceDeviceSettings::save($data);
-                            $this->data['attendance_device_enabled'] = (bool) $data['enabled'];
+                            $this->data['attendance_device_enabled'] = (bool) AttendanceDeviceSettings::get('enabled');
                             Notification::make()->title('Device settings saved')->success()->send();
                         }),
                     Action::make('testAttendanceDevice')->label('Test')->color('gray')->size('sm')
                         ->authorize(fn (): bool => auth()->user()?->role === UserRole::Admin)
+                        ->disabled(fn (): bool => ! config('attendance_device.network_enabled'))
                         ->action(function (): void {
                             abort_unless(auth()->user()?->role === UserRole::Admin, 403);
                             try {
@@ -519,6 +521,7 @@ class Settings extends Page implements HasForms
                         }),
                 ]),
                 Toggle::make('attendance_device_enabled')->hiddenLabel()->live()->dehydrated(false)
+                    ->disabled(fn (): bool => ! config('attendance_device.network_enabled'))
                     ->afterStateHydrated(fn (Toggle $component) => $component->state(AttendanceDeviceSettings::get('enabled')))
                     ->afterStateUpdated(function (bool $state): void {
                         AttendanceDeviceSettings::save([...AttendanceDeviceSettings::formState(), 'enabled' => $state]);

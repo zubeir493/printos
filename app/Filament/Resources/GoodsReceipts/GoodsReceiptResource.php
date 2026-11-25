@@ -15,6 +15,7 @@ use App\Support\WarehouseAccess;
 use App\UserRole;
 use BackedEnum;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Textarea;
@@ -83,69 +84,81 @@ class GoodsReceiptResource extends Resource
             ->filters([
                 DateRangeFilter::make('receipt_date_range', 'receipt_date', 'Receipt date'),
             ])
-            ->recordActions([
-                Action::make('viewReceipt')->label('View receipt')->icon('heroicon-o-eye')
-                    ->modalHeading(fn (GoodsReceipt $record): string => $record->receipt_number)
-                    ->modalSubmitAction(false)->modalCancelActionLabel('Close')
-                    ->schema([
-                        TextEntry::make('reversal_reason')->visible(fn (GoodsReceipt $record): bool => filled($record->reversed_at)),
-                        TextEntry::make('supplierBill.invoice_number')->label('Matched bill')
-                            ->visible(fn (GoodsReceipt $record): bool => PanelAccess::canAccessFinanceSection() && $record->supplierBill !== null)
-                            ->url(fn (GoodsReceipt $record): ?string => $record->supplierBill
-                                ? InvoiceResource::getUrl('view', ['record' => $record->supplierBill]) : null),
-                        RepeatableEntry::make('items')->label('Received items')
-                            ->state(fn (GoodsReceipt $record): array => $record->items()->with(['inventoryItem', 'purchaseOrderItem.inventoryItem'])->get()
-                                ->map(fn (GoodsReceiptItem $line): array => [
-                                    'item_name' => ($line->inventoryItem ?? $line->purchaseOrderItem?->inventoryItem)?->name,
-                                    'quantity_received' => $line->quantity_received,
-                                    'unit_cost' => $line->unit_cost,
-                                ])->all())
-                            ->schema([
-                                TextEntry::make('item_name')->label('Item'),
-                                TextEntry::make('quantity_received')->label('Received'),
-                                TextEntry::make('unit_cost')->label('Cost per base unit')
-                                    ->money(fn (): string => Money::currencyCode())
-                                    ->visible(fn (): bool => PanelAccess::canSeeMoneyValues()),
-                            ])->columns(3),
-                    ]),
-                Action::make('reverseDirectReceipt')->label('Reverse receipt')->color('danger')
-                    ->authorize(fn (GoodsReceipt $record): bool => in_array(auth()->user()?->role, [UserRole::Admin, UserRole::Operations], true)
-                        && WarehouseAccess::allows((int) $record->warehouse_id))
-                    ->visible(fn (GoodsReceipt $record): bool => $record->purchase_order_id === null
-                        && $record->posted_at && ! $record->reversed_at && ! $record->supplierBill)
-                    ->schema([Textarea::make('reason')->required()->maxLength(1000)])
-                    ->action(fn (GoodsReceipt $record, array $data, Schema $schema, PostDirectGoodsReceipt $service) => self::runReceiptAction(
-                        $schema, fn () => $service->reverse($record, $data['reason']), 'Receipt reversed',
-                    )),
-                Action::make('matchSupplierBill')->label('Match supplier bill')
-                    ->authorize(fn (): bool => PanelAccess::canAccessFinanceSection()
-                        && in_array(auth()->user()?->role, [UserRole::Admin, UserRole::Finance], true))
-                    ->visible(fn (GoodsReceipt $record): bool => $record->purchase_order_id === null && $record->supplier_id !== null
-                        && $record->posted_at && ! $record->reversed_at && ! $record->supplierBill)
-                    ->modalDescription('Attach the supplier’s PDF and record the billed amounts for Finance review.')
-                    ->schema([
-                        TextInput::make('bill_number')->label('Supplier invoice number')->required()->maxLength(120),
-                        DatePicker::make('invoice_date')->default(today())->required(),
-                        DatePicker::make('due_date')->default(today()->addDays(30))->required(),
-                        TextInput::make('subtotal')->numeric()->minValue(0.01)->step(0.01)->required(),
-                        TextInput::make('tax_amount')->numeric()->minValue(0)->step(0.01)->default(0)->required(),
-                        FileUpload::make('document')->label('Supplier bill PDF')->disk(PrivateStorage::diskName())
-                            ->directory('invoices/supplier-bills')->visibility('private')->acceptedFileTypes(['application/pdf'])
-                            ->maxSize(10240)->preventFilePathTampering()->required(),
-                    ])
-                    ->action(fn (GoodsReceipt $record, array $data, Schema $schema, PostDirectGoodsReceipt $service) => self::runReceiptAction(
-                        $schema, fn () => $service->recordSupplierBill($record, $data), 'Supplier bill matched',
-                    )),
-                Action::make('unmatchSupplierBill')->label('Unmatch draft bill')->color('gray')
-                    ->authorize(fn (): bool => PanelAccess::canAccessFinanceSection()
-                        && in_array(auth()->user()?->role, [UserRole::Admin, UserRole::Finance], true))
-                    ->visible(fn (GoodsReceipt $record): bool => in_array($record->supplierBill?->status, ['draft', 'cancelled'], true))
-                    ->schema([Textarea::make('reason')->required()->maxLength(1000)])
-                    ->action(fn (GoodsReceipt $record, array $data, Schema $schema, PostDirectGoodsReceipt $service) => self::runReceiptAction(
-                        $schema, fn () => $service->unmatchSupplierBill($record, $data['reason']), 'Supplier bill unmatched',
-                    )),
-            ])
+            ->recordActions([self::receiptActions()])
             ->defaultSort('receipt_date', 'desc');
+    }
+
+    private static function receiptActions(): ActionGroup
+    {
+        return ActionGroup::make([
+            Action::make('viewReceipt')->label('View receipt')->icon('heroicon-o-eye')
+                ->modalHeading(fn (GoodsReceipt $record): string => $record->receipt_number)
+                ->modalDescription('Review the quantities received and any bill or reversal linked to this receipt.')
+                ->modalSubmitAction(false)->modalCancelActionLabel('Close')
+                ->schema([
+                    TextEntry::make('reversal_reason')->visible(fn (GoodsReceipt $record): bool => filled($record->reversed_at)),
+                    TextEntry::make('supplierBill.invoice_number')->label('Matched bill')
+                        ->visible(fn (GoodsReceipt $record): bool => PanelAccess::canAccessFinanceSection() && $record->supplierBill !== null)
+                        ->url(fn (GoodsReceipt $record): ?string => $record->supplierBill
+                            ? InvoiceResource::getUrl('view', ['record' => $record->supplierBill]) : null),
+                    RepeatableEntry::make('items')->label('Received items')
+                        ->state(fn (GoodsReceipt $record): array => $record->items()->with(['inventoryItem', 'purchaseOrderItem.inventoryItem'])->get()
+                            ->map(fn (GoodsReceiptItem $line): array => [
+                                'item_name' => ($line->inventoryItem ?? $line->purchaseOrderItem?->inventoryItem)?->name,
+                                'quantity_received' => $line->quantity_received,
+                                'unit_cost' => $line->unit_cost,
+                            ])->all())
+                        ->schema([
+                            TextEntry::make('item_name')->label('Item'),
+                            TextEntry::make('quantity_received')->label('Received'),
+                            TextEntry::make('unit_cost')->label('Cost per base unit')
+                                ->money(fn (): string => Money::currencyCode())
+                                ->visible(fn (): bool => PanelAccess::canSeeMoneyValues()),
+                        ])->columns(3),
+                ]),
+            Action::make('matchSupplierBill')->label('Match supplier bill')->icon('heroicon-o-link')
+                ->authorize(fn (): bool => PanelAccess::canAccessFinanceSection()
+                    && in_array(auth()->user()?->role, [UserRole::Admin, UserRole::Finance], true))
+                ->visible(fn (GoodsReceipt $record): bool => $record->purchase_order_id === null && $record->supplier_id !== null
+                    && $record->posted_at && ! $record->reversed_at && ! $record->supplierBill)
+                ->modalDescription('Create a draft supplier bill for Finance review. Enter the amounts from the bill and attach its PDF.')
+                ->modalSubmitActionLabel('Match bill')
+                ->schema([
+                    TextInput::make('bill_number')->label('Supplier invoice number')->required()->maxLength(120),
+                    DatePicker::make('invoice_date')->default(today())->required(),
+                    DatePicker::make('due_date')->default(today()->addDays(30))->required(),
+                    TextInput::make('subtotal')->numeric()->minValue(0.01)->step(0.01)->required(),
+                    TextInput::make('tax_amount')->numeric()->minValue(0)->step(0.01)->default(0)->required(),
+                    FileUpload::make('document')->label('Supplier bill PDF')->model(Invoice::class)
+                        ->disk(PrivateStorage::diskName())
+                        ->directory('invoices/supplier-bills')->visibility('private')->acceptedFileTypes(['application/pdf'])
+                        ->maxSize(10240)->preventFilePathTampering()->required(),
+                ])
+                ->action(fn (GoodsReceipt $record, array $data, Schema $schema, PostDirectGoodsReceipt $service) => self::runReceiptAction(
+                    $schema, fn () => $service->recordSupplierBill($record, $data), 'Supplier bill matched',
+                )),
+            Action::make('unmatchSupplierBill')->label('Unmatch draft bill')->icon('heroicon-o-link-slash')->color('gray')
+                ->authorize(fn (): bool => PanelAccess::canAccessFinanceSection()
+                    && in_array(auth()->user()?->role, [UserRole::Admin, UserRole::Finance], true))
+                ->visible(fn (GoodsReceipt $record): bool => in_array($record->supplierBill?->status, ['draft', 'cancelled'], true))
+                ->modalDescription('Unlink the bill so you can match the correct one. Unmatching also cancels a draft bill.')
+                ->modalSubmitActionLabel('Unmatch bill')
+                ->schema([Textarea::make('reason')->label('Reason for unmatching')->required()->maxLength(1000)])
+                ->action(fn (GoodsReceipt $record, array $data, Schema $schema, PostDirectGoodsReceipt $service) => self::runReceiptAction(
+                    $schema, fn () => $service->unmatchSupplierBill($record, $data['reason']), 'Supplier bill unmatched',
+                )),
+            Action::make('reverseDirectReceipt')->label('Reverse receipt')->icon('heroicon-o-arrow-uturn-left')->color('danger')
+                ->authorize(fn (GoodsReceipt $record): bool => in_array(auth()->user()?->role, [UserRole::Admin, UserRole::Operations], true)
+                    && WarehouseAccess::allows((int) $record->warehouse_id))
+                ->visible(fn (GoodsReceipt $record): bool => $record->purchase_order_id === null
+                    && $record->posted_at && ! $record->reversed_at && ! $record->supplierBill)
+                ->modalDescription('Remove the received quantities from this warehouse and record why. There must be enough stock on hand to reverse the receipt.')
+                ->modalSubmitActionLabel('Reverse receipt')
+                ->schema([Textarea::make('reason')->label('Reason for reversal')->required()->maxLength(1000)])
+                ->action(fn (GoodsReceipt $record, array $data, Schema $schema, PostDirectGoodsReceipt $service) => self::runReceiptAction(
+                    $schema, fn () => $service->reverse($record, $data['reason']), 'Receipt reversed',
+                )),
+        ])->label('Receipt actions');
     }
 
     private static function runReceiptAction(Schema $schema, \Closure $callback, string $title): void

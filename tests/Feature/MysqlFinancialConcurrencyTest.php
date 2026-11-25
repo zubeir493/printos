@@ -9,9 +9,12 @@ use App\Models\PayrollRun;
 use App\Models\PayrollRunEmployee;
 use App\Models\SalesOrder;
 use App\Models\Warehouse;
+use App\Services\JobOrders\LegacyJobOrderGroupSchema;
 use Database\Seeders\PayrollTaxRuleSeeder;
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\Process\Process;
 
@@ -20,6 +23,23 @@ beforeEach(function (): void {
         $this->markTestSkipped('Run with phpunit.mysql.xml against the dedicated printos_audit_testing database.');
     }
     Artisan::call('migrate:fresh', ['--force' => true, '--no-interaction' => true]);
+});
+
+test('legacy payment allocation constraints can be repaired after a partial MariaDB migration', function (): void {
+    $table = 'legacy_job_order_payment_allocations';
+    Schema::table($table, function (Blueprint $table): void {
+        $table->dropForeign('legacy_payment_allocation_group_fk');
+        $table->dropForeign('legacy_payment_allocation_job_fk');
+        $table->dropForeign('legacy_payment_allocation_payment_fk');
+        $table->dropUnique('legacy_job_payment_allocation_unique');
+    });
+
+    LegacyJobOrderGroupSchema::ensure();
+    LegacyJobOrderGroupSchema::ensure();
+
+    expect(collect(Schema::getForeignKeys($table))->pluck('columns.0')->sort()->values()->all())
+        ->toBe(['job_order_id', 'legacy_job_order_group_id', 'payment_id'])
+        ->and(Schema::hasIndex($table, ['payment_id', 'job_order_id'], 'unique'))->toBeTrue();
 });
 
 /** @return list<array{status: string, result?: mixed}> */

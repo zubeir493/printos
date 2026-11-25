@@ -20,6 +20,7 @@ return [
     'default' => env('FILESYSTEM_DISK', 'local'),
 
     'private_disk' => $privateDisk,
+    'backup_disk' => env('DB_BACKUP_DISK', 's3'),
 
     /*
     |--------------------------------------------------------------------------
@@ -63,6 +64,7 @@ return [
             'endpoint' => env('AWS_ENDPOINT', env('B2_ENDPOINT')),
             'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', true),
             'visibility' => 'private',
+            'options' => array_filter(['ACL' => env('AWS_OBJECT_ACL')]),
             'http' => [
                 'verify' => filter_var(env('AWS_VERIFY_SSL', true), FILTER_VALIDATE_BOOL),
             ],

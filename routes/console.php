@@ -4,6 +4,7 @@ use App\Jobs\SyncDeviceAttendance;
 use App\Support\AttendanceDeviceSettings;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schedule;
 
 Artisan::command('inspire', function () {
@@ -11,7 +12,10 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 // Schedule daily database backup at 2 AM
-Schedule::command('backup:database')->dailyAt('02:00')->withoutOverlapping()->onOneServer();
+Schedule::command('backup:database')->dailyAt('02:00')->withoutOverlapping()->onOneServer()
+    ->onFailure(function (): void {
+        Log::error('The scheduled database backup failed. Run backup:database to see the failure details.');
+    });
 
 // Mark overdue invoices every morning
 Schedule::command('invoices:update-overdue')->dailyAt('06:00')->withoutOverlapping()->onOneServer();
@@ -30,4 +34,5 @@ Schedule::job(new SyncDeviceAttendance)
     ->name('attendance-device-sync')
     ->everyFiveMinutes()
     ->withoutOverlapping()
+    ->onOneServer()
     ->when(fn (): bool => (bool) AttendanceDeviceSettings::get('enabled'));

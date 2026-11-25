@@ -56,6 +56,8 @@
         "deploy": [
             "@php artisan down --render=\"errors::503\" --retry=60",
             "composer install --no-dev --optimize-autoloader --no-interaction",
+            "npm ci --include=dev",
+            "npm run build",
             "@php artisan migrate --force --no-interaction",
             "@php artisan optimize",
             "@php artisan filament:optimize",

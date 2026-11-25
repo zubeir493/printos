@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'network_enabled' => (bool) env('ATTENDANCE_DEVICE_NETWORK_ENABLED', true),
     'enabled' => (bool) env('ATTENDANCE_DEVICE_ENABLED', false),
     'processing_enabled' => (bool) env('ATTENDANCE_DEVICE_PROCESSING_ENABLED', false),
     'id' => env('ATTENDANCE_DEVICE_ID', 'office-mb360'),

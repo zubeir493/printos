@@ -349,18 +349,13 @@ it('keeps order workflow copy and colors consistent', function (): void {
     expect(PurchaseOrderActions::receive()->getColor())->toBe('gray');
 });
 
-it('keeps the job order cost calculation upload compact', function (): void {
+it('links a finalized estimate on the job order while keeping historical cost documents downloadable', function (): void {
     $formSource = file_get_contents(base_path('app/Filament/Resources/JobOrders/Schemas/JobOrderForm.php'));
-    $themeSource = file_get_contents(base_path('resources/css/filament/admin/theme.css'));
+    $ticketSource = file_get_contents(base_path('app/Filament/Resources/JobOrders/Schemas/JobOrderTicket.php'));
 
     expect($formSource)
-        ->toContain("FileUpload::make('cost_calc_file')")
-        ->toContain("->panelLayout('compact')")
-        ->toContain("->placeholder('Upload cost file')")
-        ->toContain("->extraAttributes(['class' => 'job-order-cost-file-upload'])")
-        ->and($themeSource)
-        ->toContain('.job-order-cost-file-upload .filepond--drop-label')
-        ->toContain('height: 2.25rem')
-        ->toContain('.job-order-cost-file-upload .filepond--file-info-sub')
-        ->toContain('display: none');
+        ->toContain("Select::make('cost_estimate_id')", 'Select a finalized estimate')
+        ->not->toContain("FileUpload::make('cost_calc_file')")
+        ->and($ticketSource)
+        ->toContain("TextEntry::make('cost_calc_file')", 'PrivateStorage::downloadUrl');
 });

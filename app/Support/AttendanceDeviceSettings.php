@@ -14,7 +14,10 @@ class AttendanceDeviceSettings
     /** @return array<string, mixed> */
     public static function all(): array
     {
-        return array_replace(config('attendance_device'), Setting::query()->first(['attendance_device'])?->attendance_device ?? []);
+        $settings = self::storedSettings();
+        $settings['enabled'] = (bool) config('attendance_device.network_enabled') && $settings['enabled'];
+
+        return $settings;
     }
 
     public static function get(string $key): mixed
@@ -25,7 +28,7 @@ class AttendanceDeviceSettings
     /** @return array<string, mixed> */
     public static function formState(): array
     {
-        return Arr::only(self::all(), ['enabled', 'processing_enabled', 'host', 'port', 'transport', 'timeout', 'timezone']);
+        return Arr::only(self::storedSettings(), ['enabled', 'processing_enabled', 'host', 'port', 'transport', 'timeout', 'timezone']);
     }
 
     /** @param array<string, mixed> $data */
@@ -53,5 +56,11 @@ class AttendanceDeviceSettings
             $settings = Setting::query()->lockForUpdate()->findOrFail($settings->id);
             $settings->update(['attendance_device' => array_replace($settings->attendance_device ?? [], $validated)]);
         });
+    }
+
+    /** @return array<string, mixed> */
+    private static function storedSettings(): array
+    {
+        return array_replace(config('attendance_device'), Setting::query()->first(['attendance_device'])?->attendance_device ?? []);
     }
 }

@@ -163,6 +163,22 @@ test('invoice edit actions transition status without exposing the status field',
         ->and($invoice->balance_due)->toBe('100.00');
 });
 
+test('an overdue invoice with a recorded payment cannot be cancelled', function (): void {
+    Filament::setCurrentPanel(Filament::getPanel('finance'));
+    $this->actingAs(User::factory()->create(['role' => UserRole::Finance]));
+    $invoice = releaseDraftInvoice(['email' => 'finance@example.com']);
+    $invoice->update(['status' => 'overdue', 'balance_due' => (float) $invoice->total_amount - 10]);
+
+    Livewire::test(ListInvoices::class)->assertTableActionHidden('cancel_invoice', $invoice);
+    expect($invoice->fresh()->status)->toBe('overdue');
+
+    $invoice->update(['balance_due' => $invoice->total_amount]);
+    Livewire::test(ListInvoices::class)
+        ->callTableAction('cancel_invoice', $invoice)
+        ->assertNotified('Invoice cancelled');
+    expect($invoice->fresh()->status)->toBe('cancelled');
+});
+
 test('emailing an invoice from the table marks open invoices as sent', function (): void {
     Filament::setCurrentPanel(Filament::getPanel('finance'));
 

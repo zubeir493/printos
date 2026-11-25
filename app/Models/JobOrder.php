@@ -490,13 +490,13 @@ class JobOrder extends Model
         }
         if (! $this->isInternal() && ! $this->proforma_task_id) {
             if (! $this->partner_id) {
-                $issues[] = 'Select the customer in Job details.';
+                $issues[] = 'Select the customer.';
             }
             if ($this->estimated_production_costs === null || ! $this->cost_reviewed_at) {
                 $issues[] = 'Have Finance or Admin approve the estimated production cost.';
             }
             if ((float) $this->subtotal <= 0) {
-                $issues[] = 'Enter the agreed customer price in Billing.';
+                $issues[] = 'Enter the customer unit price under Dates and costing.';
             }
         }
 

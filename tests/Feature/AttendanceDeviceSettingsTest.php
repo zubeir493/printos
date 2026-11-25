@@ -27,6 +27,19 @@ beforeEach(function (): void {
     config(['attendance_device.enabled' => false, 'attendance_device.processing_enabled' => false]);
 });
 
+it('pauses device network access while retaining the stored synchronization preference', function (): void {
+    AttendanceDeviceSettings::save([...AttendanceDeviceSettings::formState(), 'enabled' => true]);
+    config(['attendance_device.network_enabled' => false]);
+
+    expect(AttendanceDeviceSettings::get('enabled'))->toBeFalse()
+        ->and(AttendanceDeviceSettings::formState()['enabled'])->toBeTrue();
+    expect(fn () => app(ReadZktecoAttendance::class)->testConnection())->toThrow(RuntimeException::class, 'Device access is disabled');
+    $this->artisan('attendance:device-sync')->assertFailed();
+
+    config(['attendance_device.network_enabled' => true]);
+    expect(AttendanceDeviceSettings::get('enabled'))->toBeTrue();
+});
+
 it('configures the device independently from other settings and never hydrates the saved key', function (): void {
     Livewire::test(Settings::class)->callAction(TestAction::make('configureAttendanceDevice')->schemaComponent(true, 'form'), [
         'enabled' => true, 'host' => '100.90.80.70', 'port' => 4371,

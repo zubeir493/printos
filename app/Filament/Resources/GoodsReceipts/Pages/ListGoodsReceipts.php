@@ -32,6 +32,7 @@ class ListGoodsReceipts extends ListRecords
                 ->icon('heroicon-o-inbox-arrow-down')
                 ->authorize(fn (): bool => PostDirectGoodsReceipt::allows(auth()->user()))
                 ->modalWidth('4xl')
+                ->modalDescription('Add stock to a warehouse for a supplier delivery without a purchase order or for an opening count.')
                 ->modalSubmitActionLabel('Post receipt')
                 ->schema([Grid::make(2)->schema([
                     Select::make('source')->label('Receipt source')->options([

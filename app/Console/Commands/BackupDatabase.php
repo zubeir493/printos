@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Support\RequiredStorage;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Symfony\Component\Process\Process;
@@ -23,7 +24,7 @@ class BackupDatabase extends Command
      *
      * @var string
      */
-    protected $description = 'Backup the database to S3 storage';
+    protected $description = 'Back up the database to the configured storage disk';
 
     /**
      * Execute the console command.
@@ -33,41 +34,41 @@ class BackupDatabase extends Command
         $this->info('Starting database backup...');
 
         $temporaryPath = null;
+        $clientOptionsPath = null;
         $stream = null;
 
         try {
-            $database = config('database.connections.'.config('database.default').'.database');
+            $connection = DB::connection();
+            $config = $connection->getConfig();
+            $database = $connection->getDatabaseName();
+            $disk = config('filesystems.backup_disk');
             $databaseName = Str::slug(pathinfo(str_replace('\\', '/', $database), PATHINFO_FILENAME), '_') ?: 'database';
             $filename = 'backups/database/'.$databaseName.'_'.Carbon::now()->format('Y-m-d_H-i-s').'.sql';
 
-            // Determine the dump command based on database type
-            $connection = config('database.default');
-            $dumpCommand = '';
-
-            switch ($connection) {
+            switch ($connection->getDriverName()) {
                 case 'mysql':
                 case 'mariadb':
-                    $host = config('database.connections.'.$connection.'.host');
-                    $port = config('database.connections.'.$connection.'.port');
-                    $username = config('database.connections.'.$connection.'.username');
-                    $password = config('database.connections.'.$connection.'.password');
-                    $dumpCommand = ['mariadb-dump', '--single-transaction', '--quick', '--skip-lock-tables', '-h', $host, '-P', (string) $port, '-u', $username, $database];
-                    $environment = ['MYSQL_PWD' => $password];
+                    $clientOptionsPath = tempnam(sys_get_temp_dir(), 'erp-db-client-');
+                    $password = addcslashes((string) $config['password'], "\\\"\n\r\t");
+                    if ($clientOptionsPath === false || file_put_contents($clientOptionsPath, "[client]\npassword=\"{$password}\"\n") === false) {
+                        throw new \RuntimeException('Could not create the database client options file.');
+                    }
+                    $endpoint = filled($config['unix_socket'] ?? null)
+                        ? ['--socket='.$config['unix_socket']]
+                        : ['--protocol=tcp', '--host='.$config['host'], '--port='.$config['port']];
+                    $dumpCommand = [config('database.backup_mysql_binary'), '--defaults-file='.$clientOptionsPath, '--single-transaction', '--quick', '--skip-lock-tables', ...$endpoint, '--user='.$config['username'], '--', $database];
+                    $environment = [];
                     break;
                 case 'pgsql':
-                    $host = config('database.connections.'.$connection.'.host');
-                    $port = config('database.connections.'.$connection.'.port');
-                    $username = config('database.connections.'.$connection.'.username');
-                    $password = config('database.connections.'.$connection.'.password');
-                    $dumpCommand = ['pg_dump', '-h', $host, '-p', (string) $port, '-U', $username, $database];
-                    $environment = ['PGPASSWORD' => $password];
+                    $dumpCommand = ['pg_dump', '-h', $config['host'], '-p', (string) $config['port'], '-U', $config['username'], '--', $database];
+                    $environment = ['PGPASSWORD' => (string) $config['password']];
                     break;
                 case 'sqlite':
                     $dumpCommand = ['sqlite3', $database, '.dump'];
                     $environment = [];
                     break;
                 default:
-                    $this->error('Database type not supported for backup: '.$connection);
+                    $this->error('Database type not supported for backup: '.$connection->getDriverName());
 
                     return Command::FAILURE;
             }
@@ -95,12 +96,12 @@ class BackupDatabase extends Command
             if (! $process->isSuccessful() || filesize($temporaryPath) === 0) {
                 throw new \RuntimeException('Failed to generate database dump: '.$process->getErrorOutput());
             }
-            RequiredStorage::putFile('s3', $filename, $temporaryPath);
+            RequiredStorage::putFile($disk, $filename, $temporaryPath);
 
             $this->info('Database backup completed successfully: '.$filename);
 
             // Clean up old backups (keep last 30 days)
-            $this->cleanupOldBackups();
+            $this->cleanupOldBackups($disk);
 
             return Command::SUCCESS;
         } catch (\Throwable $e) {
@@ -113,6 +114,9 @@ class BackupDatabase extends Command
             }
             if (is_string($temporaryPath) && is_file($temporaryPath)) {
                 unlink($temporaryPath);
+            }
+            if (is_string($clientOptionsPath) && is_file($clientOptionsPath)) {
+                unlink($clientOptionsPath);
             }
         }
     }
@@ -128,18 +132,19 @@ class BackupDatabase extends Command
     /**
      * Clean up old backups (keep last 30 days)
      */
-    private function cleanupOldBackups(): void
+    private function cleanupOldBackups(string $disk): void
     {
         $this->info('Cleaning up old backups...');
 
-        $files = Storage::disk('s3')->files('backups/database');
+        $storage = Storage::disk($disk);
+        $files = $storage->files('backups/database');
         $cutoffDate = Carbon::now()->subDays(30);
 
         foreach ($files as $file) {
-            $lastModified = Carbon::createFromTimestamp(Storage::disk('s3')->lastModified($file));
+            $lastModified = Carbon::createFromTimestamp($storage->lastModified($file));
 
             if ($lastModified->lt($cutoffDate)) {
-                Storage::disk('s3')->delete($file);
+                $storage->delete($file);
                 $this->info('Deleted old backup: '.$file);
             }
         }

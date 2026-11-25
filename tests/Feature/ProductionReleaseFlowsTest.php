@@ -22,7 +22,7 @@ use Symfony\Component\Process\Process;
 uses(RefreshDatabase::class);
 
 test('cached configuration preserves trusted proxies without trusting other callers', function (string $remoteAddress, int $expectedStatus): void {
-    $cachedConfigPath = tempnam(sys_get_temp_dir(), 'printos-proxy-config-');
+    $cachedConfigPath = tempnam(base_path('bootstrap/cache'), 'proxy-test-');
     $configuration = config()->all();
     $configuration['app']['env'] = 'production';
     $configuration['trustedproxy']['proxies'] = '10.0.0.1';
@@ -46,7 +46,7 @@ test('cached configuration preserves trusted proxies without trusting other call
             $response = $kernel->handle($request);
             echo json_encode(['status' => $response->getStatusCode(), 'body' => $response->getContent()]);
             PHP, $remoteAddress], base_path(), [
-            'APP_CONFIG_CACHE' => $cachedConfigPath,
+            'APP_CONFIG_CACHE' => 'bootstrap/cache/'.basename($cachedConfigPath),
             'TRUSTED_PROXIES' => false,
         ]);
         $process->mustRun();
